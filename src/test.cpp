@@ -7,6 +7,7 @@
 #include "Validator.hpp"
 #include "Character_Buffer.hpp"
 #include "Kmer_SPMC_Iterator.hpp"
+#include "Kmer_SPSC_Iterator.hpp"
 #include "FASTA_Record.hpp"
 #include "kseq/kseq.h"
 #include "spdlog/spdlog.h"
@@ -451,6 +452,39 @@ void test_SPMC_iterator_performance(const char* const db_path, const size_t cons
 
 
 template <uint16_t k>
+void test_SPSC_iterator_performance(const char* const db_path)
+{
+    Kmer_Container<k> kmer_container(db_path);
+    std::cout << "kmer_count: " << kmer_container.size() << "\n";
+
+    Kmer_SPSC_Iterator<k> it(&kmer_container);
+    it.launch();
+
+    std::cout << "\nIteration ongoing\n";
+
+    Kmer<k> max_kmer;
+    Kmer<k> kmer;
+    uint64_t kmer_count = 0;
+
+    while(it.parse_kmer(kmer))
+    {
+        if(max_kmer < kmer)
+            max_kmer = kmer;
+
+        kmer_count++;
+        if(kmer_count % 100000 == 0)
+            std::cout << "\rParsed " << kmer_count << " k-mers.";
+    }
+
+    it.close();
+
+    std::cout << "\rParsed " << kmer_count << " k-mers.\n";
+    std::cout << "\nMax k-mer: " << max_kmer.string_label() << "\n";
+}
+
+
+/*
+template <uint16_t k>
 void test_iterator_correctness(const char* const db_path, const size_t consumer_count)
 {
     const std::string kmc_path(db_path);
@@ -634,6 +668,7 @@ int main(int argc, char** argv)
 
     // test_buffered_iterator_performance<k>(argv[1]);
     // test_SPMC_iterator_performance<k>(argv[1], consumer_count);
+    test_SPSC_iterator_performance<k>(argv[1]);
     // test_iterator_correctness<k>(argv[1], consumer_count);
     // write_kmers<32>(argv[1], std::atoi(argv[2]), argv[3]);
     return 0;
