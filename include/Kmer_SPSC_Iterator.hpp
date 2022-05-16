@@ -64,7 +64,14 @@ private:
     // Reads raw binary k-mer representations from the underlying database.
     // Reads as much raw data as it fits within the suffix buffer `suff_buf`,
     // and also puts the corresponding prefixes (and their count) in `pref_buf`.
-    // Returns `true` iff there were unread data left in the database.
+    // Returns `true` iff there were unread data left in the database. If
+    // `PREF_ATOMIC` is `true`, then the k-mer content of each prefix (from the
+    // prefile-file of the k-mer database) is read into the buffer in its
+    // entirety, i.e. if some prefix `pref` has `f` corresponding k-mers, then
+    // all the suffixes of those k-mers are read into `suff_buf` at the same
+    // time: the suffixes are not read in partial chunks. The buffer is resized
+    // if required in such cases.
+    template <bool PREF_ATOMIC = false>
     bool read_kmer_data();
 
     // Sets the buffer status `buf_stat` to `new_stat`, in a thread-safe manner.
@@ -185,6 +192,7 @@ inline bool Kmer_SPSC_Iterator<k>::parse_kmer(Kmer<k>& kmer)
 
 
 template <uint16_t k>
+template <bool PREF_ATOMIC>
 inline bool Kmer_SPSC_Iterator<k>::read_kmer_data()
 {
     if(kmer_database.Eof())
@@ -195,7 +203,13 @@ inline bool Kmer_SPSC_Iterator<k>::read_kmer_data()
     }
 
 
-    kmers_available_in_buf = kmer_database.read_raw_suffixes(suff_buf, pref_buf, suf_buf_size);
+    kmers_available_in_buf =    ([&]() constexpr -> uint64_t
+                                { 
+                                    if constexpr (PREF_ATOMIC)
+                                        return kmer_database.read_raw_suffixes_atomic(suff_buf, pref_buf, suf_buf_size);
+                                    
+                                    return kmer_database.read_raw_suffixes(suff_buf, pref_buf, suf_buf_size);
+                                }());
     pref_it = pref_buf.begin();
 
     if(!kmers_available_in_buf)
