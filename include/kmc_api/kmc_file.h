@@ -146,7 +146,7 @@ public:
 	// Reads up-to `max_bytes_to_read` bytes worth of raw suffix records into the buffer `suff_buf`.
 	// The prefixes corresponding to these suffixes are read into `pref_buf`, in the form
 	// <prefix, #corresponding_suffix>. Returns the number of suffixes read. `0` is returned if
-	// error(s) occurred during the read. The k-mer content of each prefix (from the prefile-file
+	// error(s) occurred during the read. The k-mer content of each prefix (from the prefix-file
 	// of the k-mer database) is read into the buffer in its entirety, i.e. if some prefix `pref`
 	// has `f` corresponding k-mers, then all the suffixes of those k-mers are read into `suff_buf`
 	// at the same time: the suffixes are not read in partial chunks. If resizing `suff_buf` is
@@ -159,6 +159,13 @@ public:
 	// where "abundance" is the count of remaining k-mers to be parsed having this "prefix". The
 	// iterator is adjusted accordingly for the next parse operation from the buffers.
 	template <uint16_t k> void parse_kmer_buf(std::vector<std::pair<uint64_t, uint64_t>>::iterator& prefix_it, const uint8_t* suff_buf, size_t buf_idx, Kmer<k>& kmer) const;
+
+	// Parses raw binary k-mers from the `buf_idx`'th byte onward of the buffer `suff_buf`, into
+	// the collection `kmers` of Cuttlefish k-mer objects. All k-mers having the same prefix (from
+	// the prefix-file of the k-mer database) are parsed and collected into `kmers`. `prefix_it`
+	// points to a pair of the form <prefix, abundance> where "abundance" is the count of k-mers
+	// having this "prefix". The iterator is adjusted accordingly for the next parse operation.
+	template <uint16_t k> void parse_kmer_buf_atomic(std::vector<std::pair<uint64_t, uint64_t>>::iterator& prefix_it, const uint8_t* suff_buf, std::size_t buf_idx, std::vector<Kmer<k>>& kmers) const;
 	
 	// Returns the memory (in bytes) used by the prefix file buffer.
 	static constexpr std::size_t pref_buf_memory();
@@ -645,7 +652,7 @@ inline void CKMC_DB::parse_kmer_buf(std::vector<std::pair<uint64_t, uint64_t>>::
 	static constexpr uint16_t NUM_INTS = (k + 31) / 32;
 	uint64_t kmc_data[NUM_INTS]{};
 
-	// Check if we have exhausted the currrent prefix.
+	// Check if we have exhausted the current prefix.
 	if(prefix_it->second == 0)
 		++prefix_it;
 
@@ -684,6 +691,23 @@ inline void CKMC_DB::parse_kmer_buf(std::vector<std::pair<uint64_t, uint64_t>>::
 
 	// Parse KMC raw-binary k-mer data to Cuttlefish's k-mer format.
 	kmer.from_KMC_data(kmc_data);
+}
+
+
+template <uint16_t k>
+inline void CKMC_DB::parse_kmer_buf_atomic(std::vector<std::pair<uint64_t, uint64_t>>::iterator& prefix_it, const uint8_t* const suff_buf, std::size_t buf_idx, std::vector<Kmer<k>>& kmers) const
+{
+	Kmer<k> kmer;
+
+	while(prefix_it->second != 0)
+	{
+		parse_kmer_buf(prefix_it, suff_buf, buf_idx, kmer);
+		kmers.emplace_back(kmer);
+
+		buf_idx += suff_record_size();
+	}
+
+	prefix_it++;
 }
 
 

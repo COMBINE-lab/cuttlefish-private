@@ -463,17 +463,21 @@ void test_SPSC_iterator_performance(const char* const db_path)
     std::cout << "\nIteration ongoing\n";
 
     Kmer<k> max_kmer;
-    Kmer<k> kmer;
+    // Kmer<k> kmer;
+    std::vector<Kmer<k>> kmers;
     uint64_t kmer_count = 0;
 
-    while(it.parse_kmer(kmer))
+    // while(it.parse_kmer(kmer))
+    while(it.parse_kmers_atomic(kmers))
     {
-        if(max_kmer < kmer)
-            max_kmer = kmer;
+        // if(max_kmer < kmer)
+        //     max_kmer = kmer;
+        max_kmer = std::max(max_kmer, *std::max_element(kmers.begin(), kmers.end()));
 
-        kmer_count++;
-        if(kmer_count % 100000 == 0)
-            std::cout << "\rParsed " << kmer_count << " k-mers.";
+        // kmer_count++;
+        kmer_count += kmers.size();
+        // if(kmer_count % 100000 == 0)
+        //     std::cout << "\rParsed " << kmer_count << " k-mers.";
     }
 
     it.close();
@@ -663,7 +667,7 @@ int main(int argc, char** argv)
 
     // count_kmers_in_unitigs(argv[1], atoi(argv[2]));
 
-    // static constexpr uint16_t k = 28;
+    static constexpr uint16_t k = 31;
     // static const size_t consumer_count = std::atoi(argv[2]);
 
     // test_buffered_iterator_performance<k>(argv[1]);

@@ -66,13 +66,26 @@ private:
     // and also puts the corresponding prefixes (and their count) in `pref_buf`.
     // Returns `true` iff there were unread data left in the database. If
     // `PREF_ATOMIC` is `true`, then the k-mer content of each prefix (from the
-    // prefile-file of the k-mer database) is read into the buffer in its
+    // prefix-file of the k-mer database) is read into the buffer in its
     // entirety, i.e. if some prefix `pref` has `f` corresponding k-mers, then
     // all the suffixes of those k-mers are read into `suff_buf` at the same
     // time: the suffixes are not read in partial chunks. The buffer is resized
     // if required in such cases.
     template <bool PREF_ATOMIC = false>
     bool read_kmer_data();
+
+    // Attempts to read raw binary k-mer representations from the underlying
+    // database into the buffer iff the buffer is marked as free. Returns
+    // `true` iff the buffer already had unprocessed data, or it was marked as
+    // free and data read had been successful into the buffer, i.e. there were
+    // unread data left in the database. If `PREF_ATOMIC` is `true`, then the
+    // k-mer content of each prefix (from the prefix-file of the database) is
+    // read into the buffer in its entirety, i.e. if some prefix `pref` has `f`
+    // corresponding k-mers, then all the suffixes of those `f` k-mers are read
+    // into `suff_buf` at the same time: the suffixes are not read in partial
+    // chunks. The buffer is resized if required in such cases.
+    template <bool PREF_ATOMIC = false>
+    bool read_kmers_if_buffer_free();
 
     // Sets the buffer status `buf_stat` to `new_stat`, in a thread-safe manner.
     void set_buffer_status(Buffer_Status new_stat);
@@ -102,9 +115,18 @@ public:
     // Equality operators are prohibited.
     bool operator!=(const Kmer_SPSC_Iterator<k>& rhs) = delete;
 
-    // Tries to parse the next k-mer from the buffer. Returns `true` iff k-mers
-    // were remaining, i.e. the underlying database has not been depleted.
+    // Tries to parse the next k-mer from the buffer into `kmer`. Returns `true`
+    // iff k-mers were remaining, i.e. the underlying database has not been
+    // depleted.
     bool parse_kmer(Kmer<k>& kmer);
+
+    // Tries to parse the next chunk of k-mers from the buffer into `kmers`,
+    // where all the k-mers in the chunk share the same prefix (from the
+    // prefix-file of the underlying k-mer database): if some prefix `pref`
+    // has `f` corresponding k-mers in the database, then these `f` k-mers
+    // are parsed into `kmers`. Returns `true` iff k-mers were remaining, i.e.
+    // the underlying database has not been depleted.
+    bool parse_kmers_atomic(std::vector<Kmer<k>>& kmers);
 
     // Launches the iterator.
     void launch();
@@ -163,22 +185,8 @@ template <uint16_t k>
 inline bool Kmer_SPSC_Iterator<k>::parse_kmer(Kmer<k>& kmer)
 {
     if(kmers_parsed_off_buf == kmers_available_in_buf)
-    {
-        buf_lock.lock();
-
-        bool data_read = false;
-
-        if(buf_stat == Buffer_Status::available)
-            data_read = true;
-        else if(buf_stat == Buffer_Status::pending)
-            data_read = read_kmer_data();
-
-        buf_lock.unlock();
-
-        if(!data_read)
+        if(!read_kmers_if_buffer_free())
             return false;
-    }
-
 
     kmer_database.parse_kmer_buf<k>(pref_it, suff_buf, kmers_parsed_off_buf * kmer_database.suff_record_size(), kmer);
     kmers_parsed_off_buf++;
@@ -188,6 +196,44 @@ inline bool Kmer_SPSC_Iterator<k>::parse_kmer(Kmer<k>& kmer)
 
 
     return true;
+}
+
+
+template <uint16_t k>
+inline bool Kmer_SPSC_Iterator<k>::parse_kmers_atomic(std::vector<Kmer<k>>& kmers)
+{
+    if(kmers_parsed_off_buf == kmers_available_in_buf)
+        if(!read_kmers_if_buffer_free<true>())
+            return false;
+
+    kmers.clear();
+    kmer_database.parse_kmer_buf_atomic<k>(pref_it, suff_buf, kmers_parsed_off_buf * kmer_database.suff_record_size(), kmers);
+    kmers_parsed_off_buf += kmers.size();
+
+    if(kmers_parsed_off_buf == kmers_available_in_buf)
+        set_buffer_status(Buffer_Status::pending);
+
+
+    return true;
+}
+
+
+template <uint16_t k>
+template <bool PREF_ATOMIC>
+inline bool Kmer_SPSC_Iterator<k>::read_kmers_if_buffer_free()
+{
+    bool data_available = false;
+
+    buf_lock.lock();
+
+    if(buf_stat == Buffer_Status::available)
+        data_available = true;
+    else if(buf_stat == Buffer_Status::pending)
+        data_available = read_kmer_data<PREF_ATOMIC>();
+
+    buf_lock.unlock();
+
+    return data_available;
 }
 
 
