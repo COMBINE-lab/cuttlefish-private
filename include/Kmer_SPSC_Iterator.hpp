@@ -10,6 +10,7 @@
 #include "kmc_api/kmc_file.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 #include <cstddef>
 
@@ -27,7 +28,7 @@ class Kmer_SPSC_Iterator
 {
 private:
 
-    const Kmer_Container<k>* const kmer_container;  // The associated k-mer container over which to iterate.
+    const std::string kmer_db_path; // Path to the k-mer database.
     CKMC_DB kmer_database;  // The k-mer database object.
 
     const uint64_t kmer_count;  // Number of k-mers present in the underlying database.
@@ -93,6 +94,9 @@ private:
 
 public:
 
+    // Constructs an iterator for the provided k-mer database at `kmer_db_path`.
+    Kmer_SPSC_Iterator(const std::string& kmer_db_path);
+
     // Constructs an iterator for the provided container `kmer_container`.
     Kmer_SPSC_Iterator(const Kmer_Container<k>* kmer_container);
 
@@ -137,8 +141,20 @@ public:
 
 
 template <uint16_t k>
+inline Kmer_SPSC_Iterator<k>::Kmer_SPSC_Iterator(const std::string& kmer_db_path):
+    kmer_db_path{kmer_db_path},
+    kmer_count{Kmer_Container<k>(kmer_db_path).size()},
+    kmers_read{0},
+    suff_buf{nullptr},
+    kmers_parsed_off_buf{0},
+    kmers_available_in_buf{0},
+    buf_stat{Buffer_Status::pending}
+{}
+
+
+template <uint16_t k>
 inline Kmer_SPSC_Iterator<k>::Kmer_SPSC_Iterator(const Kmer_Container<k>* const kmer_container):
-    kmer_container{kmer_container},
+    kmer_db_path{kmer_container->container_location()},
     kmer_count{kmer_container->size()},
     kmers_read{0},
     suff_buf{nullptr},
@@ -286,7 +302,7 @@ inline void Kmer_SPSC_Iterator<k>::set_buffer_status(const Buffer_Status new_sta
 template <uint16_t k>
 inline void Kmer_SPSC_Iterator<k>::launch()
 {
-    open_kmer_database(kmer_container->container_location());
+    open_kmer_database(kmer_db_path);
 
     suff_buf = new uint8_t[suf_buf_size];
     pref_buf.clear();
