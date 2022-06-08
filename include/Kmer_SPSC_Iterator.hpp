@@ -30,10 +30,10 @@ class Kmer_SPSC_Iterator
 {
 private:
 
-    const std::string kmer_db_path; // Path to the k-mer database.
+    std::string kmer_db_path; // Path to the k-mer database.
     CKMC_DB kmer_database;  // The k-mer database object.
 
-    const uint64_t kmer_count;  // Number of k-mers present in the underlying database.
+    uint64_t kmer_count;  // Number of k-mers present in the underlying database.
 
     uint64_t kmers_read;    // Number of raw k-mers read off disk by the iterator.
 
@@ -96,6 +96,9 @@ private:
 
 public:
 
+    // Constructs an empty iterator.
+    Kmer_SPSC_Iterator();
+
     // Constructs an iterator for the provided k-mer database at `kmer_db_path`.
     Kmer_SPSC_Iterator(const std::string& kmer_db_path);
 
@@ -120,6 +123,9 @@ public:
 
     // Equality operators are prohibited.
     bool operator!=(const Kmer_SPSC_Iterator<k>& rhs) = delete;
+
+    // Initializes the iterator for the k-mer database at `kmer_db_path`.
+    void init(const std::string& kmer_db_path);
 
     // Tries to parse the next k-mer from the buffer into `kmer`. Returns `true`
     // iff k-mers were remaining, i.e. the underlying database has not been

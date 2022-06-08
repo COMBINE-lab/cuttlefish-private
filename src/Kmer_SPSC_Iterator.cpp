@@ -48,7 +48,12 @@ template <uint16_t k>
 void Kmer_SPSC_Iterator<k>::init(const std::string& kmer_db_path)
 {
     this->kmer_db_path = kmer_db_path;
-    // kmer_count = Kmer_Container<k>
+    kmer_count = Kmer_Container<k>(kmer_db_path).size();
+    kmers_read = 0;
+    suff_buf = nullptr;
+    kmers_parsed_off_buf = 0;
+    kmers_available_in_buf = 0;
+    buf_stat = Buffer_Status::pending;
 }
 
 
