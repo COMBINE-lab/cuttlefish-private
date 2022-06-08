@@ -103,7 +103,7 @@ public:
     // Copy-construction is prohibited. This is a complex object with a KMC
     // database object in some *arbitrary* state, which should not be allowed
     // to be copied. Besides, it contains certain constant fields.
-    Kmer_SPSC_Iterator(const Kmer_SPMC_Iterator<k>& other) = delete;
+    Kmer_SPSC_Iterator(const Kmer_SPSC_Iterator<k>& other) = delete;
 
     // Destructs the iterator.
     ~Kmer_SPSC_Iterator();
