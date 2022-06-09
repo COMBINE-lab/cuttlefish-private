@@ -27,7 +27,7 @@ Multiway_Merger<k>::~Multiway_Merger()
 template <uint16_t k>
 void Multiway_Merger<k>::launch()
 {
-    std::vector<heap_elem_t> kmer_source_pairs; // Initial collection of elements to start the heap-merge from.
+    std::vector<Kmer_Source_Pair> kmer_source_pairs;    // Initial collection of elements to start the heap-merge from.
     std::vector<Kmer<k>> kmers; // Container to fetch initial k-mer chunks from each database separately.
 
     for(uint32_t i = 0; i < db_count; ++i)

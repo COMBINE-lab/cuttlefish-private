@@ -32,13 +32,34 @@ private:
 
     std::unordered_map<std::string, uint32_t> db_id;    // Numerical ID of the input k-mer databases.
 
-    
-    typedef uint16_t source_id_t;   // Type of the source-identifier with each k-mer coming from some database.
-    typedef std::pair<Kmer<k>, source_id_t> heap_elem_t;    // Type of elements to be sorted (merged) through min heap.
-    Min_Heap<heap_elem_t> min_heap; // Min heap of k-mers and their source database IDs.
+    class Kmer_Source_Pair; // Type of elements to be sorted (merged) through the min heap.
+    Min_Heap<Kmer_Source_Pair> min_heap;    // Min heap of k-mers and their source database IDs.
 
     std::vector<uint32_t> kmer_count;   // Number of k-mers from each input database currently present in the heap.
 
+
+    class Kmer_Source_Pair
+    {
+        friend class Multiway_Merger;
+
+    private:
+
+        typedef uint16_t source_id_t;   // Type of the source-identifier with each k-mer coming from some database.
+
+        Kmer<k> kmer;
+        source_id_t source_id;
+
+    public:
+        Kmer_Source_Pair(const Kmer<k>& kmer, const source_id_t source_id):
+            kmer(kmer),
+            source_id(source_id)
+        {}
+
+        bool operator>(const Kmer_Source_Pair& rhs) const
+        {
+            return kmer != rhs.kmer ? kmer > rhs.kmer : source_id > rhs.source_id;
+        }
+    };
 
 
 public:
