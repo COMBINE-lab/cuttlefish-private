@@ -45,6 +45,7 @@ set(PROJECT_SRC
         Sequence_Validator.cpp
         Kmers_Validator.cpp
         utility.cpp
+        Multiway_Merger.cpp
     )
 
 
