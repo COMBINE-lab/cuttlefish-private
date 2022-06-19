@@ -639,6 +639,55 @@ void write_kmers(const std::string& kmc_db_path, const uint16_t thread_count, co
 */
 
 
+template <uint16_t k>
+void test_multiway_merge(const std::string& db_list)
+{
+    std::vector<std::string> dbs;
+
+    std::ifstream input(db_list);
+    std::string path;
+    while(input >> path)
+        dbs.emplace_back(path);
+
+    input.close();
+
+    std::cout << "DB-count: " << dbs.size() << "\n";
+
+    Multiway_Merger<k> merger(dbs);
+    merger.launch();
+
+    Kmer<k> kmer;
+    std::vector<uint16_t> color;
+    std::vector<uint16_t> empty_sources;
+    uint32_t kmer_count = 0;
+    Kmer<k> last_kmer;
+
+    while(merger.template next<std::vector<uint16_t>>(kmer, color, empty_sources))
+    {
+        if(!empty_sources.empty())
+        {
+            merger.top_up(empty_sources);
+            empty_sources.clear();
+        }
+
+        kmer_count++;
+
+        if(kmer_count % 1000000 == 0)
+            std::cerr << "\r" << kmer_count;
+
+        // if(kmer < last_kmer)
+        // {
+        //     std::cout << "k-mers found not in sorted order. Aborting.\n";
+        //     std::exit(EXIT_FAILURE);
+        // }
+
+        last_kmer = kmer;
+    }
+
+    std::cout << "k-mer count: " << kmer_count << "\n";
+}
+
+
 int main(int argc, char** argv)
 {
     (void)argc;
@@ -670,11 +719,14 @@ int main(int argc, char** argv)
     // count_kmers_in_unitigs(argv[1], atoi(argv[2]));
 
     static constexpr uint16_t k = 31;
-    static const size_t consumer_count = std::atoi(argv[2]);
+    // static const size_t consumer_count = std::atoi(argv[2]);
 
     // test_buffered_iterator_performance<k>(argv[1]);
-    test_SPMC_iterator_performance<k>(argv[1], consumer_count);
+    // test_SPMC_iterator_performance<k>(argv[1], consumer_count);
+    // test_SPSC_iterator_performance<k>(argv[1]);
     // test_iterator_correctness<k>(argv[1], consumer_count);
     // write_kmers<32>(argv[1], std::atoi(argv[2]), argv[3]);
+    test_multiway_merge<k>(std::string(argv[1]));
+
     return 0;
 }
