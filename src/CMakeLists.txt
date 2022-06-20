@@ -18,6 +18,7 @@ set(PROJECT_SRC
         Vertex.cpp
         State.cpp
         Kmer_Container.cpp
+        Kmer_SPSC_Iterator.cpp
         Kmer_Hash_Table.cpp
         CdBG.cpp
         CdBG_Builder.cpp
@@ -44,6 +45,7 @@ set(PROJECT_SRC
         Sequence_Validator.cpp
         Kmers_Validator.cpp
         utility.cpp
+        Multiway_Merger.cpp
     )
 
 

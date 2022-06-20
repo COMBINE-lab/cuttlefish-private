@@ -5,13 +5,16 @@
 
 
 #include "Kmer.hpp"
-#include "Kmer_Container.hpp"
 #include "Spin_Lock.hpp"
 #include "kmc_api/kmc_file.h"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 #include <cstddef>
+
+
+template <uint16_t k> class Kmer_Container;
 
 
 // =============================================================================
@@ -27,10 +30,10 @@ class Kmer_SPSC_Iterator
 {
 private:
 
-    const Kmer_Container<k>* const kmer_container;  // The associated k-mer container over which to iterate.
+    std::string kmer_db_path; // Path to the k-mer database.
     CKMC_DB kmer_database;  // The k-mer database object.
 
-    const uint64_t kmer_count;  // Number of k-mers present in the underlying database.
+    uint64_t kmer_count;  // Number of k-mers present in the underlying database.
 
     uint64_t kmers_read;    // Number of raw k-mers read off disk by the iterator.
 
@@ -93,13 +96,19 @@ private:
 
 public:
 
+    // Constructs an empty iterator.
+    Kmer_SPSC_Iterator();
+
+    // Constructs an iterator for the provided k-mer database at `kmer_db_path`.
+    Kmer_SPSC_Iterator(const std::string& kmer_db_path);
+
     // Constructs an iterator for the provided container `kmer_container`.
     Kmer_SPSC_Iterator(const Kmer_Container<k>* kmer_container);
 
     // Copy-construction is prohibited. This is a complex object with a KMC
     // database object in some *arbitrary* state, which should not be allowed
     // to be copied. Besides, it contains certain constant fields.
-    Kmer_SPSC_Iterator(const Kmer_SPMC_Iterator<k>& other) = delete;
+    Kmer_SPSC_Iterator(const Kmer_SPSC_Iterator<k>& other) = delete;
 
     // Destructs the iterator.
     ~Kmer_SPSC_Iterator();
@@ -114,6 +123,9 @@ public:
 
     // Equality operators are prohibited.
     bool operator!=(const Kmer_SPSC_Iterator<k>& rhs) = delete;
+
+    // Initializes the iterator for the k-mer database at `kmer_db_path`.
+    void init(const std::string& kmer_db_path);
 
     // Tries to parse the next k-mer from the buffer into `kmer`. Returns `true`
     // iff k-mers were remaining, i.e. the underlying database has not been
@@ -134,51 +146,6 @@ public:
     // Closes the iterator.
     void close();
 };
-
-
-template <uint16_t k>
-inline Kmer_SPSC_Iterator<k>::Kmer_SPSC_Iterator(const Kmer_Container<k>* const kmer_container):
-    kmer_container{kmer_container},
-    kmer_count{kmer_container->size()},
-    kmers_read{0},
-    suff_buf{nullptr},
-    kmers_parsed_off_buf{0},
-    kmers_available_in_buf{0},
-    buf_stat{Buffer_Status::pending}
-{}
-
-
-template <uint16_t k>
-inline Kmer_SPSC_Iterator<k>::~Kmer_SPSC_Iterator()
-{
-    if(suff_buf != nullptr)
-        delete[] suff_buf;
-
-    pref_buf.clear();
-    pref_buf.shrink_to_fit();
-}
-
-
-template <uint16_t k>
-inline void Kmer_SPSC_Iterator<k>::open_kmer_database(const std::string& db_path)
-{
-    if(!kmer_database.open_for_cuttlefish_listing(db_path))
-    {
-        std::cerr << "\nError opening k-mer database with path prefix " << db_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-}
-
-
-template <uint16_t k>
-inline void Kmer_SPSC_Iterator<k>::close_kmer_database()
-{
-    if(!kmer_database.Close())
-    {
-        std::cerr << "\nError closing k-mer database. Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-}
 
 
 template <uint16_t k>
@@ -280,24 +247,6 @@ inline void Kmer_SPSC_Iterator<k>::set_buffer_status(const Buffer_Status new_sta
     buf_stat = new_stat;
 
     buf_lock.unlock();
-}
-
-
-template <uint16_t k>
-inline void Kmer_SPSC_Iterator<k>::launch()
-{
-    open_kmer_database(kmer_container->container_location());
-
-    suff_buf = new uint8_t[suf_buf_size];
-    pref_buf.clear();
-    set_buffer_status(Buffer_Status::pending);
-}
-
-
-template <uint16_t k>
-inline void Kmer_SPSC_Iterator<k>::close()
-{
-    close_kmer_database();
 }
 
 
