@@ -9,6 +9,7 @@
 #include "Kmer_SPMC_Iterator.hpp"
 #include "Kmer_SPSC_Iterator.hpp"
 #include "FASTA_Record.hpp"
+#include "Multiway_Merger.hpp"
 #include "kseq/kseq.h"
 #include "spdlog/spdlog.h"
 #include "spdlog/async.h"
