@@ -689,6 +689,79 @@ void test_multiway_merge(const std::string& db_list)
 }
 
 
+template <uint16_t k, uint16_t l>
+void minimizer_iterator_test(const char* const file_path)
+{
+    Ref_Parser input(file_path);
+
+    while(input.read_next_seq())
+    {
+        std::cout << "\nAt seq. " << input.seq_id() << ", of length " << input.seq_len() << ".\n";
+
+        if(input.seq_len() < k)
+            continue;
+
+        const char* const seq = input.seq();
+        Minimizer_Iterator min_iterator(seq, input.seq_len(), k, l);
+
+        std::size_t kmer_idx = 0;
+        cuttlefish::minimizer_t min;
+        std::size_t idx;
+
+        // std::cout << seq << "\n";
+
+        do
+        {
+            std::cerr << "\r" << kmer_idx;
+
+            // Get minimizer from iterator.
+            min_iterator.value_at(min, idx);
+            const uint64_t hash = Minimizer_Iterator::hash(min);
+
+            // std::cout << "k-mer idx: " << kmer_idx << ", minimizer idx: " << idx << "\n";
+
+            // Get minimizer with complete search.
+            Kmer<l> min_lmer(seq, kmer_idx);
+            std::size_t min_idx = kmer_idx;
+            uint64_t min_hash = Minimizer_Iterator::hash(min_lmer.as_int());
+
+            for(std::size_t i = kmer_idx + 1; i + l - 1 < kmer_idx + k; ++i)
+            {
+                const Kmer<l> lmer(seq, i);
+                const uint64_t lmer_hash = Minimizer_Iterator::hash(lmer.as_int());
+
+                if(min_hash < lmer_hash)
+                    continue;
+
+                if(min_hash > lmer_hash || min_lmer > lmer)
+                    min_lmer = lmer, min_idx = i, min_hash = lmer_hash;
+
+                // Basic lexicographic minimizer.
+                // if(min_lmer > lmer)
+                //     min_lmer = lmer, min_idx = i;
+            }
+
+            if(min_lmer.as_int() != min || min_idx != idx || min_hash != hash)
+            {
+                std::cout << "\nBug in computing minimizers. Aborting.\n";
+                std::cout << "k-mer index: " << kmer_idx << ".\n";
+                std::cout << "From iterator: " << min << ", at index " << idx << ".\n";
+                std::cout << "Manually:      " << min_lmer.as_int() << ", at index " << min_idx << ".\n";
+
+                std::exit(EXIT_FAILURE);
+            }
+
+
+            kmer_idx++;
+        }
+        while(++min_iterator);
+    }
+
+
+    input.close();
+}
+
+
 int main(int argc, char** argv)
 {
     (void)argc;
@@ -727,7 +800,10 @@ int main(int argc, char** argv)
     // test_SPSC_iterator_performance<k>(argv[1]);
     // test_iterator_correctness<k>(argv[1], consumer_count);
     // write_kmers<32>(argv[1], std::atoi(argv[2]), argv[3]);
-    test_multiway_merge<k>(std::string(argv[1]));
+    // test_multiway_merge<k>(std::string(argv[1]));
+
+    static constexpr uint16_t l = 20;
+    minimizer_iterator_test<k, l>(argv[1]);
 
     return 0;
 }
