@@ -87,6 +87,9 @@ namespace cuttlefish
 
     constexpr uint8_t BITS_PER_READ_KMER = 6;
 
+    // Minimizers can be represented using 64-bit integers.
+    typedef uint64_t minimizer_t;
+
 
     typedef std::shared_ptr<spdlog::logger> logger_t;
 }
