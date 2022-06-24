@@ -42,11 +42,6 @@ private:
 
     constexpr static uint64_t seed = 0; // Seed for hashing l-mers.
 
-
-    // Returns the hash value of the l-mer `lmer`.
-    static uint64_t hash(minimizer_t lmer);
-
-
 public:
 
     // Constructs a minimizer iterator to iterate over `l`-minimizers of
@@ -62,6 +57,10 @@ public:
     // index in the sequence at `index`. The position information over the
     // sequence is maintained internally.
     void value_at(minimizer_t& minimizer, std::size_t& index) const;
+
+    // Returns the hash value of the l-mer `lmer`.
+    static uint64_t hash(minimizer_t lmer);
+
 };
 
 
