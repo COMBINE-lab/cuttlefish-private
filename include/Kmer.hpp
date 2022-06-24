@@ -83,6 +83,10 @@ public:
     // `label[kmer_idx,...,kmer_idx + k - 1]`.
     Kmer(const std::string& label, size_t kmer_idx);
 
+    // Constructs a k-mer that has its encoding equivalent to the value `int_val`.
+    // k must be at most 32 for this construction.
+    Kmer(uint64_t int_val);
+
     // Constructs a k-mer from `kmer_api`, a k-mer object built from KMC.
     Kmer(const CKmerAPI& kmer_api);
 
@@ -228,6 +232,10 @@ public:
     // Accumulates the counts of the l-mers of the k-mer into `count`.
     template <uint8_t l>
     void count_lmers(std::vector<uint64_t>& count) const;
+
+    // Returns the equivalent integer value of this k-mer, which is only
+    // possible if k <= 32 holds.
+    uint64_t as_int() const;
 };
 
 
@@ -319,6 +327,15 @@ inline Kmer<k>::Kmer(const std::string& label): Kmer(label.c_str())
 template <uint16_t k>
 inline Kmer<k>::Kmer(const std::string& label, const size_t kmer_idx): Kmer(label.c_str(), kmer_idx)
 {}
+
+
+template <uint16_t k>
+inline Kmer<k>::Kmer(const uint64_t int_val)
+{
+    static_assert(k <= 32, "k-mer conversions from 64-bit unsigned integers is only defined for k <= 32.");
+
+    kmer_data[0] = int_val;
+}
 
 
 template <uint16_t k>
@@ -801,6 +818,15 @@ inline void Kmer<k>::count_lmers(std::vector<uint64_t>& count) const
 
         count[lmer]++;
     }
+}
+
+
+template <uint16_t k>
+inline uint64_t Kmer<k>::as_int() const
+{
+    static_assert(k <= 32, "k-mer conversions to 64-bit unsigned integers is only defined for k <= 32.");
+
+    return kmer_data[0];
 }
 
 
