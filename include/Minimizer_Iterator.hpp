@@ -162,7 +162,7 @@ inline void Minimizer_Iterator::value_at(cuttlefish::minimizer_t& minimizer, std
 }
 
 
-uint64_t Minimizer_Iterator::hash(const cuttlefish::minimizer_t lmer)
+inline uint64_t Minimizer_Iterator::hash(const cuttlefish::minimizer_t lmer)
 {
 #ifdef CF_DEVELOP_MODE
     return lmer;    // TODO: add as debug option for developer.
