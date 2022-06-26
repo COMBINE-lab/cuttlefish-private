@@ -56,10 +56,10 @@ public:
     // Puts the minimizer of the current k-mer into `minimizer`, and stores its
     // index in the sequence at `index`. The position information over the
     // sequence is maintained internally.
-    void value_at(minimizer_t& minimizer, std::size_t& index) const;
+    void value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index) const;
 
     // Returns the hash value of the l-mer `lmer`.
-    static uint64_t hash(minimizer_t lmer);
+    static uint64_t hash(cuttlefish::minimizer_t lmer);
 
 };
 
@@ -155,14 +155,14 @@ inline bool Minimizer_Iterator::operator++()
 }
 
 
-inline void Minimizer_Iterator::value_at(minimizer_t& minimizer, std::size_t& index) const
+inline void Minimizer_Iterator::value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index) const
 {
     minimizer = dq.front().lmer;
     index = dq.front().index;
 }
 
 
-uint64_t Minimizer_Iterator::hash(const minimizer_t lmer)
+uint64_t Minimizer_Iterator::hash(const cuttlefish::minimizer_t lmer)
 {
 #ifdef CF_DEVELOP_MODE
     return lmer;    // TODO: add as debug option for developer.
