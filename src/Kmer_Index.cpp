@@ -5,7 +5,7 @@
 template <uint16_t k>
 Kmer_Index<k>::Kmer_Index(const uint16_t worker_count):
     worker_count(worker_count),
-    worker_string_size(worker_count, 0),
+    worker_path_buf(worker_count),
     worker_minimizer_buf(worker_count),
     curr_token{0}
 {}
