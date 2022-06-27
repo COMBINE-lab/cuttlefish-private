@@ -8,6 +8,7 @@
 #include "DNA_Utility.hpp"
 #include "Spin_Lock.hpp"
 #include "Minimizer_Iterator.hpp"
+#include "Minimizer_Instance.hpp"
 #include "globals.hpp"
 #include "compact_vector/compact_vector.hpp"
 
@@ -38,7 +39,6 @@ class Kmer_Index
 
     std::vector<bitvector_t> producer_path_buf; // Separate buffer for each producer, to contain their deposited paths.
 
-    class Minimizer_Instance;
     std::vector<std::vector<Minimizer_Instance>> producer_minimizer_buf; // Separate buffer for each producer, to contain their minimizers and their offsets into the deposited paths.
 
     std::vector<std::ofstream> producer_minimizer_file; // Separate file for each producer, to store their minimizers' information.
@@ -78,40 +78,6 @@ public:
     // Consolidates the minimizer information of the different producers into
     // a coherent whole.
     void consolidate_minimizers();
-};
-
-
-// A `(minimizer, offset)` pair, where `minimizer` is the l-minimizer (for a
-// pre-defined `l`) of some k-mer `x` in some sequence `seq`, where `minimizer`
-// is at the index `offset` in `seq`.
-template <uint16_t k>
-class Kmer_Index<k>::Minimizer_Instance
-{
-private:
-
-    typedef cuttlefish::minimizer_t minimizer_t;
-
-    minimizer_t minimizer;  // The minimizer.
-    std::size_t offset;     // Offset of the minimizer in the underlying sequence.
-
-public:
-
-    // Constructs an instance of the minimizer `minimizer`, situated at the
-    // offset `offset` some sequence.
-    Minimizer_Instance(const minimizer_t minimizer, const std::size_t offset):
-        minimizer(minimizer),
-        offset(offset)
-    {}
-
-    // Shifts (to the right) the offset of the minimizer by `offset_shit`.
-    void shift(const std::size_t offset_shift)  { offset += offset_shift; }
-
-    // Returns `true` iff this instance has a lesser minimizer than `rhs`; and
-    // in the case of same minimizers, returns `true` iff it has a lower offset.
-    bool operator<(const Minimizer_Instance& rhs) const
-    {
-        return minimizer != rhs.minimizer ? (minimizer < rhs.minimizer) : (offset < rhs.offset);
-    }
 };
 
 
