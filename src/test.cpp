@@ -1,33 +1,33 @@
 
-#include "Directed_Kmer.hpp"
-#include "Kmer_Container.hpp"
-#include "Kmer_SPMC_Iterator.hpp"
-#include "BBHash/BooPHF.h"
-#include "Kmer_Hasher.hpp"
-#include "Validator.hpp"
-#include "Character_Buffer.hpp"
-#include "Kmer_SPMC_Iterator.hpp"
-#include "Kmer_SPSC_Iterator.hpp"
-#include "FASTA_Record.hpp"
-#include "Ref_Parser.hpp"
-#include "Minimizer_Iterator.hpp"
-#include "Multiway_Merger.hpp"
-#include "kseq/kseq.h"
-#include "spdlog/spdlog.h"
-#include "spdlog/async.h"
-#include "spdlog/sinks/basic_file_sink.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
+// #include "Directed_Kmer.hpp"
+// #include "Kmer_Container.hpp"
+// #include "Kmer_SPMC_Iterator.hpp"
+// #include "BBHash/BooPHF.h"
+// #include "Kmer_Hasher.hpp"
+// #include "Validator.hpp"
+// #include "Character_Buffer.hpp"
+// #include "Kmer_SPMC_Iterator.hpp"
+// #include "Kmer_SPSC_Iterator.hpp"
+// #include "FASTA_Record.hpp"
+// #include "Ref_Parser.hpp"
+// #include "Minimizer_Iterator.hpp"
+// #include "Multiway_Merger.hpp"
+// #include "kseq/kseq.h"
+// #include "spdlog/spdlog.h"
+// #include "spdlog/async.h"
+// #include "spdlog/sinks/basic_file_sink.h"
+// #include "spdlog/sinks/stdout_color_sinks.h"
 
-#include <chrono> 
-#include <iostream>
-#include <fstream>
-#include <cstdio>
-#include <cstdlib>
-#include <string>
-#include <zlib.h>
-#include <cstring>
-#include <set>
-#include <map>
+// #include <chrono>
+// #include <iostream>
+// #include <fstream>
+// #include <cstdio>
+// #include <cstdlib>
+// #include <string>
+// #include <zlib.h>
+// #include <cstring>
+// #include <set>
+// #include <map>
 
 
 /*
@@ -392,7 +392,6 @@ void test_buffered_iterator_performance(const char* const file_name)
     std::cout << "Max k-mer: " << max_kmer.string_label() << "\n";
     std::cout << "k-mers count found using iterators: " << count << "\n";
 }
-*/
 
 
 template <uint16_t k>
@@ -455,7 +454,6 @@ void test_SPMC_iterator_performance(const char* const db_path, const size_t cons
 }
 
 
-/*
 template <uint16_t k>
 void test_SPSC_iterator_performance(const char* const db_path)
 {
@@ -492,7 +490,6 @@ void test_SPSC_iterator_performance(const char* const db_path)
 }
 
 
-/*
 template <uint16_t k>
 void test_iterator_correctness(const char* const db_path, const size_t consumer_count)
 {
@@ -638,8 +635,6 @@ void write_kmers(const std::string& kmc_db_path, const uint16_t thread_count, co
 
     output.close();
 }
-
-*/
 
 
 template <uint16_t k>
@@ -794,7 +789,7 @@ int main(int argc, char** argv)
 
     // count_kmers_in_unitigs(argv[1], atoi(argv[2]));
 
-    static constexpr uint16_t k = 31;
+    // static constexpr uint16_t k = 31;
     // static const size_t consumer_count = std::atoi(argv[2]);
 
     // test_buffered_iterator_performance<k>(argv[1]);
@@ -804,8 +799,8 @@ int main(int argc, char** argv)
     // write_kmers<32>(argv[1], std::atoi(argv[2]), argv[3]);
     // test_multiway_merge<k>(std::string(argv[1]));
 
-    static constexpr uint16_t l = 20;
-    minimizer_iterator_test<k, l>(argv[1]);
+    // static constexpr uint16_t l = 20;
+    // minimizer_iterator_test<k, l>(argv[1]);
 
     return 0;
 }
