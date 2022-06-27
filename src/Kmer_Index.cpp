@@ -62,7 +62,7 @@ void Kmer_Index<k>::finalize_production()
 template <uint16_t k>
 void Kmer_Index<k>::consolidate_minimizers()
 {
-    std::vector<Minimizer_Offset_Pair*> min_buf(producer_count);    // Separate buffer for each minimizer file.
+    std::vector<Minimizer_Instance*> min_buf(producer_count);   // Separate buffer for each minimizer file.
     std::vector<std::thread> worker;    // Worker threads.
 
     // TODO: bound memory usage within a provided argument.
@@ -71,7 +71,7 @@ void Kmer_Index<k>::consolidate_minimizers()
     for(uint16_t id = 0; id < producer_count; ++id)
     {
         const auto min_buf_bytes = file_size(minimizer_file_path(id));   // What happens if it's zero?
-        min_buf[id] = static_cast<Minimizer_Offset_Pair*>(std::malloc(min_buf_bytes));
+        min_buf[id] = static_cast<Minimizer_Instance*>(std::malloc(min_buf_bytes));
 
         std::ifstream input(minimizer_file_path(id).c_str(), std::ios::in | std::ios::binary);
         if(!input.read(reinterpret_cast<char*>(min_buf[id]), min_buf_bytes))
@@ -80,8 +80,8 @@ void Kmer_Index<k>::consolidate_minimizers()
             std::exit(EXIT_FAILURE);
         }
 
-        const std::size_t min_buf_size = min_buf_bytes / sizeof(Minimizer_Offset_Pair);
-        worker.emplace_back(std::sort<Minimizer_Offset_Pair*>, min_buf[id], min_buf[id] + min_buf_size);
+        const std::size_t min_buf_size = min_buf_bytes / sizeof(Minimizer_Instance);
+        worker.emplace_back(std::sort<Minimizer_Instance*>, min_buf[id], min_buf[id] + min_buf_size);
     }
 
     // Wait for the sorting to complete.

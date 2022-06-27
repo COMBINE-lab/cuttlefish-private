@@ -38,8 +38,8 @@ class Kmer_Index
 
     std::vector<bitvector_t> producer_path_buf; // Separate buffer for each producer, to contain their deposited paths.
 
-    class Minimizer_Offset_Pair;
-    std::vector<std::vector<Minimizer_Offset_Pair>> producer_minimizer_buf; // Separate buffer for each producer, to contain their minimizers and their offsets into the deposited paths.
+    class Minimizer_Instance;
+    std::vector<std::vector<Minimizer_Instance>> producer_minimizer_buf; // Separate buffer for each producer, to contain their minimizers and their offsets into the deposited paths.
 
     std::vector<std::ofstream> producer_minimizer_file; // Separate file for each producer, to store their minimizers' information.
 
@@ -85,7 +85,7 @@ public:
 // pre-defined `l`) of some k-mer `x` in some sequence `seq`, where `minimizer`
 // is at the index `offset` in `seq`.
 template <uint16_t k>
-class Kmer_Index<k>::Minimizer_Offset_Pair
+class Kmer_Index<k>::Minimizer_Instance
 {
 private:
 
@@ -96,8 +96,9 @@ private:
 
 public:
 
-    // Constructs a tuple with the minimizer `minimizer` and its offset `offset`.
-    Minimizer_Offset_Pair(const minimizer_t minimizer, const std::size_t offset):
+    // Constructs an instance of the minimizer `minimizer`, situated at the
+    // offset `offset` some sequence.
+    Minimizer_Instance(const minimizer_t minimizer, const std::size_t offset):
         minimizer(minimizer),
         offset(offset)
     {}
@@ -105,9 +106,9 @@ public:
     // Shifts (to the right) the offset of the minimizer by `offset_shit`.
     void shift(const std::size_t offset_shift)  { offset += offset_shift; }
 
-    // Returns `true` iff this tuple has a lower minimizer than `rhs`; and in
-    // the case of same minimizers, returns `true` iff it has a lower offset.
-    bool operator<(const Minimizer_Offset_Pair& rhs) const
+    // Returns `true` iff this instance has a lesser minimizer than `rhs`; and
+    // in the case of same minimizers, returns `true` iff it has a lower offset.
+    bool operator<(const Minimizer_Instance& rhs) const
     {
         return minimizer != rhs.minimizer ? (minimizer < rhs.minimizer) : (offset < rhs.offset);
     }
@@ -165,7 +166,7 @@ inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* cons
         path_buf.push_back(DNA_Utility::map_base(seq[i]));
         // path_buf.push_back(seq[i]); // For testing
 
-    const std::size_t buf_size = ((path_buf.size() * 2) / 8) + (min_buf.size() * sizeof(Minimizer_Offset_Pair)); // Total buffer size (in bytes) of the producer.
+    const std::size_t buf_size = ((path_buf.size() * 2) / 8) + (min_buf.size() * sizeof(Minimizer_Instance));   // Total buffer size (in bytes) of the producer.
     if(buf_size >= buf_sz_th)
         flush(id);
 }
@@ -199,7 +200,7 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
 
     // Dump the producer-specific minimizer information to disk.
     auto& minimizer_file = producer_minimizer_file[producer_id];
-    minimizer_file.write(reinterpret_cast<const char*>(min_buf.data()), min_buf.size() * sizeof(Minimizer_Offset_Pair));
+    minimizer_file.write(reinterpret_cast<const char*>(min_buf.data()), min_buf.size() * sizeof(Minimizer_Instance));
     if(!minimizer_file)
     {
         std::cerr << "Error writing to the minimizer files. Aborting.\n";
