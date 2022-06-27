@@ -21,6 +21,8 @@
 // =============================================================================
 
 
+// A class to index the k-mers of provided sequences, potentially from many
+// producer threads, based on the k-mers' minimizers.
 template <uint16_t k>
 class Kmer_Index
 {
@@ -32,42 +34,42 @@ class Kmer_Index
 
     const uint16_t l;   // Size of the l-minimizers.    // TODO: consider templatizing.
 
-    const uint16_t worker_count;    // Number of worker threads producing the paths.
+    const uint16_t producer_count;  // Number of producer threads supplying the paths to the indexer.
 
-    std::vector<bitvector_t> worker_path_buf;   // Separate buffer for each worker, to contain their deposited paths.
+    std::vector<bitvector_t> producer_path_buf; // Separate buffer for each producer, to contain their deposited paths.
 
     class Minimizer_Offset_Pair;
-    std::vector<std::vector<Minimizer_Offset_Pair>> worker_minimizer_buf;   // Separate buffer for each worker, to contain their minimizers and their offsets into the deposited paths.
+    std::vector<std::vector<Minimizer_Offset_Pair>> producer_minimizer_buf; // Separate buffer for each producer, to contain their minimizers and their offsets into the deposited paths.
 
-    std::vector<std::ofstream> worker_minimizer_file;   // Separate file for each worker, to store their minimizers' information.
+    std::vector<std::ofstream> producer_minimizer_file; // Separate file for each producer, to store their minimizers' information.
 
-    constexpr static std::size_t buf_sz_th = 5 * 1024 * 1024;   // Threshold for the total size (in bytes) of the buffers per worker: 5 MB.
+    constexpr static std::size_t buf_sz_th = 5 * 1024 * 1024;   // Threshold for the total size (in bytes) of the buffers per producer: 5 MB.
 
-    std::size_t curr_token; // Number of tokens produced for the workers so far.
+    std::size_t curr_token; // Number of tokens produced for the producers so far.
 
-    Spin_Lock lock; // Mutually-exclusive access lock for different workers.
+    Spin_Lock lock; // Mutually-exclusive access lock for different producers.
 
 
-    // Flushes the buffers of the worker with ID `worker_id`.
-    void flush(std::size_t worker_id);
+    // Flushes the buffers of the producer with ID `producer_id`.
+    void flush(std::size_t producer_id);
 
 public:
 
     // Constructs a k-mer indexer that will index sequences produced from at
-    // most `worker_count` workers, based on the k-mers' `l`-minimizers.
-    Kmer_Index(uint16_t l, uint16_t worker_count);
+    // most `producer_count` producers, based on the k-mers' `l`-minimizers.
+    Kmer_Index(uint16_t l, uint16_t producer_count);
 
-    class Worker_Token;
+    class Producer_Token;
 
     // Returns a unique token object.
-    const Worker_Token get_token();
+    const Producer_Token get_token();
 
-    // Deposits the sequence `seq` of length `len` to the index, from a worker
+    // Deposits the sequence `seq` of length `len` to the index, from a producer
     // having the token `token`.
-    void deposit(const Worker_Token& token, const char* seq, std::size_t len);
+    void deposit(const Producer_Token &token, const char* seq, std::size_t len);
 
-    // Flushes the remaining content from the workers.
-    void finalize_workers();
+    // Flushes the remaining content from the producers.
+    void finalize_production();
 };
 
 
@@ -97,10 +99,10 @@ public:
 };
 
 
-// A token class to provide distinct token objects to different workers, to
+// A token class to provide distinct token objects to different producers, to
 // distinguish them for the indexer.
 template <uint16_t k>
-class Kmer_Index<k>::Worker_Token
+class Kmer_Index<k>::Producer_Token
 {
     friend class Kmer_Index;
 
@@ -108,7 +110,7 @@ private:
 
     std::size_t id;
 
-    Worker_Token(const std::size_t id): id(id) {}
+    Producer_Token(const std::size_t id): id(id) {}
 
     std::size_t get_id() const
     { return id; }
@@ -116,22 +118,21 @@ private:
 
 
 template <uint16_t k>
-inline void Kmer_Index<k>::deposit(const Worker_Token& token, const char* const seq, const std::size_t len)
+inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* const seq, const std::size_t len)
 {
-    const std::size_t id = token.get_id();  // The worker's id.
-    auto& path_buf = worker_path_buf[id];   // The worker's concatenated-paths sequence buffer.
-    auto& min_buf = worker_minimizer_buf[id];   // The worker's minimizer-information buffer.
-
+    const std::size_t id = token.get_id();      // The producer's id.
+    auto& path_buf = producer_path_buf[id];     // The producer's concatenated-paths sequence buffer.
+    auto& min_buf = producer_minimizer_buf[id]; // The producer's minimizer-information buffer.
 
     // Get the minimizers and the path sequence.
 
-    Minimizer_Iterator minimizer_iterator(seq, len, k, l);  // To iterate over each minimizer in `seq`.
-    minimizer_t minimizer;  // The minimizer itself.
-    std::size_t min_idx;    // Index of the minimizer within `seq`.
-    std::size_t last_min_idx = len;    // To track minimizer shifts.
+    Minimizer_Iterator minimizer_iterator(seq, len, k, l); // To iterate over each minimizer in `seq`.
+    minimizer_t minimizer;                                 // The minimizer itself.
+    std::size_t min_idx;                                   // Index of the minimizer within `seq`.
+    std::size_t last_min_idx = len;                        // To track minimizer shifts.
 
-    const std::size_t rel_offset = path_buf.size(); // Relative offset of each minimizer in this worker's path buffer.
-    for(std::size_t i = 0; i + (k - 1) < len; ++i)
+    const std::size_t rel_offset = path_buf.size(); // Relative offset of each minimizer in this producer's path buffer.
+    for (std::size_t i = 0; i + (k - 1) < len; ++i)
     {
         minimizer_iterator.value_at(minimizer, min_idx);
         if(min_idx != last_min_idx)
@@ -149,19 +150,18 @@ inline void Kmer_Index<k>::deposit(const Worker_Token& token, const char* const 
         path_buf.push_back(DNA_Utility::map_base(seq[i]));
         // path_buf.push_back(seq[i]); // For testing
 
-
-    const std::size_t buf_size = ((path_buf.size() * 2) / 8) + (min_buf.size() * sizeof(Minimizer_Offset_Pair));    // Total buffer size (in bytes) of the worker.
+    const std::size_t buf_size = ((path_buf.size() * 2) / 8) + (min_buf.size() * sizeof(Minimizer_Offset_Pair)); // Total buffer size (in bytes) of the producer.
     if(buf_size >= buf_sz_th)
         flush(id);
 }
 
 
 template <uint16_t k>
-inline void Kmer_Index<k>::flush(const std::size_t worker_id)
+inline void Kmer_Index<k>::flush(const std::size_t producer_id)
 {
-    auto& path_buf = worker_path_buf[worker_id];    // The worker's concatenated paths sequence buffer.
+    auto& path_buf = producer_path_buf[producer_id];    // The producer's concatenated paths sequence buffer.
 
-    // Dump the worker-specific path buffer to the global concatenated-paths sequence.
+    // Dump the producer-specific path buffer to the global concatenated-paths sequence.
     lock.lock();
 
     const std::size_t offset_shift = paths.size();
@@ -175,15 +175,15 @@ inline void Kmer_Index<k>::flush(const std::size_t worker_id)
     path_buf.clear();
 
 
-    // Shift the worker-specific relative indices of the minimizers to their absolute indices into the concatenated paths.
-    auto& min_buf = worker_minimizer_buf[worker_id];
+    // Shift the producer-specific relative indices of the minimizers to their absolute indices into the concatenated paths.
+    auto& min_buf = producer_minimizer_buf[producer_id];
     std::for_each(
                     min_buf.begin(), min_buf.end(),
                     [offset_shift](auto& p){ p.shift(offset_shift); }
                 );
 
-    // Dump the worker-specific minimizer information to disk.
-    auto& minimizer_file = worker_minimizer_file[worker_id];
+    // Dump the producer-specific minimizer information to disk.
+    auto& minimizer_file = producer_minimizer_file[producer_id];
     minimizer_file.write(reinterpret_cast<const char*>(min_buf.data()), min_buf.size() * sizeof(Minimizer_Offset_Pair));
     if(!minimizer_file)
     {
