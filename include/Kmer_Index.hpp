@@ -74,6 +74,10 @@ public:
 
     // Flushes the remaining content from the producers.
     void finalize_production();
+
+    // Consolidates the minimizer information of the different producers into
+    // a coherent whole.
+    void consolidate_minimizers();
 };
 
 
@@ -100,6 +104,13 @@ public:
 
     // Shifts (to the right) the offset of the minimizer by `offset_shit`.
     void shift(const std::size_t offset_shift)  { offset += offset_shift; }
+
+    // Returns `true` iff this tuple has a lower minimizer than `rhs`; and in
+    // the case of same minimizers, returns `true` iff it has a lower offset.
+    bool operator<(const Minimizer_Offset_Pair& rhs) const
+    {
+        return minimizer != rhs.minimizer ? (minimizer < rhs.minimizer) : (offset < rhs.offset);
+    }
 };
 
 
