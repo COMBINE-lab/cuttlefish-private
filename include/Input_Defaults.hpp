@@ -28,6 +28,9 @@ namespace cuttlefish
 #endif
         constexpr Output_Format OP_FORMAT = Output_Format::fa;
         constexpr char WORK_DIR[] = ".";
+
+        constexpr char PATH_FILE_EXT[] = ".paths";
+        constexpr char MINIMIZER_FILE_EXT[] = ".mins";
     }
 }
 
