@@ -50,6 +50,10 @@ class Kmer_Index
     Spin_Lock lock; // Mutually-exclusive access lock for different producers.
 
 
+    // Returns the path to the minimizer-information file of producer with ID
+    // `producer_id`.
+    static const std::string minimizer_file_path(uint16_t producer_id);
+
     // Flushes the buffers of the producer with ID `producer_id`.
     void flush(std::size_t producer_id);
 

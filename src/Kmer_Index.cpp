@@ -16,7 +16,14 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count):
     curr_token{0}
 {
     for(uint16_t id = 0; id < producer_count; ++id)
-        producer_minimizer_file[id].open(std::to_string(id) + cuttlefish::_default::MINIMIZER_FILE_EXT, std::ios::out | std::ios::binary);
+        producer_minimizer_file[id].open(minimizer_file_path(id), std::ios::out | std::ios::binary);
+}
+
+
+template <uint16_t k>
+const std::string Kmer_Index<k>::minimizer_file_path(const uint16_t producer_id)
+{
+    return std::to_string(producer_id) + cuttlefish::_default::MINIMIZER_FILE_EXT;
 }
 
 
