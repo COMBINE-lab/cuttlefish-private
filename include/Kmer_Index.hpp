@@ -63,6 +63,10 @@ class Kmer_Index
     // Flushes the buffers of the producer with ID `producer_id`.
     void flush(std::size_t producer_id);
 
+    // Reads in the minimizer instances from each separate minimizer file to
+    // memory, and sorts them in parallel.
+    void read_and_sort_minimizers();
+
 public:
 
     // Constructs a k-mer indexer that will index sequences produced from at

@@ -63,6 +63,15 @@ void Kmer_Index<k>::finalize_production()
 template <uint16_t k>
 void Kmer_Index<k>::consolidate_minimizers()
 {
+    read_and_sort_minimizers();
+
+    // TODO: multiway-merge.
+}
+
+
+template <uint16_t k>
+void Kmer_Index<k>::read_and_sort_minimizers()
+{
     // TODO: bound memory usage within a provided argument.
 
     // Launch sorter threads.
@@ -93,9 +102,6 @@ void Kmer_Index<k>::consolidate_minimizers()
 
         worker[id].join();
     }
-
-
-    // TODO: multiway-merge.
 }
 
 
