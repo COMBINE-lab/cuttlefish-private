@@ -5,7 +5,6 @@
 
 #include <string>
 #include <algorithm>
-#include <thread>
 
 
 template <uint16_t k>
@@ -16,6 +15,8 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count):
     producer_path_buf(producer_count),
     producer_minimizer_buf(producer_count),
     producer_minimizer_file(producer_count),
+    min_group(producer_count, nullptr),
+    min_group_size(producer_count),
     curr_token{0}
 {
     for(uint16_t id = 0; id < producer_count; ++id)
@@ -62,26 +63,23 @@ void Kmer_Index<k>::finalize_production()
 template <uint16_t k>
 void Kmer_Index<k>::consolidate_minimizers()
 {
-    std::vector<Minimizer_Instance*> min_buf(producer_count);   // Separate buffer for each minimizer file.
-    std::vector<std::thread> worker;    // Worker threads.
-
     // TODO: bound memory usage within a provided argument.
 
     // Launch sorter threads.
     for(uint16_t id = 0; id < producer_count; ++id)
     {
         const auto min_buf_bytes = file_size(minimizer_file_path(id));   // What happens if it's zero?
-        min_buf[id] = static_cast<Minimizer_Instance*>(std::malloc(min_buf_bytes));
+        min_group[id] = static_cast<Minimizer_Instance*>(std::malloc(min_buf_bytes));
 
         std::ifstream input(minimizer_file_path(id).c_str(), std::ios::in | std::ios::binary);
-        if(!input.read(reinterpret_cast<char*>(min_buf[id]), min_buf_bytes))
+        if(!input.read(reinterpret_cast<char*>(min_group[id]), min_buf_bytes))
         {
             std::cerr << "Error reading the minimizer files. Aborting.\n";
             std::exit(EXIT_FAILURE);
         }
 
-        const std::size_t min_buf_size = min_buf_bytes / sizeof(Minimizer_Instance);
-        worker.emplace_back(std::sort<Minimizer_Instance*>, min_buf[id], min_buf[id] + min_buf_size);
+        min_group_size[id] = min_buf_bytes / sizeof(Minimizer_Instance);
+        worker.emplace_back(std::sort<Minimizer_Instance*>, min_group[id], min_group[id] + min_group_size[id]);
     }
 
     // Wait for the sorting to complete.

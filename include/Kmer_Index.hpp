@@ -17,6 +17,7 @@
 #include <vector>
 #include <fstream>
 #include <cstdlib>
+#include <thread>
 
 
 // =============================================================================
@@ -43,11 +44,16 @@ class Kmer_Index
 
     std::vector<std::ofstream> producer_minimizer_file; // Separate file for each producer, to store their minimizers' information.
 
+    std::vector<Minimizer_Instance*> min_group; // Separate buffer to read in each minimizer file.
+    std::vector<std::size_t> min_group_size;    // Size of each minimizer file (in element count).
+
     constexpr static std::size_t buf_sz_th = 5 * 1024 * 1024;   // Threshold for the total size (in bytes) of the buffers per producer: 5 MB.
 
     std::size_t curr_token; // Number of tokens produced for the producers so far.
 
     Spin_Lock lock; // Mutually-exclusive access lock for different producers.
+
+    std::vector<std::thread> worker;    // Worker threads.
 
 
     // Returns the path to the minimizer-information file of producer with ID
