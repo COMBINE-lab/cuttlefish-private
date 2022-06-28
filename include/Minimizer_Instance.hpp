@@ -25,26 +25,36 @@ private:
 
     typedef cuttlefish::minimizer_t minimizer_t;
 
-    minimizer_t minimizer;  // The minimizer.
-    std::size_t offset;     // Offset of the minimizer in the underlying sequence.
+    minimizer_t minimizer_; // The minimizer.
+    std::size_t offset_;    // Offset of the minimizer in the underlying sequence.
 
 public:
+
+    // Constructs an empty minimizer instance.
+    Minimizer_Instance()
+    {}
 
     // Constructs an instance of the minimizer `minimizer`, situated at the
     // offset `offset` some sequence.
     Minimizer_Instance(const minimizer_t minimizer, const std::size_t offset):
-        minimizer(minimizer),
-        offset(offset)
+        minimizer_(minimizer),
+        offset_(offset)
     {}
 
+    // Returns the minimizer.
+    cuttlefish::minimizer_t minimizer() const { return minimizer_; }
+
+    // Returns the offset.
+    std::size_t offset() const { return offset_; }
+
     // Shifts (to the right) the offset of the minimizer by `offset_shit`.
-    void shift(const std::size_t offset_shift)  { offset += offset_shift; }
+    void shift(const std::size_t offset_shift)  { offset_ += offset_shift; }
 
     // Returns `true` iff this instance has a lesser minimizer than `rhs`; and
     // in the case of same minimizers, returns `true` iff it has a lower offset.
     bool operator<(const Minimizer_Instance& rhs) const
     {
-        return minimizer != rhs.minimizer ? (minimizer < rhs.minimizer) : (offset < rhs.offset);
+        return minimizer_ != rhs.minimizer_ ? (minimizer_ < rhs.minimizer_) : (offset_ < rhs.offset_);
     }
 };
 
