@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <vector>
 #include <fstream>
+#include <iostream>
 #include <cstdlib>
 #include <thread>
 
@@ -69,6 +70,9 @@ class Kmer_Index
     // Reads in the minimizer instances from each separate minimizer file to
     // memory, and sorts them in parallel.
     void read_and_sort_minimizers();
+
+    // Merges the minimizer instances of each separate producer.
+    void merge_minimizers();
 
 public:
 
