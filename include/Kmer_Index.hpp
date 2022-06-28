@@ -60,6 +60,9 @@ class Kmer_Index
     // `producer_id`.
     static const std::string minimizer_file_path(uint16_t producer_id);
 
+    // Dumps the data from `min_buf` to the stream `output`, clearing `min_buf`.
+    static void dump(std::vector<Minimizer_Instance>& min_buf, std::ofstream& output);
+
     // Flushes the buffers of the producer with ID `producer_id`.
     void flush(std::size_t producer_id);
 
@@ -176,8 +179,14 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
 
     // Dump the producer-specific minimizer information to disk.
     auto& minimizer_file = producer_minimizer_file[producer_id];
-    minimizer_file.write(reinterpret_cast<const char*>(min_buf.data()), min_buf.size() * sizeof(Minimizer_Instance));
-    if(!minimizer_file)
+    dump(min_buf, minimizer_file);
+}
+
+
+template <uint16_t k>
+inline void Kmer_Index<k>::dump(std::vector<Minimizer_Instance>& min_buf, std::ofstream& output)
+{
+    if(!output.write(reinterpret_cast<const char*>(min_buf.data()), min_buf.size() * sizeof(Minimizer_Instance)))
     {
         std::cerr << "Error writing to the minimizer files. Aborting.\n";
         std::exit(EXIT_FAILURE);
