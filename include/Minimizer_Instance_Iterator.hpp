@@ -4,11 +4,12 @@
 
 
 
+#include "Minimizer_Instance.hpp"
+
 #include <cstddef>
 #include <utility>
 
-
-class Minimizer_Instance;
+// =============================================================================
 
 
 // A class to iterate over a collection of type `T_container_` of minimizer
