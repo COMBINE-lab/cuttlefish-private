@@ -1,5 +1,6 @@
 
 #include "Kmer_Index.hpp"
+#include "Minimizer_Instance_Merger.hpp"
 #include "Input_Defaults.hpp"
 #include "utility.hpp"
 
@@ -125,7 +126,7 @@ void Kmer_Index<k>::merge_minimizers()
     constexpr std::size_t max_buf_sz = buf_sz_th / sizeof(Minimizer_Instance);
     merged_min_buf.reserve(max_buf_sz);
 
-    Minimizer_Instance_Multiway_Merger multiway_merger(min_container);
+    Minimizer_Instance_Merger multiway_merger(min_container);
     Minimizer_Instance min;
     uint64_t min_inst_count = 0;
 
