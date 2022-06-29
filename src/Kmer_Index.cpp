@@ -133,7 +133,7 @@ void Kmer_Index<k>::merge_minimizers()
 
     multiway_merger.peek(min);
     minimizer_t last_min = min.minimizer();
-    uint64_t min_uniq_count = 0;
+    uint64_t min_uniq_count = 1;
     while(multiway_merger.next(min))
     {
         merged_min_buf.push_back(min);
