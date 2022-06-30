@@ -15,15 +15,18 @@ Minimizer_Instance_Iterator<std::FILE*>::Minimizer_Instance_Iterator():
 
 Minimizer_Instance_Iterator<std::FILE*>::Minimizer_Instance_Iterator(std::FILE* const file_ptr): Minimizer_Instance_Iterator()
 {
-    this->file_ptr = file_ptr;
-
-    if(std::fseek(file_ptr, 0, SEEK_SET))
+    if(file_ptr != nullptr)
     {
-        std::cerr << "Error reading the minimizer files. Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
+        this->file_ptr = file_ptr;
 
-    peek(); // To handle the edge case of empty files.
+        if(std::fseek(file_ptr, 0, SEEK_SET))
+        {
+            std::cerr << "Error reading the minimizer files. Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        peek(); // To handle the edge case of empty files.
+    }
 }
 
 
