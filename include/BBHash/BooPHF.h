@@ -915,7 +915,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 
     /* Hasher_t returns a single hash when operator()(elem_t key) is called.
        if used with XorshiftHashFunctors, it must have the following operator: operator()(elem_t key, uint64_t seed) */
-    template <typename elem_t, typename Hasher_t>
+    template <typename elem_t, typename Hasher_t, bool kmer_hash = true>
 	class mphf {
 
         /* this mechanisms gets P hashes out of Hasher_t */
@@ -1101,7 +1101,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 			{
 				//safely copy n items into buffer
 
-                if(i < 2)	// Use the Cuttlefish iterator to read keys from the input disk-database.
+                if(kmer_hash && i < 2)	// Use the Cuttlefish iterator to read k-mer keys from the input disk-database.
 				{
 					// TODO: try to delay the `volatile` access, i.e. `tasks_expected` as much as possible.
 					while(inbuff < WORK_CHUNK_SZ && shared_it->tasks_expected(thread_id))
@@ -1111,7 +1111,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 					if(!shared_it->tasks_expected(thread_id))
 						isRunning = false;
 				}
-				else	// Use the BBHash `bfile_iterator` to read keys from their temporary binary files.
+				else	// Use other iterator types or the BBHash `bfile_iterator` to read keys.
 				{
 					pthread_mutex_lock(&_mutex);
 
