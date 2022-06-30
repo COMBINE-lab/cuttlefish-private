@@ -113,7 +113,7 @@ void Kmer_Index<k>::read_and_sort_minimizers()
 
 
 template <uint16_t k>
-uint64_t Kmer_Index<k>::merge_minimizers()
+void Kmer_Index<k>::merge_minimizers()
 {
     typedef std::pair<Minimizer_Instance*, std::size_t> min_container_t;
 
@@ -154,8 +154,6 @@ uint64_t Kmer_Index<k>::merge_minimizers()
         dump(merged_min_buf, min_file);
 
     min_file.close();
-
-    return min_count;
 }
 
 
