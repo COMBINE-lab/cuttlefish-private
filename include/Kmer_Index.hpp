@@ -39,6 +39,9 @@ class Kmer_Index
 
     const uint16_t producer_count;  // Number of producer threads supplying the paths to the indexer.
 
+    uint64_t min_inst_count;    // Number of minimizer instances.
+    uint64_t min_count; // Number of unique minimizers.
+
     std::vector<bitvector_t> producer_path_buf; // Separate buffer for each producer, to contain their deposited paths.
 
     std::vector<std::vector<Minimizer_Instance>> producer_minimizer_buf; // Separate buffer for each producer, to contain their minimizers and their offsets into the deposited paths.
@@ -71,9 +74,8 @@ class Kmer_Index
     // memory, and sorts them in parallel.
     void read_and_sort_minimizers();
 
-    // Merges the minimizer instances of each separate producer, and returns
-    // the count of unique minimizers found.
-    uint64_t merge_minimizers();
+    // Merges the minimizer instances of each separate producer.
+    void merge_minimizers();
 
 public:
 
@@ -160,6 +162,7 @@ template <uint16_t k>
 inline void Kmer_Index<k>::flush(const std::size_t producer_id)
 {
     auto& path_buf = producer_path_buf[producer_id];    // The producer's concatenated paths sequence buffer.
+    auto& min_buf = producer_minimizer_buf[producer_id];
 
     // Dump the producer-specific path buffer to the global concatenated-paths sequence.
     lock.lock();
@@ -170,13 +173,14 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
     for(auto p = path_buf.cbegin(); p != path_buf.cend(); ++p)
         paths.push_back(*p);
 
+    min_inst_count += min_buf.size();
+
     lock.unlock();
 
     path_buf.clear();
 
 
     // Shift the producer-specific relative indices of the minimizers to their absolute indices into the concatenated paths.
-    auto& min_buf = producer_minimizer_buf[producer_id];
     std::for_each(
                     min_buf.begin(), min_buf.end(),
                     [offset_shift](auto& p){ p.shift(offset_shift); }

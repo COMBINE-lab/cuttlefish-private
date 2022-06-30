@@ -13,6 +13,8 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count):
     // TODO: reserve space for `paths`, preferably from additional k-mer count field
     l(l),
     producer_count(producer_count),
+    min_inst_count(0),
+    min_count(0),
     producer_path_buf(producer_count),
     producer_minimizer_buf(producer_count),
     producer_minimizer_file(producer_count),
@@ -69,7 +71,7 @@ void Kmer_Index<k>::consolidate_minimizers()
     std::cout << "Sorted the minimizers files.\n";
 
     // Multiway-merge the minimizer instances.
-    const uint64_t min_count = merge_minimizers();
+    merge_minimizers();
     std::cout << "Merged the minimizers files.\n";
 }
 
@@ -128,35 +130,32 @@ uint64_t Kmer_Index<k>::merge_minimizers()
 
     Minimizer_Instance_Merger multiway_merger(min_container);
     Minimizer_Instance min;
-    uint64_t min_inst_count = 0;
 
     std::ofstream min_file(cuttlefish::_default::MINIMIZER_FILE_EXT, std::ios::out | std::ios::binary);
 
     multiway_merger.peek(min);
     minimizer_t last_min = min.minimizer();
-    uint64_t min_uniq_count = 1;
+    min_count = 1;
     while(multiway_merger.next(min))
     {
         merged_min_buf.push_back(min);
         if(merged_min_buf.size() >= max_buf_sz)
             dump(merged_min_buf, min_file);
 
-        min_inst_count++;
-
         if(last_min != min.minimizer())
-            min_uniq_count++,
+            min_count++,
             last_min = min.minimizer();
     }
 
     std::cout << "Minimizer instance count: " << min_inst_count << "\n";
-    std::cout << "Unique minimizer count:   " << min_uniq_count << "\n";
+    std::cout << "Unique minimizer count:   " << min_count << "\n";
 
     if(!merged_min_buf.empty())
         dump(merged_min_buf, min_file);
 
     min_file.close();
 
-    return min_uniq_count;
+    return min_count;
 }
 
 
