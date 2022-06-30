@@ -79,6 +79,10 @@ private:
     Minimizer_Instance elem;    // Current instance to process.
 
 
+    // Sets the file pointer `file_ptr` appropriately at the `pos`'th indexed
+    // minimizer instance in the file.
+    void set_file_ptr();
+
     // Peeks into the file for a byte, without consuming it. Sets the file-
     // handle to null if the end-of-file has been reached.
     void peek();

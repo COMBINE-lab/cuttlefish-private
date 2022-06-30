@@ -18,14 +18,7 @@ Minimizer_Instance_Iterator<std::FILE*>::Minimizer_Instance_Iterator(std::FILE* 
     if(file_ptr != nullptr)
     {
         this->file_ptr = file_ptr;
-
-        if(std::fseek(file_ptr, 0, SEEK_SET))
-        {
-            std::cerr << "Error reading the minimizer files. Aborting.\n";
-            std::exit(EXIT_FAILURE);
-        }
-
-        peek(); // To handle the edge case of empty files.
+        set_file_ptr();
     }
 }
 
@@ -38,6 +31,9 @@ Minimizer_Instance_Iterator<std::FILE*>::Minimizer_Instance_Iterator(const Minim
     buf_idx(other.buf_idx),
     elem(other.elem)
 {
+    if(file_ptr != nullptr)
+        set_file_ptr();
+
     if(other.buffer != nullptr)
     {
         buffer = static_cast<Minimizer_Instance*>(std::malloc(buf_sz * sizeof(Minimizer_Instance)));
@@ -50,6 +46,18 @@ Minimizer_Instance_Iterator<std::FILE*>::~Minimizer_Instance_Iterator()
 {
     if(buffer != nullptr)
         std::free(buffer);
+}
+
+
+void Minimizer_Instance_Iterator<std::FILE*>::set_file_ptr()
+{
+    if(std::fseek(this->file_ptr, pos * sizeof(Minimizer_Instance), SEEK_SET))
+    {
+        std::cerr << "Error reading the minimizer files. Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    peek(); // To handle the edge case of empty files.
 }
 
 
