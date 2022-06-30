@@ -119,6 +119,13 @@ public:
     // Returns `true` iff this iterator and `rhs` point to different positions
     // of some file(s).
     bool operator!=(const Minimizer_Instance_Iterator& rhs) const;
+
+    // Dummy methods.
+    void launch_production() {}
+    bool launched() { return true; }
+    bool value_at(const size_t consumer_id, cuttlefish::minimizer_t& elem) { (void)consumer_id; (void)elem; return false; }
+    bool tasks_expected(const size_t consumer_id) const { (void)consumer_id; return false; }
+    void seize_production() {}
 };
 
 
