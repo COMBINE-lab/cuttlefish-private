@@ -909,7 +909,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 
 	//forward declaration
 
-    template <typename elem_t, typename Hasher_t, typename Range, typename it_type>
+    template <typename elem_t, typename Hasher_t, bool kmer_hash, typename Range, typename it_type>
 	void * thread_processLevel(void * args);
 
 
@@ -1517,7 +1517,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 				t_arg.until_p = std::static_pointer_cast<void>(std::make_shared<disklevel_it_type>(data_iterator_level.end()));
 				
 				for(int ii=0;ii<_num_thread;ii++)
-					pthread_create (&tab_threads[ii], NULL,  thread_processLevel<elem_t, Hasher_t, Range, disklevel_it_type>, &t_arg); //&t_arg[ii]
+					pthread_create (&tab_threads[ii], NULL,  thread_processLevel<elem_t, Hasher_t, kmer_hash, Range, disklevel_it_type>, &t_arg); //&t_arg[ii]
 			
 			
 				//must join here before the block is closed and file_binary is destroyed (and closes the file)
@@ -1555,7 +1555,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 					{
 						thread_args[ii] = t_arg;
 						thread_args[ii].thread_id = ii;
-						pthread_create (&tab_threads[ii], NULL,  thread_processLevel<elem_t, Hasher_t, Range, decltype(input_range.begin())>, &thread_args[ii]); //&t_arg[ii]
+						pthread_create (&tab_threads[ii], NULL,  thread_processLevel<elem_t, Hasher_t, kmer_hash, Range, decltype(input_range.begin())>, &thread_args[ii]); //&t_arg[ii]
 					}
 				}
 				//joining
@@ -1636,14 +1636,14 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 ////////////////////////////////////////////////////////////////
 
 
-    template <typename elem_t, typename Hasher_t, typename Range, typename it_type>
+    template <typename elem_t, typename Hasher_t, bool kmer_hash, typename Range, typename it_type>
 	void * thread_processLevel(void * args)
 	{
 		if(args ==NULL) return NULL;
 
 		thread_args<Range,it_type> *targ = (thread_args<Range,it_type>*) args;
 
-		mphf<elem_t, Hasher_t>  * obw = (mphf<elem_t, Hasher_t > *) targ->boophf;
+		mphf<elem_t, Hasher_t, kmer_hash>  * obw = (mphf<elem_t, Hasher_t, kmer_hash> *) targ->boophf;
 		int level = targ->level;
 		int thread_id = targ->thread_id;
 		std::vector<elem_t> buffer;
@@ -1652,15 +1652,15 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 		
 		pthread_mutex_t * mutex =  & obw->_mutex;
 
-		std::unique_ptr<std::thread> producer{nullptr};	// The background key-stream producer thread.
+		std::unique_ptr<std::thread> producer{nullptr};	// The background k-mer stream producer thread.
 
 		pthread_mutex_lock(mutex); // from comment above: "//get starting iterator for this thread, must be protected (must not be currently used by other thread to copy elems in buff)"
         
 		std::shared_ptr<it_type> startit = std::static_pointer_cast<it_type>(targ->it_p);
         std::shared_ptr<it_type> until_p = std::static_pointer_cast<it_type>(targ->until_p);
 		
-		// Launch the producer thread uniquely, from one worker thread.
-		if(level < 2 && !startit->launched())
+		// Launch the k-mer producer thread uniquely, from one worker thread.
+		if(kmer_hash && level < 2 && !startit->launched())
 		{
 			startit->launch_production();
 
