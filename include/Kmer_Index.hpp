@@ -71,8 +71,9 @@ class Kmer_Index
     // memory, and sorts them in parallel.
     void read_and_sort_minimizers();
 
-    // Merges the minimizer instances of each separate producer.
-    void merge_minimizers();
+    // Merges the minimizer instances of each separate producer, and returns
+    // the count of unique minimizers found.
+    uint64_t merge_minimizers();
 
 public:
 

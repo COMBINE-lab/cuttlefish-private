@@ -69,7 +69,7 @@ void Kmer_Index<k>::consolidate_minimizers()
     std::cout << "Sorted the minimizers files.\n";
 
     // Multiway-merge the minimizer instances.
-    merge_minimizers();
+    const uint64_t min_count = merge_minimizers();
     std::cout << "Merged the minimizers files.\n";
 }
 
@@ -111,7 +111,7 @@ void Kmer_Index<k>::read_and_sort_minimizers()
 
 
 template <uint16_t k>
-void Kmer_Index<k>::merge_minimizers()
+uint64_t Kmer_Index<k>::merge_minimizers()
 {
     typedef std::pair<Minimizer_Instance*, std::size_t> min_container_t;
 
@@ -155,6 +155,8 @@ void Kmer_Index<k>::merge_minimizers()
         dump(merged_min_buf, min_file);
 
     min_file.close();
+
+    return min_uniq_count;
 }
 
 
