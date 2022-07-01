@@ -125,10 +125,11 @@ public:
     bool operator!=(const Minimizer_Instance_Iterator& rhs) const;
 
     // Advances the iterator by one minimizer block in the container. Puts the
-    // minimizer of the block to `min` and its instance-count to `count`.
-    // Returns `true` iff there were blocks remaining, i.e. the end-of-file had
-    // not been reached.
-    bool next(cuttlefish::minimizer_t& min, std::size_t& count);
+    // minimizer of the block to `min` and its satellite data (of type
+    // `T_satellite_`) to `satellite`. Returns `true` iff there were blocks
+    // remaining, i.e. the end-of-file had not been reached.
+    template <typename T_satellite_>
+    bool next(cuttlefish::minimizer_t& min, T_satellite_& count);
 
     // Dummy methods.
     void launch_production() {}
@@ -170,7 +171,8 @@ inline bool Minimizer_Instance_Iterator<std::FILE*>::operator!=(const Minimizer_
 }
 
 
-inline bool Minimizer_Instance_Iterator<FILE*>::next(cuttlefish::minimizer_t& min, std::size_t& count)
+template <>
+inline bool Minimizer_Instance_Iterator<FILE*>::next<std::size_t>(cuttlefish::minimizer_t& min, std::size_t& count)
 {
     if(file_ptr == nullptr)
         return false;
