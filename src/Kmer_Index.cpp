@@ -16,6 +16,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count):
     producer_count(producer_count),
     num_instances(0),
     min_count(0),
+    max_inst_count(0),
     producer_path_buf(producer_count),
     producer_minimizer_buf(producer_count),
     producer_minimizer_file(producer_count),
@@ -209,19 +210,18 @@ void Kmer_Index<k>::count_minimizer_instances()
     min_instance_count = new compact::vector<std::size_t>(bits_per_entry, min_count + 1);
 
     std::FILE* const min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
-
     Minimizer_Instance_Iterator<FILE*> min_inst_iter(min_file);
     minimizer_t min;
     std::size_t count;
-    std::size_t max_c = 0;
+
     while(min_inst_iter.next(min, count))
     {
         min_instance_count->at(min_mphf->lookup(min) + 1) = count;
-        if(max_c < count)
-            max_c = count;
+        if(max_inst_count < count)
+            max_inst_count = count;
     }
 
-    std::cout << "Maximum instance count of a minimizer: " << max_c << ".\n";
+    std::cout << "Maximum instance count of a minimizer: " << max_inst_count << ".\n";
 
     uint64_t cum_count = (min_instance_count->at(0) = 0);
     for(std::size_t i = 1; i <= min_count; ++i)

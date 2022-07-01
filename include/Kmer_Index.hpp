@@ -42,6 +42,7 @@ class Kmer_Index
 
     uint64_t num_instances; // Number of minimizer instances.
     uint64_t min_count; // Number of unique minimizers.
+    uint64_t max_inst_count;    // Maximum count of instances for some minimizer.
 
     std::vector<bitvector_t> producer_path_buf; // Separate buffer for each producer, to contain their deposited paths.
 
