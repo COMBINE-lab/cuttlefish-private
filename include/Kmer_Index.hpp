@@ -61,6 +61,8 @@ class Kmer_Index
 
     compact::vector<std::size_t>* min_instance_count;   // Count of instances per each unique minimizer.
 
+    compact::vector<std::size_t>* min_offset;   // Offsets of the instances for the unique minimizers, laid flat all together.
+
     constexpr static std::size_t buf_sz_th = 5 * 1024 * 1024;   // Threshold for the total size (in bytes) of the buffers per producer: 5 MB.
 
     std::size_t curr_token; // Number of tokens produced for the producers so far.
@@ -92,6 +94,9 @@ class Kmer_Index
 
     // Counts the number of instances for each distinct minimizer.
     void count_minimizer_instances();
+
+    // Enumerates the offsets of the instances for each distinct minimizer.
+    void get_minimizer_offsets();
 
     // Looks up the minimizer `min` in the MPHF and returns its hash value + 1.
     uint64_t hash(minimizer_t min) const;

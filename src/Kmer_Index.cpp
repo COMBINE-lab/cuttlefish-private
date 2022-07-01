@@ -88,6 +88,10 @@ void Kmer_Index<k>::consolidate_minimizers()
     // Count the instances per minimizer.
     count_minimizer_instances();
     std::cout << "Gathered the minimizers' instance-counts.\n";
+
+    // Get the offsets of each minimizer.
+    get_minimizer_offsets();
+    std::cout << "Gathered the minimizers' offsets.\n";
 }
 
 
@@ -231,6 +235,34 @@ void Kmer_Index<k>::count_minimizer_instances()
     std::ofstream counts_file(counts_file_path.c_str(), std::ios::out | std::ios::binary);
     min_instance_count->serialize(counts_file);
     counts_file.close();
+}
+
+
+template <uint16_t k>
+void Kmer_Index<k>::get_minimizer_offsets()
+{
+    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(paths.size())));
+    assert(bits_per_entry > 0);
+    min_offset = new compact::vector<std::size_t>(bits_per_entry, num_instances);
+
+    std::FILE* const min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
+    Minimizer_Instance_Iterator<FILE*> min_inst_iter(min_file);
+    minimizer_t min;
+    std::vector<std::size_t> offsets;
+    offsets.reserve(max_inst_count);
+
+    while(min_inst_iter.next(min, offsets))
+    {
+        const std::size_t meta_idx = min_instance_count->at(hash(min) - 1);
+        for(std::size_t i = 0; i < offsets.size(); ++i)
+            min_offset->at(meta_idx + i) = offsets[i];
+    }
+
+
+    const std::string offsets_file_path = "min.offsets";    // TODO: placeholder for now.
+    std::ofstream offsets_file(offsets_file_path.c_str(), std::ios::out | std::ios::binary);
+    min_offset->serialize(offsets_file);
+    offsets_file.close();
 }
 
 
