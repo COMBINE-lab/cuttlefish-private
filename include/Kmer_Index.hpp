@@ -40,7 +40,7 @@ class Kmer_Index
 
     const uint16_t producer_count;  // Number of producer threads supplying the paths to the indexer.
 
-    uint64_t min_inst_count;    // Number of minimizer instances.
+    uint64_t num_instances; // Number of minimizer instances.
     uint64_t min_count; // Number of unique minimizers.
 
     std::vector<bitvector_t> producer_path_buf; // Separate buffer for each producer, to contain their deposited paths.
@@ -183,7 +183,7 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
     for(auto p = path_buf.cbegin(); p != path_buf.cend(); ++p)
         paths.push_back(*p);
 
-    min_inst_count += min_buf.size();
+    num_instances += min_buf.size();
 
     lock.unlock();
 

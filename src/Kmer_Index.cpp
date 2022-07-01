@@ -13,7 +13,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count):
     // TODO: reserve space for `paths`, preferably from additional k-mer count field
     l(l),
     producer_count(producer_count),
-    min_inst_count(0),
+    num_instances(0),
     min_count(0),
     producer_path_buf(producer_count),
     producer_minimizer_buf(producer_count),
@@ -154,7 +154,7 @@ void Kmer_Index<k>::merge_minimizers()
             last_min = min.minimizer();
     }
 
-    std::cout << "Minimizer instance count: " << min_inst_count << "\n";
+    std::cout << "Minimizer instance count: " << num_instances << "\n";
     std::cout << "Unique minimizer count:   " << min_count << "\n";
 
     if(!merged_min_buf.empty())
@@ -168,7 +168,7 @@ template <uint16_t k>
 void Kmer_Index<k>::construct_minimizer_mphf()
 {
     typedef Minimizer_Instance_Iterator<std::FILE*> min_iter_t;
-    std::FILE* min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
+    std::FILE* const min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
     const auto data_iterator = boomphf::range(min_iter_t(min_file), min_iter_t(nullptr));
 
     const char* const working_dir_path = ".";   // TODO: placeholder for now.
