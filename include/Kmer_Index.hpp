@@ -58,6 +58,8 @@ class Kmer_Index
     constexpr static double gamma = 2.0;    // The gamma parameter of the BBHash algorithm.
     minimizer_mphf_t* min_mphf; // MPHF of the minimizers.
 
+    compact::vector<std::size_t>* min_instance_count;   // Count of instances per each unique minimizer.
+
     constexpr static std::size_t buf_sz_th = 5 * 1024 * 1024;   // Threshold for the total size (in bytes) of the buffers per producer: 5 MB.
 
     std::size_t curr_token; // Number of tokens produced for the producers so far.
@@ -86,6 +88,9 @@ class Kmer_Index
 
     // Constructs the MPHF `min_mphf` over the unique minimizers found.
     void construct_minimizer_mphf();
+
+    // Counts the number of instances for each distinct minimizer.
+    void count_minimizer_instances();
 
 public:
 

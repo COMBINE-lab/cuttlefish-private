@@ -6,6 +6,7 @@
 
 #include <string>
 #include <algorithm>
+#include <cmath>
 
 
 template <uint16_t k>
@@ -20,6 +21,8 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count):
     producer_minimizer_file(producer_count),
     min_group(producer_count, nullptr),
     min_group_size(producer_count),
+    min_mphf(nullptr),
+    min_instance_count(nullptr),
     curr_token{0}
 {
     for(uint16_t id = 0; id < producer_count; ++id)
@@ -80,6 +83,10 @@ void Kmer_Index<k>::consolidate_minimizers()
     std::cout <<    "Constructed the minimizer-MPHF.\n"
                     "Total size: " << total_bits / (8 * 1024) << " KB."
                     " Bits per k-mer: " << static_cast<double>(total_bits) / min_count << ".\n";
+
+    // Count the instances per minimizer.
+    count_minimizer_instances();
+    std::cout << "Gathered the minimizers' instance-counts.\n";
 }
 
 
@@ -185,6 +192,36 @@ void Kmer_Index<k>::construct_minimizer_mphf()
 
     min_mphf->save(output);
     output.close();
+
+    if(std::fclose(min_file))
+    {
+        std::cout << "Error closing the minimizer file. Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+}
+
+
+template <uint16_t k>
+void Kmer_Index<k>::count_minimizer_instances()
+{
+    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(num_instances)));
+    assert(bits_per_entry > 0);
+    min_instance_count = new compact::vector<std::size_t>(bits_per_entry, min_count);
+
+    std::FILE* const min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
+
+    Minimizer_Instance_Iterator<FILE*> min_inst_iter(min_file);
+    minimizer_t min;
+    std::size_t count;
+    std::size_t max_c = 0;
+    while(min_inst_iter.next(min, count))
+    {
+        min_instance_count->operator[](min_mphf->lookup(min)) = count;
+        if(max_c < count)
+            max_c = count;
+    }
+
+    std::cout << "Maximum instance count of a minimizer: " << max_c << ".\n";
 }
 
 
