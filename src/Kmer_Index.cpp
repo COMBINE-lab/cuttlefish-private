@@ -73,6 +73,13 @@ void Kmer_Index<k>::consolidate_minimizers()
     // Multiway-merge the minimizer instances.
     merge_minimizers();
     std::cout << "Merged the minimizers files.\n";
+
+    // Construct an MPHF over the unique minimizers.
+    construct_minimizer_mphf();
+    const uint64_t total_bits = min_mphf->totalBitSize();
+    std::cout <<    "Constructed the minimizer-MPHF.\n"
+                    "Total size: " << total_bits / (8 * 1024) << " KB."
+                    " Bits per k-mer: " << static_cast<double>(total_bits) / min_count << ".\n";
 }
 
 
@@ -131,7 +138,7 @@ void Kmer_Index<k>::merge_minimizers()
     Minimizer_Instance_Merger multiway_merger(min_container);
     Minimizer_Instance min;
 
-    std::ofstream min_file(cuttlefish::_default::MINIMIZER_FILE_EXT, std::ios::out | std::ios::binary);
+    std::ofstream min_file(cuttlefish::_default::MINIMIZER_FILE_EXT, std::ios::out | std::ios::binary); // TODO: fix placeholder file name.
 
     multiway_merger.peek(min);
     minimizer_t last_min = min.minimizer();
@@ -154,6 +161,18 @@ void Kmer_Index<k>::merge_minimizers()
         dump(merged_min_buf, min_file);
 
     min_file.close();
+}
+
+
+template <uint16_t k>
+void Kmer_Index<k>::construct_minimizer_mphf()
+{
+    typedef Minimizer_Instance_Iterator<std::FILE*> min_iter_t;
+    std::FILE* min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
+    const auto data_iterator = boomphf::range(min_iter_t(min_file), min_iter_t(nullptr));
+
+    const char* const working_dir_path = ".";   // TODO: placeholder for now.
+    min_mphf = new boomphf::mphf<minimizer_t, minimizer_hasher_t, false>(min_count, data_iterator, working_dir_path, 16, gamma);
 }
 
 

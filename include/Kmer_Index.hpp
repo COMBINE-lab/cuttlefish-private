@@ -11,6 +11,7 @@
 #include "Minimizer_Instance.hpp"
 #include "globals.hpp"
 #include "compact_vector/compact_vector.hpp"
+#include "BBHash/BooPHF.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -51,6 +52,12 @@ class Kmer_Index
     std::vector<Minimizer_Instance*> min_group; // Separate buffer to read in each minimizer file.
     std::vector<std::size_t> min_group_size;    // Size of each minimizer file (in element count).
 
+    typedef boomphf::SingleHashFunctor<minimizer_t> minimizer_hasher_t; // The seeded hasher class for minimizers.
+                                                                        // TODO: placeholder for now; think it through.
+    typedef boomphf::mphf<minimizer_t, minimizer_hasher_t, false> minimizer_mphf_t; // The minimizer-MPHF type.
+    constexpr static double gamma = 2.0;    // The gamma parameter of the BBHash algorithm.
+    minimizer_mphf_t* min_mphf; // MPHF of the minimizers.
+
     constexpr static std::size_t buf_sz_th = 5 * 1024 * 1024;   // Threshold for the total size (in bytes) of the buffers per producer: 5 MB.
 
     std::size_t curr_token; // Number of tokens produced for the producers so far.
@@ -76,6 +83,9 @@ class Kmer_Index
 
     // Merges the minimizer instances of each separate producer.
     void merge_minimizers();
+
+    // Constructs the MPHF `min_mphf` over the unique minimizers found.
+    void construct_minimizer_mphf();
 
 public:
 
