@@ -93,6 +93,9 @@ class Kmer_Index
     // Counts the number of instances for each distinct minimizer.
     void count_minimizer_instances();
 
+    // Looks up the minimizer `min` in the MPHF and returns its hash value + 1.
+    uint64_t hash(minimizer_t min) const;
+
 public:
 
     // Constructs a k-mer indexer that will index sequences produced from at
@@ -218,6 +221,13 @@ inline void Kmer_Index<k>::dump(std::vector<Minimizer_Instance>& min_buf, std::o
     }
 
     min_buf.clear();
+}
+
+
+template <uint16_t k>
+inline uint64_t Kmer_Index<k>::hash(const cuttlefish::minimizer_t min) const
+{
+    return min_mphf->lookup(min) + 1;
 }
 
 

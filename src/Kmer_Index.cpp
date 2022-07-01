@@ -216,7 +216,7 @@ void Kmer_Index<k>::count_minimizer_instances()
 
     while(min_inst_iter.next(min, count))
     {
-        min_instance_count->at(min_mphf->lookup(min) + 1) = count;
+        min_instance_count->at(hash(min)) = count;
         if(max_inst_count < count)
             max_inst_count = count;
     }
