@@ -226,6 +226,11 @@ void Kmer_Index<k>::count_minimizer_instances()
     uint64_t cum_count = (min_instance_count->at(0) = 0);
     for(std::size_t i = 1; i <= min_count; ++i)
         min_instance_count->at(i) = (cum_count += min_instance_count->at(i));
+
+    const std::string counts_file_path = "min.counts";  // TODO: placeholder for now.
+    std::ofstream counts_file(counts_file_path.c_str(), std::ios::out | std::ios::binary);
+    min_instance_count->serialize(counts_file);
+    counts_file.close();
 }
 
 
