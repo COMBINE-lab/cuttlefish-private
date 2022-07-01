@@ -172,7 +172,7 @@ void Kmer_Index<k>::construct_minimizer_mphf()
     const auto data_iterator = boomphf::range(min_iter_t(min_file), min_iter_t(nullptr));
 
     const char* const working_dir_path = ".";   // TODO: placeholder for now.
-    min_mphf = new boomphf::mphf<minimizer_t, minimizer_hasher_t, false>(min_count, data_iterator, working_dir_path, 16, gamma);
+    min_mphf = new boomphf::mphf<minimizer_t, minimizer_hasher_t, false>(min_count, data_iterator, working_dir_path, producer_count, gamma);
 
 
     const std::string mphf_file_path = "min.mphf";  // TODO: placeholder for now.
