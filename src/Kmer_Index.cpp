@@ -173,6 +173,18 @@ void Kmer_Index<k>::construct_minimizer_mphf()
 
     const char* const working_dir_path = ".";   // TODO: placeholder for now.
     min_mphf = new boomphf::mphf<minimizer_t, minimizer_hasher_t, false>(min_count, data_iterator, working_dir_path, 16, gamma);
+
+
+    const std::string mphf_file_path = "min.mphf";  // TODO: placeholder for now.
+    std::ofstream output(mphf_file_path.c_str(), std::ofstream::out);
+    if(output.fail())
+    {
+        std::cerr << "Error writing to file " << mphf_file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    min_mphf->save(output);
+    output.close();
 }
 
 
