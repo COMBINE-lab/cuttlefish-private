@@ -124,6 +124,12 @@ public:
     // of some file(s).
     bool operator!=(const Minimizer_Instance_Iterator& rhs) const;
 
+    // Advances the iterator by one minimizer block in the container. Puts the
+    // minimizer of the block to `min` and its instance-count to `count`.
+    // Returns `true` iff there were blocks remaining, i.e. the end-of-file had
+    // not been reached.
+    bool next(cuttlefish::minimizer_t& min, std::size_t& count);
+
     // Dummy methods.
     void launch_production() {}
     bool launched() { return true; }
@@ -142,7 +148,7 @@ inline cuttlefish::minimizer_t Minimizer_Instance_Iterator<std::FILE*>::operator
 }
 
 
-inline Minimizer_Instance_Iterator<std::FILE*>& Minimizer_Instance_Iterator<std::FILE*>:: operator++()
+inline Minimizer_Instance_Iterator<std::FILE*>& Minimizer_Instance_Iterator<std::FILE*>::operator++()
 {
     advance_minimizer_block();
     return *this;
@@ -161,6 +167,26 @@ inline bool Minimizer_Instance_Iterator<std::FILE*>::operator==(const Minimizer_
 inline bool Minimizer_Instance_Iterator<std::FILE*>::operator!=(const Minimizer_Instance_Iterator& rhs) const
 {
     return !operator==(rhs);
+}
+
+
+inline bool Minimizer_Instance_Iterator<FILE*>::next(cuttlefish::minimizer_t& min, std::size_t& count)
+{
+    if(file_ptr == nullptr)
+        return false;
+
+    if(buffer == nullptr)
+        advance();
+
+    count = 0;
+    min = elem.minimizer();
+    while(file_ptr != nullptr && elem.minimizer() == min)
+    {
+        advance();
+        count++;
+    }
+
+    return true;
 }
 
 
