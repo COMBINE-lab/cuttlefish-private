@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <vector>
 #include <utility>
 #include <cstdlib>
 #include <cstdio>
@@ -186,6 +187,27 @@ inline bool Minimizer_Instance_Iterator<FILE*>::next<std::size_t>(cuttlefish::mi
     {
         advance();
         count++;
+    }
+
+    return true;
+}
+
+
+template <>
+inline bool Minimizer_Instance_Iterator<FILE*>::next<std::vector<std::size_t>>(cuttlefish::minimizer_t& min, std::vector<std::size_t>& offsets)
+{
+    if(file_ptr == nullptr)
+        return false;
+
+    if(buffer == nullptr)
+        advance();
+
+    offsets.clear();
+    min = elem.minimizer();
+    while(file_ptr != nullptr && elem.minimizer() == min)
+    {
+        offsets.emplace_back(elem.offset());
+        advance();
     }
 
     return true;
