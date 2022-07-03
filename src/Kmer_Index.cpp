@@ -19,7 +19,6 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count):
     max_inst_count(0),
     producer_path_buf(producer_count),
     producer_path_end_buf(producer_count),
-    path_end_file(cuttlefish::_default::PATH_ENDS_FILE_EXT, std::ios::out | std::ios::binary), // TODO: placeholder for now.
     producer_minimizer_buf(producer_count),
     producer_minimizer_file(producer_count),
     min_group(producer_count, nullptr),
@@ -67,7 +66,14 @@ void Kmer_Index<k>::finalize_production()
     // path_file.write(reinterpret_cast<const char*>(paths.data()), paths.size());  // For testing.
     path_file.close();
 
-    path_end_file.close();
+    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(paths.size())));
+    path_ends = new compact::vector<std::size_t>(bits_per_entry, path_ends_vec.size());
+    for(std::size_t i = 0; i < path_ends_vec.size(); ++i)
+        path_ends->at(i) = path_ends_vec[i];
+
+    std::ofstream path_ends_file(cuttlefish::_default::PATH_ENDS_FILE_EXT, std::ios::out | std::ios::binary); // TODO: add ext. to o/p file name (from `Build_Params`).
+    path_ends->serialize(path_ends_file);
+    path_ends_file.close();
 }
 
 

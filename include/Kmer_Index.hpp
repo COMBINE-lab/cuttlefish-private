@@ -34,7 +34,8 @@ class Kmer_Index
     typedef compact::vector<uint8_t, 2> bitvector_t;
     // typedef std::vector<char> bitvector_t;  // For testing.
 
-    bitvector_t paths;  // The concatenated paths sequence.
+    std::vector<std::size_t> path_ends_vec; // Vector with the ending indices of the paths in the concatenated sequence.
+    compact::vector<std::size_t>* path_ends;    // The ending indices of the paths in the concatenated sequence.
 
     const uint16_t l;   // Size of the l-minimizers.    // TODO: consider templatizing.
 
@@ -46,8 +47,6 @@ class Kmer_Index
 
     std::vector<bitvector_t> producer_path_buf; // Separate buffer for each producer, to contain their deposited paths.
     std::vector<std::vector<std::size_t>> producer_path_end_buf;    // Separate buffer for each producer, to contain the (exclusive) indices of the path endpoints in their deposited paths.
-
-    std::ofstream path_end_file;    // File to store the ending indices of each path in the concatenated paths sequence.
 
     std::vector<std::vector<Minimizer_Instance>> producer_minimizer_buf; // Separate buffer for each producer, to contain their minimizers and their offsets into the deposited paths.
 
@@ -212,13 +211,15 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
                     [offset_shift](auto& p) { p += offset_shift; }
                 );
 
-    dump(path_end_buf, path_end_file);
+    path_ends_vec.reserve(path_ends_vec.size() + path_end_buf.size());
+    path_ends_vec.insert(path_ends_vec.end(), path_end_buf.cbegin(), path_end_buf.cend());
 
     num_instances += min_buf.size();
 
     lock.unlock();
 
     path_buf.clear();
+    path_end_buf.clear();
 
 
     // Shift the producer-specific relative indices of the minimizers to their absolute indices into the concatenated paths.
