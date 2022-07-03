@@ -18,6 +18,8 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count):
     min_count(0),
     max_inst_count(0),
     producer_path_buf(producer_count),
+    producer_path_end_buf(producer_count),
+    path_end_file(cuttlefish::_default::PATH_ENDS_FILE_EXT, std::ios::out | std::ios::binary), // TODO: placeholder for now.
     producer_minimizer_buf(producer_count),
     producer_minimizer_file(producer_count),
     min_group(producer_count, nullptr),
@@ -64,6 +66,8 @@ void Kmer_Index<k>::finalize_production()
     paths.serialize(path_file);
     // path_file.write(reinterpret_cast<const char*>(paths.data()), paths.size());  // For testing.
     path_file.close();
+
+    path_end_file.close();
 }
 
 

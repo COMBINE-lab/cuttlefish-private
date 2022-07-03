@@ -45,6 +45,9 @@ class Kmer_Index
     uint64_t max_inst_count;    // Maximum count of instances for some minimizer.
 
     std::vector<bitvector_t> producer_path_buf; // Separate buffer for each producer, to contain their deposited paths.
+    std::vector<std::vector<std::size_t>> producer_path_end_buf;    // Separate buffer for each producer, to contain the (exclusive) indices of the path endpoints in their deposited paths.
+
+    std::ofstream path_end_file;    // File to store the ending indices of each path in the concatenated paths sequence.
 
     std::vector<std::vector<Minimizer_Instance>> producer_minimizer_buf; // Separate buffer for each producer, to contain their minimizers and their offsets into the deposited paths.
 
@@ -148,9 +151,10 @@ private:
 template <uint16_t k>
 inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* const seq, const std::size_t len)
 {
-    const std::size_t id = token.get_id();      // The producer's id.
-    auto& path_buf = producer_path_buf[id];     // The producer's concatenated-paths sequence buffer.
-    auto& min_buf = producer_minimizer_buf[id]; // The producer's minimizer-information buffer.
+    const std::size_t id = token.get_id();          // The producer's id.
+    auto& path_buf = producer_path_buf[id];         // The producer's concatenated-paths sequence buffer.
+    auto& path_end_buf = producer_path_end_buf[id]; // The producer's path-endpoints buffer.
+    auto& min_buf = producer_minimizer_buf[id];     // The producer's minimizer-information buffer.
 
     // Get the minimizers and the path sequence.
 
@@ -160,7 +164,7 @@ inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* cons
     std::size_t last_min_idx = len;                        // To track minimizer shifts.
 
     const std::size_t rel_offset = path_buf.size(); // Relative offset of each minimizer in this producer's path buffer.
-    for (std::size_t i = 0; i + (k - 1) < len; ++i)
+    for(std::size_t i = 0; i + (k - 1) < len; ++i)
     {
         minimizer_iterator.value_at(minimizer, min_idx);
         if(min_idx != last_min_idx)
@@ -178,7 +182,10 @@ inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* cons
         path_buf.push_back(DNA_Utility::map_base(seq[i]));
         // path_buf.push_back(seq[i]); // For testing
 
-    const std::size_t buf_size = ((path_buf.size() * 2) / 8) + (min_buf.size() * sizeof(Minimizer_Instance));   // Total buffer size (in bytes) of the producer.
+    // Get the ending index (exclusive) of this path in the concatenated paths.
+    path_end_buf.emplace_back(path_buf.size());
+
+    const std::size_t buf_size = ((path_buf.size() * 2) / 8) + (path_end_buf.size() * sizeof(std::size_t)) + (min_buf.size() * sizeof(Minimizer_Instance));   // Total buffer size (in bytes) of the producer.
     if(buf_size >= buf_sz_th)
         flush(id);
 }
@@ -188,9 +195,10 @@ template <uint16_t k>
 inline void Kmer_Index<k>::flush(const std::size_t producer_id)
 {
     auto& path_buf = producer_path_buf[producer_id];    // The producer's concatenated paths sequence buffer.
+    auto& path_end_buf = producer_path_end_buf[producer_id];
     auto& min_buf = producer_minimizer_buf[producer_id];
 
-    // Dump the producer-specific path buffer to the global concatenated-paths sequence.
+    // Dump the producer-specific path buffer and the endpoints buffer to the global concatenated-paths and -endpoints.
     lock.lock();
 
     const std::size_t offset_shift = paths.size();
@@ -198,6 +206,13 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
     // TODO: think of faster copying, possibly with chunks.
     for(auto p = path_buf.cbegin(); p != path_buf.cend(); ++p)
         paths.push_back(*p);
+
+    // Shift the producer-specific relative indices of the path-endpoints to their absolute indices into the concatenated paths.
+    std::for_each(path_end_buf.begin(), path_end_buf.end(),
+                    [offset_shift](auto& p) { p += offset_shift; }
+                );
+
+    dump(path_end_buf, path_end_file);
 
     num_instances += min_buf.size();
 
@@ -207,8 +222,7 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
 
 
     // Shift the producer-specific relative indices of the minimizers to their absolute indices into the concatenated paths.
-    std::for_each(
-                    min_buf.begin(), min_buf.end(),
+    std::for_each(min_buf.begin(), min_buf.end(),
                     [offset_shift](auto& p){ p.shift(offset_shift); }
                 );
 
