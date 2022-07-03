@@ -76,8 +76,10 @@ class Kmer_Index
     // `producer_id`.
     static const std::string minimizer_file_path(uint16_t producer_id);
 
-    // Dumps the data from `min_buf` to the stream `output`, clearing `min_buf`.
-    static void dump(std::vector<Minimizer_Instance>& min_buf, std::ofstream& output);
+    // Dumps the data from `container` to the stream `output`, clearing
+    // `container`.
+    template <typename T_container_>
+    static void dump(std::vector<T_container_>& container, std::ofstream& output);
 
     // Flushes the buffers of the producer with ID `producer_id`.
     void flush(std::size_t producer_id);
@@ -217,15 +219,16 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
 
 
 template <uint16_t k>
-inline void Kmer_Index<k>::dump(std::vector<Minimizer_Instance>& min_buf, std::ofstream& output)
+template <typename T_container_>
+inline void Kmer_Index<k>::dump(std::vector<T_container_>& container, std::ofstream& output)
 {
-    if(!output.write(reinterpret_cast<const char*>(min_buf.data()), min_buf.size() * sizeof(Minimizer_Instance)))
+    if(!output.write(reinterpret_cast<const char*>(container.data()), container.size() * sizeof(T_container_)))
     {
-        std::cerr << "Error writing to the minimizer files. Aborting.\n";
+        std::cerr << "Error writing to file. Aborting.\n";
         std::exit(EXIT_FAILURE);
     }
 
-    min_buf.clear();
+    container.clear();
 }
 
 
