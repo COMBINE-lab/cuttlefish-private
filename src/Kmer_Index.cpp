@@ -87,11 +87,14 @@ void Kmer_Index<k>::index()
 template <uint16_t k>
 void Kmer_Index<k>::close_deposit_stream()
 {
-    // Flush the buffer content.
+    // Flush the remaining buffer content, and release memory of all the path-sequence buffers of the producers.
     for(std::size_t id = 0; id < producer_count; ++id)
     {
         if(!producer_path_buf[id].empty())
             flush(id);
+
+        producer_path_buf[id].resize(0);
+        force_free(producer_path_end_buf[id]);
 
         producer_minimizer_file[id].close();
     }
@@ -101,6 +104,10 @@ void Kmer_Index<k>::close_deposit_stream()
     // path_file.write(reinterpret_cast<const char*>(paths.data()), paths.size());  // For testing.
     path_file.close();
 
+    // Release memory of the concatenated paths.
+    sum_paths_len = paths.size();
+    paths.resize(0);
+
 
     // Compact the path endpoints to just as many bits as required.
     const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(paths.size())));
@@ -108,9 +115,13 @@ void Kmer_Index<k>::close_deposit_stream()
     for(std::size_t i = 0; i < path_ends_vec.size(); ++i)
         path_ends->at(i) = path_ends_vec[i];
 
+    force_free(path_ends_vec);
+
     std::ofstream path_ends_file(cuttlefish::_default::PATH_ENDS_FILE_EXT, std::ios::out | std::ios::binary); // TODO: add ext. to o/p file name (from `Build_Params`).
     path_ends->serialize(path_ends_file);
     path_ends_file.close();
+
+    path_ends->resize(0);
 }
 
 
@@ -260,7 +271,7 @@ void Kmer_Index<k>::count_minimizer_instances()
 template <uint16_t k>
 void Kmer_Index<k>::get_minimizer_offsets()
 {
-    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(paths.size())));
+    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len)));
     assert(bits_per_entry > 0);
     min_offset = new index_vector_t(bits_per_entry, num_instances);
 
