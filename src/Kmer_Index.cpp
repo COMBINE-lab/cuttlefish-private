@@ -26,6 +26,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count):
     min_group_size(producer_count),
     min_mphf(nullptr),
     min_instance_count(nullptr),
+    min_offset(nullptr),
     curr_token{0}
 {
     assert(l <= 32);
