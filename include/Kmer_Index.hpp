@@ -109,6 +109,10 @@ class Kmer_Index
     // Looks up the minimizer `min` in the MPHF and returns its hash value + 1.
     uint64_t hash(minimizer_t min) const;
 
+    // Closes the deposit stream incoming from the producers and flushes the
+    // remaining content to disk.
+    void close_deposit_stream();
+
 public:
 
     // Constructs a k-mer indexer that will index sequences produced from at
@@ -124,12 +128,9 @@ public:
     // having the token `token`.
     void deposit(const Producer_Token &token, const char* seq, std::size_t len);
 
-    // Flushes the remaining content from the producers.
-    void finalize_production();
-
-    // Consolidates the minimizer information of the different producers into
-    // a coherent whole.
-    void consolidate_minimizers();
+    // Indexes the deposited path-sequences. Should only be invoked after all the
+    // sequences to be indexed have been deposited.
+    void index();
 };
 
 
@@ -153,6 +154,9 @@ private:
 template <uint16_t k>
 inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* const seq, const std::size_t len)
 {
+    if(len < k)
+        return;
+
     const std::size_t id = token.get_id();          // The producer's id.
     auto& path_buf = producer_path_buf[id];         // The producer's concatenated-paths sequence buffer.
     auto& path_end_buf = producer_path_end_buf[id]; // The producer's path-endpoints buffer.
@@ -187,7 +191,7 @@ inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* cons
     // Get the ending index (exclusive) of this path in the concatenated paths.
     path_end_buf.emplace_back(path_buf.size());
 
-    const std::size_t buf_size = ((path_buf.size() * 2) / 8) + (path_end_buf.size() * sizeof(std::size_t)) + (min_buf.size() * sizeof(Minimizer_Instance));   // Total buffer size (in bytes) of the producer.
+    const std::size_t buf_size = ((path_buf.size() * 2) / 8) + (path_end_buf.size() * sizeof(std::size_t)) + (min_buf.size() * sizeof(Minimizer_Instance)); // Total buffer size (in bytes) of the producer.
     if(buf_size >= buf_sz_th)
         flush(id);
 }
@@ -196,9 +200,9 @@ inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* cons
 template <uint16_t k>
 inline void Kmer_Index<k>::flush(const std::size_t producer_id)
 {
-    auto& path_buf = producer_path_buf[producer_id];    // The producer's concatenated paths sequence buffer.
-    auto& path_end_buf = producer_path_end_buf[producer_id];
-    auto& min_buf = producer_minimizer_buf[producer_id];
+    auto& path_buf = producer_path_buf[producer_id];            // The producer's concatenated paths sequence buffer.
+    auto& path_end_buf = producer_path_end_buf[producer_id];    // The producer's path-endpoints buffer.
+    auto& min_buf = producer_minimizer_buf[producer_id];        // The producer's minimizer-information buffer.
 
     // Dump the producer-specific path buffer and the endpoints buffer to the global concatenated-paths and -endpoints.
     lock.lock();

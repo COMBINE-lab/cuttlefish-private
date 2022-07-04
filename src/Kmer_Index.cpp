@@ -54,35 +54,11 @@ const typename Kmer_Index<k>::Producer_Token Kmer_Index<k>::get_token()
 
 
 template <uint16_t k>
-void Kmer_Index<k>::finalize_production()
+void Kmer_Index<k>::index()
 {
-    for(std::size_t id = 0; id < producer_count; ++id)
-    {
-        if(!producer_path_buf[id].empty())
-            flush(id);
+    // Dump the remaining in-memory content to disk.
+    close_deposit_stream();
 
-        producer_minimizer_file[id].close();
-    }
-
-    std::ofstream path_file(cuttlefish::_default::PATH_FILE_EXT, std::ios::out | std::ios::binary); // TODO: add ext. to o/p file name (from `Build_Params`).
-    paths.serialize(path_file);
-    // path_file.write(reinterpret_cast<const char*>(paths.data()), paths.size());  // For testing.
-    path_file.close();
-
-    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(paths.size())));
-    path_ends = new index_vector_t(bits_per_entry, path_ends_vec.size());
-    for(std::size_t i = 0; i < path_ends_vec.size(); ++i)
-        path_ends->at(i) = path_ends_vec[i];
-
-    std::ofstream path_ends_file(cuttlefish::_default::PATH_ENDS_FILE_EXT, std::ios::out | std::ios::binary); // TODO: add ext. to o/p file name (from `Build_Params`).
-    path_ends->serialize(path_ends_file);
-    path_ends_file.close();
-}
-
-
-template <uint16_t k>
-void Kmer_Index<k>::consolidate_minimizers()
-{
     // Load and sort the minimizer files' content.
     read_and_sort_minimizers();
     std::cout << "Sorted the minimizers files.\n";
@@ -105,6 +81,36 @@ void Kmer_Index<k>::consolidate_minimizers()
     // Get the offsets of each minimizer.
     get_minimizer_offsets();
     std::cout << "Gathered the minimizers' offsets.\n";
+}
+
+
+template <uint16_t k>
+void Kmer_Index<k>::close_deposit_stream()
+{
+    // Flush the buffer content.
+    for(std::size_t id = 0; id < producer_count; ++id)
+    {
+        if(!producer_path_buf[id].empty())
+            flush(id);
+
+        producer_minimizer_file[id].close();
+    }
+
+    std::ofstream path_file(cuttlefish::_default::PATH_FILE_EXT, std::ios::out | std::ios::binary); // TODO: add ext. to o/p file name (from `Build_Params`).
+    paths.serialize(path_file);
+    // path_file.write(reinterpret_cast<const char*>(paths.data()), paths.size());  // For testing.
+    path_file.close();
+
+
+    // Compact the path endpoints to just as many bits as required.
+    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(paths.size())));
+    path_ends = new index_vector_t(bits_per_entry, path_ends_vec.size());
+    for(std::size_t i = 0; i < path_ends_vec.size(); ++i)
+        path_ends->at(i) = path_ends_vec[i];
+
+    std::ofstream path_ends_file(cuttlefish::_default::PATH_ENDS_FILE_EXT, std::ios::out | std::ios::binary); // TODO: add ext. to o/p file name (from `Build_Params`).
+    path_ends->serialize(path_ends_file);
+    path_ends_file.close();
 }
 
 
