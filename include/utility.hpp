@@ -62,6 +62,12 @@ void move_file(const std::string& from_path, const std::string& to_path);
 // process in bytes. Returns `0` in case of errors encountered.
 std::size_t process_peak_memory();
 
+// Force-frees the memory allocated to the container `container`.
+template <typename T_container_>
+void force_free(T_container_& container)
+{
+    T_container_().swap(container);
+}
 
 
 #endif
