@@ -31,11 +31,14 @@ template <uint16_t k>
 class Kmer_Index
 {
     typedef cuttlefish::minimizer_t minimizer_t;
-    typedef compact::vector<uint8_t, 2> bitvector_t;
-    // typedef std::vector<char> bitvector_t;  // For testing.
+    typedef compact::vector<uint8_t, 2> path_vector_t;      // Type of the bitvector storing the path sequences.
+    typedef compact::vector<std::size_t> index_vector_t;    // Type of the bitvectors storing the index sequences, i.e. the path endpoints, minimizer instance counts and indices.
+    // typedef std::vector<char> path_vector_t; // For testing.
+
+    path_vector_t paths;    // The concatenated paths sequence.
 
     std::vector<std::size_t> path_ends_vec; // Vector with the ending indices of the paths in the concatenated sequence.
-    compact::vector<std::size_t>* path_ends;    // The ending indices of the paths in the concatenated sequence.
+    index_vector_t* path_ends;  // The ending indices of the paths in the concatenated sequence.
 
     const uint16_t l;   // Size of the l-minimizers.    // TODO: consider templatizing.
 
@@ -45,7 +48,7 @@ class Kmer_Index
     uint64_t min_count; // Number of unique minimizers.
     uint64_t max_inst_count;    // Maximum count of instances for some minimizer.
 
-    std::vector<bitvector_t> producer_path_buf; // Separate buffer for each producer, to contain their deposited paths.
+    std::vector<path_vector_t> producer_path_buf;   // Separate buffer for each producer, to contain their deposited paths.
     std::vector<std::vector<std::size_t>> producer_path_end_buf;    // Separate buffer for each producer, to contain the (exclusive) indices of the path endpoints in their deposited paths.
 
     std::vector<std::vector<Minimizer_Instance>> producer_minimizer_buf; // Separate buffer for each producer, to contain their minimizers and their offsets into the deposited paths.
@@ -61,9 +64,9 @@ class Kmer_Index
     constexpr static double gamma = 2.0;    // The gamma parameter of the BBHash algorithm.
     minimizer_mphf_t* min_mphf; // MPHF of the minimizers.
 
-    compact::vector<std::size_t>* min_instance_count;   // Count of instances per each unique minimizer.
+    index_vector_t* min_instance_count; // Count of instances per each unique minimizer.
 
-    compact::vector<std::size_t>* min_offset;   // Offsets of the instances for the unique minimizers, laid flat all together.
+    index_vector_t* min_offset; // Offsets of the instances for the unique minimizers, laid flat all together.
 
     constexpr static std::size_t buf_sz_th = 5 * 1024 * 1024;   // Threshold for the total size (in bytes) of the buffers per producer: 5 MB.
 
