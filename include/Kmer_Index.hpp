@@ -25,27 +25,27 @@
 // =============================================================================
 
 
-// A class to index the k-mers of provided sequences, potentially from many
-// producer threads, based on the k-mers' minimizers.
+// A class to index the k-mers of provided de Bruijn graph path-sequences,
+// potentially from many producer threads, based on the k-mers' minimizers.
 template <uint16_t k>
 class Kmer_Index
 {
-    typedef cuttlefish::minimizer_t minimizer_t;
+    typedef cuttlefish::minimizer_t minimizer_t;    // Minimizers can be represented using 64-bit integers.
     typedef compact::vector<uint8_t, 2> path_vector_t;      // Type of the bitvector storing the path sequences.
-    typedef compact::vector<std::size_t> index_vector_t;    // Type of the bitvectors storing the index sequences, i.e. the path endpoints, minimizer instance counts and indices.
+    typedef compact::vector<std::size_t> index_vector_t;    // Type of the bitvectors storing the index sequences, i.e. the path endpoints, minimizer instance-counts and -indices.
     // typedef std::vector<char> path_vector_t; // For testing.
 
-    path_vector_t paths;    // The concatenated paths sequence.
+    path_vector_t paths;    // The concatenated path-sequences.
 
-    std::vector<std::size_t> path_ends_vec; // Vector with the ending indices of the paths in the concatenated sequence.
+    std::vector<std::size_t> path_ends_vec; // Vector for the ending indices, possibly with many unused bits, of the paths in the concatenated sequence.
     index_vector_t* path_ends;  // The ending indices of the paths in the concatenated sequence.
 
     const uint16_t l;   // Size of the l-minimizers.    // TODO: consider templatizing.
 
     const uint16_t producer_count;  // Number of producer threads supplying the paths to the indexer.
 
-    uint64_t num_instances; // Number of minimizer instances.
-    uint64_t min_count; // Number of unique minimizers.
+    uint64_t num_instances; // Number of minimizer instances in the paths.
+    uint64_t min_count; // Number of unique minimizers in the paths.
     uint64_t max_inst_count;    // Maximum count of instances for some minimizer.
 
     std::vector<path_vector_t> producer_path_buf;   // Separate buffer for each producer, to contain their deposited paths.
@@ -53,6 +53,9 @@ class Kmer_Index
 
     std::vector<std::vector<Minimizer_Instance>> producer_minimizer_buf; // Separate buffer for each producer, to contain their minimizers and their offsets into the deposited paths.
 
+    constexpr static std::size_t buf_sz_th = 5 * 1024 * 1024;   // Threshold for the total size (in bytes) of the buffers per producer: 5 MB.
+
+    // TODO: replace with a file-manager.
     std::vector<std::ofstream> producer_minimizer_file; // Separate file for each producer, to store their minimizers' information.
 
     std::vector<Minimizer_Instance*> min_group; // Separate buffer to read in each minimizer file.
@@ -68,9 +71,7 @@ class Kmer_Index
 
     index_vector_t* min_offset; // Offsets of the instances for the unique minimizers, laid flat all together.
 
-    constexpr static std::size_t buf_sz_th = 5 * 1024 * 1024;   // Threshold for the total size (in bytes) of the buffers per producer: 5 MB.
-
-    std::size_t curr_token; // Number of tokens produced for the producers so far.
+    std::size_t curr_token; // Number of tokens generated for the producers so far.
 
     Spin_Lock lock; // Mutually-exclusive access lock for different producers.
 
@@ -145,8 +146,7 @@ private:
 
     Producer_Token(const std::size_t id): id(id) {}
 
-    std::size_t get_id() const
-    { return id; }
+    std::size_t get_id() const { return id; }
 };
 
 

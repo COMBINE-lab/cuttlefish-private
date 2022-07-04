@@ -7,6 +7,7 @@
 #include <string>
 #include <algorithm>
 #include <cmath>
+#include <cassert>
 
 
 template <uint16_t k>
@@ -27,6 +28,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count):
     min_instance_count(nullptr),
     curr_token{0}
 {
+    assert(l <= 32);
     for(uint16_t id = 0; id < producer_count; ++id)
         producer_minimizer_file[id].open(minimizer_file_path(id), std::ios::out | std::ios::binary);
 }
