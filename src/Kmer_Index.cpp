@@ -132,20 +132,23 @@ void Kmer_Index<k>::read_and_sort_minimizers()
 
     // Launch sorter threads.
     for(uint16_t id = 0; id < producer_count; ++id)
-    {
-        const auto min_buf_bytes = file_size(minimizer_file_path(id));   // What happens if it's zero?
-        min_group[id] = static_cast<Minimizer_Instance*>(std::malloc(min_buf_bytes));
+        worker.emplace_back([this](const uint16_t id)
+            {
+                const auto min_buf_bytes = file_size(minimizer_file_path(id));   // What happens if it's zero?
+                min_group[id] = static_cast<Minimizer_Instance*>(std::malloc(min_buf_bytes));
 
-        std::ifstream input(minimizer_file_path(id).c_str(), std::ios::in | std::ios::binary);
-        if(!input.read(reinterpret_cast<char*>(min_group[id]), min_buf_bytes))
-        {
-            std::cerr << "Error reading the minimizer files. Aborting.\n";
-            std::exit(EXIT_FAILURE);
-        }
+                std::ifstream input(minimizer_file_path(id).c_str(), std::ios::in | std::ios::binary);
+                if(!input.read(reinterpret_cast<char*>(min_group[id]), min_buf_bytes))
+                {
+                    std::cerr << "Error reading the minimizer files. Aborting.\n";
+                    std::exit(EXIT_FAILURE);
+                }
 
-        min_group_size[id] = min_buf_bytes / sizeof(Minimizer_Instance);
-        worker.emplace_back(std::sort<Minimizer_Instance*>, min_group[id], min_group[id] + min_group_size[id]);
-    }
+                min_group_size[id] = min_buf_bytes / sizeof(Minimizer_Instance);
+
+                std::sort(min_group[id], min_group[id] + min_group_size[id]);
+            },
+            id);
 
     // Wait for the sorting to complete.
     for(uint16_t id = 0; id < producer_count; ++id)
