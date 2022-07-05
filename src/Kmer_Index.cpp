@@ -99,10 +99,7 @@ void Kmer_Index<k>::close_deposit_stream()
         producer_minimizer_file[id].close();
     }
 
-    std::ofstream path_file(cuttlefish::_default::PATH_FILE_EXT, std::ios::out | std::ios::binary); // TODO: add ext. to o/p file name (from `Build_Params`).
-    paths.serialize(path_file);
-    // path_file.write(reinterpret_cast<const char*>(paths.data()), paths.size());  // For testing.
-    path_file.close();
+    paths.serialize(cuttlefish::_default::PATH_FILE_EXT);   // TODO: add ext. to o/p file name (from `Build_Params`).
 
     // Release memory of the concatenated paths.
     sum_paths_len = paths.size();
@@ -117,10 +114,7 @@ void Kmer_Index<k>::close_deposit_stream()
 
     force_free(path_ends_vec);
 
-    std::ofstream path_ends_file(cuttlefish::_default::PATH_ENDS_FILE_EXT, std::ios::out | std::ios::binary); // TODO: add ext. to o/p file name (from `Build_Params`).
-    path_ends->serialize(path_ends_file);
-    path_ends_file.close();
-
+    path_ends->serialize(cuttlefish::_default::PATH_ENDS_FILE_EXT); // TODO: add ext. to o/p file name (from `Build_Params`).
     path_ends->resize(0);
 }
 
@@ -272,9 +266,7 @@ void Kmer_Index<k>::count_minimizer_instances()
         min_instance_count->at(i) = (cum_count += min_instance_count->at(i));
 
     const std::string counts_file_path = "min.counts";  // TODO: placeholder for now.
-    std::ofstream counts_file(counts_file_path.c_str(), std::ios::out | std::ios::binary);
-    min_instance_count->serialize(counts_file);
-    counts_file.close();
+    min_instance_count->serialize(counts_file_path.c_str());
 }
 
 
@@ -300,9 +292,7 @@ void Kmer_Index<k>::get_minimizer_offsets()
 
 
     const std::string offsets_file_path = "min.offsets";    // TODO: placeholder for now.
-    std::ofstream offsets_file(offsets_file_path.c_str(), std::ios::out | std::ios::binary);
-    min_offset->serialize(offsets_file);
-    offsets_file.close();
+    min_offset->serialize(offsets_file_path.c_str());
 }
 
 

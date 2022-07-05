@@ -242,6 +242,13 @@ namespace compact {
                 //std::cerr << "wrote " << bytes() << " bytes of data at the end\n";
             }
 
+            void serialize(const char* const file_path) const
+            {
+                std::ofstream output(file_path, std::ios::out | std::ios::binary);
+                serialize(output);
+                output.close();
+            }
+
             void deserialize(const std::string &fname, bool mmap) {
                 std::error_code error;
                 if (mmap) {
