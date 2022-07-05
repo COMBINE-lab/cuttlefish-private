@@ -293,6 +293,12 @@ void Kmer_Index<k>::get_minimizer_offsets()
 
     const std::string offsets_file_path = "min.offsets";    // TODO: placeholder for now.
     min_offset->serialize(offsets_file_path.c_str());
+
+
+    // Release the portion of the index still in memory.
+    delete min_mphf;
+    min_instance_count->resize(0);
+    min_offset->resize(0);
 }
 
 
