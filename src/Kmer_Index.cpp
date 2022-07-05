@@ -206,6 +206,13 @@ void Kmer_Index<k>::merge_minimizers()
         dump(merged_min_buf, min_file);
 
     min_file.close();
+
+
+    // Release memory of the minimizer containers.
+    for(uint16_t id = 0; id < producer_count; ++id)
+        std::free(min_group[id]);
+
+    force_free(min_group), force_free(min_group_size);
 }
 
 
