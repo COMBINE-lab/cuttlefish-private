@@ -159,7 +159,7 @@ void Kmer_Hash_Table<k, BITS_PER_KEY>::load_hash_buckets(const std::string& file
     input.close();
 
 
-    hash_table.deserialize(file_path, false);
+    hash_table.deserialize(file_path);
 }
 
 
@@ -217,8 +217,7 @@ void Kmer_Hash_Table<k, BITS_PER_KEY>::construct(const uint16_t thread_count, co
                     " Bits per k-mer: " << static_cast<double>(total_bits) / kmer_count << ".\n";
 
     // Allocate the hash table buckets.
-    hash_table.resize(kmer_count);
-    hash_table.clear_mem();
+    hash_table.resize(kmer_count, State().code);
     std::cout << "Allocated hash table buckets for the k-mers. Total size: " <<
                 hash_table.bytes() / (1024 * 1024) << " MB.\n";
 
