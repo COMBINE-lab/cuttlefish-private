@@ -93,7 +93,7 @@ void Kmer_Index<k>::close_deposit_stream()
         if(!producer_path_buf[id].empty())
             flush(id);
 
-        producer_path_buf[id].resize(0);
+        force_free(producer_path_buf[id]);
         force_free(producer_path_end_buf[id]);
 
         producer_minimizer_file[id].close();
@@ -103,7 +103,7 @@ void Kmer_Index<k>::close_deposit_stream()
 
     // Release memory of the concatenated paths.
     sum_paths_len = paths.size();
-    paths.resize(0);
+    force_free(paths);
 
 
     // Compact the path endpoints to just as many bits as required.
@@ -117,7 +117,7 @@ void Kmer_Index<k>::close_deposit_stream()
     force_free(path_ends_vec);
 
     p_end.serialize(cuttlefish::_default::PATH_ENDS_FILE_EXT); // TODO: add ext. to o/p file name (from `Build_Params`).
-    p_end.resize(0);
+    force_free(p_end);
 }
 
 
@@ -298,8 +298,8 @@ void Kmer_Index<k>::get_minimizer_offsets()
 
     // Release the portion of the index still in memory.
     delete min_mphf;
-    mi_count.resize(0);
-    m_offset.resize(0);
+    force_free(mi_count);
+    force_free(m_offset);
 }
 
 
