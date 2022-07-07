@@ -288,11 +288,12 @@ void Kmer_Index<k>::get_minimizer_offsets()
     offsets.reserve(max_inst_count);
 
     auto& mi_count = *min_instance_count;
+    auto& m_offset = *min_offset;
     while(min_inst_iter.next(min, offsets))
     {
         const std::size_t meta_idx = mi_count[hash(min) - 1];
         for(std::size_t i = 0; i < offsets.size(); ++i)
-            mi_count[meta_idx + i] = offsets[i];
+            m_offset[meta_idx + i] = offsets[i];
     }
 
 
