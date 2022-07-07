@@ -65,6 +65,12 @@ protected:
 
 public:
 
+  vector():
+    m_size(0),
+    m_capacity(0),
+    m_mem(nullptr)
+  {}
+
   vector(vector &&rhs)
     : m_allocator(std::move(rhs.m_allocator))
     , m_size(rhs.m_size)
@@ -189,6 +195,25 @@ public:
     m_size = n;
   }
   inline void resize (size_t n) { resize(n, IDX()); }
+
+  inline void shrink_to_fit()
+  {
+    W* const new_mem = allocate(m_size);
+    std::copy(m_mem, m_mem + elements_to_words(m_size, bits()), new_mem);
+
+    deallocate(m_mem, m_capacity);
+
+    m_mem = new_mem;
+    m_capacity = m_size;
+  }
+
+  inline void swap(vector& rhs)
+  {
+    std::swap(m_allocator, rhs.m_allocator);
+    std::swap(m_mem, rhs.m_mem);
+    std::swap(m_size, rhs.m_size);
+    std::swap(m_capacity, rhs.m_capacity);
+  }
 
   inline iterator erase (const_iterator position) { return erase(position, position + 1); }
   iterator erase (const_iterator first, const_iterator last) {
