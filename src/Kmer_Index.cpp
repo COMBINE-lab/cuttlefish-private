@@ -110,8 +110,9 @@ void Kmer_Index<k>::close_deposit_stream()
     const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len)));
     assert(bits_per_entry > 0);
     path_ends = new index_vector_t(bits_per_entry, path_ends_vec.size());
+    auto& p_end = *path_ends;
     for(std::size_t i = 0; i < path_ends_vec.size(); ++i)
-        path_ends->at(i) = path_ends_vec[i];
+        p_end[i] = path_ends_vec[i];
 
     force_free(path_ends_vec);
 
@@ -253,18 +254,20 @@ void Kmer_Index<k>::count_minimizer_instances()
     minimizer_t min;
     std::size_t count;
 
+    auto& mi_count = *min_instance_count;
     while(min_inst_iter.next(min, count))
     {
-        min_instance_count->at(hash(min)) = count;
+        mi_count[hash(min)] = count;
         if(max_inst_count < count)
             max_inst_count = count;
     }
 
     std::cout << "Maximum instance count of a minimizer: " << max_inst_count << ".\n";
 
-    uint64_t cum_count = (min_instance_count->at(0) = 0);
+    // Transform the instance counts to cumulative counts, ordered per the minimizers' hash.
+    uint64_t cum_count = (mi_count[0] = 0);
     for(std::size_t i = 1; i <= min_count; ++i)
-        min_instance_count->at(i) = (cum_count += min_instance_count->at(i));
+        mi_count[i] = (cum_count += mi_count[i]);
 
     const std::string counts_file_path = "min.counts";  // TODO: placeholder for now.
     min_instance_count->serialize(counts_file_path.c_str());
@@ -284,11 +287,12 @@ void Kmer_Index<k>::get_minimizer_offsets()
     std::vector<std::size_t> offsets;
     offsets.reserve(max_inst_count);
 
+    auto& mi_count = *min_instance_count;
     while(min_inst_iter.next(min, offsets))
     {
-        const std::size_t meta_idx = min_instance_count->at(hash(min) - 1);
+        const std::size_t meta_idx = mi_count[hash(min) - 1];
         for(std::size_t i = 0; i < offsets.size(); ++i)
-            min_offset->at(meta_idx + i) = offsets[i];
+            mi_count[meta_idx + i] = offsets[i];
     }
 
 
