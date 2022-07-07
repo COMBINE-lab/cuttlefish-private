@@ -1,5 +1,6 @@
 
 #include "Kmer_Index.hpp"
+#include "Sparse_Lock.hpp"
 #include "Minimizer_Instance_Merger.hpp"
 #include "Input_Defaults.hpp"
 #include "utility.hpp"
@@ -244,19 +245,56 @@ void Kmer_Index<k>::count_minimizer_instances()
     min_instance_count = new min_vector_t(bits_per_entry, min_count + 1);
 
     std::FILE* const min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
-    Minimizer_Instance_Iterator<FILE*> min_inst_iter(min_file);
-    minimizer_t min;
-    std::size_t count;
+    Minimizer_Instance_Iterator<std::FILE*> min_inst_iter(min_file);
+    constexpr std::size_t min_buf_sz = 5U * 1024U * 1024U / sizeof(Minimizer_Instance); // Minimizer instance chunk size, in elements: 5 MB total.
 
-    auto& mi_count = *min_instance_count;
-    while(min_inst_iter.next(min, count))
+    std::vector<std::thread> worker;
+    Sparse_Lock<Spin_Lock> idx_lock(min_count + 1, idx_lock_count);
+    std::vector<std::size_t> max_count(producer_count);
+
+    for(uint16_t t = 0; t < producer_count; ++t)
+        worker.emplace_back(
+            [this, &min_inst_iter, &idx_lock](std::size_t& max_c)
+            {
+                Minimizer_Instance* min_chunk = static_cast<Minimizer_Instance*>(std::malloc(min_buf_sz * sizeof(Minimizer_Instance)));
+                std::size_t buf_elem_count;
+                uint64_t h;
+                std::size_t count;
+                auto& mi_count = *min_instance_count;
+
+                max_c = 0;
+                while((buf_elem_count = min_inst_iter.next(min_chunk, min_buf_sz)) != 0)
+                    for(std::size_t idx = 0; idx < buf_elem_count; ++idx)
+                    {
+                        h = hash(min_chunk[idx].minimizer());
+
+                        idx_lock.lock(h);
+                        count = mi_count[h] = mi_count[h] + 1;
+                        idx_lock.unlock(h);
+
+                        if(max_c < count)
+                            max_c = count;
+                    }
+
+                std::free(min_chunk);
+            },
+            std::ref(max_count[t]));
+
+    for(uint16_t t = 0; t < producer_count; ++t)
     {
-        mi_count[hash(min)] = count;
-        if(max_inst_count < count)
-            max_inst_count = count;
+        if(!worker[t].joinable())
+        {
+            std::cerr << "Early termination encountered for some worker thread. Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        worker[t].join();
+        if(max_inst_count < max_count[t])
+            max_inst_count = max_count[t];
     }
 
     std::cout << "Maximum instance count of a minimizer: " << max_inst_count << ".\n";
+
 
     // Transform the instance counts to cumulative counts, ordered per the minimizers' hash.
     auto& mi_count = *min_instance_count;

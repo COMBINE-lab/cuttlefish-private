@@ -76,6 +76,7 @@ class Kmer_Index
     std::size_t curr_token; // Number of tokens generated for the producers so far.
 
     Spin_Lock lock; // Mutually-exclusive access lock for different producers.
+    constexpr static std::size_t idx_lock_count = 65536;    // Number of locks in the sparse-locks used in various steps.
 
     std::vector<std::thread> worker;    // Worker threads.
 
