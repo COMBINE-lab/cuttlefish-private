@@ -349,6 +349,10 @@ public:
   typedef size_t                                size_type;
   typedef W                                     word_type;
 
+  explicit vector_dyn(): super(),
+    m_bits(0)
+  {}
+
   vector_dyn(unsigned b, size_t s, Allocator allocator = Allocator())
     : super(b, s, allocator)
     , m_bits(b)
@@ -439,6 +443,9 @@ public:
   typedef size_t                                size_type;
   typedef W                                     word_type;
 
+  explicit vector(): super()
+  {}
+
   vector(unsigned b, size_t s, Allocator allocator = Allocator())
     : super(b, s, allocator)
   {
@@ -501,6 +508,9 @@ public:
   typedef ptrdiff_t                             difference_type;
   typedef size_t                                size_type;
   typedef W                                     word_type;
+
+  explicit ts_vector(): super()
+  {}
 
   ts_vector(unsigned b, size_t s, Allocator allocator = Allocator())
     : super(b, s, allocator)
