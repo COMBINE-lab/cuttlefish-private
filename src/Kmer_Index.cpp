@@ -109,7 +109,7 @@ void Kmer_Index<k>::close_deposit_stream()
     // Compact the path endpoints to just as many bits as required.
     const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len)));
     assert(bits_per_entry > 0);
-    path_ends = new index_vector_t(bits_per_entry, path_ends_vec.size());
+    path_ends = new path_end_vector_t(bits_per_entry, path_ends_vec.size());
     auto& p_end = *path_ends;
     for(std::size_t i = 0; i < path_ends_vec.size(); ++i)
         p_end[i] = path_ends_vec[i];
@@ -247,7 +247,7 @@ void Kmer_Index<k>::count_minimizer_instances()
 {
     const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(num_instances)));
     assert(bits_per_entry > 0);
-    min_instance_count = new index_vector_t(bits_per_entry, min_count + 1);
+    min_instance_count = new min_vector_t(bits_per_entry, min_count + 1);
 
     std::FILE* const min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
     Minimizer_Instance_Iterator<FILE*> min_inst_iter(min_file);
@@ -279,7 +279,7 @@ void Kmer_Index<k>::get_minimizer_offsets()
 {
     const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len)));
     assert(bits_per_entry > 0);
-    min_offset = new index_vector_t(bits_per_entry, num_instances);
+    min_offset = new min_vector_t(bits_per_entry, num_instances);
 
     std::FILE* const min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
     Minimizer_Instance_Iterator<FILE*> min_inst_iter(min_file);

@@ -32,13 +32,14 @@ class Kmer_Index
 {
     typedef cuttlefish::minimizer_t minimizer_t;    // Minimizers can be represented using 64-bit integers.
     typedef compact::vector<uint8_t, 2> path_vector_t;      // Type of the bitvector storing the path sequences.
-    typedef compact::vector<std::size_t> index_vector_t;    // Type of the bitvectors storing the index sequences, i.e. the path endpoints, minimizer instance-counts and -indices.
+    typedef compact::vector<std::size_t> path_end_vector_t; // Type of the bitvector storing the path endpoints.
+    typedef compact::ts_vector<std::size_t> min_vector_t;   // Type of the bitvectors storing the minimizer instance-counts and -indices.
     // typedef std::vector<char> path_vector_t; // For testing.
 
     path_vector_t paths;    // The concatenated path-sequences.
 
     std::vector<std::size_t> path_ends_vec; // Vector for the ending indices, possibly with many unused bits, of the paths in the concatenated sequence.
-    index_vector_t* path_ends;  // The ending indices of the paths in the concatenated sequence.
+    path_end_vector_t* path_ends;   // The ending indices of the paths in the concatenated sequence.
 
     const uint16_t l;   // Size of the l-minimizers.    // TODO: consider templatizing.
 
@@ -68,9 +69,9 @@ class Kmer_Index
     constexpr static double gamma = 2.0;    // The gamma parameter of the BBHash algorithm.
     minimizer_mphf_t* min_mphf; // MPHF of the minimizers.
 
-    index_vector_t* min_instance_count; // Count of instances per each unique minimizer.
+    min_vector_t* min_instance_count;   // Count of instances per each unique minimizer.
 
-    index_vector_t* min_offset; // Offsets of the instances for the unique minimizers, laid flat all together.
+    min_vector_t* min_offset;   // Offsets of the instances for the unique minimizers, laid flat all together.
 
     std::size_t curr_token; // Number of tokens generated for the producers so far.
 
