@@ -116,8 +116,8 @@ void Kmer_Index<k>::close_deposit_stream()
 
     force_free(path_ends_vec);
 
-    path_ends->serialize(cuttlefish::_default::PATH_ENDS_FILE_EXT); // TODO: add ext. to o/p file name (from `Build_Params`).
-    path_ends->resize(0);
+    p_end.serialize(cuttlefish::_default::PATH_ENDS_FILE_EXT); // TODO: add ext. to o/p file name (from `Build_Params`).
+    p_end.resize(0);
 }
 
 
@@ -225,12 +225,6 @@ void Kmer_Index<k>::construct_minimizer_mphf()
 
     const std::string mphf_file_path = "min.mphf";  // TODO: placeholder for now.
     std::ofstream output(mphf_file_path.c_str(), std::ofstream::out);
-    if(output.fail())
-    {
-        std::cerr << "Error writing to file " << mphf_file_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-
     min_mphf->save(output);
     output.close();
 
@@ -265,12 +259,13 @@ void Kmer_Index<k>::count_minimizer_instances()
     std::cout << "Maximum instance count of a minimizer: " << max_inst_count << ".\n";
 
     // Transform the instance counts to cumulative counts, ordered per the minimizers' hash.
+    auto& mi_count = *min_instance_count;
     uint64_t cum_count = (mi_count[0] = 0);
     for(std::size_t i = 1; i <= min_count; ++i)
         mi_count[i] = (cum_count += mi_count[i]);
 
     const std::string counts_file_path = "min.counts";  // TODO: placeholder for now.
-    min_instance_count->serialize(counts_file_path.c_str());
+    mi_count.serialize(counts_file_path.c_str());
 }
 
 
@@ -298,13 +293,13 @@ void Kmer_Index<k>::get_minimizer_offsets()
 
 
     const std::string offsets_file_path = "min.offsets";    // TODO: placeholder for now.
-    min_offset->serialize(offsets_file_path.c_str());
+    m_offset.serialize(offsets_file_path.c_str());
 
 
     // Release the portion of the index still in memory.
     delete min_mphf;
-    min_instance_count->resize(0);
-    min_offset->resize(0);
+    mi_count.resize(0);
+    m_offset.resize(0);
 }
 
 
