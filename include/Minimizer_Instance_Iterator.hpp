@@ -5,6 +5,7 @@
 
 
 #include "Minimizer_Instance.hpp"
+#include "Spin_Lock.hpp"
 
 #include <cstddef>
 #include <cstring>
@@ -79,6 +80,8 @@ private:
 
     Minimizer_Instance elem;    // Current instance to process.
 
+    Spin_Lock lock; // Mutually-exclusive access lock for the consumers.
+
 
     // Sets the file pointer `file_ptr` appropriately at the `pos`'th indexed
     // minimizer instance in the file.
@@ -132,6 +135,11 @@ public:
     template <typename T_satellite_>
     bool next(cuttlefish::minimizer_t& min, T_satellite_& count);
 
+    // Tries to read in at most `buf_sz` minimizer instances into `buf`.
+    // Returns the number of elements read, which is 0 in case when the EOF has
+    // been reached. It is thread-safe.
+    std::size_t next(Minimizer_Instance* buf, std::size_t buf_sz);
+
     // Dummy methods.
     void launch_production() {}
     bool launched() { return true; }
@@ -173,7 +181,7 @@ inline bool Minimizer_Instance_Iterator<std::FILE*>::operator!=(const Minimizer_
 
 
 template <>
-inline bool Minimizer_Instance_Iterator<FILE*>::next<std::size_t>(cuttlefish::minimizer_t& min, std::size_t& count)
+inline bool Minimizer_Instance_Iterator<std::FILE*>::next<std::size_t>(cuttlefish::minimizer_t& min, std::size_t& count)
 {
     if(file_ptr == nullptr)
         return false;
@@ -194,7 +202,7 @@ inline bool Minimizer_Instance_Iterator<FILE*>::next<std::size_t>(cuttlefish::mi
 
 
 template <>
-inline bool Minimizer_Instance_Iterator<FILE*>::next<std::vector<std::size_t>>(cuttlefish::minimizer_t& min, std::vector<std::size_t>& offsets)
+inline bool Minimizer_Instance_Iterator<std::FILE*>::next<std::vector<std::size_t>>(cuttlefish::minimizer_t& min, std::vector<std::size_t>& offsets)
 {
     if(file_ptr == nullptr)
         return false;
@@ -211,6 +219,25 @@ inline bool Minimizer_Instance_Iterator<FILE*>::next<std::vector<std::size_t>>(c
     }
 
     return true;
+}
+
+
+inline std::size_t Minimizer_Instance_Iterator<std::FILE*>::next(Minimizer_Instance* const buf, const std::size_t buf_sz)
+{
+    if(file_ptr == nullptr)
+        return 0;
+
+    lock.lock();
+
+    const std::size_t buf_elem_count = std::fread(static_cast<void*>(buf), sizeof(Minimizer_Instance), buf_sz, file_ptr);
+    if(buf_elem_count == 0)
+        file_ptr = nullptr;
+
+    pos += buf_elem_count;
+
+    lock.unlock();
+
+    return buf_elem_count;
 }
 
 
