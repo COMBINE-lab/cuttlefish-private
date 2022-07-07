@@ -65,12 +65,6 @@ protected:
 
 public:
 
-  vector():
-    m_size(0),
-    m_capacity(0),
-    m_mem(nullptr)
-  {}
-
   vector(vector &&rhs)
     : m_allocator(std::move(rhs.m_allocator))
     , m_size(rhs.m_size)
