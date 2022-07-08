@@ -45,6 +45,7 @@ class Kmer_Index
 
     const uint16_t producer_count;  // Number of producer threads supplying the paths to the indexer.
 
+    std::size_t path_count; // Number of paths deposited to the sequence.
     std::size_t sum_paths_len;  // Sum length of all the path-sequences.
     uint64_t num_instances; // Number of minimizer instances in the paths.
     uint64_t min_count; // Number of unique minimizers in the paths.
