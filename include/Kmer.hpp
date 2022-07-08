@@ -157,6 +157,9 @@ public:
     // `n_{k - 1} ... n_1 n_0`, this is the base `n_0`.
     DNA::Base back() const;
 
+    // Returns the binary data of the k-mer.
+    const uint64_t* data() const;
+
     // Returns `true` iff the k-mer is in the forward direction relative to
     // the other k-mer `kmer_hat`.
     bool in_forward(const Kmer<k>& kmer_hat) const;
@@ -565,6 +568,13 @@ inline DNA::Base Kmer<k>::back() const
     constexpr uint64_t mask_LSN = static_cast<uint64_t>(0b11);
 
     return DNA::Base(kmer_data[0] & mask_LSN);
+}
+
+
+template <uint16_t k>
+inline const uint64_t* Kmer<k>::data() const
+{
+    return kmer_data;
 }
 
 

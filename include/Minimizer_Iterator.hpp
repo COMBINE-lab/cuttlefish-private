@@ -5,6 +5,7 @@
 
 
 #include "DNA_Utility.hpp"
+#include "Kmer.hpp"
 #include "globals.hpp"
 #include "xxHash/xxh3.h"
 
@@ -61,6 +62,10 @@ public:
     // Returns the hash value of the l-mer `lmer`.
     static uint64_t hash(cuttlefish::minimizer_t lmer);
 
+    // Extracts the minimizer of the k-mer `kmer` into `min,` and its index
+    // into `idx`.
+    template <uint16_t K>
+    static void get_minimizer(const Kmer<K>& kmer, const uint16_t l, cuttlefish::minimizer_t& min, std::size_t& idx);
 };
 
 
@@ -187,6 +192,31 @@ inline bool Minimizer_Iterator::Lmer_Tuple::operator<(const Lmer_Tuple& rhs) con
         return false;
 
     return index < rhs.index;
+}
+
+
+template <uint16_t K>
+inline void Minimizer_Iterator::get_minimizer(const Kmer<K>& kmer, const uint16_t l, cuttlefish::minimizer_t& min, std::size_t& idx)
+{
+    const uint64_t* const kmer_data = kmer.data();
+
+    const minimizer_t last_lmer = kmer_data[0] & ((uint64_t(0b1) << (2 * l)) - 1);  // The last l-mer in `kmer`.
+    Lmer_Tuple curr_lmer(last_lmer, K - l, hash(last_lmer));
+    Lmer_Tuple min_lmer(curr_lmer);
+
+    uint64_t base;
+    for(std::size_t i = l; i < K; ++i)  // Backward scan of l-mers in `kmer`. Yes, backwards.
+    {
+        base = (kmer_data[i >> 5] >> (2 * (i & 31))) & uint64_t(0b11);
+        curr_lmer.lmer = (curr_lmer.lmer >> 2) | (base << (2 * (l - 1)));
+        curr_lmer.index--;
+        curr_lmer.hash = hash(curr_lmer.lmer);
+
+        if(curr_lmer < min_lmer)
+            min_lmer = curr_lmer;
+    }
+
+    min = min_lmer.lmer, idx = min_lmer.index;
 }
 
 
