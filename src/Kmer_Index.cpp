@@ -315,29 +315,61 @@ void Kmer_Index<k>::get_minimizer_offsets()
     min_offset = new min_vector_t(bits_per_entry, num_instances);
 
     std::FILE* const min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
-    Minimizer_Instance_Iterator<FILE*> min_inst_iter(min_file);
-    minimizer_t min;
-    std::vector<std::size_t> offsets;
-    offsets.reserve(max_inst_count);
+    Minimizer_Instance_Iterator<std::FILE*> min_inst_iter(min_file);
+    constexpr std::size_t min_buf_sz = 5U * 1024U * 1024U / sizeof(Minimizer_Instance); // Minimizer instance chunk size, in elements: 5 MB total.
 
-    auto& mi_count = *min_instance_count;
-    auto& m_offset = *min_offset;
-    while(min_inst_iter.next(min, offsets))
+    std::vector<std::thread> worker;
+    Sparse_Lock<Spin_Lock> idx_lock(min_count, idx_lock_count);
+
+    for(uint16_t t = 0; t < producer_count; ++t)
+        worker.emplace_back(
+            [this, &min_inst_iter, &idx_lock]()
+            {
+                Minimizer_Instance* min_chunk = static_cast<Minimizer_Instance*>(std::malloc(min_buf_sz * sizeof(Minimizer_Instance)));
+                std::size_t buf_elem_count;
+                uint64_t h;
+                std::size_t offset;
+                auto& mi_count = *min_instance_count;
+                auto& m_offset = *min_offset;
+
+                while((buf_elem_count = min_inst_iter.next(min_chunk, min_buf_sz)) != 0)
+                    for(std::size_t idx = 0; idx < buf_elem_count; ++idx)
+                    {
+                        h = hash(min_chunk[idx].minimizer()) - 1;
+
+                        // Tracking the next offsets to put the minimizers' offsets, within `min_instance_count` in-place,
+                        // transforms it by sliding it one index to the left. That is, now, `min_instance_count[MPH(min)]`
+                        // has the prefix-sum, opposed to the index `MPH(min) + 1` as earlier.
+                        idx_lock.lock(h);
+                        offset = mi_count[h];
+                        mi_count[h] = offset + 1;
+                        idx_lock.unlock(h);
+
+                        m_offset[offset] = min_chunk[idx].offset();
+                    }
+            }
+        );
+
+    for(uint16_t t = 0; t < producer_count; ++t)
     {
-        const std::size_t meta_idx = mi_count[hash(min) - 1];
-        for(std::size_t i = 0; i < offsets.size(); ++i)
-            m_offset[meta_idx + i] = offsets[i];
+        if(!worker[t].joinable())
+        {
+            std::cerr << "Early termination encountered for some worker thread. Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        worker[t].join();
     }
 
 
     const std::string offsets_file_path = "min.offsets";    // TODO: placeholder for now.
-    m_offset.serialize(offsets_file_path.c_str());
+    min_offset->serialize(offsets_file_path.c_str());
 
 
     // Release the portion of the index still in memory.
     delete min_mphf;
-    force_free(mi_count);
-    force_free(m_offset);
+    force_free(*min_instance_count);
+    force_free((*min_offset));
 }
 
 
