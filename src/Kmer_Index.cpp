@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cassert>
+#include <chrono>
 
 
 template <uint16_t k>
@@ -57,31 +58,43 @@ const typename Kmer_Index<k>::Producer_Token Kmer_Index<k>::get_token()
 template <uint16_t k>
 void Kmer_Index<k>::index()
 {
+    typedef std::chrono::high_resolution_clock::time_point time_point_t;
+    constexpr auto now = std::chrono::high_resolution_clock::now;
+    constexpr auto duration = [](const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
+
     // Dump the remaining in-memory content to disk.
     close_deposit_stream();
+    std::cout << "Closed the sequence deposit stream.\n";
+    const time_point_t t_deposit = now();
 
     // Load and sort the minimizer files' content.
     read_and_sort_minimizers();
-    std::cout << "Sorted the minimizers files.\n";
+    const time_point_t t_sort = now();
+    std::cout << "Read and sorted the minimizers files. Time taken = " << duration(t_sort - t_deposit) << " seconds.\n";
 
     // Multiway-merge the minimizer instances.
     merge_minimizers();
-    std::cout << "Merged the minimizers files.\n";
+    const time_point_t t_merge = now();
+    std::cout << "Merged the minimizers files. Time taken = " << duration(t_merge - t_sort) << " seconds.\n";
 
     // Construct an MPHF over the unique minimizers.
     construct_minimizer_mphf();
     const uint64_t total_bits = min_mphf->totalBitSize();
-    std::cout <<    "Constructed the minimizer-MPHF.\n"
-                    "Total size: " << total_bits / (8 * 1024) << " KB."
+    std::cout <<    "For the minimizer-MPHF:\n"
+                    "\tTotal size: " << total_bits / (8U * 1024U * 1024U) << " MB."
                     " Bits per k-mer: " << static_cast<double>(total_bits) / min_count << ".\n";
+    const time_point_t t_mphf = now();
+    std::cout << "Constructed the minimizer-MPHF. Time taken = " << duration(t_mphf - t_merge) << " seconds.\n";
 
     // Count the instances per minimizer.
     count_minimizer_instances();
-    std::cout << "Gathered the minimizers' instance-counts.\n";
+    const time_point_t t_count = now();
+    std::cout << "Counted the minimizer instances. Time taken = " << duration(t_count - t_mphf) << " seconds.\n";
 
     // Get the offsets of each minimizer.
     get_minimizer_offsets();
-    std::cout << "Gathered the minimizers' offsets.\n";
+    const time_point_t t_off = now();
+    std::cout << "Gathered the minimizer instances' offsets. Time taken = " << duration(t_off - t_count) << " seconds.\n";
 }
 
 
