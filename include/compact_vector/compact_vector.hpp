@@ -262,6 +262,41 @@ public:
   static constexpr unsigned used_bits() { return UB; }
   static constexpr bool thread_safe() { return TS; }
 
+  // Extracts `count` number of values, packed together as a single unit of type `T_`,
+  // staring from the `from_idx`'th index in the vector.
+  template <typename T_>
+  T_ get_int(const std::size_t from_idx, const std::size_t count) const
+  {
+    assert(count * bits() <= sizeof(T_) * 8); // Must fit in `T_`.
+    assert(from_idx + count <= size()); // Must not overflow the vector.
+
+    const std::size_t bit_count = count * bits(); // Count of bits to extract.
+    T_ val = 0; // Value to be extracted.
+
+    constexpr std::size_t bits_per_wrd = bitsof<W>::val;  // Bits per bitvector word.
+    std::size_t bit_idx = from_idx * bits();  // Index of the bit to start extraction from.
+    std::size_t wrd_idx = bit_idx / bits_per_wrd;  // Current word index.
+    std::size_t bits_extracted = 0; // Count of bits extracted.
+
+    std::size_t bits_trailing, bits_leading, bits_to_extract; // Counts of various types of bits, per word in the vector.
+    W wrd_blk;  // The block of bits to extract from each word.
+    while(bits_extracted < bit_count)
+    {
+      bits_trailing = bit_idx & (bits_per_wrd - 1); // i.e. bit_idx % bits_per_wrd
+      bits_to_extract = std::min(bit_count - bits_extracted, bits_per_wrd - bits_trailing);
+      bits_leading = bits_per_wrd - (bits_trailing + bits_to_extract);
+
+      wrd_blk = (m_mem[wrd_idx] << bits_leading) >> (bits_leading + bits_trailing); // Clear not-required bits.
+      val |= (wrd_blk << bits_extracted);
+      bits_extracted += bits_to_extract;
+
+      wrd_idx++;
+      bit_idx += bits_to_extract;
+    }
+
+    return val;
+  }
+
   void serialize(std::ofstream &of) const {
     uint64_t static_flag = (static_bits() == bits()) ? 1 : 0;
     of.write(reinterpret_cast<char *>(&static_flag), sizeof(static_flag));
