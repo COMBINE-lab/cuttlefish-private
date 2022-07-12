@@ -20,6 +20,7 @@ inline bool Kmer_Index<k>::validate(const std::string& file_path)
     const auto token = kmer_index.get_token();
 
     std::unordered_map<cuttlefish::minimizer_t, std::vector<std::size_t>> M;    // The minimizer table.
+    std::size_t inst_count = 0;
 
     while(parser.read_next_seq())
     {
@@ -55,6 +56,7 @@ inline bool Kmer_Index<k>::validate(const std::string& file_path)
             if(abs_min_idx != last_min_idx)
             {
                 M[min_lmer.as_int()].emplace_back(abs_min_idx);
+                inst_count++;
                 last_min_idx = abs_min_idx;
             }
         }
