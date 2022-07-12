@@ -155,6 +155,12 @@ public:
     // Indexes the deposited path-sequences. Should only be invoked after all the
     // sequences to be indexed have been deposited.
     void index();
+
+    // Validates the indexing algorithm by constructing an index naively for the
+    // sequences at the file `seq_path` and validating the index constructed by
+    // the algorithm against the naive index. Indexing is over `l`-minimizers.
+    template <uint16_t l>
+    static bool validate(const std::string& file_path);
 };
 
 
