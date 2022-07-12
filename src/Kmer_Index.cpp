@@ -257,7 +257,7 @@ void Kmer_Index<k>::construct_minimizer_mphf()
 template <uint16_t k>
 void Kmer_Index<k>::count_minimizer_instances()
 {
-    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(num_instances)));
+    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(num_instances + 1)));
     assert(bits_per_entry > 0);
     min_instance_count = new min_vector_t(bits_per_entry, min_count + 1);
     min_instance_count->clear_mem();
@@ -328,7 +328,7 @@ void Kmer_Index<k>::count_minimizer_instances()
 template <uint16_t k>
 void Kmer_Index<k>::get_minimizer_offsets()
 {
-    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len)));
+    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len))); // The path-sequence is 0-indexed—no need for +1.
     assert(bits_per_entry > 0);
     min_offset = new min_vector_t(bits_per_entry, num_instances);
 
