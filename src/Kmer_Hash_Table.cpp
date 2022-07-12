@@ -241,9 +241,8 @@ void Kmer_Hash_Table<k, BITS_PER_KEY>::clear()
 
     mph = NULL;
 
-    
-    // hash_table.clear();
-    hash_table.resize(0);
+
+    force_free(hash_table);
 }
 
 
