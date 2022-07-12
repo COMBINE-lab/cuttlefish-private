@@ -1,5 +1,9 @@
 
 #include "Kmer_Index.hpp"
+#include "Ref_Parser.hpp"
+
+#include <vector>
+#include <unordered_map>
 
 
 template <uint16_t k>

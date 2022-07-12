@@ -15,6 +15,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <string>
 #include <vector>
 #include <fstream>
 #include <iostream>
@@ -141,7 +142,8 @@ public:
 
     // Constructs a k-mer indexer that will index sequences produced from at
     // most `producer_count` producers, based on the k-mers' `l`-minimizers.
-    Kmer_Index(uint16_t l, uint16_t producer_count);
+    // Retains the index into memory after construction if `retain` is `true`.
+    Kmer_Index(uint16_t l, uint16_t producer_count, bool retain);
 
     class Producer_Token;
 
