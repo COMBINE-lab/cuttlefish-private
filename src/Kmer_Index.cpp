@@ -13,7 +13,7 @@
 
 
 template <uint16_t k>
-Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count):
+Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const bool retain):
     // TODO: reserve space for `paths`, preferably from additional k-mer count field
     l(l),
     producer_count(producer_count),
@@ -29,6 +29,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count):
     min_mphf(nullptr),
     min_instance_count(nullptr),
     min_offset(nullptr),
+    retain(retain),
     curr_token{0}
 {
     assert(l <= 32);
@@ -115,9 +116,10 @@ void Kmer_Index<k>::close_deposit_stream()
 
     paths.serialize(cuttlefish::_default::PATH_FILE_EXT);   // TODO: add ext. to o/p file name (from `Build_Params`).
 
-    // Release memory of the concatenated paths.
+    // Release memory of the concatenated paths if required.
     sum_paths_len = paths.size();
-    force_free(paths);
+    if(!retain)
+        force_free(paths);
 
 
     // Compact the path endpoints to just as many bits as required.
@@ -132,7 +134,8 @@ void Kmer_Index<k>::close_deposit_stream()
     force_free(path_ends_vec);
 
     p_end.serialize(cuttlefish::_default::PATH_ENDS_FILE_EXT); // TODO: add ext. to o/p file name (from `Build_Params`).
-    force_free(p_end);
+    if(!retain)
+        force_free(p_end);
 }
 
 
@@ -380,10 +383,13 @@ void Kmer_Index<k>::get_minimizer_offsets()
     min_offset->serialize(offsets_file_path.c_str());
 
 
-    // Release the portion of the index still in memory.
-    delete min_mphf;
-    force_free(*min_instance_count);
-    force_free((*min_offset));
+    // Release the portion of the index still in memory if required.
+    if(!retain)
+    {
+        delete min_mphf;
+        force_free(*min_instance_count);
+        force_free((*min_offset));
+    }
 }
 
 

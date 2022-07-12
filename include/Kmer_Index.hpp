@@ -74,6 +74,8 @@ class Kmer_Index
 
     min_vector_t* min_offset;   // Offsets of the instances for the unique minimizers, laid flat all together.
 
+    const bool retain;  // Whether to retain the index in memory after construction.
+
     std::size_t curr_token; // Number of tokens generated for the producers so far.
 
     Spin_Lock lock; // Mutually-exclusive access lock for different producers.
