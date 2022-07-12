@@ -260,6 +260,7 @@ void Kmer_Index<k>::count_minimizer_instances()
     const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(num_instances)));
     assert(bits_per_entry > 0);
     min_instance_count = new min_vector_t(bits_per_entry, min_count + 1);
+    min_instance_count->clear_mem();
 
     std::FILE* const min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
     Minimizer_Instance_Iterator<std::FILE*> min_inst_iter(min_file);
