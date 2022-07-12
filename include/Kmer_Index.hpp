@@ -117,6 +117,20 @@ class Kmer_Index
     // remaining content to disk.
     void close_deposit_stream();
 
+    // Binary searches for the maximum rightmost value in the container
+    // `container` within the index range `[left, right]` (both ends inclusive)
+    // that is at most as `val`. If such a value exists, returns its index.
+    // Otherwise, returns `left - 1`.
+    template <typename T_container_>
+    static int64_t lower_bound(const T_container_& container, int64_t left, int64_t right, typename T_container_::value_type val);
+
+    // Binary searches for the minimum leftmost value in the container
+    // `container` within the index range `[left, right]` (both ends inclusive)
+    // that is larger than `val`. If such a value exists, returns its index.
+    // Otherwise, returns `right + 1`.
+    template <typename T_container_>
+    static int64_t upper_bound(const T_container_& container, int64_t left, int64_t right, typename T_container_::value_type val);
+
 public:
 
     // Constructs a k-mer indexer that will index sequences produced from at
@@ -262,6 +276,50 @@ template <uint16_t k>
 inline uint64_t Kmer_Index<k>::hash(const cuttlefish::minimizer_t min) const
 {
     return min_mphf->lookup(min) + 1;
+}
+
+
+template <uint16_t k>
+template <typename T_container_>
+inline int64_t Kmer_Index<k>::lower_bound(const T_container_& container, int64_t left, int64_t right, const typename T_container_::value_type val)
+{
+    int64_t mid, result = left - 1;
+
+    while(left <= right)
+    {
+        mid = (left + right) >> 1;
+        if(container[mid] > val)
+            right = mid - 1;
+        else
+        {
+            result = mid;
+            left = mid + 1;
+        }
+    }
+
+    return result;
+}
+
+
+template <uint16_t k>
+template <typename T_container_>
+inline int64_t Kmer_Index<k>::upper_bound(const T_container_& container, int64_t left, int64_t right, const typename T_container_::value_type val)
+{
+    int64_t mid, result = right + 1;
+
+    while(left <= right)
+    {
+        mid = (left + right) >> 1;
+        if(container[mid] <= val)
+            left = mid + 1;
+        else
+        {
+            result = mid;
+            right = mid - 1;
+        }
+    }
+
+    return result;
 }
 
 
