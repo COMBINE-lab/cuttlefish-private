@@ -104,6 +104,9 @@ public:
     // Returns the k-parameter.
     constexpr static uint16_t get_k();
 
+    // Returns the number of machine-words used to represent this k-mer.
+    constexpr static uint16_t num_words();
+
     // Returns a 64-bit hash value for the k-mer.
     uint64_t to_u64(uint64_t seed=0) const;
 
@@ -382,6 +385,13 @@ template <uint16_t k>
 inline constexpr uint16_t Kmer<k>::get_k()
 {
     return k;
+}
+
+
+template <uint16_t k>
+inline constexpr uint16_t Kmer<k>::num_words()
+{
+    return NUM_INTS;
 }
 
 

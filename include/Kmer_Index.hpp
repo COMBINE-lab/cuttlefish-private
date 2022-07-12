@@ -117,6 +117,10 @@ class Kmer_Index
     // remaining content to disk.
     void close_deposit_stream();
 
+    // Tries to align the k-mer `kmer` to the concatenated paths sequence at the
+    // index `idx`. Returns `true` iff the alignment succeeds.
+    bool align(const Kmer<k>& kmer, std::size_t idx) const;
+
     // Binary searches for the maximum rightmost value in the container
     // `container` within the index range `[left, right]` (both ends inclusive)
     // that is at most as `val`. If such a value exists, returns its index.
@@ -320,6 +324,27 @@ inline int64_t Kmer_Index<k>::upper_bound(const T_container_& container, int64_t
     }
 
     return result;
+}
+
+
+template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
+inline bool Kmer_Index<k>::align(const Kmer<k>& kmer, const std::size_t idx) const
+{
+    constexpr uint16_t word_count = Kmer<k>::num_words();
+    const uint64_t* const kmer_data = kmer.data();
+
+    // Align the completely-packed words, i.e. except for possibly the highest-indexed word.
+    for(uint16_t word_num = 1; word_num < word_count; ++word_num)
+        if(paths.get_int<uint64_t, 32>((idx + k) - word_num * k) != kmer_data[word_num - 1])
+            return false;
+
+    // Align the (only) partially-packed word.
+    if constexpr(k & 31)
+        if(paths.get_int<uint64_t, k & 31>(idx) != kmer_data[word_count - 1])
+            return false;
+
+    return true;
 }
 
 
