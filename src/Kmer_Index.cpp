@@ -367,9 +367,6 @@ void Kmer_Index<k>::count_minimizer_instances()
     uint64_t cum_count = (mi_count[0] = 0);
     for(std::size_t i = 1; i <= min_count; ++i)
         mi_count[i] = (cum_count += mi_count[i]);
-
-    const std::string counts_file_path = "min.counts";  // TODO: placeholder for now.
-    mi_count.serialize(counts_file_path.c_str());
 }
 
 
@@ -426,6 +423,13 @@ void Kmer_Index<k>::get_minimizer_offsets()
 
         worker[t].join();
     }
+
+
+    // After the in-place transformation (see note above), `min_instance_count` need not have that extra last entry anymore.
+    min_instance_count->resize(min_count);
+
+    const std::string counts_file_path = "min.counts";  // TODO: placeholder for now.
+    min_instance_count->serialize(counts_file_path.c_str());
 
 
     const std::string offsets_file_path = "min.offsets";    // TODO: placeholder for now.
