@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cassert>
+#include <fstream>
 #include <chrono>
 
 
@@ -35,6 +36,27 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     assert(l <= 32);
     for(uint16_t id = 0; id < producer_count; ++id)
         producer_minimizer_file[id].open(minimizer_file_path(id), std::ios::out | std::ios::binary);
+
+    save_config();
+}
+
+template <uint16_t k>
+void Kmer_Index<k>::save_config() const
+{
+    const std::string file_path = cuttlefish::_default::CONFIG_FILE_EXT;    // TODO: placeholder.
+    std::ofstream config_file(file_path.c_str(), std::ios::out | std::ios::binary);
+
+    constexpr uint16_t K = k;
+    config_file.write(reinterpret_cast<const char*>(&K), sizeof(K));
+    config_file.write(reinterpret_cast<const char*>(&l), sizeof(l));
+
+    if(!config_file)
+    {
+        std::cerr << "Error writing to the configuration file " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    config_file.close();
 }
 
 

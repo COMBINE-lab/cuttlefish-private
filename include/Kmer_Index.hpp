@@ -85,6 +85,10 @@ class Kmer_Index
     std::vector<std::thread> worker;    // Worker threads.
 
 
+    // Saves the configuration constants of the index, such as the k-mer and
+    // the minimizer lengths.
+    void save_config() const;
+
     // Returns the path to the minimizer-information file of producer with ID
     // `producer_id`.
     static const std::string minimizer_file_path(uint16_t producer_id);
