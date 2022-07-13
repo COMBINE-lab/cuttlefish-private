@@ -61,6 +61,32 @@ void Kmer_Index<k>::save_config() const
 
 
 template <uint16_t k>
+typename Kmer_Index<k>::minimizer_t Kmer_Index<k>::load_minimizer_len(const std::string& config_path)
+{
+    std::ifstream config_file(config_path.c_str(), std::ios::in | std::ios::binary);
+
+    uint16_t K;
+    config_file.read(reinterpret_cast<char*>(&K), sizeof(K));
+    if(K != k)
+    {
+        std::cerr << "The k-mer length of the requested index doesn't match with the execution. Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    uint16_t l;
+    config_file.read(reinterpret_cast<char*>(&l), sizeof(l));
+
+    if(!config_file)
+    {
+        std::cerr << "Error reading from the configuration file at " << config_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    return l;
+}
+
+
+template <uint16_t k>
 const std::string Kmer_Index<k>::minimizer_file_path(const uint16_t producer_id)
 {
     return std::to_string(producer_id) + cuttlefish::_default::MINIMIZER_FILE_EXT;

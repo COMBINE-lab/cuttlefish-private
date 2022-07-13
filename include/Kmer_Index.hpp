@@ -89,6 +89,11 @@ class Kmer_Index
     // the minimizer lengths.
     void save_config() const;
 
+    // Reads the configuration constants of some index from file at path
+    // `config_path`, cross-checks if the k-mer length is as expected, and
+    // returns the minimizer length.
+    static minimizer_t load_minimizer_len(const std::string& config_path);
+
     // Returns the path to the minimizer-information file of producer with ID
     // `producer_id`.
     static const std::string minimizer_file_path(uint16_t producer_id);
