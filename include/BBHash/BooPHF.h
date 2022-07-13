@@ -17,6 +17,7 @@
 #include <string.h>
 #include <memory> // for make_shared
 #include <unistd.h>
+#include <fstream>
 #include <chrono>
 #include <thread>
 
@@ -1315,6 +1316,19 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 				_final_hash[key] = value;
 			}
 			_built = true;
+		}
+
+		void load(const std::string& path)
+		{
+			std::ifstream input(path.c_str());
+			load(input);
+			if(!input)
+			{
+				std::cerr << "Error reading BooPHF file at " << path << ". Aborting.\n";
+				std::exit(EXIT_FAILURE);
+			}
+
+			input.close();
 		}
 
 
