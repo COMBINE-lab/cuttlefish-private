@@ -134,16 +134,7 @@ void Kmer_Hash_Table<k, BITS_PER_KEY>::save_mph_function(const std::string& file
 template <uint16_t k, uint8_t BITS_PER_KEY>
 void Kmer_Hash_Table<k, BITS_PER_KEY>::save_hash_buckets(const std::string& file_path) const
 {
-    std::ofstream output(file_path.c_str(), std::ofstream::out);
-    if(output.fail())
-    {
-        std::cerr << "Error writing to file " << file_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-
-    hash_table.serialize(output);
-    
-    output.close();
+    hash_table.serialize(file_path);
 }
 
 

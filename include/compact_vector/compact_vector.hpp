@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <fstream>
 #include <cstring>
+#include <cstdlib>
 #include <algorithm>
 
 #include "compact_iterator.hpp"
@@ -334,58 +335,33 @@ public:
     std::memset(get(), 0, bytes());
   }
 
-  void serialize(std::ofstream &of) const {
-    uint64_t static_flag = (static_bits() == bits()) ? 1 : 0;
-    of.write(reinterpret_cast<char *>(&static_flag), sizeof(static_flag));
-    if (static_flag != 0) {
-        uint64_t bits_per_element = static_bits();
-        of.write(reinterpret_cast<char *>(&bits_per_element), sizeof(bits_per_element));
-    } else {
-        uint64_t bits_per_element = bits();
-        of.write(reinterpret_cast<char *>(&bits_per_element), sizeof(bits_per_element));
-    }
-    uint64_t w_size = m_size;
-    of.write(reinterpret_cast<char *>(&w_size), sizeof(w_size));
-    uint64_t w_capacity = m_capacity;
-    of.write(reinterpret_cast<char *>(&w_capacity), sizeof(w_capacity));
-    of.write(reinterpret_cast<char *>(m_mem), bytes());
-    //std::cerr << "wrote " << bytes() << " bytes of data at the end\n";
-  }
-
-  void serialize(const char* const file_path) const
+  void serialize(const std::string& file_path) const
   {
-    std::ofstream output(file_path, std::ios::out | std::ios::binary);
+    std::ofstream output(file_path);
     serialize(output);
+
+    if(!output)
+    {
+      std::cerr << "Error writing bitvector to path " << file_path << ". Aborting.\n";
+      std::exit(EXIT_FAILURE);
+    }
+
     output.close();
   }
 
 
-  void deserialize(const std::string &fname) {
-    std::error_code error;
-    // load the vector by reading from file
-    std::ifstream ifile(fname, std::ios::binary);
-    uint64_t static_flag{0};
-    ifile.read(reinterpret_cast<char *>(&static_flag), sizeof(static_flag));
+  void deserialize(const std::string &file_path)
+  {
+    std::ifstream input(file_path);
+    deserialize(input);
 
-    uint64_t bits_per_element;
-    ifile.read(reinterpret_cast<char *>(&bits_per_element), sizeof(bits_per_element));
+    if(!input)
+    {
+      std::cerr << "Error reading bitvector from path " << file_path << ". Aborting.\n";
+      std::exit(EXIT_FAILURE);
+    }
 
-    //std::cerr<< "bits / element = " << bits_per_element << "\n";
-
-    uint64_t w_size{0};
-    ifile.read(reinterpret_cast<char *>(&w_size), sizeof(w_size));
-    m_size = w_size;
-    // std::cerr << "size = " << m_size << "\n";
-
-    uint64_t w_capacity{0};
-    ifile.read(reinterpret_cast<char *>(&w_capacity), sizeof(w_capacity));
-    m_capacity = w_capacity;
-    //std::cerr<< "capacity = " << m_capacity << "\n";
-
-    m_allocator.deallocate(m_mem, elements_to_words(m_capacity, bits()));
-    m_mem = m_allocator.allocate(elements_to_words(m_capacity, bits()));
-    if (m_mem == nullptr) throw std::bad_alloc();
-    ifile.read(reinterpret_cast<char *>(m_mem), sizeof(W) * elements_to_words(m_size, bits()));
+    input.close();
   }
 
 protected:
@@ -396,6 +372,26 @@ protected:
     deallocate(m_mem, m_capacity);
     m_mem      = new_mem;
     m_capacity = new_capacity;
+  }
+
+  void serialize(std::ofstream &output) const
+  {
+    output.write(reinterpret_cast<const char*>(&m_size), sizeof(m_size));
+    output.write(reinterpret_cast<const char*>(&m_capacity), sizeof(m_capacity));
+
+    output.write(reinterpret_cast<const char*>(m_mem), bytes());
+  }
+
+  void deserialize(std::ifstream& input)
+  {
+    // Deallocate currently occupied memory.
+    deallocate(m_mem, m_capacity);
+
+    input.read(reinterpret_cast<char*>(&m_size), sizeof(m_size));
+    input.read(reinterpret_cast<char*>(&m_capacity), sizeof(m_capacity));
+
+    m_mem = allocate(m_capacity);
+    input.read(reinterpret_cast<char*>(m_mem), sizeof(W) * elements_to_words(m_size, bits()));
   }
 };
 
@@ -458,6 +454,53 @@ public:
       throw std::invalid_argument("Bit length of compacted vector differ");
     static_cast<super*>(this)->operator=(std::move(rhs));
     return *this;
+  }
+
+  void serialize(const std::string& file_path) const
+  {
+    std::ofstream output(file_path);
+    serialize(output);
+
+    if(!output)
+    {
+      std::cerr << "Error writing bitvector to path " << file_path << ". Aborting.\n";
+      std::exit(EXIT_FAILURE);
+    }
+
+    output.close();
+  }
+
+  void deserialize(const std::string &file_path)
+  {
+    std::ifstream input(file_path);
+    deserialize(input);
+
+    if(!input)
+    {
+      std::cerr << "Error reading bitvector from path " << file_path << ". Aborting.\n";
+      std::exit(EXIT_FAILURE);
+    }
+
+    input.close();
+  }
+
+protected:
+
+  void serialize(std::ofstream& output) const
+  {
+    const unsigned bits_per_elem = bits();
+    output.write(reinterpret_cast<const char*>(&bits_per_elem), sizeof(bits_per_elem));
+
+    // Rest of the fields
+    super::serialize(output);
+  }
+
+  void deserialize(std::ifstream& input)
+  {
+    input.read(reinterpret_cast<char*>(const_cast<unsigned*>(&m_bits)), sizeof(m_bits));
+
+    // Rest of the fields.
+    super::deserialize(input);
   }
 };
 
