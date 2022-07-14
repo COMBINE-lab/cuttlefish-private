@@ -154,6 +154,9 @@ public:
     // Retains the index into memory after construction if `retain` is `true`.
     Kmer_Index(uint16_t l, uint16_t producer_count, bool retain);
 
+    // Loads the k-mer index stored at path `idx_path`.
+    Kmer_Index(const std::string& idx_path);
+
     class Producer_Token;
 
     // Returns a unique token object.

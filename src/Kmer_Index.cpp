@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cassert>
 #include <fstream>
+#include <cstdlib>
 #include <chrono>
 
 
@@ -38,6 +39,41 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
         producer_minimizer_file[id].open(minimizer_file_path(id), std::ios::out | std::ios::binary);
 
     save_config();
+}
+
+
+template <uint16_t k>
+Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
+    l(load_minimizer_len(cuttlefish::_default::CONFIG_FILE_EXT)),   // TODO: placeholder.
+    producer_count(0),
+    num_instances(0),
+    min_count(0),
+    max_inst_count(0),  // TODO: think if this might have repercussions, as we don't have it saved (though, inferrable).
+    min_mphf(nullptr),
+    min_instance_count(nullptr),
+    min_offset(nullptr),
+    retain(true)
+{
+    (void)idx_path; // TODO: placeholder for now.
+
+    paths.deserialize(cuttlefish::_default::PATH_FILE_EXT);
+    sum_paths_len = paths.size();
+
+    path_ends = new path_end_vector_t();
+    path_ends->deserialize(cuttlefish::_default::PATH_ENDS_FILE_EXT);
+    path_count = path_ends->size();
+
+    min_mphf = new minimizer_mphf_t();
+    min_mphf->load("min.mphf");
+    // min_count = min_mphf->nbKeys();
+
+    min_instance_count = new min_vector_t();
+    min_instance_count->deserialize("min.counts");
+    min_count = min_instance_count->size();
+
+    min_offset = new min_vector_t();
+    min_offset->deserialize("min.offsets");
+    num_instances = min_offset->size();
 }
 
 template <uint16_t k>
