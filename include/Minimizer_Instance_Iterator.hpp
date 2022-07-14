@@ -224,12 +224,11 @@ inline bool Minimizer_Instance_Iterator<std::FILE*>::next<std::vector<std::size_
 
 inline std::size_t Minimizer_Instance_Iterator<std::FILE*>::next(Minimizer_Instance* const buf, const std::size_t buf_sz)
 {
-    if(file_ptr == nullptr)
-        return 0;
-
     lock.lock();
 
-    const std::size_t buf_elem_count = std::fread(static_cast<void*>(buf), sizeof(Minimizer_Instance), buf_sz, file_ptr);
+    const std::size_t buf_elem_count = (file_ptr != nullptr ?
+                                            std::fread(static_cast<void*>(buf), sizeof(Minimizer_Instance), buf_sz, file_ptr) :
+                                            0);
     if(buf_elem_count == 0)
         file_ptr = nullptr;
 
