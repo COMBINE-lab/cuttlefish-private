@@ -175,6 +175,12 @@ public:
     // the algorithm against the naive index. Indexing is over `l`-minimizers.
     template <uint16_t l>
     static bool validate(const std::string& file_path);
+
+    // Validates the k-mer index stored at path `idx_path`, which is supposed to
+    // be over the sequences stored at path `seq_path`. Indexing is over `l`-
+    // minimizers.
+    template <uint16_t l>
+    static bool validate(const std::string& seq_path, const std::string& idx_path);
 };
 
 
