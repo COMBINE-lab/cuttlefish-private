@@ -52,12 +52,12 @@ inline bool Kmer_Index<k>::validate(const std::string& file_path)
                     min_lmer = lmer, min_idx = i, min_hash = lmer_hash;
             }
 
-            const std::size_t abs_min_idx = paths.size() + min_idx;
-            if(abs_min_idx != last_min_idx)
+            if(min_idx != last_min_idx)
             {
+                const std::size_t abs_min_idx = paths.size() + min_idx;
                 M[min_lmer.as_int()].emplace_back(abs_min_idx);
                 inst_count++;
-                last_min_idx = abs_min_idx;
+                last_min_idx = min_idx;
             }
         }
 
