@@ -60,6 +60,9 @@ public:
     template <uint16_t k, typename T_container_>
     void rotate_append_cycle(const FASTA_Record<T_container_>& fasta_cycle, std::size_t pivot);
 
+    // Returns the `len`-length suffix of the buffer.
+    const char* suffix(std::size_t len) const;
+
     // Destructs the buffer object, flushing it if content are present.
     ~Character_Buffer();
 };
@@ -154,6 +157,13 @@ inline void Character_Buffer<CAPACITY, T_sink_>::rotate_append_cycle(const FASTA
     buffer.emplace_back('\n');  // Break line.
     fasta_rec.template append_rotated_cycle<k>(buffer, pivot);  // Append the sequence right-rotated around index `pivot`.
     buffer.emplace_back('\n');  // End the sequence.
+}
+
+
+template <std::size_t CAPACITY, typename T_sink_>
+inline const char* Character_Buffer<CAPACITY, T_sink_>::suffix(const std::size_t len) const
+{
+    return buffer.data() + (buffer.size() - len);
 }
 
 
