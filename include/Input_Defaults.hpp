@@ -29,6 +29,8 @@ namespace cuttlefish
         constexpr Output_Format OP_FORMAT = Output_Format::fa;
         constexpr char WORK_DIR[] = ".";
 
+        constexpr uint16_t MIN_LEN = 20;    // TODO: placeholder for now.
+
         constexpr char PATH_FILE_EXT[] = ".paths";
         constexpr char PATH_ENDS_FILE_EXT[] = ".ends";
         constexpr char MINIMIZER_FILE_EXT[] = ".mins";

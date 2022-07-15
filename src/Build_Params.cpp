@@ -18,6 +18,7 @@ Build_Params::Build_Params( const bool is_read_graph,
                             const std::optional<std::size_t> max_memory,
                             const bool strict_memory,
                             const bool idx,
+                            const uint16_t min_len,
                             const std::string& output_file_path,
                             const std::optional<cuttlefish::Output_Format> output_format,
                             const std::string& working_dir_path,
@@ -40,6 +41,7 @@ Build_Params::Build_Params( const bool is_read_graph,
         max_memory_(max_memory),
         strict_memory_(strict_memory),
         idx_(idx),
+        min_len_(min_len),
         output_file_path_(output_file_path),
         output_format_(output_format),
         working_dir_path_(working_dir_path.back() == '/' ? working_dir_path : working_dir_path + "/"),
@@ -80,6 +82,14 @@ bool Build_Params::is_valid() const
     if(num_threads > 0 && thread_count_ > num_threads)
     {
         std::cout << "At most " << num_threads << " concurrent threads are supported by the machine.\n";
+        valid = false;
+    }
+
+
+    // l-minimizer length must be at most k-mer length, if indexing is requested.
+    if(idx_ && min_len_ >= k_)
+    {
+        std::cout << "l-minimizer length can be at most k-mer length.\n";
         valid = false;
     }
 

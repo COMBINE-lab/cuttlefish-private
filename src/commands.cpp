@@ -44,6 +44,8 @@ int cf_build(int argc, char** argv)
         ("t,threads", "number of threads to use",
             cxxopts::value<uint16_t>()->default_value(std::to_string(cuttlefish::_default::THREAD_COUNT)))
         ("idx", "construct a k-mer index of the de Bruijn graph")
+        ("min-len", "minimizer length",
+            cxxopts::value<uint16_t>()->default_value(std::to_string(cuttlefish::_default::MIN_LEN)))
         ("o,output", "output file",
             cxxopts::value<std::string>())
         ("w,work-dir", "working directory",
@@ -103,6 +105,7 @@ int cf_build(int argc, char** argv)
         const auto thread_count = result["threads"].as<uint16_t>();
         const auto strict_memory = !result["unrestrict-memory"].as<bool>();
         const auto idx = result["idx"].as<bool>();
+        const auto min_len = result["min-len"].as<uint16_t>();
         const auto output_file = result["output"].as<std::string>();
         const auto format = format_code ?   std::optional<cuttlefish::Output_Format>(cuttlefish::Output_Format(format_code.value())) :
                                             std::optional<cuttlefish::Output_Format>();
@@ -118,7 +121,7 @@ int cf_build(int argc, char** argv)
         const Build_Params params(  is_read_graph, is_ref_graph,
                                     seqs, lists, dirs,
                                     k, cutoff, vertex_db, edge_db, thread_count, max_memory, strict_memory,
-                                    idx,
+                                    idx, min_len,
                                     output_file, format, working_dir,
                                     path_cover,
                                     save_mph, save_buckets, save_vertices
