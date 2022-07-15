@@ -9,6 +9,7 @@
 #include "Data_Logistics.hpp"
 #include "Kmer_Hash_Table.hpp"
 #include "dBG_Info.hpp"
+#include "Kmer_Index.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -29,6 +30,8 @@ private:
     std::unique_ptr<Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>> hash_table; // Hash table for the vertices (canonical k-mers) of the graph.
 
     dBG_Info<k> dbg_info;   // Wrapper object for structural information of the graph.
+
+    Kmer_Index<k> kmer_idx; // Index over the k-mers of the graph.
 
     static constexpr double bits_per_vertex = 9.71; // Expected number of bits required per vertex by Cuttlefish 2.
 

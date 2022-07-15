@@ -15,7 +15,8 @@ Read_CdBG<k>::Read_CdBG(const Build_Params& params):
     params(params),
     logistics(this->params),
     hash_table(nullptr),
-    dbg_info(params.json_file_path())
+    dbg_info(params.json_file_path()),
+    kmer_idx(params.min_len(), params.thread_count(), false)
 {}
 
 
@@ -114,6 +115,10 @@ void Read_CdBG<k>::construct()
     std::cout << "\nExtracting the maximal unitigs.\n";
     extract_maximal_unitigs();
 
+    hash_table->clear();
+
+    kmer_idx.index();
+
 #ifdef CF_DEVELOP_MODE
     if(params.vertex_db_path().empty())
 #endif
@@ -191,7 +196,7 @@ void Read_CdBG<k>::compute_DFA_states()
 template <uint16_t k>
 void Read_CdBG<k>::extract_maximal_unitigs()
 {
-    Read_CdBG_Extractor<k> cdBg_extractor(params, *hash_table);
+    Read_CdBG_Extractor<k> cdBg_extractor(params, *hash_table, kmer_idx);
 
     cdBg_extractor.extract_maximal_unitigs(logistics.vertex_db_path(), logistics.output_file_path());
     dbg_info.add_unipaths_info(cdBg_extractor);
