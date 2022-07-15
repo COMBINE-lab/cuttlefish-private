@@ -115,10 +115,6 @@ void Read_CdBG<k>::construct()
     std::cout << "\nExtracting the maximal unitigs.\n";
     extract_maximal_unitigs();
 
-    hash_table->clear();
-
-    kmer_idx.index();
-
 #ifdef CF_DEVELOP_MODE
     if(params.vertex_db_path().empty())
 #endif
@@ -127,6 +123,14 @@ void Read_CdBG<k>::construct()
 
     std::chrono::high_resolution_clock::time_point t_extract = std::chrono::high_resolution_clock::now();
     std::cout << "Extracted the maximal unitigs. Time taken = " << std::chrono::duration_cast<std::chrono::duration<double>>(t_extract - t_dfa).count() << " seconds.\n";
+
+    hash_table->clear();
+
+    std::cout << "\nConstructing a k-mer index.\n";
+    kmer_idx.index();
+
+    std::chrono::high_resolution_clock::time_point t_idx = std::chrono::high_resolution_clock::now();
+    std::cout << "Constructed a k-mer index for the graph. Time taken = " << std::chrono::duration_cast<std::chrono::duration<double>>(t_idx - t_extract).count() << " seconds.\n";
 
 #ifndef CF_DEVELOP_MODE
     const double max_disk = static_cast<double>(max_disk_usage(edge_stats, vertex_stats)) / (1024.0 * 1024.0 * 1024.0);
