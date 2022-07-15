@@ -1,15 +1,42 @@
 
+#ifndef INDEX_VALIDATOR_HPP
+#define INDEX_VALIDATOR_HPP
+
+
+
+
 #include "Kmer_Index.hpp"
 #include "Ref_Parser.hpp"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <unordered_map>
 
 
-template <uint16_t k>
-template <uint16_t l>
-inline bool Kmer_Index<k>::validate(const std::string& file_path)
+// =============================================================================
+
+
+// A class to contain the validation algorithms for the Cuttlefish indexings.
+template <uint16_t k, uint16_t l>
+class Index_Validator
+{
+public:
+
+    // Validates the indexing algorithm by constructing an index naively for the
+    // sequences at the file `seq_path` and validating the index constructed by
+    // the algorithm against the naive index. Indexing is over `l`-minimizers.
+    static bool validate(const std::string& file_path);
+
+    // Validates the k-mer index stored at path `idx_path`, which is supposed to
+    // be over the sequences stored at path `seq_path`. Indexing is over `l`-
+    // minimizers.
+    static bool validate(const std::string& seq_path, const std::string& idx_path);
+};
+
+
+template <uint16_t k, uint16_t l>
+inline bool Index_Validator<k, l>::validate(const std::string& file_path)
 {
     // Build a naive and a cuttlefish index.
     Ref_Parser parser(file_path);
@@ -144,9 +171,8 @@ inline bool Kmer_Index<k>::validate(const std::string& file_path)
 }
 
 
-template <uint16_t k>
-template <uint16_t l>
-inline bool Kmer_Index<k>::validate(const std::string& seq_path, const std::string& idx_path)
+template <uint16_t k, uint16_t l>
+inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const std::string& idx_path)
 {
     // Load the index.
     Kmer_Index<k> kmer_idx(idx_path);
@@ -307,3 +333,7 @@ inline bool Kmer_Index<k>::validate(const std::string& seq_path, const std::stri
 
     return true;
 }
+
+
+
+#endif

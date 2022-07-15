@@ -31,6 +31,10 @@
 template <uint16_t k>
 class Kmer_Index
 {
+    template <uint16_t, uint16_t> friend class Index_Validator;
+
+private:
+
     typedef cuttlefish::minimizer_t minimizer_t;    // Minimizers can be represented using 64-bit integers.
     typedef compact::vector<uint8_t, 2> path_vector_t;      // Type of the bitvector storing the path sequences.
     typedef compact::vector<std::size_t> path_end_vector_t; // Type of the bitvector storing the path endpoints.
@@ -169,18 +173,6 @@ public:
     // Indexes the deposited path-sequences. Should only be invoked after all the
     // sequences to be indexed have been deposited.
     void index();
-
-    // Validates the indexing algorithm by constructing an index naively for the
-    // sequences at the file `seq_path` and validating the index constructed by
-    // the algorithm against the naive index. Indexing is over `l`-minimizers.
-    template <uint16_t l>
-    static bool validate(const std::string& file_path);
-
-    // Validates the k-mer index stored at path `idx_path`, which is supposed to
-    // be over the sequences stored at path `seq_path`. Indexing is over `l`-
-    // minimizers.
-    template <uint16_t l>
-    static bool validate(const std::string& seq_path, const std::string& idx_path);
 };
 
 
