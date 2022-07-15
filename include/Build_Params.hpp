@@ -30,7 +30,8 @@ private:
     const std::string edge_db_path_;    // Path to the KMC database containing the edges (canonical (k + 1)-mers).
     const uint16_t thread_count_;    // Number of threads to work with.
     const std::optional<std::size_t> max_memory_;   // Soft maximum memory limit (in GB).
-    const bool strict_memory_;  // Whether strict memory limit restriction is specifiied.
+    const bool strict_memory_;  // Whether strict memory limit restriction is specified.
+    const bool idx_;    // Whether to construct a k-mer index of the de Bruijn graph.
     const std::string output_file_path_;    // Path to the output file.
     const std::optional<cuttlefish::Output_Format> output_format_;  // Output format (0: FASTA, 1: GFAv1, 2: GFAv2, 3: GFA-reduced).
     const std::string working_dir_path_;    // Path to the working directory (for temporary files).
@@ -84,6 +85,7 @@ public:
                     const uint16_t thread_count,
                     const std::optional<std::size_t> max_memory,
                     const bool strict_memory,
+                    const bool idx,
                     const std::string& output_file_path,
                     const std::optional<cuttlefish::Output_Format> output_format,
                     const std::string& working_dir_path,
@@ -160,10 +162,17 @@ public:
     }
 
 
-    // Returns whether strict memory limit restriction is specifiied.
+    // Returns whether strict memory limit restriction is specified.
     bool strict_memory() const
     {
         return strict_memory_;
+    }
+
+
+    // Returns whether to construct a k-mer index of the de Bruijn graph.
+    bool idx() const
+    {
+        return idx_;
     }
 
 

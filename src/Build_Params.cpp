@@ -17,6 +17,7 @@ Build_Params::Build_Params( const bool is_read_graph,
                             const uint16_t thread_count,
                             const std::optional<std::size_t> max_memory,
                             const bool strict_memory,
+                            const bool idx,
                             const std::string& output_file_path,
                             const std::optional<cuttlefish::Output_Format> output_format,
                             const std::string& working_dir_path,
@@ -38,6 +39,7 @@ Build_Params::Build_Params( const bool is_read_graph,
         thread_count_(thread_count),
         max_memory_(max_memory),
         strict_memory_(strict_memory),
+        idx_(idx),
         output_file_path_(output_file_path),
         output_format_(output_format),
         working_dir_path_(working_dir_path.back() == '/' ? working_dir_path : working_dir_path + "/"),
@@ -63,7 +65,7 @@ bool Build_Params::is_valid() const
         valid = false;
     }
 
-    
+
     // Even `k` values are not consistent with the theory.
     // Also, `k` needs to be in the range `[1, MAX_K]`.
     if((k_ & static_cast<uint16_t>(1)) == 0 || (k_ > cuttlefish::MAX_K))
@@ -81,7 +83,7 @@ bool Build_Params::is_valid() const
         valid = false;
     }
 
-    
+
     // Output directory must exist.
     const std::string op_dir = dirname(output_file_path_);
     if(!dir_exists(op_dir))
@@ -126,7 +128,7 @@ bool Build_Params::is_valid() const
         if(is_ref_graph_ && cutoff() != 1)
             std::cout << "WARNING: cutoff frequency specified not to be 1 on reference sequences.\n";
 
-        
+
         // Cuttlefish 1 specific arguments can not be specified.
         if(output_format_)
         {
@@ -147,7 +149,7 @@ bool Build_Params::is_valid() const
         // Cuttlefish 2 specific arguments can not be specified.
         if(cutoff_ || path_cover_)
         {
-            std::cout << "Cuttelfish 2 specific arguments specified while using Cuttlefish 1.\n";
+            std::cout << "Cuttlefish 2 specific arguments specified while using Cuttlefish 1.\n";
             valid = false;
         }
     }
