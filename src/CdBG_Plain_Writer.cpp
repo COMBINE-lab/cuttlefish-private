@@ -193,6 +193,12 @@ void CdBG<k>::write_path(const uint16_t thread_id, const char* const seq, const 
 
     seg_write_time[thread_id] += elapsed_seconds;
 
+    if(params.idx())
+    {
+        const char* const unitig_seq = buffer.data() + (buffer.size() - (path_len + 1)); // The +1 length is to account for the ending line-break.
+        kmer_idx.deposit(token[thread_id], unitig_seq, path_len);
+    }
+
     
     // Mark buffer size increment.
     check_output_buffer(thread_id);
