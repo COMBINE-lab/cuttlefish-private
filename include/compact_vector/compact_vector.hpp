@@ -263,21 +263,22 @@ public:
   static constexpr unsigned used_bits() { return UB; }
   static constexpr bool thread_safe() { return TS; }
 
-  // Extracts `count` number of values, packed together as a single unit of type `T_`,
-  // staring from the `from_idx`'th index in the vector.
+  // Returns `count` number of values, packed together as a single unit of type `T_`,
+  // starting from the `from_idx`'th index in the vector. The `from_idx`'th index is
+  // packed as the LS-bits, and the `from_idx + count - 1` index forms the MS-bits.
   template <typename T_>
   T_ get_int(const std::size_t from_idx, const std::size_t count) const
   {
-    assert(count * bits() <= sizeof(T_) * 8); // Must fit in `T_`.
+    assert(count * bits() <= bitsof<T_>::val);  // Must fit in `T_`.
     assert(from_idx + count <= size()); // Must not overflow the vector.
 
+    std::size_t bit_idx = from_idx * bits();  // Index of the bit to start extraction from.
     const std::size_t bit_count = count * bits(); // Count of bits to extract.
     T_ val = 0; // Value to be extracted.
+    std::size_t bits_extracted = 0; // Count of bits extracted.
 
     constexpr std::size_t bits_per_wrd = bitsof<W>::val;  // Bits per bitvector word.
-    std::size_t bit_idx = from_idx * bits();  // Index of the bit to start extraction from.
-    std::size_t wrd_idx = bit_idx / bits_per_wrd;  // Current word index.
-    std::size_t bits_extracted = 0; // Count of bits extracted.
+    std::size_t wrd_idx = bit_idx >> log2_bitsof<W>::val; // Current word index, i.e. bit_idx / bits_per_wrd.
 
     std::size_t bits_trailing, bits_leading, bits_to_extract; // Counts of various types of bits, per word in the vector.
     W wrd_blk;  // The block of bits to extract from each word.
@@ -287,8 +288,9 @@ public:
       bits_to_extract = std::min(bit_count - bits_extracted, bits_per_wrd - bits_trailing);
       bits_leading = bits_per_wrd - (bits_trailing + bits_to_extract);
 
-      wrd_blk = (m_mem[wrd_idx] << bits_leading) >> (bits_leading + bits_trailing); // Clear not-required bits.
-      val |= (wrd_blk << bits_extracted);
+      // Casts required due to integral promotion.
+      wrd_blk = (W)(m_mem[wrd_idx] << bits_leading) >> (bits_leading + bits_trailing); // Clear not-required bits.
+      val |= ((T_)wrd_blk << bits_extracted);
       bits_extracted += bits_to_extract;
 
       wrd_idx++;
@@ -298,19 +300,22 @@ public:
     return val;
   }
 
+  // Returns `count` number of values, packed together as a single unit of type `T_`,
+  // starting from the `from_idx`'th index in the vector. The `from_idx`'th index is
+  // packed as the LS-bits, and the `from_idx + count - 1` index forms the MS-bits.
   template <typename T_, uint8_t count>
   T_ get_int(const std::size_t from_idx) const
   {
-    assert(count * bits() <= sizeof(T_) * 8); // Must fit in `T_`.
+    assert(count * bits() <= bitsof<T_>::val);  // Must fit in `T_`.
     assert(from_idx + count <= size()); // Must not overflow the vector.
 
+    std::size_t bit_idx = from_idx * bits();  // Index of the bit to start extraction from.
     const std::size_t bit_count = count * bits(); // Count of bits to extract.
     T_ val = 0; // Value to be extracted.
+    std::size_t bits_extracted = 0; // Count of bits extracted.
 
     constexpr std::size_t bits_per_wrd = bitsof<W>::val;  // Bits per bitvector word.
-    std::size_t bit_idx = from_idx * bits();  // Index of the bit to start extraction from.
-    std::size_t wrd_idx = bit_idx / bits_per_wrd;  // Current word index.
-    std::size_t bits_extracted = 0; // Count of bits extracted.
+    std::size_t wrd_idx = bit_idx >> log2_bitsof<W>::val; // Current word index, i.e. bit_idx / bits_per_wrd.
 
     std::size_t bits_trailing, bits_leading, bits_to_extract; // Counts of various types of bits, per word in the vector.
     W wrd_blk;  // The block of bits to extract from each word.
@@ -320,8 +325,9 @@ public:
       bits_to_extract = std::min(bit_count - bits_extracted, bits_per_wrd - bits_trailing);
       bits_leading = bits_per_wrd - (bits_trailing + bits_to_extract);
 
-      wrd_blk = (m_mem[wrd_idx] << bits_leading) >> (bits_leading + bits_trailing); // Clear not-required bits.
-      val |= (wrd_blk << bits_extracted);
+      // Casts required due to integral promotion.
+      wrd_blk = (W)(m_mem[wrd_idx] << bits_leading) >> (bits_leading + bits_trailing); // Clear not-required bits.
+      val |= ((T_)wrd_blk << bits_extracted);
       bits_extracted += bits_to_extract;
 
       wrd_idx++;
