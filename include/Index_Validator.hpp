@@ -256,12 +256,23 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
                 inst_count++;
                 last_min_idx = min_idx;
             }
+
+            // Align each k-mer to the paths in the index.
+            const Kmer<k> kmer(seq, idx);
+            if(!kmer_idx.align(kmer, sum_paths_len + idx))
+            {
+                std::cout << "Non-aligning true-positive k-mer: " << kmer << "\n";
+
+                std::cout << "Some true-positive k-mer don't align to the index.\n";
+                return false;
+            }
         }
 
         sum_paths_len += len;
     }
 
     std::cout << "Loaded the paths from the index and constructed the naive index.\n";
+    std::cout << "All k-mers in the index aligned to the index itself.\n";
 
 
     // Check if the paths align exactly.

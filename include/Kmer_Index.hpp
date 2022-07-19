@@ -351,17 +351,19 @@ template <uint16_t k>
 __attribute__((optimize("unroll-loops")))
 inline bool Kmer_Index<k>::align(const Kmer<k>& kmer, const std::size_t idx) const
 {
-    constexpr uint16_t word_count = Kmer<k>::num_words();
+    constexpr std::size_t packed_word_count = k / 32;
     const uint64_t* const kmer_data = kmer.data();
 
+    // Note: the endianness of the DNA-bases in the path vector is in opposite orientation to Cuttlefish k-mers.
+
     // Align the completely-packed words, i.e. except for possibly the highest-indexed word.
-    for(uint16_t word_num = 1; word_num < word_count; ++word_num)
-        if(paths.get_int<uint64_t, 32>((idx + k) - word_num * k) != kmer_data[word_num - 1])
+    for(std::size_t word_num = 0; word_num < packed_word_count; ++word_num)
+        if(paths.get_int<uint64_t, 32>((idx + k) - word_num * 32 - 32) != DNA_Utility::base_reverse<32>(kmer_data[word_num]))
             return false;
 
     // Align the (only) partially-packed word.
     if constexpr(k & 31)
-        if(paths.get_int<uint64_t, k & 31>(idx) != kmer_data[word_count - 1])
+        if(paths.get_int<uint64_t, k & 31>(idx) != DNA_Utility::base_reverse<k & 31>(kmer_data[packed_word_count]))
             return false;
 
     return true;
