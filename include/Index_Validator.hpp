@@ -266,6 +266,15 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
                 std::cout << "Some true-positive k-mer don't align to the index.\n";
                 return false;
             }
+
+            // Check if the k-mer's containing path ID is correct.
+            if(kmer_idx.query(kmer) != (int64_t)path_id)
+            {
+                std::cout << "Query failed for k-mer: " << kmer << "\n";
+
+                std::cout << "Some k-mer queries failed for true-positive k-mers.\n";
+                return false;
+            }
         }
 
         sum_paths_len += len;
