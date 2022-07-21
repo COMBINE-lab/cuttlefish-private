@@ -15,7 +15,7 @@
 
 
 template <uint16_t k>
-Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const bool retain):
+Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const bool retain, const std::string& output_pref, const std::string& working_dir):
     // TODO: reserve space for `paths`, preferably from additional k-mer count field
     l(l),
     producer_count(producer_count),
@@ -32,7 +32,9 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     min_instance_count(nullptr),
     min_offset(nullptr),
     retain(retain),
-    curr_token{0}
+    curr_token(0),
+    output_pref(output_pref),
+    working_dir(working_dir + "/")
 {
     assert(l <= 32);
     for(uint16_t id = 0; id < producer_count; ++id)
@@ -44,7 +46,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
 
 template <uint16_t k>
 Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
-    l(load_minimizer_len(cuttlefish::_default::CONFIG_FILE_EXT)),   // TODO: placeholder.
+    l(load_minimizer_len(idx_path + CONFIG_FILE_EXT)),
     producer_count(0),
     num_instances(0),
     min_count(0),
@@ -52,35 +54,34 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     min_mphf(nullptr),
     min_instance_count(nullptr),
     min_offset(nullptr),
-    retain(true)
+    retain(true),
+    output_pref(idx_path),
+    working_dir(dirname(idx_path) + "/")
 {
-    (void)idx_path; // TODO: placeholder for now.
-
-    paths.deserialize(cuttlefish::_default::PATH_FILE_EXT);
+    paths.deserialize(path_file_path());
     sum_paths_len = paths.size();
 
     path_ends = new path_end_vector_t();
-    path_ends->deserialize(cuttlefish::_default::PATH_ENDS_FILE_EXT);
+    path_ends->deserialize(path_end_file_path());
     path_count = path_ends->size();
 
     min_mphf = new minimizer_mphf_t();
-    min_mphf->load("min.mphf");
+    min_mphf->load(mphf_file_path());
     // min_count = min_mphf->nbKeys();
 
     min_instance_count = new min_vector_t();
-    min_instance_count->deserialize("min.counts");
+    min_instance_count->deserialize(count_file_path());
     min_count = min_instance_count->size();
 
     min_offset = new min_vector_t();
-    min_offset->deserialize("min.offsets");
+    min_offset->deserialize(offset_file_path());
     num_instances = min_offset->size();
 }
 
 template <uint16_t k>
 void Kmer_Index<k>::save_config() const
 {
-    const std::string file_path = cuttlefish::_default::CONFIG_FILE_EXT;    // TODO: placeholder.
-    std::ofstream config_file(file_path.c_str(), std::ios::out | std::ios::binary);
+    std::ofstream config_file(config_file_path().c_str(), std::ios::out | std::ios::binary);
 
     constexpr uint16_t K = k;
     config_file.write(reinterpret_cast<const char*>(&K), sizeof(K));
@@ -88,7 +89,7 @@ void Kmer_Index<k>::save_config() const
 
     if(!config_file)
     {
-        std::cerr << "Error writing to the configuration file " << file_path << ". Aborting.\n";
+        std::cerr << "Error writing to the index configuration file " << config_file_path() << ". Aborting.\n";
         std::exit(EXIT_FAILURE);
     }
 
@@ -125,7 +126,7 @@ typename Kmer_Index<k>::minimizer_t Kmer_Index<k>::load_minimizer_len(const std:
 template <uint16_t k>
 const std::string Kmer_Index<k>::minimizer_file_path(const uint16_t producer_id)
 {
-    return std::to_string(producer_id) + cuttlefish::_default::MINIMIZER_FILE_EXT;
+    return working_dir + std::to_string(producer_id) + MIN_INST_FILE_EXT;
 }
 
 
@@ -198,7 +199,8 @@ void Kmer_Index<k>::close_deposit_stream()
         producer_minimizer_file[id].close();
     }
 
-    paths.serialize(cuttlefish::_default::PATH_FILE_EXT);   // TODO: add ext. to o/p file name (from `Build_Params`).
+    // TODO: reduce capacity before serializing: might be non-trivial waste of space.
+    paths.serialize(path_file_path());
 
     // Release memory of the concatenated paths if required.
     sum_paths_len = paths.size();
@@ -217,7 +219,7 @@ void Kmer_Index<k>::close_deposit_stream()
 
     force_free(path_ends_vec);
 
-    p_end.serialize(cuttlefish::_default::PATH_ENDS_FILE_EXT); // TODO: add ext. to o/p file name (from `Build_Params`).
+    p_end.serialize(path_end_file_path());
     if(!retain)
         force_free(p_end);
 }
@@ -281,7 +283,7 @@ void Kmer_Index<k>::merge_minimizers()
     Minimizer_Instance_Merger multiway_merger(min_container);
     Minimizer_Instance min;
 
-    std::ofstream min_file(cuttlefish::_default::MINIMIZER_FILE_EXT, std::ios::out | std::ios::binary); // TODO: fix placeholder file name.
+    std::ofstream min_file(min_instance_file_path(), std::ios::out | std::ios::binary);
 
     multiway_merger.peek(min);
     minimizer_t last_min = min.minimizer();
@@ -318,15 +320,13 @@ template <uint16_t k>
 void Kmer_Index<k>::construct_minimizer_mphf()
 {
     typedef Minimizer_Instance_Iterator<std::FILE*> min_iter_t;
-    std::FILE* const min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
+    std::FILE* const min_file = std::fopen(min_instance_file_path().c_str(), "rb");
     const auto data_iterator = boomphf::range(min_iter_t(min_file), min_iter_t(nullptr));
 
-    const char* const working_dir_path = ".";   // TODO: placeholder for now.
-    min_mphf = new boomphf::mphf<minimizer_t, minimizer_hasher_t, false>(min_count, data_iterator, working_dir_path, producer_count, gamma);
+    min_mphf = new boomphf::mphf<minimizer_t, minimizer_hasher_t, false>(min_count, data_iterator, working_dir, producer_count, gamma);
 
 
-    const std::string mphf_file_path = "min.mphf";  // TODO: placeholder for now.
-    std::ofstream output(mphf_file_path.c_str(), std::ofstream::out);
+    std::ofstream output(mphf_file_path(), std::ofstream::out);
     min_mphf->save(output);
     output.close();
 
@@ -346,7 +346,7 @@ void Kmer_Index<k>::count_minimizer_instances()
     min_instance_count = new min_vector_t(bits_per_entry, min_count + 1);
     min_instance_count->clear_mem();
 
-    std::FILE* const min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
+    std::FILE* const min_file = std::fopen(min_instance_file_path().c_str(), "rb");
     Minimizer_Instance_Iterator<std::FILE*> min_inst_iter(min_file);
     constexpr std::size_t min_buf_sz = 5U * 1024U * 1024U / sizeof(Minimizer_Instance); // Minimizer instance chunk size, in elements: 5 MB total.
 
@@ -413,7 +413,7 @@ void Kmer_Index<k>::get_minimizer_offsets()
     assert(bits_per_entry > 0);
     min_offset = new min_vector_t(bits_per_entry, num_instances);
 
-    std::FILE* const min_file = std::fopen(cuttlefish::_default::MINIMIZER_FILE_EXT, "rb");   // TODO: fix placeholder file name.
+    std::FILE* const min_file = std::fopen(min_instance_file_path().c_str(), "rb");
     Minimizer_Instance_Iterator<std::FILE*> min_inst_iter(min_file);
     constexpr std::size_t min_buf_sz = 5U * 1024U * 1024U / sizeof(Minimizer_Instance); // Minimizer instance chunk size, in elements: 5 MB total.
 
@@ -464,12 +464,10 @@ void Kmer_Index<k>::get_minimizer_offsets()
     // After the in-place transformation (see note above), `min_instance_count` need not have that extra last entry anymore.
     min_instance_count->resize(min_count);
 
-    const std::string counts_file_path = "min.counts";  // TODO: placeholder for now.
-    min_instance_count->serialize(counts_file_path.c_str());
+    min_instance_count->serialize(count_file_path());
 
 
-    const std::string offsets_file_path = "min.offsets";    // TODO: placeholder for now.
-    min_offset->serialize(offsets_file_path.c_str());
+    min_offset->serialize(offset_file_path());
 
 
     // Release the portion of the index still in memory if required.

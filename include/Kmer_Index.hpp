@@ -88,6 +88,17 @@ private:
 
     std::vector<std::thread> worker;    // Worker threads.
 
+    const std::string output_pref;  // Prefix of the output path for the index.
+    const std::string working_dir;  // Path to the working directory for the index construction.
+
+    static constexpr char PATH_FILE_EXT[] = ".paths";
+    static constexpr char PATH_END_FILE_EXT[] = ".ends";
+    static constexpr char MPHF_FILE_EXT[] = ".min.mphf";
+    static constexpr char COUNT_FILE_EXT[] = ".min.count";
+    static constexpr char OFFSET_FILE_EXT[] = ".min.offset";
+    static constexpr char CONFIG_FILE_EXT[] = ".idx.conf";  // TODO: maybe also output configuration to the CF json file?
+    static constexpr char MIN_INST_FILE_EXT[] = ".mins";
+
 
     // Saves the configuration constants of the index, such as the k-mer and
     // the minimizer lengths.
@@ -100,7 +111,7 @@ private:
 
     // Returns the path to the minimizer-information file of producer with ID
     // `producer_id`.
-    static const std::string minimizer_file_path(uint16_t producer_id);
+    const std::string minimizer_file_path(uint16_t producer_id);
 
     // Dumps the data from `container` to the stream `output`, clearing
     // `container`.
@@ -151,12 +162,22 @@ private:
     template <typename T_container_>
     static int64_t upper_bound(const T_container_& container, int64_t left, int64_t right, typename T_container_::value_type val);
 
+    const std::string path_file_path() const { return output_pref + PATH_FILE_EXT; }    // Returns the file-path for the concatenated paths.
+    const std::string path_end_file_path() const { return output_pref + PATH_END_FILE_EXT; }    // Returns the file-path for the path-end offsets.
+    const std::string mphf_file_path() const { return output_pref + MPHF_FILE_EXT; }    // Returns the file-path for the minimizer-MPHF.
+    const std::string count_file_path() const { return output_pref + COUNT_FILE_EXT; }  // Returns the file-path for the minimizers' instance-counts.
+    const std::string offset_file_path() const { return output_pref + OFFSET_FILE_EXT; }    // Returns the file-path for the minimizer-instances' offsets.
+    const std::string config_file_path() const { return output_pref + CONFIG_FILE_EXT; }    // Returns the file-path for the configuration constants.
+    const std::string min_instance_file_path() const { return output_pref + MIN_INST_FILE_EXT; }    // Returns the file-path for the unified minimizer-instances.
+
 public:
 
     // Constructs a k-mer indexer that will index sequences produced from at
     // most `producer_count` producers, based on the k-mers' `l`-minimizers.
     // Retains the index into memory after construction if `retain` is `true`.
-    Kmer_Index(uint16_t l, uint16_t producer_count, bool retain);
+    // The index is stored at the path prefix `output_pref`, and `working_dir`
+    // is used to store temporary files during the construction.
+    Kmer_Index(uint16_t l, uint16_t producer_count, bool retain, const std::string& output_pref, const std::string& working_dir);
 
     // Loads the k-mer index stored at path `idx_path`.
     Kmer_Index(const std::string& idx_path);

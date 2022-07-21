@@ -16,7 +16,7 @@ Read_CdBG<k>::Read_CdBG(const Build_Params& params):
     logistics(this->params),
     hash_table(nullptr),
     dbg_info(params.json_file_path()),
-    kmer_idx(params.min_len(), params.thread_count(), false)
+    kmer_idx(params.min_len(), params.thread_count(), false, params.output_prefix(), params.working_dir_path())
 {}
 
 
