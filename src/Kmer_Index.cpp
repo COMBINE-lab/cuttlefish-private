@@ -124,7 +124,7 @@ typename Kmer_Index<k>::minimizer_t Kmer_Index<k>::load_minimizer_len(const std:
 
 
 template <uint16_t k>
-const std::string Kmer_Index<k>::minimizer_file_path(const uint16_t producer_id)
+const std::string Kmer_Index<k>::minimizer_file_path(const uint16_t producer_id) const
 {
     return working_dir + std::to_string(producer_id) + MIN_INST_FILE_EXT;
 }
@@ -181,6 +181,9 @@ void Kmer_Index<k>::index()
     get_minimizer_offsets();
     const time_point_t t_off = now();
     std::cout << "Gathered the minimizer instances' offsets. Time taken = " << duration(t_off - t_count) << " seconds.\n";
+
+    // Remove temporary files.
+    remove_temp_files();
 }
 
 
@@ -476,6 +479,24 @@ void Kmer_Index<k>::get_minimizer_offsets()
         delete min_mphf;
         force_free(*min_instance_count);
         force_free((*min_offset));
+    }
+}
+
+
+template <uint16_t k>
+void Kmer_Index<k>::remove_temp_files() const
+{
+    bool success = true;
+    for(uint16_t id = 0; id < producer_count; ++id)
+        if(!remove_file(minimizer_file_path(id)))
+            success = false;
+
+    success = (remove_file(min_instance_file_path()) ? success : false);
+
+    if(!success)
+    {
+        std::cerr << "Error removing temporary index files. Aborting.\n";
+        std::exit(EXIT_FAILURE);
     }
 }
 

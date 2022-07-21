@@ -111,7 +111,7 @@ private:
 
     // Returns the path to the minimizer-information file of producer with ID
     // `producer_id`.
-    const std::string minimizer_file_path(uint16_t producer_id);
+    const std::string minimizer_file_path(uint16_t producer_id) const;
 
     // Dumps the data from `container` to the stream `output`, clearing
     // `container`.
@@ -143,6 +143,9 @@ private:
     // Closes the deposit stream incoming from the producers and flushes the
     // remaining content to disk.
     void close_deposit_stream();
+
+    // Removes the temporary files used in the index construction.
+    void remove_temp_files() const;
 
     // Tries to align the k-mer `kmer` to the concatenated paths sequence at the
     // index `idx`. Returns `true` iff the alignment succeeds.
