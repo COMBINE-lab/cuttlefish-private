@@ -192,6 +192,9 @@ public:
     // index construction wrapped in `params`.
     Kmer_Index(const Build_Params& params);
 
+    // Destructs the k-mer index object.
+    ~Kmer_Index();
+
     class Producer_Token;
 
     // Returns a unique token object.

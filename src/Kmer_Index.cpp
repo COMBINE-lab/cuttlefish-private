@@ -87,6 +87,16 @@ Kmer_Index<k>::Kmer_Index(const Build_Params& params):
 
 
 template <uint16_t k>
+Kmer_Index<k>::~Kmer_Index()
+{
+    delete path_ends;
+    delete min_mphf;
+    delete min_instance_count;
+    delete min_offset;
+}
+
+
+template <uint16_t k>
 void Kmer_Index<k>::save_config() const
 {
     std::ofstream config_file(config_file_path().c_str(), std::ios::out | std::ios::binary);
@@ -232,7 +242,7 @@ void Kmer_Index<k>::close_deposit_stream()
 
     p_end.serialize(path_end_file_path());
     if(!retain)
-        force_free(p_end);
+        delete path_ends, path_ends = nullptr;
 }
 
 
@@ -484,9 +494,9 @@ void Kmer_Index<k>::get_minimizer_offsets()
     // Release the portion of the index still in memory if required.
     if(!retain)
     {
-        delete min_mphf;
-        force_free(*min_instance_count);
-        force_free((*min_offset));
+        delete min_mphf, min_mphf = nullptr;
+        delete min_instance_count, min_instance_count = nullptr;
+        delete min_offset, min_offset = nullptr;
     }
 }
 

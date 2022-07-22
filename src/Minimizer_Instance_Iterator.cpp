@@ -44,8 +44,7 @@ Minimizer_Instance_Iterator<std::FILE*>::Minimizer_Instance_Iterator(const Minim
 
 Minimizer_Instance_Iterator<std::FILE*>::~Minimizer_Instance_Iterator()
 {
-    if(buffer != nullptr)
-        std::free(buffer);
+    std::free(buffer);
 }
 
 
