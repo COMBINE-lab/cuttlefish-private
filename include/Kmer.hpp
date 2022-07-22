@@ -83,6 +83,10 @@ public:
     // `label[kmer_idx,...,kmer_idx + k - 1]`.
     Kmer(const std::string& label, size_t kmer_idx);
 
+    // Constructs a k-mer that has its encoding equivalent to the value `int_val`.
+    // k must be at most 32 for this construction.
+    Kmer(uint64_t int_val);
+
     // Constructs a k-mer from `kmer_api`, a k-mer object built from KMC.
     Kmer(const CKmerAPI& kmer_api);
 
@@ -99,6 +103,9 @@ public:
 
     // Returns the k-parameter.
     constexpr static uint16_t get_k();
+
+    // Returns the number of machine-words used to represent this k-mer.
+    constexpr static uint16_t num_words();
 
     // Returns a 64-bit hash value for the k-mer.
     uint64_t to_u64(uint64_t seed=0) const;
@@ -152,6 +159,9 @@ public:
     // i.e. at the last index of the literal representation. For a k-mer
     // `n_{k - 1} ... n_1 n_0`, this is the base `n_0`.
     DNA::Base back() const;
+
+    // Returns the binary data of the k-mer.
+    const uint64_t* data() const;
 
     // Returns `true` iff the k-mer is in the forward direction relative to
     // the other k-mer `kmer_hat`.
@@ -228,6 +238,10 @@ public:
     // Accumulates the counts of the l-mers of the k-mer into `count`.
     template <uint8_t l>
     void count_lmers(std::vector<uint64_t>& count) const;
+
+    // Returns the equivalent integer value of this k-mer, which is only
+    // possible if k <= 32 holds.
+    uint64_t as_int() const;
 };
 
 
@@ -322,6 +336,15 @@ inline Kmer<k>::Kmer(const std::string& label, const size_t kmer_idx): Kmer(labe
 
 
 template <uint16_t k>
+inline Kmer<k>::Kmer(const uint64_t int_val)
+{
+    static_assert(k <= 32, "k-mer conversions from 64-bit unsigned integers is only defined for k <= 32.");
+
+    kmer_data[0] = int_val;
+}
+
+
+template <uint16_t k>
 inline Kmer<k>::Kmer(const CKmerAPI& kmer_api)
 {
     from_CKmerAPI(kmer_api);
@@ -362,6 +385,13 @@ template <uint16_t k>
 inline constexpr uint16_t Kmer<k>::get_k()
 {
     return k;
+}
+
+
+template <uint16_t k>
+inline constexpr uint16_t Kmer<k>::num_words()
+{
+    return NUM_INTS;
 }
 
 
@@ -548,6 +578,13 @@ inline DNA::Base Kmer<k>::back() const
     constexpr uint64_t mask_LSN = static_cast<uint64_t>(0b11);
 
     return DNA::Base(kmer_data[0] & mask_LSN);
+}
+
+
+template <uint16_t k>
+inline const uint64_t* Kmer<k>::data() const
+{
+    return kmer_data;
 }
 
 
@@ -801,6 +838,15 @@ inline void Kmer<k>::count_lmers(std::vector<uint64_t>& count) const
 
         count[lmer]++;
     }
+}
+
+
+template <uint16_t k>
+inline uint64_t Kmer<k>::as_int() const
+{
+    static_assert(k <= 32, "k-mer conversions to 64-bit unsigned integers is only defined for k <= 32.");
+
+    return kmer_data[0];
 }
 
 

@@ -22,6 +22,7 @@
 
 // Forward declarations.
 template <uint16_t k> class Kmer_SPMC_Iterator;
+template <uint16_t k> class Kmer_Index;
 template <uint16_t k> class Thread_Pool;
 
 
@@ -35,6 +36,8 @@ private:
 
     const Build_Params params;  // Required parameters (wrapped inside).
     Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash_table; // Hash table for the vertices (i.e. canonical k-mers) of the original (uncompacted) de Bruijn graph.
+
+    Kmer_Index<k>& kmer_idx;    // Index over the k-mers of the graph.
 
     // typedef std::ofstream sink_t;
     typedef Async_Logger_Wrapper sink_t;
@@ -58,7 +61,7 @@ private:
     // for the unitpath-flanking vertices to be identified and the corresponding unipaths to be extracted.
     void distribute_unipaths_extraction(Kmer_SPMC_Iterator<k>* vertex_parser, Thread_Pool<k>& thread_pool);
 
-    // Prcesses the vertices provided to the thread with id `thread_id` from the parser
+    // Processes the vertices provided to the thread with id `thread_id` from the parser
     // `vertex_parser`, i.e. for each vertex `v` provided to that thread, attempts to
     // piece-wise construct its containing maximal unitig.
     void process_vertices(Kmer_SPMC_Iterator<k>* vertex_parser, uint16_t thread_id);
@@ -96,8 +99,9 @@ private:
 public:
 
     // Constructs a vertex-extractor object for some compacted read de Bruijn graph, with the required
-    // parameters wrapped inside `params`, and uses the Cuttlefish hash table `hash_table`.
-    Read_CdBG_Extractor(const Build_Params& params, Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash_table);
+    // parameters wrapped inside `params`, and uses the Cuttlefish hash table `hash_table`. If a k-mer
+    // index is to be constructed downstream, then the extracted vertices will be deposited to `kmer_idx`.
+    Read_CdBG_Extractor(const Build_Params& params, Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash_table, Kmer_Index<k>& kmer_idx);
 
     // Extracts the maximal unitigs of the de Bruijn graph with the vertex set at path prefix `vertex_db_path`,
     // into the output file at `output_file_path`.

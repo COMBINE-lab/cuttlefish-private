@@ -28,6 +28,8 @@ namespace cuttlefish
 #endif
         constexpr Output_Format OP_FORMAT = Output_Format::fa;
         constexpr char WORK_DIR[] = ".";
+
+        constexpr uint16_t MIN_LEN = 20;    // TODO: placeholder for now.
     }
 }
 

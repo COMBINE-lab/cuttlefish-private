@@ -15,7 +15,8 @@ Read_CdBG<k>::Read_CdBG(const Build_Params& params):
     params(params),
     logistics(this->params),
     hash_table(nullptr),
-    dbg_info(params.json_file_path())
+    dbg_info(params.json_file_path()),
+    kmer_idx(params)
 {}
 
 
@@ -123,6 +124,17 @@ void Read_CdBG<k>::construct()
     std::chrono::high_resolution_clock::time_point t_extract = std::chrono::high_resolution_clock::now();
     std::cout << "Extracted the maximal unitigs. Time taken = " << std::chrono::duration_cast<std::chrono::duration<double>>(t_extract - t_dfa).count() << " seconds.\n";
 
+    if(params.idx())
+    {
+        hash_table->clear();
+
+        std::cout << "\nConstructing a k-mer index.\n";
+        kmer_idx.index();
+
+        std::chrono::high_resolution_clock::time_point t_idx = std::chrono::high_resolution_clock::now();
+        std::cout << "Constructed a k-mer index for the graph. Time taken = " << std::chrono::duration_cast<std::chrono::duration<double>>(t_idx - t_extract).count() << " seconds.\n";
+    }
+
 #ifndef CF_DEVELOP_MODE
     const double max_disk = static_cast<double>(max_disk_usage(edge_stats, vertex_stats)) / (1024.0 * 1024.0 * 1024.0);
     std::cout << "\nMaximum temporary disk-usage: " << max_disk << "GB.\n";
@@ -191,7 +203,7 @@ void Read_CdBG<k>::compute_DFA_states()
 template <uint16_t k>
 void Read_CdBG<k>::extract_maximal_unitigs()
 {
-    Read_CdBG_Extractor<k> cdBg_extractor(params, *hash_table);
+    Read_CdBG_Extractor<k> cdBg_extractor(params, *hash_table, kmer_idx);
 
     cdBg_extractor.extract_maximal_unitigs(logistics.vertex_db_path(), logistics.output_file_path());
     dbg_info.add_unipaths_info(cdBg_extractor);

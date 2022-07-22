@@ -2,14 +2,16 @@
 #include "Read_CdBG_Extractor.hpp"
 #include "Kmer_Container.hpp"
 #include "Kmer_SPMC_Iterator.hpp"
+#include "Kmer_Index.hpp"
 #include "Character_Buffer.hpp"
 #include "Thread_Pool.hpp"
 
 
 template <uint16_t k>
-Read_CdBG_Extractor<k>::Read_CdBG_Extractor(const Build_Params& params, Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash_table):
+Read_CdBG_Extractor<k>::Read_CdBG_Extractor(const Build_Params& params, Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash_table, Kmer_Index<k>& kmer_idx):
     params(params),
-    hash_table(hash_table)
+    hash_table(hash_table),
+    kmer_idx(kmer_idx)
 {}
 
 
@@ -84,6 +86,11 @@ void Read_CdBG_Extractor<k>::process_vertices(Kmer_SPMC_Iterator<k>* const verte
 
     Character_Buffer<BUFF_SZ, sink_t> output_buffer(output_sink.sink());  // The output buffer for maximal unitigs.
 
+    const bool to_idx = params.idx();   // Whether a k-mer index will be constructed downstream.
+    const char* unitig_seq; // Location of maximal unitigs within the output buffer.
+    std::size_t seq_len;    // Length of the literal sequences of the maximal unitigs.
+    const auto token = kmer_idx.get_token();    // Unique sequence-producer token for this thread.
+
 
     while(vertex_parser->tasks_expected(thread_id))
         if(vertex_parser->value_at(thread_id, v_hat))
@@ -98,6 +105,13 @@ void Read_CdBG_Extractor<k>::process_vertices(Kmer_SPMC_Iterator<k>* const verte
                 
                 if(progress_tracker.track_work(progress += maximal_unitig.size()))
                     progress = 0;
+
+                if(to_idx)
+                {
+                    seq_len = maximal_unitig.size() + k - 1;
+                    unitig_seq = output_buffer.suffix(seq_len + 1); // The +1 length is to account for the ending line-break.
+                    kmer_idx.deposit(token, unitig_seq, seq_len);
+                }
             }
 
             vertex_count++;

@@ -1,31 +1,33 @@
 
-#include "Directed_Kmer.hpp"
-#include "Kmer_Container.hpp"
-#include "Kmer_SPMC_Iterator.hpp"
-#include "BBHash/BooPHF.h"
-#include "Kmer_Hasher.hpp"
-#include "Validator.hpp"
-#include "Character_Buffer.hpp"
-#include "Kmer_SPMC_Iterator.hpp"
-#include "Kmer_SPSC_Iterator.hpp"
-#include "FASTA_Record.hpp"
-#include "Multiway_Merger.hpp"
-#include "kseq/kseq.h"
-#include "spdlog/spdlog.h"
-#include "spdlog/async.h"
-#include "spdlog/sinks/basic_file_sink.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
+// #include "Directed_Kmer.hpp"
+// #include "Kmer_Container.hpp"
+// #include "Kmer_SPMC_Iterator.hpp"
+// #include "BBHash/BooPHF.h"
+// #include "Kmer_Hasher.hpp"
+// #include "Validator.hpp"
+// #include "Character_Buffer.hpp"
+// #include "Kmer_SPMC_Iterator.hpp"
+// #include "Kmer_SPSC_Iterator.hpp"
+// #include "FASTA_Record.hpp"
+// #include "Ref_Parser.hpp"
+// #include "Minimizer_Iterator.hpp"
+// #include "Multiway_Merger.hpp"
+// #include "kseq/kseq.h"
+// #include "spdlog/spdlog.h"
+// #include "spdlog/async.h"
+// #include "spdlog/sinks/basic_file_sink.h"
+// #include "spdlog/sinks/stdout_color_sinks.h"
 
-#include <chrono> 
-#include <iostream>
-#include <fstream>
-#include <cstdio>
-#include <cstdlib>
-#include <string>
-#include <zlib.h>
-#include <cstring>
-#include <set>
-#include <map>
+// #include <chrono>
+// #include <iostream>
+// #include <fstream>
+// #include <cstdio>
+// #include <cstdlib>
+// #include <string>
+// #include <zlib.h>
+// #include <cstring>
+// #include <set>
+// #include <map>
 
 
 /*
@@ -390,7 +392,6 @@ void test_buffered_iterator_performance(const char* const file_name)
     std::cout << "Max k-mer: " << max_kmer.string_label() << "\n";
     std::cout << "k-mers count found using iterators: " << count << "\n";
 }
-*/
 
 
 template <uint16_t k>
@@ -453,7 +454,6 @@ void test_SPMC_iterator_performance(const char* const db_path, const size_t cons
 }
 
 
-/*
 template <uint16_t k>
 void test_SPSC_iterator_performance(const char* const db_path)
 {
@@ -490,7 +490,6 @@ void test_SPSC_iterator_performance(const char* const db_path)
 }
 
 
-/*
 template <uint16_t k>
 void test_iterator_correctness(const char* const db_path, const size_t consumer_count)
 {
@@ -637,8 +636,6 @@ void write_kmers(const std::string& kmc_db_path, const uint16_t thread_count, co
     output.close();
 }
 
-*/
-
 
 template <uint16_t k>
 void test_multiway_merge(const std::string& db_list)
@@ -689,6 +686,79 @@ void test_multiway_merge(const std::string& db_list)
 }
 
 
+template <uint16_t k, uint16_t l>
+void minimizer_iterator_test(const char* const file_path)
+{
+    Ref_Parser input(file_path);
+
+    while(input.read_next_seq())
+    {
+        std::cout << "\nAt seq. " << input.seq_id() << ", of length " << input.seq_len() << ".\n";
+
+        if(input.seq_len() < k)
+            continue;
+
+        const char* const seq = input.seq();
+        Minimizer_Iterator min_iterator(seq, input.seq_len(), k, l);
+
+        std::size_t kmer_idx = 0;
+        cuttlefish::minimizer_t min;
+        std::size_t idx;
+
+        // std::cout << seq << "\n";
+
+        do
+        {
+            std::cerr << "\r" << kmer_idx;
+
+            // Get minimizer from iterator.
+            min_iterator.value_at(min, idx);
+            const uint64_t hash = Minimizer_Iterator::hash(min);
+
+            // std::cout << "k-mer idx: " << kmer_idx << ", minimizer idx: " << idx << "\n";
+
+            // Get minimizer with complete search.
+            Kmer<l> min_lmer(seq, kmer_idx);
+            std::size_t min_idx = kmer_idx;
+            uint64_t min_hash = Minimizer_Iterator::hash(min_lmer.as_int());
+
+            for(std::size_t i = kmer_idx + 1; i + l - 1 < kmer_idx + k; ++i)
+            {
+                const Kmer<l> lmer(seq, i);
+                const uint64_t lmer_hash = Minimizer_Iterator::hash(lmer.as_int());
+
+                if(min_hash < lmer_hash)
+                    continue;
+
+                if(min_hash > lmer_hash || min_lmer > lmer)
+                    min_lmer = lmer, min_idx = i, min_hash = lmer_hash;
+
+                // Basic lexicographic minimizer.
+                // if(min_lmer > lmer)
+                //     min_lmer = lmer, min_idx = i;
+            }
+
+            if(min_lmer.as_int() != min || min_idx != idx || min_hash != hash)
+            {
+                std::cout << "\nBug in computing minimizers. Aborting.\n";
+                std::cout << "k-mer index: " << kmer_idx << ".\n";
+                std::cout << "From iterator: " << min << ", at index " << idx << ".\n";
+                std::cout << "Manually:      " << min_lmer.as_int() << ", at index " << min_idx << ".\n";
+
+                std::exit(EXIT_FAILURE);
+            }
+
+
+            kmer_idx++;
+        }
+        while(++min_iterator);
+    }
+
+
+    input.close();
+}
+*/
+
 int main(int argc, char** argv)
 {
     (void)argc;
@@ -719,7 +789,7 @@ int main(int argc, char** argv)
 
     // count_kmers_in_unitigs(argv[1], atoi(argv[2]));
 
-    static constexpr uint16_t k = 31;
+    // static constexpr uint16_t k = 31;
     // static const size_t consumer_count = std::atoi(argv[2]);
 
     // test_buffered_iterator_performance<k>(argv[1]);
@@ -727,7 +797,10 @@ int main(int argc, char** argv)
     // test_SPSC_iterator_performance<k>(argv[1]);
     // test_iterator_correctness<k>(argv[1], consumer_count);
     // write_kmers<32>(argv[1], std::atoi(argv[2]), argv[3]);
-    test_multiway_merge<k>(std::string(argv[1]));
+    // test_multiway_merge<k>(std::string(argv[1]));
+
+    // static constexpr uint16_t l = 20;
+    // minimizer_iterator_test<k, l>(argv[1]);
 
     return 0;
 }

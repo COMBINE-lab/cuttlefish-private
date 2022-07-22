@@ -43,6 +43,9 @@ int cf_build(int argc, char** argv)
             cxxopts::value<uint16_t>()->default_value(std::to_string(cuttlefish::_default::K)))
         ("t,threads", "number of threads to use",
             cxxopts::value<uint16_t>()->default_value(std::to_string(cuttlefish::_default::THREAD_COUNT)))
+        ("idx", "construct a k-mer index of the de Bruijn graph")
+        ("min-len", "minimizer length",
+            cxxopts::value<uint16_t>()->default_value(std::to_string(cuttlefish::_default::MIN_LEN)))
         ("o,output", "output file",
             cxxopts::value<std::string>())
         ("w,work-dir", "working directory",
@@ -61,7 +64,7 @@ int cf_build(int argc, char** argv)
             cxxopts::value<std::optional<uint32_t>>(cutoff))
         ("path-cover", "extract a maximal path cover of the de Bruijn graph")
         ;
-    
+
     std::optional<uint16_t> format_code;
     options.add_options("cuttlefish_1")
         ("f,format", "output format (0: FASTA, 1: GFA 1.0, 2: GFA 2.0, 3: GFA-reduced)",
@@ -101,6 +104,8 @@ int cf_build(int argc, char** argv)
         const auto edge_db = result["edge-set"].as<std::string>();
         const auto thread_count = result["threads"].as<uint16_t>();
         const auto strict_memory = !result["unrestrict-memory"].as<bool>();
+        const auto idx = result["idx"].as<bool>();
+        const auto min_len = result["min-len"].as<uint16_t>();
         const auto output_file = result["output"].as<std::string>();
         const auto format = format_code ?   std::optional<cuttlefish::Output_Format>(cuttlefish::Output_Format(format_code.value())) :
                                             std::optional<cuttlefish::Output_Format>();
@@ -116,6 +121,7 @@ int cf_build(int argc, char** argv)
         const Build_Params params(  is_read_graph, is_ref_graph,
                                     seqs, lists, dirs,
                                     k, cutoff, vertex_db, edge_db, thread_count, max_memory, strict_memory,
+                                    idx, min_len,
                                     output_file, format, working_dir,
                                     path_cover,
                                     save_mph, save_buckets, save_vertices
@@ -148,6 +154,7 @@ int cf_build(int argc, char** argv)
         std::cerr << std::endl << "Usage :" << std::endl;
         std::cerr << options.help() << std::endl;
     }
+
     return 0;
 }
 
@@ -215,7 +222,8 @@ int cf_validate(int argc, char** argv)
         std::cerr << std::endl << "Usage :" << std::endl;
         std::cerr << options.help() << std::endl;
     }
-  return 0;
+
+    return 0;
 }
 
 
