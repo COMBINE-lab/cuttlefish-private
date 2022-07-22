@@ -2,6 +2,7 @@
 #include "Kmer_Index.hpp"
 #include "Sparse_Lock.hpp"
 #include "Minimizer_Instance_Merger.hpp"
+#include "Build_Params.hpp"
 #include "Input_Defaults.hpp"
 #include "utility.hpp"
 
@@ -77,6 +78,13 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     min_offset->deserialize(offset_file_path());
     num_instances = min_offset->size();
 }
+
+
+template <uint16_t k>
+Kmer_Index<k>::Kmer_Index(const Build_Params& params):
+    Kmer_Index(params.min_len(), params.thread_count(), false, params.output_prefix(), params.working_dir_path())
+{}
+
 
 template <uint16_t k>
 void Kmer_Index<k>::save_config() const

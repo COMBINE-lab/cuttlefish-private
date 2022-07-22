@@ -26,6 +26,9 @@
 // =============================================================================
 
 
+class Build_Params;
+
+
 // A class to index the k-mers of provided de Bruijn graph path-sequences,
 // potentially from many producer threads, based on the k-mers' minimizers.
 template <uint16_t k>
@@ -184,6 +187,10 @@ public:
 
     // Loads the k-mer index stored at path `idx_path`.
     Kmer_Index(const std::string& idx_path);
+
+    // Constructs a k-mer indexer object with the parameters required for the
+    // index construction wrapped in `params`.
+    Kmer_Index(const Build_Params& params);
 
     class Producer_Token;
 
