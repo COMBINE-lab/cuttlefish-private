@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <iostream>
 
 
 // =============================================================================
@@ -23,6 +24,8 @@ class Index_Validator
 {
 public:
 
+    Index_Validator() = delete;
+
     // Validates the indexing algorithm by constructing an index naively for the
     // sequences at the file `seq_path` and validating the index constructed by
     // the algorithm against the naive index. Indexing is over `l`-minimizers.
@@ -32,6 +35,11 @@ public:
     // be over the sequences stored at path `seq_path`. Indexing is over `l`-
     // minimizers.
     static bool validate(const std::string& seq_path, const std::string& idx_path);
+
+    // Validates the k-mer index stored at path `idx_path`, which is supposed to
+    // be over the sequences stored at path `seq_path`. Indexing is over `l`-
+    // minimizers.
+    static bool validate(const std::string& seq_path, const std::string& idx_path, uint16_t kmer_len, uint16_t min_len);
 };
 
 
@@ -352,6 +360,38 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
 
 
     return true;
+}
+
+
+template <uint16_t k, uint16_t l>
+bool Index_Validator<k, l>::validate(const std::string& seq_path, const std::string& idx_path, const uint16_t kmer_len, const uint16_t min_len)
+{
+    if constexpr(l == 0 || k == 1)
+        return false;
+    else
+    {
+        if(l < min_len)
+        {
+            std::cerr << "The provided minimizer length is not valid. Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        if(l > min_len)
+            return Index_Validator<k, l - 1>::validate(seq_path, idx_path, kmer_len, min_len);
+
+
+        if(k < kmer_len)
+        {
+            std::cerr << "The provided k-mer length is not valid. Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        if(k > kmer_len)
+            return Index_Validator<k - 2, l>::validate(seq_path, idx_path, kmer_len, min_len);
+
+
+        return validate(seq_path, idx_path);
+    }
 }
 
 

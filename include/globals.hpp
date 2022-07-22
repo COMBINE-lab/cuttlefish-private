@@ -53,6 +53,7 @@ namespace std
 namespace cuttlefish
 {
     constexpr uint16_t MAX_K = (2 * INSTANCE_COUNT - 1);
+    constexpr uint16_t MAX_L = 32;
 
 
     typedef bool dir_t;
