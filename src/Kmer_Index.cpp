@@ -18,6 +18,7 @@
 template <uint16_t k>
 Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const bool retain, const std::string& output_pref, const std::string& working_dir):
     // TODO: reserve space for `paths`, preferably from additional k-mer count field
+    path_ends(nullptr),
     l(l),
     producer_count(producer_count),
     num_instances(0),
@@ -47,6 +48,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
 
 template <uint16_t k>
 Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
+    path_ends(nullptr),
     l(load_minimizer_len(idx_path + CONFIG_FILE_EXT)),
     producer_count(0),
     num_instances(0),
