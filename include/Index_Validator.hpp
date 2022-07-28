@@ -111,8 +111,8 @@ inline bool Index_Validator<k, l>::validate(const std::string& file_path)
 
     // Check paths' validity.
 
-    std::cout << "Path counts:\n\tNaive idx: " << ends.size() << ", Cuttlefish idx: " << kmer_index.path_count << ".\n";
-    if(ends.size() != kmer_index.path_count)
+    std::cout << "Path counts:\n\tNaive idx: " << ends.size() << ", Cuttlefish idx: " << kmer_index.path_count_ << ".\n";
+    if(ends.size() != kmer_index.path_count_)
         return false;
 
     for(std::size_t i = 0; i < ends.size(); ++i)
@@ -134,9 +134,9 @@ inline bool Index_Validator<k, l>::validate(const std::string& file_path)
 
     // Check minimizer instance counts and their offsets in the paths.
 
-    std::cout << "Unique minimizer count:\n\tNaive idx: " << M.size() << ", Cuttlefish idx: " << kmer_index.min_count << ".\n";
-    std::cout << "Minimizer instance count:\n\tNaive idx: " << inst_count << ", Cuttlefish idx: " << kmer_index.num_instances << ".\n";
-    if(M.size() != kmer_index.min_count || inst_count != kmer_index.num_instances)
+    std::cout << "Unique minimizer count:\n\tNaive idx: " << M.size() << ", Cuttlefish idx: " << kmer_index.min_count_ << ".\n";
+    std::cout << "Minimizer instance count:\n\tNaive idx: " << inst_count << ", Cuttlefish idx: " << kmer_index.num_instances_ << ".\n";
+    if(M.size() != kmer_index.min_count_ || inst_count != kmer_index.num_instances_)
         return false;
 
     const auto& mi_count = *kmer_index.min_instance_count;
@@ -187,7 +187,7 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
 
     std::cout << "Loaded the Cuttlefish index.\n";
 
-    const std::size_t path_count = kmer_idx.path_count;
+    const std::size_t path_count = kmer_idx.path_count_;
     const auto& paths = kmer_idx.paths;
     const auto& p_end = *kmer_idx.path_ends;
 
@@ -305,9 +305,9 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
     std::cout << "Path sequences aligned.\n";
 
 
-    std::cout << "Unique minimizer count:\n\tNaive idx: " << M.size() << ", Cuttlefish idx: " << kmer_idx.min_count << ".\n";
-    std::cout << "Minimizer instance count:\n\tNaive idx: " << inst_count << ", Cuttlefish idx: " << kmer_idx.num_instances << ".\n";
-    if(M.size() != kmer_idx.min_count || inst_count != kmer_idx.num_instances)
+    std::cout << "Unique minimizer count:\n\tNaive idx: " << M.size() << ", Cuttlefish idx: " << kmer_idx.min_count_ << ".\n";
+    std::cout << "Minimizer instance count:\n\tNaive idx: " << inst_count << ", Cuttlefish idx: " << kmer_idx.num_instances_ << ".\n";
+    if(M.size() != kmer_idx.min_count_ || inst_count != kmer_idx.num_instances_)
         return false;
 
     const auto& mi_count = *kmer_idx.min_instance_count;

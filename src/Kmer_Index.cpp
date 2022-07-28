@@ -21,9 +21,9 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     path_ends(nullptr),
     l(l),
     producer_count(producer_count),
-    num_instances(0),
-    min_count(0),
-    max_inst_count(0),
+    num_instances_(0),
+    min_count_(0),
+    max_inst_count_(0),
     producer_path_buf(producer_count),
     producer_path_end_buf(producer_count),
     producer_minimizer_buf(producer_count),
@@ -51,9 +51,9 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     path_ends(nullptr),
     l(load_minimizer_len(idx_path + CONFIG_FILE_EXT)),
     producer_count(0),
-    num_instances(0),
-    min_count(0),
-    max_inst_count(0),  // TODO: think if this might have repercussions, as we don't have it saved (though, inferrable).
+    num_instances_(0),
+    min_count_(0),
+    max_inst_count_(0),  // TODO: think if this might have repercussions, as we don't have it saved (though, inferrable).
     min_mphf(nullptr),
     min_instance_count(nullptr),
     min_offset(nullptr),
@@ -62,11 +62,11 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     working_dir(dirname(idx_path) + "/")
 {
     paths.deserialize(path_file_path());
-    sum_paths_len = paths.size();
+    sum_paths_len_ = paths.size();
 
     path_ends = new path_end_vector_t();
     path_ends->deserialize(path_end_file_path());
-    path_count = path_ends->size();
+    path_count_ = path_ends->size();
 
     min_mphf = new minimizer_mphf_t();
     min_mphf->load(mphf_file_path());
@@ -74,11 +74,11 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
 
     min_instance_count = new min_vector_t();
     min_instance_count->deserialize(count_file_path());
-    min_count = min_instance_count->size();
+    min_count_ = min_instance_count->size();
 
     min_offset = new min_vector_t();
     min_offset->deserialize(offset_file_path());
-    num_instances = min_offset->size();
+    num_instances_ = min_offset->size();
 }
 
 
@@ -188,7 +188,7 @@ void Kmer_Index<k>::index()
     const uint64_t total_bits = min_mphf->totalBitSize();
     std::cout <<    "For the minimizer-MPHF:\n"
                     "\tTotal size: " << total_bits / (8U * 1024U * 1024U) << " MB."
-                    " Bits per k-mer: " << static_cast<double>(total_bits) / min_count << ".\n";
+                    " Bits per k-mer: " << static_cast<double>(total_bits) / min_count_ << ".\n";
     const time_point_t t_mphf = now();
     std::cout << "Constructed the minimizer-MPHF. Time taken = " << duration(t_mphf - t_merge) << " seconds.\n";
 
@@ -222,22 +222,23 @@ void Kmer_Index<k>::close_deposit_stream()
         producer_minimizer_file[id].close();
     }
 
+    sum_paths_len_ = paths.size();
+
     // TODO: reduce capacity before serializing: might be non-trivial waste of space.
     paths.serialize(path_file_path());
 
     // Release memory of the concatenated paths if required.
-    sum_paths_len = paths.size();
     if(!retain)
         force_free(paths);
 
 
     // Compact the path endpoints to just as many bits as required.
-    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len)));
+    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len_)));
     assert(bits_per_entry > 0);
-    path_count = path_ends_vec.size();
-    path_ends = new path_end_vector_t(bits_per_entry, path_count);
+    path_count_ = path_ends_vec.size();
+    path_ends = new path_end_vector_t(bits_per_entry, path_count_);
     auto& p_end = *path_ends;
-    for(std::size_t i = 0; i < path_count; ++i)
+    for(std::size_t i = 0; i < path_count_; ++i)
         p_end[i] = path_ends_vec[i];
 
     force_free(path_ends_vec);
@@ -310,7 +311,7 @@ void Kmer_Index<k>::merge_minimizers()
 
     multiway_merger.peek(min);
     minimizer_t last_min = min.minimizer();
-    min_count = 1;
+    min_count_ = 1;
     while(multiway_merger.next(min))
     {
         merged_min_buf.push_back(min);
@@ -318,12 +319,12 @@ void Kmer_Index<k>::merge_minimizers()
             dump(merged_min_buf, min_file);
 
         if(last_min != min.minimizer())
-            min_count++,
+            min_count_++,
             last_min = min.minimizer();
     }
 
-    std::cout << "Minimizer instance count: " << num_instances << "\n";
-    std::cout << "Unique minimizer count:   " << min_count << "\n";
+    std::cout << "Minimizer instance count: " << num_instances_ << "\n";
+    std::cout << "Unique minimizer count:   " << min_count_ << "\n";
 
     if(!merged_min_buf.empty())
         dump(merged_min_buf, min_file);
@@ -346,7 +347,7 @@ void Kmer_Index<k>::construct_minimizer_mphf()
     std::FILE* const min_file = std::fopen(min_instance_file_path().c_str(), "rb");
     const auto data_iterator = boomphf::range(min_iter_t(min_file), min_iter_t(nullptr));
 
-    min_mphf = new boomphf::mphf<minimizer_t, minimizer_hasher_t, false>(min_count, data_iterator, working_dir, producer_count, gamma);
+    min_mphf = new boomphf::mphf<minimizer_t, minimizer_hasher_t, false>(min_count_, data_iterator, working_dir, producer_count, gamma);
 
 
     std::ofstream output(mphf_file_path(), std::ofstream::out);
@@ -364,9 +365,9 @@ void Kmer_Index<k>::construct_minimizer_mphf()
 template <uint16_t k>
 void Kmer_Index<k>::count_minimizer_instances()
 {
-    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(num_instances + 1)));
+    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(num_instances_ + 1)));
     assert(bits_per_entry > 0);
-    min_instance_count = new min_vector_t(bits_per_entry, min_count + 1);
+    min_instance_count = new min_vector_t(bits_per_entry, min_count_ + 1);
     min_instance_count->clear_mem();
 
     std::FILE* const min_file = std::fopen(min_instance_file_path().c_str(), "rb");
@@ -374,7 +375,7 @@ void Kmer_Index<k>::count_minimizer_instances()
     constexpr std::size_t min_buf_sz = 5U * 1024U * 1024U / sizeof(Minimizer_Instance); // Minimizer instance chunk size, in elements: 5 MB total.
 
     std::vector<std::thread> worker;
-    Sparse_Lock<Spin_Lock> idx_lock(min_count + 1, idx_lock_count);
+    Sparse_Lock<Spin_Lock> idx_lock(min_count_ + 1, idx_lock_count);
     std::vector<std::size_t> max_count(producer_count);
 
     for(uint16_t t = 0; t < producer_count; ++t)
@@ -414,17 +415,17 @@ void Kmer_Index<k>::count_minimizer_instances()
         }
 
         worker[t].join();
-        if(max_inst_count < max_count[t])
-            max_inst_count = max_count[t];
+        if(max_inst_count_ < max_count[t])
+            max_inst_count_ = max_count[t];
     }
 
-    std::cout << "Maximum instance count of a minimizer: " << max_inst_count << ".\n";
+    std::cout << "Maximum instance count of a minimizer: " << max_inst_count_ << ".\n";
 
 
     // Transform the instance counts to cumulative counts, ordered per the minimizers' hash.
     auto& mi_count = *min_instance_count;
     uint64_t cum_count = (mi_count[0] = 0);
-    for(std::size_t i = 1; i <= min_count; ++i)
+    for(std::size_t i = 1; i <= min_count_; ++i)
         mi_count[i] = (cum_count += mi_count[i]);
 }
 
@@ -432,16 +433,16 @@ void Kmer_Index<k>::count_minimizer_instances()
 template <uint16_t k>
 void Kmer_Index<k>::get_minimizer_offsets()
 {
-    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len))); // The path-sequence is 0-indexed—no need for +1.
+    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len_))); // The path-sequence is 0-indexed—no need for +1.
     assert(bits_per_entry > 0);
-    min_offset = new min_vector_t(bits_per_entry, num_instances);
+    min_offset = new min_vector_t(bits_per_entry, num_instances_);
 
     std::FILE* const min_file = std::fopen(min_instance_file_path().c_str(), "rb");
     Minimizer_Instance_Iterator<std::FILE*> min_inst_iter(min_file);
     constexpr std::size_t min_buf_sz = 5U * 1024U * 1024U / sizeof(Minimizer_Instance); // Minimizer instance chunk size, in elements: 5 MB total.
 
     std::vector<std::thread> worker;
-    Sparse_Lock<Spin_Lock> idx_lock(min_count, idx_lock_count);
+    Sparse_Lock<Spin_Lock> idx_lock(min_count_, idx_lock_count);
 
     for(uint16_t t = 0; t < producer_count; ++t)
         worker.emplace_back(
@@ -485,7 +486,7 @@ void Kmer_Index<k>::get_minimizer_offsets()
 
 
     // After the in-place transformation (see note above), `min_instance_count` need not have that extra last entry anymore.
-    min_instance_count->resize(min_count);
+    min_instance_count->resize(min_count_);
 
     min_instance_count->serialize(count_file_path());
 

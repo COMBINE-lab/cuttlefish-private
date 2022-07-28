@@ -53,11 +53,11 @@ private:
 
     const uint16_t producer_count;  // Number of producer threads supplying the paths to the indexer.
 
-    std::size_t path_count; // Number of paths deposited to the sequence.
-    std::size_t sum_paths_len;  // Sum length of all the path-sequences.
-    uint64_t num_instances; // Number of minimizer instances in the paths.
-    uint64_t min_count; // Number of unique minimizers in the paths.
-    uint64_t max_inst_count;    // Maximum count of instances for some minimizer.
+    std::size_t path_count_;    // Number of paths deposited to the sequence.
+    std::size_t sum_paths_len_; // Sum length of all the path-sequences.
+    uint64_t num_instances_;    // Number of minimizer instances in the paths.
+    uint64_t min_count_;    // Number of unique minimizers in the paths.
+    uint64_t max_inst_count_;   // Maximum count of instances for some minimizer.
 
     std::vector<path_vector_t> producer_path_buf;   // Separate buffer for each producer, to contain their deposited paths.
     std::vector<std::vector<std::size_t>> producer_path_end_buf;    // Separate buffer for each producer, to contain the (exclusive) indices of the path endpoints in their deposited paths.
@@ -208,6 +208,12 @@ public:
     // sequences to be indexed have been deposited.
     void index();
 
+    std::size_t path_count() const { return path_count_; }  // Returns the number of paths deposited to the sequence.
+    std::size_t sum_paths_len() const { return sum_paths_len_; }    // Returns the sum length of all the path-sequences.
+    uint64_t num_instances() const { return num_instances_; }   // Returns the number of minimizer instances in the paths.
+    uint64_t min_count() const { return min_count_; }   // Returns the number of unique minimizers in the paths.
+    uint64_t max_inst_count() const { return max_inst_count_; } // Returns the maximum count of instances for some minimizer.
+
     // Queries the k-mer `kmer` (in its literal form) into the index. If found,
     // returns its containing path's' sequence-ID in the concatenated paths
     // sequence. Returns -1 otherwise.
@@ -302,7 +308,7 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
     path_ends_vec.reserve(path_ends_vec.size() + path_end_buf.size());
     path_ends_vec.insert(path_ends_vec.end(), path_end_buf.cbegin(), path_end_buf.cend());
 
-    num_instances += min_buf.size();
+    num_instances_ += min_buf.size();
 
     lock.unlock();
 
@@ -365,21 +371,21 @@ inline int64_t Kmer_Index<k>::query(const Kmer<k>& kmer) const
         // Try to align the k-mer so that its `kmer_min_idx`-index precisely docks at the `min_idx`-index of the paths.
 
         // Docking the k-mer at this instance would make it fall off off either end of the concatenated paths.
-        if(min_idx < kmer_min_idx || (min_idx + (k - kmer_min_idx)) > sum_paths_len)
+        if(min_idx < kmer_min_idx || (min_idx + (k - kmer_min_idx)) > sum_paths_len_)
             continue;
 
         // The k-mer doesn't align with the corresponding path when docked at this instance.
         if(!align(kmer, min_idx - kmer_min_idx))
             continue;
 
-        const int64_t l = lower_bound(p_end, 0, path_count - 1, min_idx);   // ID of the path preceding this path.
+        const int64_t l = lower_bound(p_end, 0, path_count_ - 1, min_idx);   // ID of the path preceding this path.
         const std::size_t l_end = (l < 0 ? 0 : p_end[l]);   // Index of the left end of the path containing this instance.
         if(min_idx - kmer_min_idx < l_end)  // Alignment starting position of the k-mer exceeds the left end.
             continue;
 
-        // const int64_t r = upper_bound(p_end, 0, path_count - 1, min_idx);   // ID of this path.
+        // const int64_t r = upper_bound(p_end, 0, path_count_ - 1, min_idx);   // ID of this path.
         const int64_t r = l + 1;    // ID of this path.
-        assert(r == upper_bound(p_end, 0, path_count - 1, min_idx));
+        assert(r == upper_bound(p_end, 0, path_count_ - 1, min_idx));
         const std::size_t r_end = p_end[r]; // Index of the right end (exclusive) of the path containing this instance.
         if(min_idx + (k - kmer_min_idx) > r_end)    // Alignment ending position of the k-mer exceeds the right end.
             continue;
