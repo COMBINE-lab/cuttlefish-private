@@ -370,6 +370,9 @@ inline int64_t Kmer_Index<k>::query(const Kmer<k>& kmer) const
     const auto& p_end = *path_ends;
 
     const uint64_t h = hash(kmer_min) - 1;
+    if(h >= min_count_) // The k-mer's minimizer is absent in the index.
+        return -1;
+
     const std::size_t idx_begin = (h > 0 ? mi_count[h - 1] : 0);    // Offset of the block of indices of the minimizers' instances.
     const std::size_t idx_end = mi_count[h];    // End-offset of the instance block (exclusive).
 
