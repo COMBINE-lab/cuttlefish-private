@@ -84,7 +84,7 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
 
 template <uint16_t k>
 Kmer_Index<k>::Kmer_Index(const Build_Params& params):
-    Kmer_Index(params.min_len(), params.thread_count(), false, params.output_prefix(), params.working_dir_path())
+    Kmer_Index(params.min_len(), params.thread_count(), true, params.output_prefix(), params.working_dir_path())
 {}
 
 
