@@ -16,7 +16,7 @@
 
 
 template <uint16_t k>
-Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const bool retain, const std::string& output_pref, const std::string& working_dir):
+Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const bool retain, const std::string& output_pref, const std::string& working_dir, const Build_Params* const params):
     // TODO: reserve space for `paths`, preferably from additional k-mer count field
     path_ends(nullptr),
     l(l),
@@ -36,7 +36,8 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     retain(retain),
     curr_token(0),
     output_pref(output_pref),
-    working_dir(working_dir + "/")
+    working_dir(working_dir + "/"),
+    params(params)
 {
     assert(l <= 32);
     for(uint16_t id = 0; id < producer_count; ++id)
@@ -59,7 +60,8 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     min_offset(nullptr),
     retain(true),
     output_pref(idx_path),
-    working_dir(dirname(idx_path) + "/")
+    working_dir(dirname(idx_path) + "/"),
+    params(nullptr)
 {
     paths.deserialize(path_file_path());
     sum_paths_len_ = paths.size();
@@ -84,7 +86,7 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
 
 template <uint16_t k>
 Kmer_Index<k>::Kmer_Index(const Build_Params& params):
-    Kmer_Index(params.min_len(), params.thread_count(), true, params.output_prefix(), params.working_dir_path())
+    Kmer_Index(params.min_len(), params.thread_count(), true, params.output_prefix(), params.working_dir_path(), &params)
 {}
 
 

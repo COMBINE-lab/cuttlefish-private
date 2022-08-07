@@ -94,6 +94,8 @@ private:
     const std::string output_pref;  // Prefix of the output path for the index.
     const std::string working_dir;  // Path to the working directory for the index construction.
 
+    const Build_Params* const params;   // Build parameters wrapped inside.
+
     static constexpr char PATH_FILE_EXT[] = ".paths";
     static constexpr char PATH_END_FILE_EXT[] = ".ends";
     static constexpr char MPHF_FILE_EXT[] = ".min.mphf";
@@ -182,8 +184,10 @@ public:
     // most `producer_count` producers, based on the k-mers' `l`-minimizers.
     // Retains the index into memory after construction if `retain` is `true`.
     // The index is stored at the path prefix `output_pref`, and `working_dir`
-    // is used to store temporary files during the construction.
-    Kmer_Index(uint16_t l, uint16_t producer_count, bool retain, const std::string& output_pref, const std::string& working_dir);
+    // is used to store temporary files during the construction. An optional
+    // build-parameters pack `params` can be provided, if compacted de Bruijn
+    // graph construction is to be done from this object.
+    Kmer_Index(uint16_t l, uint16_t producer_count, bool retain, const std::string& output_pref, const std::string& working_dir, const Build_Params* params = nullptr);
 
     // Loads the k-mer index stored at path `idx_path`.
     Kmer_Index(const std::string& idx_path);
