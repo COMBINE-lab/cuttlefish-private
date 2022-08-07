@@ -8,7 +8,13 @@
 
 
 template <uint16_t k>
-Read_CdBG_Extractor<k>::Read_CdBG_Extractor(const Build_Params& params, Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash_table, Kmer_Index<k>& kmer_idx):
+Read_CdBG_Extractor<k>::Read_CdBG_Extractor(const Build_Params& params, Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash_table):
+    Read_CdBG_Extractor(params, hash_table, nullptr)
+{}
+
+
+template <uint16_t k>
+Read_CdBG_Extractor<k>::Read_CdBG_Extractor(const Build_Params& params, Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash_table, Kmer_Index<k>* const kmer_idx):
     params(params),
     hash_table(hash_table),
     kmer_idx(kmer_idx)
@@ -86,10 +92,12 @@ void Read_CdBG_Extractor<k>::process_vertices(Kmer_SPMC_Iterator<k>* const verte
 
     Character_Buffer<BUFF_SZ, sink_t> output_buffer(output_sink.sink());  // The output buffer for maximal unitigs.
 
-    const bool to_idx = params.idx();   // Whether a k-mer index will be constructed downstream.
     const char* unitig_seq; // Location of maximal unitigs within the output buffer.
     std::size_t seq_len;    // Length of the literal sequences of the maximal unitigs.
-    const auto token = kmer_idx.get_token();    // Unique sequence-producer token for this thread.
+    const auto token = (kmer_idx == nullptr ? nullptr : // Unique sequence-producer token for this thread.
+                            static_cast<typename Kmer_Index<k>::Producer_Token*>(std::malloc(sizeof(typename Kmer_Index<k>::Producer_Token))));
+    if(kmer_idx != nullptr)
+        *token = kmer_idx->get_token();
 
 
     while(vertex_parser->tasks_expected(thread_id))
@@ -106,11 +114,11 @@ void Read_CdBG_Extractor<k>::process_vertices(Kmer_SPMC_Iterator<k>* const verte
                 if(progress_tracker.track_work(progress += maximal_unitig.size()))
                     progress = 0;
 
-                if(to_idx)
+                if(kmer_idx != nullptr)
                 {
                     seq_len = maximal_unitig.size() + k - 1;
                     unitig_seq = output_buffer.suffix(seq_len + 1); // The +1 length is to account for the ending line-break.
-                    kmer_idx.deposit(token, unitig_seq, seq_len);
+                    kmer_idx->deposit(*token, unitig_seq, seq_len);
                 }
             }
 

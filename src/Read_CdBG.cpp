@@ -5,6 +5,7 @@
 #include "kmer_Enumeration_Stats.hpp"
 #include "Read_CdBG_Constructor.hpp"
 #include "Read_CdBG_Extractor.hpp"
+#include "Kmer_Index.hpp"
 #include "kmc_runner.h"
 
 #include <limits>
@@ -12,11 +13,17 @@
 
 template <uint16_t k>
 Read_CdBG<k>::Read_CdBG(const Build_Params& params):
+    Read_CdBG(params, nullptr)
+{}
+
+
+template <uint16_t k>
+Read_CdBG<k>::Read_CdBG(const Build_Params& params, Kmer_Index<k>* const kmer_idx):
     params(params),
     logistics(this->params),
     hash_table(nullptr),
     dbg_info(params.json_file_path()),
-    kmer_idx(params)
+    kmer_idx(kmer_idx)
 {}
 
 
@@ -124,12 +131,12 @@ void Read_CdBG<k>::construct()
     std::chrono::high_resolution_clock::time_point t_extract = std::chrono::high_resolution_clock::now();
     std::cout << "Extracted the maximal unitigs. Time taken = " << std::chrono::duration_cast<std::chrono::duration<double>>(t_extract - t_dfa).count() << " seconds.\n";
 
-    if(params.idx())
+    if(kmer_idx != nullptr)
     {
         hash_table->clear();
 
         std::cout << "\nConstructing a k-mer index.\n";
-        kmer_idx.index();
+        kmer_idx->index();
 
         std::chrono::high_resolution_clock::time_point t_idx = std::chrono::high_resolution_clock::now();
         std::cout << "Constructed a k-mer index for the graph. Time taken = " << std::chrono::duration_cast<std::chrono::duration<double>>(t_idx - t_extract).count() << " seconds.\n";
