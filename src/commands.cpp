@@ -1,6 +1,7 @@
 #include "Input_Defaults.hpp"
 #include "CdBG.hpp"
 #include "Read_CdBG.hpp"
+#include "Kmer_Index.hpp"
 #include "Validator.hpp"
 #include "Build_Params.hpp"
 #include "Validation_Params.hpp"
@@ -138,15 +139,26 @@ int cf_build(int argc, char** argv)
         // std::cout.precision(3);
 
 
-        const std::string dBg_type(params.is_read_graph() ? "read" : "reference");
+        if(params.idx())
+        {
+            std::cout << "\nConstructing a k-mer index of the de Bruijn graph for k = " << k << ".\n";
 
-        std::cout << "\nConstructing the compacted " << dBg_type << " de Bruijn graph for k = " << k << ".\n";
+            Application<cuttlefish::MAX_K, Kmer_Index>(params).execute();
 
-        (params.is_read_graph() || params.is_ref_graph()) ?
-            Application<cuttlefish::MAX_K, Read_CdBG>(params).execute() :
-            Application<cuttlefish::MAX_K, CdBG>(params).execute();
+            std::cout << "\nConstructed a k-mer index of the de Bruijn graph at " << params.output_prefix() << ".\n";
+        }
+        else
+        {
+            const std::string dBg_type(params.is_read_graph() ? "read" : "reference");
 
-        std::cout << "\nConstructed the " << dBg_type << " compacted de Bruijn graph at " << output_file << ".\n";
+            std::cout << "\nConstructing the compacted " << dBg_type << " de Bruijn graph for k = " << k << ".\n";
+
+            (params.is_read_graph() || params.is_ref_graph()) ?
+                Application<cuttlefish::MAX_K, Read_CdBG>(params).execute() :
+                Application<cuttlefish::MAX_K, CdBG>(params).execute();
+
+            std::cout << "\nConstructed the " << dBg_type << " compacted de Bruijn graph at " << output_file << ".\n";
+        }
     }
     catch(const std::exception& e)
     {
