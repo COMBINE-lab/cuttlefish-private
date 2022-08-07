@@ -2,6 +2,8 @@
 #include "Kmer_Index.hpp"
 #include "Sparse_Lock.hpp"
 #include "Minimizer_Instance_Merger.hpp"
+#include "CdBG.hpp"
+#include "Read_CdBG.hpp"
 #include "Build_Params.hpp"
 #include "Input_Defaults.hpp"
 #include "utility.hpp"
@@ -97,6 +99,26 @@ Kmer_Index<k>::~Kmer_Index()
     delete min_mphf;
     delete min_instance_count;
     delete min_offset;
+}
+
+
+template <uint16_t k>
+void Kmer_Index<k>::construct()
+{
+    assert(params != nullptr);
+
+    if(params->is_read_graph() || params->is_ref_graph())
+    {
+        Read_CdBG<k> cdbg(*params, this);
+        cdbg.construct();
+    }
+    else
+    {
+        CdBG<k> cdbg(*params, this);
+        cdbg.construct();
+    }
+
+    index();
 }
 
 

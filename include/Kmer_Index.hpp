@@ -199,6 +199,9 @@ public:
     // Destructs the k-mer index object.
     ~Kmer_Index();
 
+    // Constructs an index over the underlying de Bruijn graph's k-mers.
+    void construct();
+
     class Producer_Token;
 
     // Returns a unique token object.

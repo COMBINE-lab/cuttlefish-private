@@ -94,18 +94,6 @@ void CdBG<k>::construct()
     std::cout << "Extracted the maximal unitigs. Time taken = " << std::chrono::duration_cast<std::chrono::duration<double>>(t_extract - t_dfa).count() << " seconds.\n";
 
 
-    if(kmer_idx != nullptr)
-    {
-        hash_table->clear();
-
-        std::cout << "\nConstructing a k-mer index.\n";
-        kmer_idx->index();
-
-        std::chrono::high_resolution_clock::time_point t_idx = std::chrono::high_resolution_clock::now();
-        std::cout << "Constructed a k-mer index for the graph. Time taken = " << std::chrono::duration_cast<std::chrono::duration<double>>(t_idx - t_extract).count() << " seconds.\n";
-    }
-
-
     const double max_disk = static_cast<double>(max_disk_usage(vertex_stats)) / (1024.0 * 1024.0 * 1024.0);
     std::cout << "\nMaximum temporary disk-usage: " << max_disk << "GB.\n";
 }
