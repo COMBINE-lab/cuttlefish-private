@@ -376,10 +376,10 @@ void CdBG<k>::write_gfa_segment(const uint16_t thread_id, const char* const seq,
         for(size_t offset = 0; offset < segment_len; ++offset)
             buffer += Kmer<k>::complement(seq[end_kmer_idx + k - 1 - offset]);
 
-    if(params.idx())
+    if(kmer_idx != nullptr)
     {
         const char* const unitig_seq = buffer.data() + (buffer.size() - segment_len);
-        kmer_idx.deposit(token[thread_id], unitig_seq, segment_len);
+        kmer_idx->deposit(token[thread_id], unitig_seq, segment_len);
     }
 
 

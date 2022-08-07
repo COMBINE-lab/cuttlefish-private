@@ -31,10 +31,10 @@ void CdBG<k>::write_segment(const uint16_t thread_id, const char* const seq, con
     buffer += "\n";
 
 
-    if(params.idx())
+    if(kmer_idx != nullptr)
     {
         const char* const unitig_seq = buffer.data() + (buffer.size() - (segment_len + 1)); // The +1 length is to account for the ending line-break.
-        kmer_idx.deposit(token[thread_id], unitig_seq, segment_len);
+        kmer_idx->deposit(token[thread_id], unitig_seq, segment_len);
     }
 
 
