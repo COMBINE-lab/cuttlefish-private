@@ -24,31 +24,6 @@ namespace DNA
     enum class Extended_Base: uint8_t;
 }
 
-// Forward declarations of the type of the bitvector used and the type to access its entries (mutable).
-namespace compact
-{
-    template<typename IDX, unsigned BITS, typename W, typename Allocator> class ts_vector;
-
-    namespace iterator_imp
-    {
-        template<typename IDX, unsigned BITS, typename W, bool TS, unsigned UB> class lhs_setter;
-    }
-}
-
-// Forward declaration of the output writer type.
-namespace spdlog
-{
-    class logger;
-}
-
-// Miscellaneous forward declarations.
-namespace std
-{
-    template <typename X> class shared_ptr;
-    
-    template <typename X> class allocator;
-}
-
 
 namespace cuttlefish
 {
@@ -83,16 +58,10 @@ namespace cuttlefish
 
 
     constexpr uint8_t BITS_PER_REF_KMER = 5;
-    typedef compact::ts_vector<state_code_t, BITS_PER_REF_KMER, uint64_t, std::allocator<uint64_t>> ref_bitvector_t;
-    typedef compact::iterator_imp::lhs_setter<state_code_t, BITS_PER_REF_KMER, uint64_t, true, 64U> ref_bitvector_entry_t;
-
     constexpr uint8_t BITS_PER_READ_KMER = 6;
 
     // Minimizers can be represented using 64-bit integers.
     typedef uint64_t minimizer_t;
-
-
-    typedef std::shared_ptr<spdlog::logger> logger_t;
 }
 
 
