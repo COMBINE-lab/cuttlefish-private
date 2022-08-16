@@ -6,6 +6,7 @@
 
 #include "Kmer.hpp"
 #include "DNA_Utility.hpp"
+#include "Kmer_Utility.hpp"
 #include "Spin_Lock.hpp"
 #include "Minimizer_Iterator.hpp"
 #include "Minimizer_Instance.hpp"
@@ -472,12 +473,12 @@ inline bool Kmer_Index<k>::align(const Kmer<k>& kmer, const std::size_t idx) con
 
     // Align the completely-packed words, i.e. except for possibly the highest-indexed word.
     for(std::size_t word_num = 0; word_num < packed_word_count; ++word_num)
-        if(paths.get_int<uint64_t, 32>((idx + k) - word_num * 32 - 32) != DNA_Utility::base_reverse<32>(kmer_data[word_num]))
+        if(paths.get_int<uint64_t, 32>((idx + k) - word_num * 32 - 32) != Kmer_Utility::base_reverse<32>(kmer_data[word_num]))
             return false;
 
     // Align the (only) partially-packed word.
     if constexpr(k & 31)
-        if(paths.get_int<uint64_t, k & 31>(idx) != DNA_Utility::base_reverse<k & 31>(kmer_data[packed_word_count]))
+        if(paths.get_int<uint64_t, k & 31>(idx) != Kmer_Utility::base_reverse<k & 31>(kmer_data[packed_word_count]))
             return false;
 
     return true;
