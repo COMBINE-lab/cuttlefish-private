@@ -333,7 +333,12 @@ void Kmer_Index<k>::merge_minimizers()
 
     std::ofstream min_file(min_instance_file_path(), std::ios::out | std::ios::binary);
 
-    multiway_merger.peek(min);
+    if(!multiway_merger.peek(min))
+    {
+        std::cerr << "Multiway merge of minimizers initiated on an empty heap. Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
     minimizer_t last_min = min.minimizer();
     min_count_ = 1;
     while(multiway_merger.next(min))
