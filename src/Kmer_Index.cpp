@@ -257,7 +257,7 @@ void Kmer_Index<k>::close_deposit_stream()
 
 
     // Compact the path endpoints to just as many bits as required.
-    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len_)));
+    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len_ + 1)));
     assert(bits_per_entry > 0);
     path_count_ = path_ends_vec.size();
     path_ends = new path_end_vector_t(bits_per_entry, path_count_);
