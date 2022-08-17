@@ -225,6 +225,10 @@ public:
     // Returns the size of the path having sequence-ID `path_id`.
     std::size_t path_size(const std::size_t path_id) const;
 
+    // Extracts the k-mer situated at the index `idx` of the path with ID
+    // `path_id` into `kmer`.
+    void get_kmer(std::size_t path_id, std::size_t idx, Kmer<k>& kmer) const;
+
     // Queries the k-mer `kmer` (in its literal form) into the index. If found,
     // returns its containing path's' sequence-ID in the concatenated paths
     // sequence. Returns -1 otherwise.
@@ -362,7 +366,31 @@ inline uint64_t Kmer_Index<k>::hash(const cuttlefish::minimizer_t min) const
 template <uint16_t k>
 inline std::size_t Kmer_Index<k>::path_size(const std::size_t path_id) const
 {
-    return path_id == 0 ? (*path_ends)[path_id] : ((*path_ends)[path_id] - (*path_ends)[path_id - 1]);
+    const auto& p_ends = *path_ends;
+    return path_id == 0 ? p_ends[path_id] : (p_ends[path_id] - p_ends[path_id - 1]);
+}
+
+
+template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
+inline void Kmer_Index<k>::get_kmer(const std::size_t path_id, const std::size_t idx, Kmer<k>& kmer) const
+{
+    constexpr std::size_t packed_word_count = k / 32;
+    uint64_t* const kmer_data = kmer.data();
+    const auto& p_ends = *path_ends;
+    const std::size_t base_idx = (path_id > 0 ? p_ends[path_id - 1] : 0);
+
+    assert(base_idx + k <= p_ends[path_id]);
+
+    // Note: the endianness of the DNA-bases in the path vector is in opposite orientation to Cuttlefish k-mers.
+
+    // Get the partially packed word, i.e. the highest indexed one in `kmer`.
+    if constexpr(k % 32)
+        kmer_data[packed_word_count] = Kmer_Utility::base_reverse<(k % 32)>(paths.get_int<uint64_t, k % 32>(base_idx + idx));
+
+    // Get the completely packed words.
+    for(std::size_t word_idx = 0; word_idx < packed_word_count; ++word_idx)
+        kmer_data[packed_word_count - 1 - word_idx] = Kmer_Utility::base_reverse<32>(paths.get_int<uint64_t, 32>(base_idx + idx + (k % 32) + word_idx * 32));
 }
 
 
