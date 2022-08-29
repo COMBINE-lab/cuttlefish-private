@@ -229,10 +229,15 @@ public:
     // `path_id` into `kmer`.
     void get_kmer(std::size_t path_id, std::size_t idx, Kmer<k>& kmer) const;
 
+    class Query_Result;
+
     // Queries the k-mer `kmer` (in its literal form) into the index. If found,
-    // returns its containing path's' sequence-ID in the concatenated paths
-    // sequence. Returns -1 otherwise.
-    int64_t query(const Kmer<k>& kmer) const;
+    // stores alignment information (into the index) of the k-mer into `result`:
+    // the ID of the k-mer's containing path, the ID of the k-mer itself in the
+    // k-mer ordering of the index, and the k-mer's ID within its containing
+    // path. All IDs are the sequence-orders of the corresponding entities.
+    // Returns `true` iff the k-mer is found.
+    bool query(const Kmer<k>& kmer, Query_Result& result) const;
 };
 
 
@@ -394,8 +399,28 @@ inline void Kmer_Index<k>::get_kmer(const std::size_t path_id, const std::size_t
 }
 
 
+// A class to pack a k-mer query result from `Kmer_Index`.
 template <uint16_t k>
-inline int64_t Kmer_Index<k>::query(const Kmer<k>& kmer) const
+class Kmer_Index<k>::Query_Result
+{
+    friend class Kmer_Index<k>;
+
+private:
+
+    std::size_t path_id_;   // The ID of the path containing the query k-mer.
+    std::size_t kmer_id_;   // The ID of the query k-mer itself in the k-mer ordering of the index.
+    std::size_t kmer_id_in_path_;   // The ID of the query k-mer within its containing path.
+
+public:
+
+    std::size_t path_id() const { return path_id_; }    // Returns the ID of the path containing the query k-mer.
+    std::size_t kmer_id() const { return kmer_id_; }    // Returns the ID of the query k-mer itself in the k-mer ordering of the index.
+    std::size_t kmer_id_in_path() const { return kmer_id_in_path_; }    // Returns the ID of the query k-mer within its containing path.
+};
+
+
+template <uint16_t k>
+inline bool Kmer_Index<k>::query(const Kmer<k>& kmer, Query_Result& result) const
 {
     minimizer_t kmer_min;   // The minimizer of `kmer`.
     std::size_t kmer_min_idx;   // The index of the minimizer in `kmer`.
@@ -439,10 +464,14 @@ inline int64_t Kmer_Index<k>::query(const Kmer<k>& kmer) const
         if(min_idx + (k - kmer_min_idx) > r_end)    // Alignment ending position of the k-mer exceeds the right end.
             continue;
 
-        return r;
+        result.path_id_ = r;
+        result.kmer_id_ = min_idx - kmer_min_idx - r * (k - 1);
+        result.kmer_id_in_path_ = min_idx - kmer_min_idx - l_end;
+
+        return true;
     }
 
-    return -1;
+    return false;
 }
 
 

@@ -224,6 +224,8 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
     std::size_t sum_paths_len = 0;
     std::size_t last_idx = 0;
     std::string path;
+    std::size_t kmer_id = 0;
+    typename Kmer_Index<k>::Query_Result result;
 
     for(std::size_t path_id = 0; path_id < path_count; ++path_id)
     {
@@ -276,13 +278,16 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
             }
 
             // Check if the k-mer's containing path ID is correct.
-            if(kmer_idx.query(kmer) != (int64_t)path_id)
+            if(!kmer_idx.query(kmer, result) || result.path_id() != path_id || result.kmer_id() != kmer_id || result.kmer_id_in_path() != idx)
             {
                 std::cout << "Query failed for k-mer: " << kmer << "\n";
 
                 std::cout << "Some k-mer queries failed for true-positive k-mers.\n";
                 return false;
             }
+
+
+            kmer_id++;
         }
 
         sum_paths_len += len;
