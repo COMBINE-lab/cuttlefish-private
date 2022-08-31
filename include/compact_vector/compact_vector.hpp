@@ -7,6 +7,8 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <iostream>
+#include <cassert>
 
 #include "compact_iterator.hpp"
 
