@@ -6,6 +6,7 @@
 
 
 #include "Kmer_Index.hpp"
+#include "Minimizer_Utility.hpp"
 #include "Ref_Parser.hpp"
 
 #include <cstdint>
@@ -74,12 +75,12 @@ inline bool Index_Validator<k, l>::validate(const std::string& file_path)
         {
             Kmer<l> min_lmer(seq, kmer_idx);
             std::size_t min_idx = kmer_idx;
-            uint64_t min_hash = Minimizer_Iterator::hash(min_lmer.as_int());
+            uint64_t min_hash = Minimizer_Utility::hash(min_lmer.as_int());
 
             for(std::size_t i = kmer_idx + 1; i + l <= kmer_idx + k; ++i)
             {
                 const Kmer<l> lmer(seq, i);
-                const uint64_t lmer_hash = Minimizer_Iterator::hash(lmer.as_int());
+                const uint64_t lmer_hash = Minimizer_Utility::hash(lmer.as_int());
 
                 if(min_hash < lmer_hash)
                     continue;
@@ -245,12 +246,12 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
         {
             Kmer<l> min_lmer(seq, idx);
             std::size_t min_idx = idx;
-            uint64_t min_hash = Minimizer_Iterator::hash(min_lmer.as_int());
+            uint64_t min_hash = Minimizer_Utility::hash(min_lmer.as_int());
 
             for(std::size_t i = idx + 1; i + l <= idx + k; ++i)
             {
                 const Kmer<l> lmer(seq, i);
-                const uint64_t lmer_hash = Minimizer_Iterator::hash(lmer.as_int());
+                const uint64_t lmer_hash = Minimizer_Utility::hash(lmer.as_int());
 
                 if(min_hash < lmer_hash)
                     continue;

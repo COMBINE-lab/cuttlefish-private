@@ -10,6 +10,7 @@
 #include "Spin_Lock.hpp"
 #include "Minimizer_Iterator.hpp"
 #include "Minimizer_Instance.hpp"
+#include "Minimizer_Utility.hpp"
 #include "globals.hpp"
 #include "compact_vector/compact_vector.hpp"
 #include "BBHash/BooPHF.h"
@@ -424,7 +425,7 @@ inline bool Kmer_Index<k>::query(const Kmer<k>& kmer, Query_Result& result) cons
 {
     minimizer_t kmer_min;   // The minimizer of `kmer`.
     std::size_t kmer_min_idx;   // The index of the minimizer in `kmer`.
-    Minimizer_Iterator::get_minimizer<k>(kmer, l, kmer_min, kmer_min_idx);
+    Minimizer_Utility::get_minimizer<k>(kmer, l, kmer_min, kmer_min_idx);
 
     const auto& mi_count = *min_instance_count;
     const auto& m_offset = *min_offset;
