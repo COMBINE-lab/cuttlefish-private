@@ -11,7 +11,7 @@
 #include <cstddef>
 
 
-class Minimizer_Iterator;
+template <typename T_seq_> class Minimizer_Iterator;
 
 
 // =============================================================================
@@ -39,7 +39,7 @@ public:
 class Lmer_Tuple
 {
     friend class Minimizer_Utility;
-    friend class Minimizer_Iterator;
+    template <typename T_seq_> friend class Minimizer_Iterator;
 
     typedef cuttlefish::minimizer_t minimizer_t;
 

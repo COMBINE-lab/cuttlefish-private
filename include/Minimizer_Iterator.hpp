@@ -17,14 +17,16 @@
 
 // =============================================================================
 // A class to iterate over the minimizers of the constituent k-mers of a given
-// sequence, computing the minimizer for each k-mer in amortized O(1) time.
+// sequence of type `T_seq_`, computing the minimizer for each k-mer in
+// amortized O(1) time.
+template <typename T_seq_>
 class Minimizer_Iterator : Minimizer_Utility
 {
     typedef cuttlefish::minimizer_t minimizer_t;
 
 private:
 
-    const char* const seq;  // The sequence on which to iterate over.
+    T_seq_ const seq;   // The sequence on which to iterate over.
     const std::size_t seq_len;  // Length of the given sequence.
 
     const uint16_t k;   // Size of the k-mers.
@@ -45,7 +47,7 @@ public:
     // Constructs a minimizer iterator to iterate over `l`-minimizers of
     // the `k`-mers of the sequence `seq`, of length `seq_len`, in a streaming
     // manner. The iterator sits at the first k-mer after the construction.
-    Minimizer_Iterator(const char* seq, std::size_t seq_len, uint16_t k, uint16_t l);
+    Minimizer_Iterator(T_seq_ seq, std::size_t seq_len, uint16_t k, uint16_t l);
 
     // Moves the iterator to the next k-mer in the sequence. Returns `true` iff
     // the current k-mer is not the last k-mer in the sequence.
@@ -58,7 +60,8 @@ public:
 };
 
 
-inline Minimizer_Iterator::Minimizer_Iterator(const char* const seq, const std::size_t seq_len, const uint16_t k, const uint16_t l):
+template <typename T_seq_>
+inline Minimizer_Iterator<T_seq_>::Minimizer_Iterator(T_seq_ const seq, const std::size_t seq_len, const uint16_t k, const uint16_t l):
     seq(seq),
     seq_len(seq_len),
     k(k),
@@ -81,7 +84,8 @@ inline Minimizer_Iterator::Minimizer_Iterator(const char* const seq, const std::
 }
 
 
-inline bool Minimizer_Iterator::operator++()
+template <typename T_seq_>
+inline bool Minimizer_Iterator<T_seq_>::operator++()
 {
     if(last_lmer_idx + l == seq_len)
         return false;
@@ -112,7 +116,8 @@ inline bool Minimizer_Iterator::operator++()
 }
 
 
-inline void Minimizer_Iterator::value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index) const
+template <typename T_seq_>
+inline void Minimizer_Iterator<T_seq_>::value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index) const
 {
     minimizer = dq.front().lmer;
     index = dq.front().index;
