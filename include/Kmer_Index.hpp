@@ -51,7 +51,7 @@ private:
     std::vector<std::size_t> path_ends_vec; // Vector for the ending indices, possibly with many unused bits, of the paths in the concatenated sequence.
     path_end_vector_t* path_ends;   // The ending indices of the paths in the concatenated sequence.
 
-    const uint16_t l;   // Size of the l-minimizers.    // TODO: consider templatizing.
+    const uint16_t l_;  // Size of the l-minimizers.
 
     const uint16_t producer_count;  // Number of producer threads supplying the paths to the indexer.
 
@@ -172,6 +172,7 @@ private:
     template <typename T_container_>
     static int64_t upper_bound(const T_container_& container, int64_t left, int64_t right, typename T_container_::value_type val);
 
+    uint16_t l() const { return l_; }   // Returns the size of the l-minimizers.
     const std::string path_file_path() const { return output_pref + PATH_FILE_EXT; }    // Returns the file-path for the concatenated paths.
     const std::string path_end_file_path() const { return output_pref + PATH_END_FILE_EXT; }    // Returns the file-path for the path-end offsets.
     const std::string mphf_file_path() const { return output_pref + MPHF_FILE_EXT; }    // Returns the file-path for the minimizer-MPHF.
@@ -272,10 +273,10 @@ inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* cons
 
     // Get the minimizers and the path sequence.
 
-    Minimizer_Iterator minimizer_iterator(seq, len, k, l); // To iterate over each minimizer in `seq`.
-    minimizer_t minimizer;                                 // The minimizer itself.
-    std::size_t min_idx;                                   // Index of the minimizer within `seq`.
-    std::size_t last_min_idx = len;                        // To track minimizer shifts.
+    Minimizer_Iterator minimizer_iterator(seq, len, k, l_); // To iterate over each minimizer in `seq`.
+    minimizer_t minimizer;                                  // The minimizer itself.
+    std::size_t min_idx;                                    // Index of the minimizer within `seq`.
+    std::size_t last_min_idx = len;                         // To track minimizer shifts.
 
     const std::size_t rel_offset = path_buf.size(); // Relative offset of each minimizer in this producer's path buffer.
     for(std::size_t i = 0; i + (k - 1) < len; ++i)
@@ -425,7 +426,7 @@ inline bool Kmer_Index<k>::query(const Kmer<k>& kmer, Query_Result& result) cons
 {
     minimizer_t kmer_min;   // The minimizer of `kmer`.
     std::size_t kmer_min_idx;   // The index of the minimizer in `kmer`.
-    Minimizer_Utility::get_minimizer<k>(kmer, l, kmer_min, kmer_min_idx);
+    Minimizer_Utility::get_minimizer<k>(kmer, l_, kmer_min, kmer_min_idx);
 
     const auto& mi_count = *min_instance_count;
     const auto& m_offset = *min_offset;

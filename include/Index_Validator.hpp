@@ -188,6 +188,13 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
 
     std::cout << "Loaded the Cuttlefish index.\n";
 
+    if(kmer_idx.l() != l)
+    {
+        std::cout <<    "The minimizer length in the k-mer index is " << kmer_idx.l() <<
+                        ", while the validation is requested for minimizer length " << l << ".\n";
+        return false;
+    }
+
     const std::size_t path_count = kmer_idx.path_count_;
     const auto& paths = kmer_idx.paths;
     const auto& p_end = *kmer_idx.path_ends;
