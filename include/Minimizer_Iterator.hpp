@@ -20,7 +20,7 @@
 // sequence of type `T_seq_`, computing the minimizer for each k-mer in
 // amortized O(1) time.
 template <typename T_seq_>
-class Minimizer_Iterator : Minimizer_Utility
+class Minimizer_Iterator
 {
     typedef cuttlefish::minimizer_t minimizer_t;
 
@@ -76,7 +76,7 @@ inline Minimizer_Iterator<T_seq_>::Minimizer_Iterator(T_seq_ const seq, const st
     for(std::size_t idx = 0; idx < l; ++idx)
         last_lmer |= (static_cast<minimizer_t>(DNA_Utility::map_base(seq[idx])) << (2 * (l - 1 - idx)));
 
-    dq.emplace_back(last_lmer, last_lmer_idx, hash(last_lmer));
+    dq.emplace_back(last_lmer, last_lmer_idx, Minimizer_Utility::hash(last_lmer));
 
 
     while(last_lmer_idx + (l - 1) < static_cast<std::size_t>(k - 1))
@@ -103,7 +103,7 @@ inline bool Minimizer_Iterator<T_seq_>::operator++()
     }
 
 
-    const Lmer_Tuple last_lmer_tuple(last_lmer, last_lmer_idx, hash(last_lmer));
+    const Lmer_Tuple last_lmer_tuple(last_lmer, last_lmer_idx, Minimizer_Utility::hash(last_lmer));
     while(!dq.empty())
         if(dq.back() < last_lmer_tuple)
             break;
