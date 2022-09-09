@@ -276,6 +276,8 @@ void Kmer_Index<k>::close_deposit_stream()
 template <uint16_t k>
 void Kmer_Index<k>::read_and_sort_minimizers()
 {
+    std::vector<std::thread> worker;
+
     // TODO: bound memory usage within a provided argument.
 
     // Launch sorter threads.

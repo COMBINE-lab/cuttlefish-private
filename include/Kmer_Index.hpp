@@ -91,8 +91,6 @@ private:
     Spin_Lock lock; // Mutually-exclusive access lock for different producers.
     constexpr static std::size_t idx_lock_count = 65536;    // Number of locks in the sparse-locks used in various steps.
 
-    std::vector<std::thread> worker;    // Worker threads.
-
     const std::string output_pref;  // Prefix of the output path for the index.
     const std::string working_dir;  // Path to the working directory for the index construction.
 
