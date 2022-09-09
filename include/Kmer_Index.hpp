@@ -4,6 +4,7 @@
 
 
 
+#include "Kmer_Index_Utility.hpp"
 #include "Kmer.hpp"
 #include "DNA_Utility.hpp"
 #include "Kmer_Utility.hpp"
@@ -66,8 +67,6 @@ private:
 
     std::vector<std::vector<Minimizer_Instance>> producer_minimizer_buf; // Separate buffer for each producer, to contain their minimizers and their offsets into the deposited paths.
 
-    constexpr static std::size_t buf_sz_th = 5 * 1024 * 1024;   // Threshold for the total size (in bytes) of the buffers per producer: 5 MB.
-
     // TODO: replace with a file-manager.
     std::vector<std::ofstream> producer_minimizer_file; // Separate file for each producer, to store their minimizers' information.
 
@@ -77,7 +76,6 @@ private:
     typedef boomphf::SingleHashFunctor<minimizer_t> minimizer_hasher_t; // The seeded hasher class for minimizers.
                                                                         // TODO: placeholder for now; think it through.
     typedef boomphf::mphf<minimizer_t, minimizer_hasher_t, false> minimizer_mphf_t; // The minimizer-MPHF type.
-    constexpr static double gamma = 2.0;    // The gamma parameter of the BBHash algorithm.
     minimizer_mphf_t* min_mphf; // MPHF of the minimizers.
 
     min_vector_t* min_instance_count;   // Count of instances per each unique minimizer.
@@ -89,20 +87,11 @@ private:
     std::size_t curr_token; // Number of tokens generated for the producers so far.
 
     Spin_Lock lock; // Mutually-exclusive access lock for different producers.
-    constexpr static std::size_t idx_lock_count = 65536;    // Number of locks in the sparse-locks used in various steps.
 
     const std::string output_pref;  // Prefix of the output path for the index.
     const std::string working_dir;  // Path to the working directory for the index construction.
 
     const Build_Params* const params;   // Build parameters wrapped inside.
-
-    static constexpr char PATH_FILE_EXT[] = ".paths";
-    static constexpr char PATH_END_FILE_EXT[] = ".ends";
-    static constexpr char MPHF_FILE_EXT[] = ".min.mphf";
-    static constexpr char COUNT_FILE_EXT[] = ".min.count";
-    static constexpr char OFFSET_FILE_EXT[] = ".min.offset";
-    static constexpr char CONFIG_FILE_EXT[] = ".idx.conf";  // TODO: maybe also output configuration to the CF json file?
-    static constexpr char MIN_INST_FILE_EXT[] = ".mins";
 
 
     // Saves the configuration constants of the index, such as the k-mer and
@@ -112,16 +101,12 @@ private:
     // Reads the configuration constants of some index from file at path
     // `config_path`, cross-checks if the k-mer length is as expected, and
     // returns the minimizer length.
+    // TODO: factor out the k-check and move this method to the utility class.
     static minimizer_t load_minimizer_len(const std::string& config_path);
 
     // Returns the path to the minimizer-information file of producer with ID
     // `producer_id`.
     const std::string minimizer_file_path(uint16_t producer_id) const;
-
-    // Dumps the data from `container` to the stream `output`, clearing
-    // `container`.
-    template <typename T_container_>
-    static void dump(std::vector<T_container_>& container, std::ofstream& output);
 
     // Flushes the buffers of the producer with ID `producer_id`.
     void flush(std::size_t producer_id);
@@ -155,20 +140,6 @@ private:
     // Tries to align the k-mer `kmer` to the concatenated paths sequence at the
     // index `idx`. Returns `true` iff the alignment succeeds.
     bool align(const Kmer<k>& kmer, std::size_t idx) const;
-
-    // Binary searches for the maximum rightmost value in the container
-    // `container` within the index range `[left, right]` (both ends inclusive)
-    // that is at most as `val`. If such a value exists, returns its index.
-    // Otherwise, returns `left - 1`.
-    template <typename T_container_>
-    static int64_t lower_bound(const T_container_& container, int64_t left, int64_t right, typename T_container_::value_type val);
-
-    // Binary searches for the minimum leftmost value in the container
-    // `container` within the index range `[left, right]` (both ends inclusive)
-    // that is larger than `val`. If such a value exists, returns its index.
-    // Otherwise, returns `right + 1`.
-    template <typename T_container_>
-    static int64_t upper_bound(const T_container_& container, int64_t left, int64_t right, typename T_container_::value_type val);
 
     uint16_t l() const { return l_; }   // Returns the size of the l-minimizers.
     const std::string path_file_path() const { return output_pref + PATH_FILE_EXT; }    // Returns the file-path for the concatenated paths.
@@ -348,20 +319,6 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
 
 
 template <uint16_t k>
-template <typename T_container_>
-inline void Kmer_Index<k>::dump(std::vector<T_container_>& container, std::ofstream& output)
-{
-    if(!output.write(reinterpret_cast<const char*>(container.data()), container.size() * sizeof(T_container_)))
-    {
-        std::cerr << "Error writing to file. Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-
-    container.clear();
-}
-
-
-template <uint16_t k>
 inline uint64_t Kmer_Index<k>::hash(const cuttlefish::minimizer_t min) const
 {
     return min_mphf->lookup(min) + 1;
@@ -472,50 +429,6 @@ inline bool Kmer_Index<k>::query(const Kmer<k>& kmer, Query_Result& result) cons
     }
 
     return false;
-}
-
-
-template <uint16_t k>
-template <typename T_container_>
-inline int64_t Kmer_Index<k>::lower_bound(const T_container_& container, int64_t left, int64_t right, const typename T_container_::value_type val)
-{
-    int64_t mid, result = left - 1;
-
-    while(left <= right)
-    {
-        mid = (left + right) >> 1;
-        if(container[mid] > val)
-            right = mid - 1;
-        else
-        {
-            result = mid;
-            left = mid + 1;
-        }
-    }
-
-    return result;
-}
-
-
-template <uint16_t k>
-template <typename T_container_>
-inline int64_t Kmer_Index<k>::upper_bound(const T_container_& container, int64_t left, int64_t right, const typename T_container_::value_type val)
-{
-    int64_t mid, result = right + 1;
-
-    while(left <= right)
-    {
-        mid = (left + right) >> 1;
-        if(container[mid] <= val)
-            left = mid + 1;
-        else
-        {
-            result = mid;
-            right = mid - 1;
-        }
-    }
-
-    return result;
 }
 
 
