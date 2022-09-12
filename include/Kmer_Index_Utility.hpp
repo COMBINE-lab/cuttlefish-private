@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <type_traits>
 #include <fstream>
 #include <iostream>
 
@@ -34,7 +35,7 @@ protected:
     // Dumps the data from `container` to the stream `output`, clearing
     // `container`.
     template <typename T_container_>
-    static void dump(std::vector<T_container_>& container, std::ofstream& output);
+    static void dump(T_container_& container, std::ofstream& output);
 
     // Binary searches for the maximum rightmost value in the container
     // `container` within the index range `[left, right]` (both ends inclusive)
@@ -53,9 +54,9 @@ protected:
 
 
 template <typename T_container_>
-inline void Kmer_Index_Utility::dump(std::vector<T_container_>& container, std::ofstream& output)
+inline void Kmer_Index_Utility::dump(T_container_& container, std::ofstream& output)
 {
-    if(!output.write(reinterpret_cast<const char*>(container.data()), container.size() * sizeof(T_container_)))
+    if(!output.write(reinterpret_cast<const char*>(container.data()), container.size() * sizeof(typename std::remove_reference<decltype(container)>::type::value_type)))
     {
         std::cerr << "Error writing to file. Aborting.\n";
         std::exit(EXIT_FAILURE);
