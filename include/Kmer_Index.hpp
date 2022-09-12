@@ -35,7 +35,7 @@ class Build_Params;
 // A class to index the k-mers of provided de Bruijn graph path-sequences,
 // potentially from many producer threads, based on the k-mers' minimizers.
 template <uint16_t k>
-class Kmer_Index
+class Kmer_Index : private Kmer_Index_Utility
 {
     template <uint16_t, uint16_t> friend class Index_Validator;
 
