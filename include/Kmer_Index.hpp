@@ -130,6 +130,10 @@ private:
     // Looks up the minimizer `min` in the MPHF and returns its hash value + 1.
     uint64_t hash(minimizer_t min) const;
 
+    // Extracts the k-mer situated at the index `idx` of the concatenated paths
+    // sequence into `kmer`.
+    void get_kmer(std::size_t idx, Kmer<k>& kmer) const;
+
     // Closes the deposit stream incoming from the producers and flushes the
     // remaining content to disk.
     void close_deposit_stream();
@@ -334,25 +338,34 @@ inline std::size_t Kmer_Index<k>::path_size(const std::size_t path_id) const
 
 
 template <uint16_t k>
-__attribute__((optimize("unroll-loops")))
 inline void Kmer_Index<k>::get_kmer(const std::size_t path_id, const std::size_t idx, Kmer<k>& kmer) const
+{
+    assert(path_id < path_count);
+
+    const auto& p_ends = *path_ends;
+    const std::size_t base_idx = (path_id > 0 ? p_ends[path_id - 1] : 0);
+    assert(base_idx + k <= p_ends[path_id]);
+
+    get_kmer(base_idx + idx, kmer);
+}
+
+
+template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
+inline void Kmer_Index<k>::get_kmer(const std::size_t idx, Kmer<k>& kmer) const
 {
     constexpr std::size_t packed_word_count = k / 32;
     uint64_t* const kmer_data = kmer.data();
-    const auto& p_ends = *path_ends;
-    const std::size_t base_idx = (path_id > 0 ? p_ends[path_id - 1] : 0);
-
-    assert(base_idx + k <= p_ends[path_id]);
 
     // Note: the endianness of the DNA-bases in the path vector is in opposite orientation to Cuttlefish k-mers.
 
     // Get the partially packed word, i.e. the highest indexed one in `kmer`.
     if constexpr(k % 32)
-        kmer_data[packed_word_count] = Kmer_Utility::base_reverse<(k % 32)>(paths.get_int<uint64_t, k % 32>(base_idx + idx));
+        kmer_data[packed_word_count] = Kmer_Utility::base_reverse<(k % 32)>(paths.get_int<uint64_t, k % 32>(idx));
 
     // Get the completely packed words.
     for(std::size_t word_idx = 0; word_idx < packed_word_count; ++word_idx)
-        kmer_data[packed_word_count - 1 - word_idx] = Kmer_Utility::base_reverse<32>(paths.get_int<uint64_t, 32>(base_idx + idx + (k % 32) + word_idx * 32));
+        kmer_data[packed_word_count - 1 - word_idx] = Kmer_Utility::base_reverse<32>(paths.get_int<uint64_t, 32>(idx + (k % 32) + word_idx * 32));
 }
 
 
