@@ -56,7 +56,7 @@ protected:
 template <typename T_container_>
 inline void Kmer_Index_Utility::dump(T_container_& container, std::ofstream& output)
 {
-    if(!output.write(reinterpret_cast<const char*>(container.data()), container.size() * sizeof(typename std::remove_reference<decltype(container)>::type::value_type)))
+    if(!output.write(reinterpret_cast<const char*>(container.data()), container.size() * sizeof(typename T_container_::value_type)))
     {
         std::cerr << "Error writing to file. Aborting.\n";
         std::exit(EXIT_FAILURE);
