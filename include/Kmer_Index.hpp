@@ -13,6 +13,7 @@
 #include "Minimizer_Instance.hpp"
 #include "Minimizer_Utility.hpp"
 #include "globals.hpp"
+#include "utility.hpp"
 #include "compact_vector/compact_vector.hpp"
 #include "BBHash/BooPHF.h"
 
@@ -127,6 +128,16 @@ private:
     // Enumerates the offsets of the instances for each distinct minimizer.
     void get_minimizer_offsets();
 
+    // Constructs the minimizer-overflow index.
+    void construct_overflow_index();
+
+    // Gathers the k-mers (and their minimizer-instances' indices into the
+    // instance-blocks) corresponding to the minimizers within the ID range
+    // `[low, high)` that each have their instance counts exceeding the preset
+    // threshold. The k-mers and the instance-indices are output to `kmer_op`
+    // and `inst_idx_op`, respectively, in a resource-locked manner.
+    void gather_overflown_kmers(std::size_t low, std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op);
+
     // Looks up the minimizer `min` in the MPHF and returns its hash value + 1.
     uint64_t hash(minimizer_t min) const;
 
@@ -153,6 +164,8 @@ private:
     const std::string offset_file_path() const { return output_pref + OFFSET_FILE_EXT; }    // Returns the file-path for the minimizer-instances' offsets.
     const std::string config_file_path() const { return output_pref + CONFIG_FILE_EXT; }    // Returns the file-path for the configuration constants.
     const std::string min_instance_file_path() const { return output_pref + MIN_INST_FILE_EXT; }    // Returns the file-path for the unified minimizer-instances.
+    const std::string overflow_kmers_path() const { return working_dir + filename(output_pref) + OVERFLOW_KMER; }   // Returns the file-path for the k-mers corresponding to the overflowing minimizers.
+    const std::string overflow_min_insts_path() const { return working_dir + filename(output_pref) + OVERFLOW_MIN_INST_IDX; }   // Returns the file-path for the overflowing minimizer instances' relative index.
 
 public:
 

@@ -23,6 +23,9 @@ protected:
     constexpr static double gamma = 2.0;    // The gamma parameter for the minimizer-MPHF.
     constexpr static std::size_t idx_lock_count = 65536;    // Number of locks in the sparse-locks used in various steps.
 
+    // TODO: move to build-params.
+    constexpr static std::size_t overflow_threshold = (1 << 5); // Threshold size for minimizer instances to be put in the overflow index.
+
     static constexpr char PATH_FILE_EXT[] = ".paths";
     static constexpr char PATH_END_FILE_EXT[] = ".ends";
     static constexpr char MPHF_FILE_EXT[] = ".min.mphf";
@@ -30,6 +33,8 @@ protected:
     static constexpr char OFFSET_FILE_EXT[] = ".min.offset";
     static constexpr char CONFIG_FILE_EXT[] = ".idx.conf";  // TODO: maybe also output configuration to the CF json file?
     static constexpr char MIN_INST_FILE_EXT[] = ".mins";
+    static constexpr char OVERFLOW_KMER[] = ".overflow.kmers";
+    static constexpr char OVERFLOW_MIN_INST_IDX[] = ".overflow.offset";
 
 
     // Dumps the data from `container` to the stream `output`, clearing

@@ -1,6 +1,7 @@
 
 #include "Kmer_Index.hpp"
 #include "Sparse_Lock.hpp"
+#include "Minimizer_Iterator.hpp"
 #include "Minimizer_Instance_Merger.hpp"
 #include "CdBG.hpp"
 #include "Read_CdBG.hpp"
@@ -225,6 +226,9 @@ void Kmer_Index<k>::index()
     get_minimizer_offsets();
     const time_point_t t_off = now();
     std::cout << "Gathered the minimizer instances' offsets. Time taken = " << duration(t_off - t_count) << " seconds.\n";
+
+    // Construct the minimizer-overflow index.
+    construct_overflow_index();
 
     // Remove temporary files.
     remove_temp_files();
@@ -532,6 +536,103 @@ void Kmer_Index<k>::get_minimizer_offsets()
         delete min_instance_count, min_instance_count = nullptr;
         delete min_offset, min_offset = nullptr;
     }
+}
+
+
+template <uint16_t k>
+void Kmer_Index<k>::construct_overflow_index()
+{
+    std::ofstream kmer_op(overflow_kmers_path());
+    std::ofstream inst_idx_op(overflow_min_insts_path());
+
+    gather_overflown_kmers(0, min_count_, kmer_op, inst_idx_op);
+
+    kmer_op.close();
+    inst_idx_op.close();
+}
+
+
+template <uint16_t k>
+void Kmer_Index<k>::gather_overflown_kmers(const std::size_t low, const std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op)
+{
+    const auto& mi_count = *min_instance_count;
+    const auto& m_offset = *min_offset;
+    const auto& p_end = *path_ends;
+
+    std::vector<Kmer<k>> kmers; // Buffer for the k-mers from the overflowing minimizers.
+    std::vector<std::size_t> inst_idx;  // Buffer for the indices of the minimizer instances into their corresponding blocks, of the overflown k-mers.
+    Kmer<k> kmer;   // Each k-mer from the overflowing minimizers.
+
+    constexpr std::size_t buf_elem_th = buf_sz_th / (sizeof(Kmer<k>) + sizeof(std::size_t));    // Maximum number of k-mers to keep in the buffer.
+    static_assert(buf_elem_th > 0);
+
+    std::size_t num_min = 0;    // Number of overflowing minimizers.
+    std::size_t num_kmer = 0;   // Number of k-mers corresponding to the overflowing minimizers.
+    const auto locked_dump =    [this, &kmers, &kmer_op, &inst_idx, &inst_idx_op]()
+                                {
+                                    lock.lock();
+                                    dump(kmers, kmer_op), dump(inst_idx, inst_idx_op);
+                                    lock.unlock();
+                                };
+
+    kmers.reserve(buf_elem_th), inst_idx.reserve(buf_elem_th);
+    for(std::size_t id = low; id < high; ++id)  // Go over each minimizer.
+    {
+        const std::size_t idx_begin = (id > 0 ? mi_count[id - 1] : 0);  // Offset of the block of indices of the minimizer's instances.
+        const std::size_t idx_end = mi_count[id];   // End-offset of the instance block (exclusive).
+        const std::size_t inst_count = idx_end - idx_begin; // Number of instances of this minimizer.
+
+        if(inst_count >= overflow_threshold)
+        {
+            for(std::size_t i = idx_begin; i < idx_end; ++i)    // Go over each instance of this minimizer.
+            {
+                const std::size_t min_inst_idx = m_offset[i];   // Index of the minimizer instance in the paths-sequence.
+
+                // Extract each k-mer from the paths that have this minimizer instance as their minimizer.
+
+                const int64_t l = lower_bound(p_end, 0, path_count_ - 1, min_inst_idx); // ID of the path preceding the path containing this instance.
+                const int64_t r = l + 1;    // ID of the path containing this instance.
+                const std::size_t l_end = (l < 0 ? 0 : p_end[l]);   // Index of the left end of the path containing this instance.
+                const std::size_t r_end = p_end[r]; // Index of the right end (exclusive) of the path containing this instance.
+
+                const std::size_t window_start = (l_end + k - l_ <= min_inst_idx ? (min_inst_idx + l_ - k) : l_end);    // (Inclusive) left-end of the k-mer sliding window.
+                const std::size_t window_end = (min_inst_idx + k <= r_end ? min_inst_idx + k : r_end);  // (Exclusive) right-end of the k-mer sliding window.
+                const std::size_t window_len = window_end - window_start;
+
+                Minimizer_Iterator min_iter(paths.cbegin() + window_start, window_len, k, l_);  // To iterate over each minimizer in the k-mer sliding window.
+                cuttlefish::minimizer_t min;    // The current minimizer.
+                std::size_t min_idx;    // Index of the current minimizer in the window.
+                std::size_t kmer_idx = 0;   // Index of the current k-mer in the window.
+                do
+                {
+                    min_iter.value_at(min, min_idx);
+                    if(window_start + min_idx == min_inst_idx)  // The current k-mer has this minimizer instance as its minimizer.
+                    {
+                        // Retrieve the k-mer and this minimizer-instance's offset into the instance block.
+                        get_kmer(window_start + kmer_idx, kmer);
+                        kmers.emplace_back(kmer), inst_idx.emplace_back(i - idx_begin);
+
+                        if(kmers.size() == buf_elem_th)
+                            locked_dump();
+
+                        num_kmer++;
+                    }
+
+                    kmer_idx++;
+                }
+                while(++min_iter);
+            }
+
+            num_min++;
+        }
+    }
+
+    if(!kmers.empty())
+        locked_dump();
+
+
+    std::cout << "Number of overflowing minimizers: " << num_min << ".\n";
+    std::cout << "Number of corresponding k-mers:   " << num_kmer << "\n";
 }
 
 
