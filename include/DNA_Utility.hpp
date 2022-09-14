@@ -152,6 +152,12 @@ public:
     {
         return REVERSE_MAPPED_EXTENDED_BASE[static_cast<std::size_t>(extended_base)];
     }
+
+    // Returns the mapping integer value of the given integer `base`.
+    static DNA::Base map_base(const uint8_t base)
+    {
+        return DNA::Base(base);
+    }
 };
 
 
