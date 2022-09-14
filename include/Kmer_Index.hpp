@@ -87,7 +87,7 @@ private:
 
     std::size_t curr_token; // Number of tokens generated for the producers so far.
 
-    Spin_Lock lock; // Mutually-exclusive access lock for different producers.
+    mutable Spin_Lock lock; // Mutually-exclusive access lock for different producers.
 
     const std::string output_pref;  // Prefix of the output path for the index.
     const std::string working_dir;  // Path to the working directory for the index construction.
@@ -136,7 +136,7 @@ private:
     // `[low, high)` that each have their instance counts exceeding the preset
     // threshold. The k-mers and the instance-indices are output to `kmer_op`
     // and `inst_idx_op`, respectively, in a resource-locked manner.
-    void gather_overflown_kmers(std::size_t low, std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op);
+    void gather_overflown_kmers(std::size_t low, std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op) const;
 
     // Looks up the minimizer `min` in the MPHF and returns its hash value + 1.
     uint64_t hash(minimizer_t min) const;

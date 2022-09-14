@@ -553,7 +553,7 @@ void Kmer_Index<k>::construct_overflow_index()
 
 
 template <uint16_t k>
-void Kmer_Index<k>::gather_overflown_kmers(const std::size_t low, const std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op)
+void Kmer_Index<k>::gather_overflown_kmers(const std::size_t low, const std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op) const
 {
     const auto& mi_count = *min_instance_count;
     const auto& m_offset = *min_offset;
