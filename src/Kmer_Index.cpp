@@ -10,6 +10,7 @@
 #include "utility.hpp"
 
 #include <string>
+#include <functional>
 #include <algorithm>
 #include <cmath>
 #include <cassert>
@@ -229,6 +230,8 @@ void Kmer_Index<k>::index()
 
     // Construct the minimizer-overflow index.
     construct_overflow_index();
+    const time_point_t t_overflow = now();
+    std::cout << "Constructed the minimizer-overflow index. Time taken = " << duration(t_overflow - t_off) << " seconds.\n";
 
     // Remove temporary files.
     remove_temp_files();
@@ -545,15 +548,45 @@ void Kmer_Index<k>::construct_overflow_index()
     std::ofstream kmer_op(overflow_kmers_path());
     std::ofstream inst_idx_op(overflow_min_insts_path());
 
-    gather_overflown_kmers(0, min_count_, kmer_op, inst_idx_op);
+    const std::size_t task_size = min_count_ / producer_count;
+    const uint16_t partition_count = (task_size < 1 ? 1 : producer_count);
+    std::vector<std::size_t> num_min(partition_count);
+    std::vector<std::size_t> num_kmer(partition_count);
+    std::vector<std::thread> worker;
+    worker.reserve(partition_count);
+
+    std::size_t min_id_low = 0;
+    for(uint16_t t_id = 0; t_id < partition_count; ++t_id)
+    {
+        const std::size_t min_id_high = (t_id == partition_count - 1 ? min_count_ : min_id_low + task_size);
+        worker.emplace_back(&Kmer_Index::gather_overflown_kmers, this,
+                                min_id_low, min_id_high, std::ref(kmer_op), std::ref(inst_idx_op), std::ref(num_min[t_id]), std::ref(num_kmer[t_id]));
+
+        min_id_low += task_size;
+    }
+
+    for(uint16_t t_id = 0; t_id < partition_count; ++t_id)
+    {
+        if(!worker[t_id].joinable())
+        {
+            std::cerr << "Early termination encountered for some worker thread. Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        worker[t_id].join();
+    }
 
     kmer_op.close();
     inst_idx_op.close();
+
+
+    std::cout << "Number of overflowing minimizers: " << std::accumulate(num_min.begin(), num_min.end(), 0lu) << ".\n";
+    std::cout << "Number of corresponding k-mers:   " << std::accumulate(num_kmer.begin(), num_kmer.end(), 0lu) << ".\n";
 }
 
 
 template <uint16_t k>
-void Kmer_Index<k>::gather_overflown_kmers(const std::size_t low, const std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op) const
+void Kmer_Index<k>::gather_overflown_kmers(const std::size_t low, const std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op, std::size_t& num_min, std::size_t& num_kmer) const
 {
     const auto& mi_count = *min_instance_count;
     const auto& m_offset = *min_offset;
@@ -566,8 +599,8 @@ void Kmer_Index<k>::gather_overflown_kmers(const std::size_t low, const std::siz
     constexpr std::size_t buf_elem_th = buf_sz_th / (sizeof(Kmer<k>) + sizeof(std::size_t));    // Maximum number of k-mers to keep in the buffer.
     static_assert(buf_elem_th > 0);
 
-    std::size_t num_min = 0;    // Number of overflowing minimizers.
-    std::size_t num_kmer = 0;   // Number of k-mers corresponding to the overflowing minimizers.
+    num_min = 0;
+    num_kmer = 0;
     const auto locked_dump =    [this, &kmers, &kmer_op, &inst_idx, &inst_idx_op]()
                                 {
                                     lock.lock();
@@ -629,10 +662,6 @@ void Kmer_Index<k>::gather_overflown_kmers(const std::size_t low, const std::siz
 
     if(!kmers.empty())
         locked_dump();
-
-
-    std::cout << "Number of overflowing minimizers: " << num_min << ".\n";
-    std::cout << "Number of corresponding k-mers:   " << num_kmer << "\n";
 }
 
 

@@ -135,8 +135,10 @@ private:
     // instance-blocks) corresponding to the minimizers within the ID range
     // `[low, high)` that each have their instance counts exceeding the preset
     // threshold. The k-mers and the instance-indices are output to `kmer_op`
-    // and `inst_idx_op`, respectively, in a resource-locked manner.
-    void gather_overflown_kmers(std::size_t low, std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op) const;
+    // and `inst_idx_op`, respectively, in a resource-locked manner. Puts the
+    // number of such minimizers and their associated k-mers into `num_min` and
+    // `num_kmer`, respectively.
+    void gather_overflown_kmers(std::size_t low, std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op, std::size_t& num_min, std::size_t& num_kmer) const;
 
     // Looks up the minimizer `min` in the MPHF and returns its hash value + 1.
     uint64_t hash(minimizer_t min) const;
