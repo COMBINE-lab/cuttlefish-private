@@ -545,6 +545,13 @@ void Kmer_Index<k>::get_minimizer_offsets()
 template <uint16_t k>
 void Kmer_Index<k>::construct_overflow_index()
 {
+    collect_overflown_kmers();
+}
+
+
+template <uint16_t k>
+void Kmer_Index<k>::collect_overflown_kmers()
+{
     std::ofstream kmer_op(overflow_kmers_path());
     std::ofstream inst_idx_op(overflow_min_insts_path());
 
@@ -556,11 +563,12 @@ void Kmer_Index<k>::construct_overflow_index()
     worker.reserve(partition_count);
 
     std::size_t min_id_low = 0;
+    void (Kmer_Index<k>::* const task)(std::size_t, std::size_t, std::ofstream&, std::ofstream&, std::size_t&, std::size_t&) const = &Kmer_Index::collect_overflown_kmers;
     for(uint16_t t_id = 0; t_id < partition_count; ++t_id)
     {
         const std::size_t min_id_high = (t_id == partition_count - 1 ? min_count_ : min_id_low + task_size);
-        worker.emplace_back(&Kmer_Index::gather_overflown_kmers, this,
-                                min_id_low, min_id_high, std::ref(kmer_op), std::ref(inst_idx_op), std::ref(num_min[t_id]), std::ref(num_kmer[t_id]));
+        worker.emplace_back(task, this,
+                            min_id_low, min_id_high, std::ref(kmer_op), std::ref(inst_idx_op), std::ref(num_min[t_id]), std::ref(num_kmer[t_id]));
 
         min_id_low += task_size;
     }
@@ -580,13 +588,16 @@ void Kmer_Index<k>::construct_overflow_index()
     inst_idx_op.close();
 
 
-    std::cout << "Number of overflowing minimizers: " << std::accumulate(num_min.begin(), num_min.end(), 0lu) << ".\n";
-    std::cout << "Number of corresponding k-mers:   " << std::accumulate(num_kmer.begin(), num_kmer.end(), 0lu) << ".\n";
+    overflow_min_count_ = std::accumulate(num_min.begin(), num_min.end(), uint64_t(0));
+    overflow_kmer_count_ = std::accumulate(num_kmer.begin(), num_kmer.end(), uint64_t(0));
+
+    std::cout << "Number of overflowing minimizers: " << overflow_min_count_ << ".\n";
+    std::cout << "Number of corresponding k-mers:   " << overflow_kmer_count_ << ".\n";
 }
 
 
 template <uint16_t k>
-void Kmer_Index<k>::gather_overflown_kmers(const std::size_t low, const std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op, std::size_t& num_min, std::size_t& num_kmer) const
+void Kmer_Index<k>::collect_overflown_kmers(const std::size_t low, const std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op, std::size_t& num_min, std::size_t& num_kmer) const
 {
     const auto& mi_count = *min_instance_count;
     const auto& m_offset = *min_offset;
