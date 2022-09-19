@@ -36,6 +36,7 @@ protected:
     static constexpr char OVERFLOW_KMER[] = ".overflow.kmers";
     static constexpr char OVERFLOW_MIN_INST_IDX[] = ".overflow.offset";
     static constexpr char OVERFLOW_MPHF_FILE_EXT[] = ".overflow.mphf";
+    static constexpr char OVERFLOW_KMER_MAP_EXT[] = ".overflow.map";
 
 
     // Dumps the data from `container` to the stream `output`, clearing

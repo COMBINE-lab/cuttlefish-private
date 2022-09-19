@@ -90,6 +90,8 @@ private:
     typedef boomphf::mphf<Kmer<k>, Kmer_Hasher<k>, false> kmer_mphf_t;  // The MPHF type for the overflown k-mers.
     const kmer_mphf_t* kmer_mphf;   // MPHF of the overflown k-mers.
 
+    min_vector_t* overflow_kmer_map;    // Mapping of each overflown k-mer to its corresponding minimizer-instance's index (into its block).
+
     const bool retain;  // Whether to retain the index in memory after construction.
 
     std::size_t curr_token; // Number of tokens generated for the producers so far.
@@ -155,6 +157,10 @@ private:
     // Constructs the MPHF `kmer_mphf` over the overflown k-mers found.
     void construct_overflow_kmer_mphf();
 
+    // Maps the overflown k-mers to their corresponding minimizer-instances'
+    // indices (into the instance-blocks).
+    void map_overflown_kmers();
+
     // Looks up the minimizer `min` in the MPHF and returns its hash value + 1.
     uint64_t hash(minimizer_t min) const;
 
@@ -182,8 +188,9 @@ private:
     const std::string config_file_path() const { return output_pref + CONFIG_FILE_EXT; }    // Returns the file-path for the configuration constants.
     const std::string min_instance_file_path() const { return output_pref + MIN_INST_FILE_EXT; }    // Returns the file-path for the unified minimizer-instances.
     const std::string overflow_kmers_path() const { return working_dir + filename(output_pref) + OVERFLOW_KMER; }   // Returns the file-path for the k-mers corresponding to the overflowing minimizers.
-    const std::string overflow_min_insts_path() const { return working_dir + filename(output_pref) + OVERFLOW_MIN_INST_IDX; }   // Returns the file-path for the overflowing minimizer instances' relative index.
+    const std::string overflow_min_insts_path() const { return working_dir + filename(output_pref) + OVERFLOW_MIN_INST_IDX; }   // Returns the file-path for the overflowing minimizer-instances' relative index.
     const std::string overflow_mphf_file_path() const { return output_pref + OVERFLOW_MPHF_FILE_EXT; }  // Returns the file-path for the overflown k-mers' MPHF.
+    const std::string overflow_kmer_map_path() const { return output_pref + OVERFLOW_KMER_MAP_EXT; }    // Returns the file-path for the overflown k-mers' mapping to their minimizer-instances' relative indices.
 
 public:
 

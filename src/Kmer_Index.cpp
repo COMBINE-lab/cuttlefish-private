@@ -16,6 +16,7 @@
 #include <cassert>
 #include <fstream>
 #include <cstdlib>
+#include <cstdio>
 #include <chrono>
 
 
@@ -546,6 +547,8 @@ void Kmer_Index<k>::construct_overflow_index()
     collect_overflown_kmers();
 
     construct_overflow_kmer_mphf();
+
+    map_overflown_kmers();
 }
 
 
@@ -690,6 +693,74 @@ void Kmer_Index<k>::construct_overflow_kmer_mphf()
 
     std::cout <<    "Constructed an MPHF over the overflown k-mers.\n"
                     "\tBits / k-mer: " << (static_cast<double>(kmer_mphf->totalBitSize()) / overflow_kmer_count_) << ".\n";
+}
+
+
+template <uint16_t k>
+void Kmer_Index<k>::map_overflown_kmers()
+{
+    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(max_inst_count_)));   // The minimizer-instance blocks are 0-indexed–no need for +1.
+    assert(bits_per_entry > 0);
+    overflow_kmer_map = new min_vector_t(bits_per_entry, overflow_kmer_count_);
+
+    std::FILE* const kmer_file = std::fopen(overflow_kmers_path().c_str(), "rb");
+    std::FILE* const inst_id_file = std::fopen(overflow_min_insts_path().c_str(), "rb");
+    constexpr std::size_t buf_elem_count = buf_sz_th / (sizeof(Kmer<k>) + sizeof(std::size_t)); // Maximum number of (k-mer, inst-ID) pair in memory per worker.
+
+    std::vector<std::thread> worker;
+    worker.reserve(producer_count);
+
+    for(uint16_t t_id = 0; t_id < producer_count; ++t_id)
+        worker.emplace_back(
+            [this, kmer_file, inst_id_file]()
+            {
+                auto& kmer_map = *overflow_kmer_map;
+                Kmer<k>* const kmer_buf = static_cast<Kmer<k>*>(std::malloc(buf_elem_count * sizeof(Kmer<k>)));
+                std::size_t* const inst_id_buf = static_cast<std::size_t*>(std::malloc(buf_elem_count * sizeof(std::size_t)));
+
+                while(true)
+                {
+                    lock.lock();
+
+                    const std::size_t kmers_read = std::fread(static_cast<void*>(kmer_buf), sizeof(Kmer<k>), buf_elem_count, kmer_file);
+                    const std::size_t inst_ids_read = std::fread(static_cast<void*>(inst_id_buf), sizeof(std::size_t), buf_elem_count, inst_id_file);
+                    if(kmers_read != inst_ids_read)
+                    {
+                        std::cerr << "Error reading from the overflow data files. Aborting.\n";
+                        std::exit(EXIT_FAILURE);
+                    }
+
+                    lock.unlock();
+
+                    if(!kmers_read)
+                        break;
+
+                    for(std::size_t i = 0; i < kmers_read; ++i)
+                        kmer_map[kmer_mphf->lookup(kmer_buf[i])] = inst_id_buf[i];
+                }
+
+                std::free(kmer_buf);
+                std::free(inst_id_buf);
+            }
+        );
+
+    for(auto& w : worker)
+    {
+        if(!w.joinable())
+        {
+            std::cerr << "Early termination encountered for some worker thread. Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        w.join();
+    }
+
+    std::fclose(kmer_file);
+    std::fclose(inst_id_file);
+
+    overflow_kmer_map->serialize(overflow_kmer_map_path());
+
+    std::cout << "Mapped the overflown k-mers to their associated minimizer-instances.\n";
 }
 
 
