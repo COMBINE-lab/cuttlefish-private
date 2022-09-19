@@ -64,6 +64,9 @@ namespace boomphf {
 			_buffsize = cr._buffsize;
 			_pos = cr._pos;
 			_is = cr._is;
+			if(_is != nullptr)
+				if(std::fseek(_is, _pos * sizeof(basetype), SEEK_SET))	// TODO: make PR to BBHash repo.
+					std::fprintf(stderr, "fseek failed on FILE* %p", static_cast<void*>(_is));
 			// _buffer = (basetype *) malloc(_buffsize*sizeof(basetype));
 			//  memcpy(_buffer,cr._buffer,_buffsize*sizeof(basetype) );
 			_inbuff = cr._inbuff;
