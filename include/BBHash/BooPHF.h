@@ -516,13 +516,13 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
         public:
 
 
-		uint64_t h0(hash_pair_t  & s, const Item& key )
+		uint64_t h0(hash_pair_t  & s, const Item& key ) const
 		{
 			s[0] =  singleHasher (key, 0xAAAAAAAA55555555ULL);
 			return s[0];
 		}
 
-		uint64_t h1(hash_pair_t  & s, const Item& key )
+		uint64_t h1(hash_pair_t  & s, const Item& key ) const
 		{
 			s[1] =  singleHasher (key, 0x33333333CCCCCCCCULL);
 			return s[1];
@@ -530,7 +530,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 
 
 		//return next hash an update state s
-		uint64_t next(hash_pair_t  & s ) {
+		uint64_t next(hash_pair_t  & s ) const {
 			#pragma GCC diagnostic push	
 			#if not defined __has_warning
 				#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
@@ -875,7 +875,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 		~level() {
 		}
 
-		uint64_t get(uint64_t hash_raw)
+		uint64_t get(uint64_t hash_raw) const
 		{
 		//	uint64_t hashi =    hash_raw %  hash_domain; //
 			//uint64_t hashi = (uint64_t)(  ((__uint128_t) hash_raw * (__uint128_t) hash_domain) >> 64ULL);
@@ -928,8 +928,6 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 		//typedef IndepHashFunctors<elem_t,Hasher_t> MultiHasher_t; //faster than xorshift
 
 	public:
-		// Debug
-		double data_copy_time = 0;
 
 		mphf() : _built(false)
 		{}
@@ -1025,7 +1023,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 		}
 
 
-		uint64_t lookup(elem_t elem)
+		uint64_t lookup(elem_t elem) const
 		{
 			if(! _built) return ULLONG_MAX;
 			
@@ -1070,7 +1068,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
             return _nelem;
         }
 
-		uint64_t totalBitSize()
+		uint64_t totalBitSize() const
 		{
 
 			uint64_t totalsizeBitset = 0;
@@ -1419,7 +1417,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 
 
 		//compute level and returns hash of last level reached
-		uint64_t getLevel(hash_pair_t & bbhash, elem_t val,int * res_level, int maxlevel = 100, int minlevel =0)
+		uint64_t getLevel(hash_pair_t & bbhash, elem_t val,int * res_level, int maxlevel = 100, int minlevel =0) const
 		//uint64_t getLevel(hash_pair_t & bbhash, elem_t val,int * res_level, int maxlevel = 100, int minlevel =0)
 
 		{
