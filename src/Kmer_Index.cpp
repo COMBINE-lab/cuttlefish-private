@@ -101,6 +101,8 @@ Kmer_Index<k>::~Kmer_Index()
     delete min_mphf;
     delete min_instance_count;
     delete min_offset;
+    delete kmer_mphf;
+    delete overflow_kmer_map;
 }
 
 
@@ -549,6 +551,14 @@ void Kmer_Index<k>::construct_overflow_index()
     construct_overflow_kmer_mphf();
 
     map_overflown_kmers();
+
+
+    // Release the overflow index if required.
+    if(!retain)
+    {
+        delete kmer_mphf, kmer_mphf = nullptr;
+        delete overflow_kmer_map, overflow_kmer_map = nullptr;
+    }
 }
 
 
