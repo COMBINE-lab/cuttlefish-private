@@ -12,6 +12,7 @@
 #include "Minimizer_Iterator.hpp"
 #include "Minimizer_Instance.hpp"
 #include "Minimizer_Utility.hpp"
+#include "Kmer_Hasher.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 #include "compact_vector/compact_vector.hpp"
@@ -86,6 +87,9 @@ private:
     uint64_t overflow_min_count_;   // Number of unique minimizers with instance-counts exceeding the preset threshold.
     uint64_t overflow_kmer_count_;  // Number of k-mers associated to the overflowing minimizers.
 
+    typedef boomphf::mphf<Kmer<k>, Kmer_Hasher<k>, false> kmer_mphf_t;  // The MPHF type for the overflown k-mers.
+    const kmer_mphf_t* kmer_mphf;   // MPHF of the overflown k-mers.
+
     const bool retain;  // Whether to retain the index in memory after construction.
 
     std::size_t curr_token; // Number of tokens generated for the producers so far.
@@ -148,6 +152,9 @@ private:
     // `num_kmer`, respectively.
     void collect_overflown_kmers(std::size_t low, std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op, std::size_t& num_min, std::size_t& num_kmer) const;
 
+    // Constructs the MPHF `kmer_mphf` over the overflown k-mers found.
+    void construct_overflow_kmer_mphf();
+
     // Looks up the minimizer `min` in the MPHF and returns its hash value + 1.
     uint64_t hash(minimizer_t min) const;
 
@@ -176,6 +183,7 @@ private:
     const std::string min_instance_file_path() const { return output_pref + MIN_INST_FILE_EXT; }    // Returns the file-path for the unified minimizer-instances.
     const std::string overflow_kmers_path() const { return working_dir + filename(output_pref) + OVERFLOW_KMER; }   // Returns the file-path for the k-mers corresponding to the overflowing minimizers.
     const std::string overflow_min_insts_path() const { return working_dir + filename(output_pref) + OVERFLOW_MIN_INST_IDX; }   // Returns the file-path for the overflowing minimizer instances' relative index.
+    const std::string overflow_mphf_file_path() const { return output_pref + OVERFLOW_MPHF_FILE_EXT; }  // Returns the file-path for the overflown k-mers' MPHF.
 
 public:
 

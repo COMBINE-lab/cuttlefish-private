@@ -384,8 +384,7 @@ void Kmer_Index<k>::construct_minimizer_mphf()
     std::FILE* const min_file = std::fopen(min_instance_file_path().c_str(), "rb");
     const auto data_iterator = boomphf::range(min_iter_t(min_file), min_iter_t(nullptr));
 
-    min_mphf = new boomphf::mphf<minimizer_t, minimizer_hasher_t, false>(min_count_, data_iterator, working_dir, producer_count, gamma);
-
+    min_mphf = new minimizer_mphf_t(min_count_, data_iterator, working_dir, producer_count, gamma);
 
     std::ofstream output(mphf_file_path(), std::ofstream::out);
     min_mphf->save(output);
@@ -545,6 +544,8 @@ template <uint16_t k>
 void Kmer_Index<k>::construct_overflow_index()
 {
     collect_overflown_kmers();
+
+    construct_overflow_kmer_mphf();
 }
 
 
@@ -672,6 +673,23 @@ void Kmer_Index<k>::collect_overflown_kmers(const std::size_t low, const std::si
 
     if(!kmers.empty())
         locked_dump();
+}
+
+
+template <uint16_t k>
+void Kmer_Index<k>::construct_overflow_kmer_mphf()
+{
+    const boomphf::file_binary<Kmer<k>> kmer_file(overflow_kmers_path().c_str());
+    const auto data_iterator = boomphf::range(kmer_file.begin(), kmer_file.end());
+
+    kmer_mphf = new kmer_mphf_t(overflow_kmer_count_, data_iterator, working_dir, producer_count, gamma);
+
+    std::ofstream output(overflow_mphf_file_path(), std::ofstream::out);
+    kmer_mphf->save(output);
+    output.close();
+
+    std::cout <<    "Constructed an MPHF over the overflown k-mers.\n"
+                    "\tBits / k-mer: " << (static_cast<double>(kmer_mphf->totalBitSize()) / overflow_kmer_count_) << ".\n";
 }
 
 
