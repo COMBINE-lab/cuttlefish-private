@@ -77,7 +77,7 @@ private:
     typedef boomphf::SingleHashFunctor<minimizer_t> minimizer_hasher_t; // The seeded hasher class for minimizers.
                                                                         // TODO: placeholder for now; think it through.
     typedef boomphf::mphf<minimizer_t, minimizer_hasher_t, false> minimizer_mphf_t; // The minimizer-MPHF type.
-    minimizer_mphf_t* min_mphf; // MPHF of the minimizers.
+    const minimizer_mphf_t* min_mphf;   // MPHF of the minimizers.
 
     min_vector_t* min_instance_count;   // Count of instances per each unique minimizer.
 

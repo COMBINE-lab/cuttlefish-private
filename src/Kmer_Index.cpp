@@ -74,8 +74,7 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     path_ends->deserialize(path_end_file_path());
     path_count_ = path_ends->size();
 
-    min_mphf = new minimizer_mphf_t();
-    min_mphf->load(mphf_file_path());
+    min_mphf = new minimizer_mphf_t(mphf_file_path());
     // min_count = min_mphf->nbKeys();
 
     min_instance_count = new min_vector_t();

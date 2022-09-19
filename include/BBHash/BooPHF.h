@@ -938,6 +938,11 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 
 		}
 
+		mphf(const std::string& path): mphf()
+		{
+			load(path);
+		}
+
 		
 		// allow perc_elem_loaded  elements to be loaded in ram for faster construction (default 3%), set to 0 to desactivate
 		template <typename Range>
