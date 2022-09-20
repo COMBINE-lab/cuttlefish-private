@@ -85,6 +85,13 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     min_offset = new min_vector_t();
     min_offset->deserialize(offset_file_path());
     num_instances_ = min_offset->size();
+
+    kmer_mphf = new kmer_mphf_t(overflow_mphf_file_path());
+    // overflow_kmer_count_ = kmer_mphf->nbKeys();
+
+    overflow_kmer_map = new min_vector_t();
+    overflow_kmer_map->deserialize(overflow_kmer_map_path());
+    overflow_kmer_count_ = overflow_kmer_map->size();
 }
 
 
