@@ -179,6 +179,16 @@ private:
     // index `idx`. Returns `true` iff the alignment succeeds.
     bool align(const Kmer<k>& kmer, std::size_t idx) const;
 
+    class Kmer_Alignment;
+
+    // Tries to align the k-mer `kmer` to the concatenated paths sequence such
+    // that the `l_`-mer at the index `kmer_min_idx` of `kmer` docks at the
+    // index `min_idx` of the concatenated paths sequence. The alignment must be
+    // contained in a path—`kmer` is to be present entirely in a single path.
+    // Iff the alignment succeeds, the resultant information is stored into
+    // `alignment` and `true` is returned. Otherwise, `false` is returned.
+    bool align_contained(const Kmer<k>& kmer, std::size_t kmer_min_idx, std::size_t min_idx, Kmer_Alignment& alignment) const;
+
     uint16_t l() const { return l_; }   // Returns the size of the l-minimizers.
     const std::string path_file_path() const { return output_pref + PATH_FILE_EXT; }    // Returns the file-path for the concatenated paths.
     const std::string path_end_file_path() const { return output_pref + PATH_END_FILE_EXT; }    // Returns the file-path for the path-end offsets.
@@ -242,15 +252,13 @@ public:
     // `path_id` into `kmer`.
     void get_kmer(std::size_t path_id, std::size_t idx, Kmer<k>& kmer) const;
 
-    class Query_Result;
-
     // Queries the k-mer `kmer` (in its literal form) into the index. If found,
     // stores alignment information (into the index) of the k-mer into `result`:
     // the ID of the k-mer's containing path, the ID of the k-mer itself in the
     // k-mer ordering of the index, and the k-mer's ID within its containing
     // path. All IDs are the sequence-orders of the corresponding entities.
     // Returns `true` iff the k-mer is found.
-    bool query(const Kmer<k>& kmer, Query_Result& result) const;
+    bool query(const Kmer<k>& kmer, Kmer_Alignment& result) const;
 };
 
 
@@ -407,9 +415,9 @@ inline void Kmer_Index<k>::get_kmer(const std::size_t idx, Kmer<k>& kmer) const
 }
 
 
-// A class to pack a k-mer query result from `Kmer_Index`.
+// A class to pack a k-mer alignment result from `Kmer_Index`.
 template <uint16_t k>
-class Kmer_Index<k>::Query_Result
+class Kmer_Index<k>::Kmer_Alignment
 {
     friend class Kmer_Index<k>;
 
@@ -428,58 +436,60 @@ public:
 
 
 template <uint16_t k>
-inline bool Kmer_Index<k>::query(const Kmer<k>& kmer, Query_Result& result) const
+inline bool Kmer_Index<k>::query(const Kmer<k>& kmer, Kmer_Alignment& result) const
 {
     minimizer_t kmer_min;   // The minimizer of `kmer`.
     std::size_t kmer_min_idx;   // The index of the minimizer in `kmer`.
-    Minimizer_Utility::get_minimizer<k>(kmer, l_, kmer_min, kmer_min_idx);
-
-    const auto& mi_count = *min_instance_count;
-    const auto& m_offset = *min_offset;
-    const auto& p_end = *path_ends;
+    Minimizer_Utility::get_minimizer(kmer, l_, kmer_min, kmer_min_idx);
 
     const uint64_t h = hash(kmer_min) - 1;
     if(h >= min_count_) // The k-mer's minimizer is absent in the index.
         return false;
 
-    const std::size_t idx_begin = (h > 0 ? mi_count[h - 1] : 0);    // Offset of the block of indices of the minimizers' instances.
+    const auto& mi_count = *min_instance_count;
+    const auto& m_offset = *min_offset;
+
+    const std::size_t idx_begin = (h > 0 ? mi_count[h - 1] : 0);    // Offset of the block of indices of the minimizer's instances.
     const std::size_t idx_end = mi_count[h];    // End-offset of the instance block (exclusive).
 
     // Try to align the k-mer to each instance of this minimizer.
     for(std::size_t i = idx_begin; i < idx_end; ++i)
-    {
-        const std::size_t min_idx = m_offset[i];    // Index of the minimizer instance in the paths.
-
-        // Try to align the k-mer so that its `kmer_min_idx`-index precisely docks at the `min_idx`-index of the paths.
-
-        // Docking the k-mer at this instance would make it fall off off either end of the concatenated paths.
-        if(min_idx < kmer_min_idx || (min_idx + (k - kmer_min_idx)) > sum_paths_len_)
-            continue;
-
-        // The k-mer doesn't align with the corresponding path when docked at this instance.
-        if(!align(kmer, min_idx - kmer_min_idx))
-            continue;
-
-        const int64_t l = lower_bound(p_end, 0, path_count_ - 1, min_idx);   // ID of the path preceding this path.
-        const std::size_t l_end = (l < 0 ? 0 : p_end[l]);   // Index of the left end of the path containing this instance.
-        if(min_idx - kmer_min_idx < l_end)  // Alignment starting position of the k-mer exceeds the left end.
-            continue;
-
-        // const int64_t r = upper_bound(p_end, 0, path_count_ - 1, min_idx);   // ID of this path.
-        const int64_t r = l + 1;    // ID of this path.
-        assert(r == upper_bound(p_end, 0, path_count_ - 1, min_idx));
-        const std::size_t r_end = p_end[r]; // Index of the right end (exclusive) of the path containing this instance.
-        if(min_idx + (k - kmer_min_idx) > r_end)    // Alignment ending position of the k-mer exceeds the right end.
-            continue;
-
-        result.path_id_ = r;
-        result.kmer_id_ = min_idx - kmer_min_idx - r * (k - 1);
-        result.kmer_id_in_path_ = min_idx - kmer_min_idx - l_end;
-
-        return true;
-    }
+        if(align_contained(kmer, kmer_min_idx, m_offset[i], result))
+            return true;
 
     return false;
+}
+
+
+template <uint16_t k>
+inline bool Kmer_Index<k>::align_contained(const Kmer<k>& kmer, const std::size_t kmer_min_idx, const std::size_t min_idx, Kmer_Alignment& alignment) const
+{
+    // Docking the k-mer at this instance would make it fall off off either end of the concatenated paths.
+    if(min_idx < kmer_min_idx || (min_idx + (k - kmer_min_idx)) > sum_paths_len_)
+        return false;
+
+    // The k-mer doesn't align with the concatenated paths sequence when docked at this instance.
+    if(!align(kmer, min_idx - kmer_min_idx))
+        return false;
+
+    const auto& p_end = *path_ends;
+    const int64_t l = lower_bound(p_end, 0, path_count_ - 1, min_idx);  // ID of the path preceding this path.
+    const std::size_t l_end = (l < 0 ? 0 : p_end[l]);   // Index of the left end of the path containing this instance.
+    if(min_idx - kmer_min_idx < l_end)  // Alignment starting position of the k-mer exceeds the left end.
+        return false;
+
+    // const int64_t r = upper_bound(p_end, 0, path_count_ - 1, min_idx);   // ID of this path.
+    const int64_t r = l + 1;    // ID of this path.
+    assert(r == upper_bound(p_end, 0, path_count_ - 1, min_idx));
+    const std::size_t r_end = p_end[r]; // Index of the right end (exclusive) of the path containing this instance.
+    if(min_idx + (k - kmer_min_idx) > r_end)    // Alignment ending position of the k-mer exceeds the right end.
+        return false;
+
+    alignment.path_id_ = r;
+    alignment.kmer_id_ = min_idx - kmer_min_idx - r * (k - 1);
+    alignment.kmer_id_in_path_ = min_idx - kmer_min_idx - l_end;
+
+    return true;
 }
 
 

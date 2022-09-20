@@ -233,7 +233,7 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
     std::size_t last_idx = 0;
     std::string path;
     std::size_t kmer_id = 0;
-    typename Kmer_Index<k>::Query_Result result;
+    typename Kmer_Index<k>::Kmer_Alignment result;
 
     for(std::size_t path_id = 0; path_id < path_count; ++path_id)
     {
