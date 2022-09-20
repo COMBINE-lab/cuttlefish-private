@@ -452,6 +452,16 @@ inline bool Kmer_Index<k>::query(const Kmer<k>& kmer, Kmer_Alignment& result) co
     const std::size_t idx_begin = (h > 0 ? mi_count[h - 1] : 0);    // Offset of the block of indices of the minimizer's instances.
     const std::size_t idx_end = mi_count[h];    // End-offset of the instance block (exclusive).
 
+    const std::size_t inst_count = idx_end - idx_begin; // Number of instances of this minimizer.
+    if(inst_count >= overflow_threshold)
+    {
+        const uint64_t kmer_hash = kmer_mphf->lookup(kmer);
+        if(kmer_hash >= overflow_kmer_count_)
+            return false;
+
+        return align_contained(kmer, kmer_min_idx, m_offset[idx_begin + (*overflow_kmer_map)[kmer_hash]], result);
+    }
+
     // Try to align the k-mer to each instance of this minimizer.
     for(std::size_t i = idx_begin; i < idx_end; ++i)
         if(align_contained(kmer, kmer_min_idx, m_offset[i], result))
