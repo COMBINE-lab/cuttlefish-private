@@ -38,6 +38,10 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     min_mphf(nullptr),
     min_instance_count(nullptr),
     min_offset(nullptr),
+    overflow_min_count_(0),
+    overflow_kmer_count_(0),
+    kmer_mphf(nullptr),
+    overflow_kmer_map(nullptr),
     retain(retain),
     curr_token(0),
     output_pref(output_pref),
@@ -63,6 +67,10 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     min_mphf(nullptr),
     min_instance_count(nullptr),
     min_offset(nullptr),
+    overflow_min_count_(0),
+    overflow_kmer_count_(0),
+    kmer_mphf(nullptr),
+    overflow_kmer_map(nullptr),
     retain(true),
     output_pref(idx_path),
     working_dir(dirname(idx_path) + "/"),
@@ -611,6 +619,7 @@ void Kmer_Index<k>::collect_overflown_kmers()
     overflow_min_count_ = std::accumulate(num_min.begin(), num_min.end(), uint64_t(0));
     overflow_kmer_count_ = std::accumulate(num_kmer.begin(), num_kmer.end(), uint64_t(0));
 
+    std::cout << "Minimizer overflow threshold:     " << overflow_threshold << ".\n";
     std::cout << "Number of overflowing minimizers: " << overflow_min_count_ << ".\n";
     std::cout << "Number of corresponding k-mers:   " << overflow_kmer_count_ << ".\n";
 }
@@ -790,6 +799,8 @@ void Kmer_Index<k>::remove_temp_files() const
             success = false;
 
     success = (remove_file(min_instance_file_path()) ? success : false);
+    success = (remove_file(overflow_kmers_path()) ? success : false);
+    success = (remove_file(overflow_min_insts_path()) ? success : false);
 
     if(!success)
     {
