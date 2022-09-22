@@ -260,6 +260,7 @@ public:
   W* get() { return m_mem; }
   const W* get() const { return m_mem; }
   size_t bytes() const { return sizeof(W) * elements_to_words(m_capacity, bits()); }
+  size_t bytes_used() const { return sizeof(W) * elements_to_words(m_size, bits()); }
   inline unsigned bits() const { return static_cast<const Derived*>(this)->bits(); }
   static constexpr unsigned static_bits() { return BITS; }
   static constexpr unsigned used_bits() { return UB; }
@@ -343,10 +344,10 @@ public:
     std::memset(get(), 0, bytes());
   }
 
-  void serialize(const std::string& file_path) const
+  void serialize(const std::string& file_path, const bool shrink = false) const
   {
     std::ofstream output(file_path);
-    serialize(output);
+    shrink ? serialize_shrunk(output) : serialize(output);
 
     if(!output)
     {
@@ -388,6 +389,14 @@ protected:
     output.write(reinterpret_cast<const char*>(&m_capacity), sizeof(m_capacity));
 
     output.write(reinterpret_cast<const char*>(m_mem), bytes());
+  }
+
+  void serialize_shrunk(std::ofstream &output) const
+  {
+    output.write(reinterpret_cast<const char*>(&m_size), sizeof(m_size));
+    output.write(reinterpret_cast<const char*>(&m_size), sizeof(m_size));
+
+    output.write(reinterpret_cast<const char*>(m_mem), bytes_used());
   }
 
   void deserialize(std::ifstream& input)

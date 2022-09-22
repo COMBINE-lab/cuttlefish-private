@@ -256,8 +256,7 @@ void Kmer_Index<k>::close_deposit_stream()
 
     sum_paths_len_ = paths.size();
 
-    // TODO: reduce capacity before serializing: might be non-trivial waste of space.
-    paths.serialize(path_file_path());
+    paths.serialize(path_file_path(), true);
 
     // Release memory of the concatenated paths if required.
     if(!retain)
