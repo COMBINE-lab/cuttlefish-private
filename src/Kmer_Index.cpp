@@ -26,6 +26,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     path_ends(nullptr),
     l_(l),
     producer_count(producer_count),
+    worker_count(producer_count),
     num_instances_(0),
     min_count_(0),
     max_inst_count_(0),
@@ -61,6 +62,7 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     path_ends(nullptr),
     l_(minimizer_len(config_file_path(idx_path))),
     producer_count(0),
+    worker_count(0),
     num_instances_(0),
     min_count_(0),
     max_inst_count_(0),  // TODO: think if this might have repercussions, as we don't have it saved (though, inferrable).
@@ -179,6 +181,7 @@ const typename Kmer_Index<k>::Producer_Token Kmer_Index<k>::get_token()
 {
     lock.lock();
     const std::size_t token = curr_token++;
+    assert(token < producer_count);
     lock.unlock();
 
     return Producer_Token(token);
@@ -383,7 +386,7 @@ void Kmer_Index<k>::construct_minimizer_mphf()
     std::FILE* const min_file = std::fopen(min_instance_file_path().c_str(), "rb");
     const auto data_iterator = boomphf::range(min_iter_t(min_file), min_iter_t(nullptr));
 
-    min_mphf = new minimizer_mphf_t(min_count_, data_iterator, working_dir, producer_count, gamma);
+    min_mphf = new minimizer_mphf_t(min_count_, data_iterator, working_dir, worker_count, gamma);
 
     std::ofstream output(mphf_file_path(), std::ofstream::out);
     min_mphf->save(output);
@@ -411,9 +414,9 @@ void Kmer_Index<k>::count_minimizer_instances()
 
     std::vector<std::thread> worker;
     Sparse_Lock<Spin_Lock> idx_lock(min_count_ + 1, idx_lock_count);
-    std::vector<std::size_t> max_count(producer_count);
+    std::vector<std::size_t> max_count(worker_count);
 
-    for(uint16_t t = 0; t < producer_count; ++t)
+    for(uint16_t t = 0; t < worker_count; ++t)
         worker.emplace_back(
             [this, &min_inst_iter, &idx_lock](std::size_t& max_c)
             {
@@ -441,7 +444,7 @@ void Kmer_Index<k>::count_minimizer_instances()
             },
             std::ref(max_count[t]));
 
-    for(uint16_t t = 0; t < producer_count; ++t)
+    for(uint16_t t = 0; t < worker_count; ++t)
     {
         if(!worker[t].joinable())
         {
@@ -479,7 +482,7 @@ void Kmer_Index<k>::get_minimizer_offsets()
     std::vector<std::thread> worker;
     Sparse_Lock<Spin_Lock> idx_lock(min_count_, idx_lock_count);
 
-    for(uint16_t t = 0; t < producer_count; ++t)
+    for(uint16_t t = 0; t < worker_count; ++t)
         worker.emplace_back(
             [this, &min_inst_iter, &idx_lock]()
             {
@@ -508,7 +511,7 @@ void Kmer_Index<k>::get_minimizer_offsets()
             }
         );
 
-    for(uint16_t t = 0; t < producer_count; ++t)
+    for(uint16_t t = 0; t < worker_count; ++t)
     {
         if(!worker[t].joinable())
         {
@@ -564,8 +567,8 @@ void Kmer_Index<k>::collect_overflown_kmers()
     std::ofstream kmer_op(overflow_kmers_path());
     std::ofstream inst_idx_op(overflow_min_insts_path());
 
-    const std::size_t task_size = min_count_ / producer_count;
-    const uint16_t partition_count = (task_size < 1 ? 1 : producer_count);
+    const std::size_t task_size = min_count_ / worker_count;
+    const uint16_t partition_count = (task_size < 1 ? 1 : worker_count);
     std::vector<std::size_t> num_min(partition_count);
     std::vector<std::size_t> num_kmer(partition_count);
     std::vector<std::thread> worker;
@@ -692,7 +695,7 @@ void Kmer_Index<k>::construct_overflow_kmer_mphf()
     const boomphf::file_binary<Kmer<k>> kmer_file(overflow_kmers_path().c_str());
     const auto data_iterator = boomphf::range(kmer_file.begin(), kmer_file.end());
 
-    kmer_mphf = new kmer_mphf_t(overflow_kmer_count_, data_iterator, working_dir, producer_count, gamma);
+    kmer_mphf = new kmer_mphf_t(overflow_kmer_count_, data_iterator, working_dir, worker_count, gamma);
 
     std::ofstream output(overflow_mphf_file_path(), std::ofstream::out);
     kmer_mphf->save(output);
@@ -715,9 +718,9 @@ void Kmer_Index<k>::map_overflown_kmers()
     constexpr std::size_t buf_elem_count = buf_sz_th / (sizeof(Kmer<k>) + sizeof(std::size_t)); // Maximum number of (k-mer, inst-ID) pair in memory per worker.
 
     std::vector<std::thread> worker;
-    worker.reserve(producer_count);
+    worker.reserve(worker_count);
 
-    for(uint16_t t_id = 0; t_id < producer_count; ++t_id)
+    for(uint16_t t_id = 0; t_id < worker_count; ++t_id)
         worker.emplace_back(
             [this, kmer_file, inst_id_file]()
             {

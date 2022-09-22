@@ -57,6 +57,7 @@ private:
     const uint16_t l_;  // Size of the l-minimizers.
 
     const uint16_t producer_count;  // Number of producer threads supplying the paths to the indexer.
+    const uint16_t worker_count;    // Number of worker threads for various multi-threaded tasks.
 
     std::size_t path_count_;    // Number of paths deposited to the sequence.
     std::size_t sum_paths_len_; // Sum length of all the path-sequences.
