@@ -39,6 +39,18 @@ protected:
     static constexpr char OVERFLOW_KMER_MAP_EXT[] = ".overflow.map";
 
 
+    // Returns the configuration file path for the k-mer index present at path
+    // prefix `idx_path`.
+    static const std::string config_file_path(const std::string& idx_path);
+
+    // Reads the k-mer length of some k-mer index from its configuration file
+    // at path `config_path` and returns it.
+    static uint16_t kmer_len(const std::string& config_path);
+
+    // Reads the minimizer length of some k-mer index from its configuration
+    // file at path `config_path` and returns it.
+    static uint16_t minimizer_len(const std::string& config_path);
+
     // Dumps the data from `container` to the stream `output`, clearing
     // `container`.
     template <typename T_container_>
@@ -58,6 +70,48 @@ protected:
     template <typename T_container_>
     static int64_t upper_bound(const T_container_& container, int64_t left, int64_t right, typename T_container_::value_type val);
 };
+
+
+inline const std::string Kmer_Index_Utility::config_file_path(const std::string& idx_path)
+{
+    return idx_path + CONFIG_FILE_EXT;
+}
+
+
+inline uint16_t Kmer_Index_Utility::kmer_len(const std::string& config_path)
+{
+    std::ifstream config_file(config_path.c_str(), std::ios::in | std::ios::binary);
+
+    uint16_t k;
+    config_file.read(reinterpret_cast<char*>(&k), sizeof(k));
+
+    if(!config_file)
+    {
+        std::cerr << "Error reading from the configuration file at " << config_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    return k;
+}
+
+
+inline uint16_t Kmer_Index_Utility::minimizer_len(const std::string& config_path)
+{
+    std::ifstream config_file(config_path.c_str(), std::ios::in | std::ios::binary);
+
+    config_file.seekg(sizeof(uint16_t), std::ios::beg); // Skip the `k`-value.
+
+    uint16_t l;
+    config_file.read(reinterpret_cast<char*>(&l), sizeof(l));
+
+    if(!config_file)
+    {
+        std::cerr << "Error reading from the configuration file at " << config_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    return l;
+}
 
 
 template <typename T_container_>

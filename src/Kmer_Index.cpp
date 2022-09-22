@@ -59,7 +59,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
 template <uint16_t k>
 Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     path_ends(nullptr),
-    l_(load_minimizer_len(idx_path + CONFIG_FILE_EXT)),
+    l_(minimizer_len(config_file_path(idx_path))),
     producer_count(0),
     num_instances_(0),
     min_count_(0),
@@ -76,6 +76,13 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     working_dir(dirname(idx_path) + "/"),
     params(nullptr)
 {
+    const uint16_t idx_k = kmer_len(config_file_path(idx_path));
+    if(idx_k != k)
+    {
+        std::cerr << "The k-mer length of the requested index is " << idx_k << ", which doesn't match with this execution. Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
     paths.deserialize(path_file_path());
     sum_paths_len_ = paths.size();
 
@@ -144,7 +151,7 @@ void Kmer_Index<k>::construct()
 template <uint16_t k>
 void Kmer_Index<k>::save_config() const
 {
-    std::ofstream config_file(config_file_path().c_str(), std::ios::out | std::ios::binary);
+    std::ofstream config_file(config_file_path(output_pref).c_str(), std::ios::out | std::ios::binary);
 
     constexpr uint16_t K = k;
     config_file.write(reinterpret_cast<const char*>(&K), sizeof(K));
@@ -152,37 +159,11 @@ void Kmer_Index<k>::save_config() const
 
     if(!config_file)
     {
-        std::cerr << "Error writing to the index configuration file " << config_file_path() << ". Aborting.\n";
+        std::cerr << "Error writing to the index configuration file " << config_file_path(output_pref) << ". Aborting.\n";
         std::exit(EXIT_FAILURE);
     }
 
     config_file.close();
-}
-
-
-template <uint16_t k>
-typename Kmer_Index<k>::minimizer_t Kmer_Index<k>::load_minimizer_len(const std::string& config_path)
-{
-    std::ifstream config_file(config_path.c_str(), std::ios::in | std::ios::binary);
-
-    uint16_t K;
-    config_file.read(reinterpret_cast<char*>(&K), sizeof(K));
-    if(K != k)
-    {
-        std::cerr << "The k-mer length of the requested index doesn't match with the execution. Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-
-    uint16_t l;
-    config_file.read(reinterpret_cast<char*>(&l), sizeof(l));
-
-    if(!config_file)
-    {
-        std::cerr << "Error reading from the configuration file at " << config_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-
-    return l;
 }
 
 

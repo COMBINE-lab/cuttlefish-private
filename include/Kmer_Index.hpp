@@ -108,12 +108,6 @@ private:
     // the minimizer lengths.
     void save_config() const;
 
-    // Reads the configuration constants of some index from file at path
-    // `config_path`, cross-checks if the k-mer length is as expected, and
-    // returns the minimizer length.
-    // TODO: factor out the k-check and move this method to the utility class.
-    static minimizer_t load_minimizer_len(const std::string& config_path);
-
     // Returns the path to the minimizer-information file of producer with ID
     // `producer_id`.
     const std::string minimizer_file_path(uint16_t producer_id) const;
@@ -195,7 +189,6 @@ private:
     const std::string mphf_file_path() const { return output_pref + MPHF_FILE_EXT; }    // Returns the file-path for the minimizer-MPHF.
     const std::string count_file_path() const { return output_pref + COUNT_FILE_EXT; }  // Returns the file-path for the minimizers' instance-counts.
     const std::string offset_file_path() const { return output_pref + OFFSET_FILE_EXT; }    // Returns the file-path for the minimizer-instances' offsets.
-    const std::string config_file_path() const { return output_pref + CONFIG_FILE_EXT; }    // Returns the file-path for the configuration constants.
     const std::string min_instance_file_path() const { return output_pref + MIN_INST_FILE_EXT; }    // Returns the file-path for the unified minimizer-instances.
     const std::string overflow_kmers_path() const { return working_dir + filename(output_pref) + OVERFLOW_KMER; }   // Returns the file-path for the k-mers corresponding to the overflowing minimizers.
     const std::string overflow_min_insts_path() const { return working_dir + filename(output_pref) + OVERFLOW_MIN_INST_IDX; }   // Returns the file-path for the overflowing minimizer-instances' relative index.
