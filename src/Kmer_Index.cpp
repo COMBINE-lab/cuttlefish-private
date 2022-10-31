@@ -286,6 +286,7 @@ void Kmer_Index<k>::read_and_sort_minimizers()
     std::vector<std::thread> worker;
 
     // TODO: bound memory usage within a provided argument.
+    // TODO: file-manager.
 
     // Launch sorter threads.
     for(uint16_t id = 0; id < producer_count; ++id)

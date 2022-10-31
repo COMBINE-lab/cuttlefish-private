@@ -44,7 +44,8 @@ void Read_CdBG_Extractor<k>::extract_maximal_unitigs(const std::string& vertex_d
 
     // Launch (multi-threaded) extraction of the maximal unitigs.
     const uint64_t thread_load_percentile = static_cast<uint64_t>(std::round((vertex_count() / 100.0) / params.thread_count()));
-    progress_tracker.setup(vertex_count(), thread_load_percentile, "Extracting maximal unitigs");
+    progress_tracker.setup(vertex_count(), thread_load_percentile,
+                            kmer_idx == nullptr ? "Extracting maximal unitigs" : "Extracting maximal unitigs and depositing to index");
     distribute_unipaths_extraction(&vertex_parser, thread_pool);
 
     // Wait for the vertices to be depleted from the database.

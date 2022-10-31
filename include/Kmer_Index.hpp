@@ -33,6 +33,8 @@
 
 class Build_Params;
 
+// TODO: use `assert`s aggressively.
+
 
 // A class to index the k-mers of provided de Bruijn graph path-sequences,
 // potentially from many producer threads, based on the k-mers' minimizers.
@@ -380,7 +382,7 @@ inline std::size_t Kmer_Index<k>::path_size(const std::size_t path_id) const
 template <uint16_t k>
 inline void Kmer_Index<k>::get_kmer(const std::size_t path_id, const std::size_t idx, Kmer<k>& kmer) const
 {
-    assert(path_id < path_count);
+    assert(path_id < path_count_);
 
     const auto& p_ends = *path_ends;
     const std::size_t base_idx = (path_id > 0 ? p_ends[path_id - 1] : 0);

@@ -18,6 +18,8 @@
 
 // =============================================================================
 
+// TODO: better document and better log messages.
+
 
 // A class to contain the validation algorithms for the Cuttlefish indexings.
 template <uint16_t k, uint16_t l>

@@ -68,5 +68,7 @@ void force_free(T_container_& container)
     T_container_().swap(container);
 }
 
+// TODO: Add thread-joiner wrapper.
+
 
 #endif

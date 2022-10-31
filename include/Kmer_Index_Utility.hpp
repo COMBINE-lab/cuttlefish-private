@@ -26,6 +26,7 @@ protected:
     // TODO: move to build-params.
     constexpr static std::size_t overflow_threshold = (1 << 5); // Threshold size for minimizer instances to be put in the overflow index.
 
+    // TODO: move to file_extensions.hpp
     static constexpr char PATH_FILE_EXT[] = ".paths";
     static constexpr char PATH_END_FILE_EXT[] = ".ends";
     static constexpr char MPHF_FILE_EXT[] = ".min.mphf";

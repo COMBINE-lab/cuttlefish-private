@@ -106,7 +106,7 @@ public:
     Minimizer_Instance_Iterator();
 
     // Constructs an iterator for the file container `in_file_ptr`.
-    Minimizer_Instance_Iterator(std::FILE* const file_ptr);
+    Minimizer_Instance_Iterator(std::FILE* file_ptr);
 
     // Copy constructs an iterator from another iterator `other`.
     Minimizer_Instance_Iterator(const Minimizer_Instance_Iterator& other);
@@ -117,7 +117,7 @@ public:
     // Returns the minimizer value of the current minimizer instance.
     cuttlefish::minimizer_t operator*();
 
-    // Advances the iterator by one position in the container.
+    // Advances the iterator by one minimizer block in the container.
     Minimizer_Instance_Iterator& operator++();
 
     // Returns `true` iff this iterator and `rhs` point to the same position of
