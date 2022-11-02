@@ -23,10 +23,14 @@
 template <uint16_t k>
 Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const bool retain, const std::string& output_pref, const std::string& working_dir, const Build_Params* const params):
     // TODO: reserve space for `paths`, preferably from additional k-mer count field
-    path_ends(nullptr),
     l_(l),
+    output_pref(output_pref),
+    working_dir(working_dir + "/"),
     producer_count(producer_count),
     worker_count(producer_count),
+    params(params),
+    retain(retain),
+    path_ends(nullptr),
     num_instances_(0),
     min_count_(0),
     max_inst_count_(0),
@@ -43,11 +47,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     overflow_kmer_count_(0),
     kmer_mphf(nullptr),
     overflow_kmer_map(nullptr),
-    retain(retain),
-    curr_token(0),
-    output_pref(output_pref),
-    working_dir(working_dir + "/"),
-    params(params)
+    curr_token(0)
 {
     assert(l <= 32);
     for(uint16_t id = 0; id < producer_count; ++id)
@@ -59,10 +59,14 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
 
 template <uint16_t k>
 Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
-    path_ends(nullptr),
     l_(minimizer_len(config_file_path(idx_path))),
+    output_pref(idx_path),
+    working_dir(dirname(idx_path) + "/"),
     producer_count(0),
     worker_count(0),
+    params(nullptr),
+    retain(true),
+    path_ends(nullptr),
     num_instances_(0),
     min_count_(0),
     max_inst_count_(0),  // TODO: think if this might have repercussions, as we don't have it saved (though, inferrable).
@@ -72,11 +76,7 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     overflow_min_count_(0),
     overflow_kmer_count_(0),
     kmer_mphf(nullptr),
-    overflow_kmer_map(nullptr),
-    retain(true),
-    output_pref(idx_path),
-    working_dir(dirname(idx_path) + "/"),
-    params(nullptr)
+    overflow_kmer_map(nullptr)
 {
     const uint16_t idx_k = kmer_len(config_file_path(idx_path));
     if(idx_k != k)

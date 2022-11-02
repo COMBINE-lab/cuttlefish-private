@@ -45,6 +45,18 @@ class Kmer_Index : private Kmer_Index_Utility
 
 private:
 
+    const uint16_t l_;  // Size of the l-minimizers.
+
+    const std::string output_pref;  // Prefix of the output path for the index.
+    const std::string working_dir;  // Path to the working directory for the index construction.
+
+    const uint16_t producer_count;  // Number of producer threads supplying the paths to the indexer.
+    const uint16_t worker_count;    // Number of worker threads for various multi-threaded tasks.
+
+    const Build_Params* const params;   // Build parameters wrapped inside.
+
+    const bool retain;  // Whether to retain the index in memory after construction.
+
     typedef cuttlefish::minimizer_t minimizer_t;    // Minimizers can be represented using 64-bit integers.
     typedef compact::vector<uint8_t, 2> path_vector_t;      // Type of the bitvector storing the path sequences.
     typedef compact::vector<std::size_t> path_end_vector_t; // Type of the bitvector storing the path endpoints.
