@@ -54,7 +54,22 @@ void CdBG<k>::construct()
 
     std::chrono::high_resolution_clock::time_point t_start = std::chrono::high_resolution_clock::now();
 
+#ifdef CF_DEVELOP_MODE
 
+    uint64_t vertex_count;
+
+    if(params.vertex_db_path().empty())
+    {
+        kmer_Enumeration_Stats<k> vertex_stats = enumerate_vertices();
+        vertex_count = vertex_stats.counted_kmer_count();
+    }
+    else
+        vertex_count = Kmer_Container<k>::size(params.vertex_db_path());
+
+    std::chrono::high_resolution_clock::time_point t_vertex = std::chrono::high_resolution_clock::now();
+    std::cout << "Enumerated the vertex set of the graph. Time taken = " << std::chrono::duration_cast<std::chrono::duration<double>>(t_vertex - t_start).count() << " seconds.\n";
+
+#else
     std::cout << "\nEnumerating the vertices of the de Bruijn graph.\n";
     kmer_Enumeration_Stats<k> vertex_stats = enumerate_vertices();
     vertex_stats.log_stats();
@@ -65,6 +80,7 @@ void CdBG<k>::construct()
 
     const uint64_t vertex_count = vertex_stats.counted_kmer_count();
     std::cout << "Number of vertices: " << vertex_count << ".\n";
+#endif
 
 
     std::cout << "\nConstructing the minimal perfect hash function (MPHF) over the vertex set.\n";
@@ -95,8 +111,10 @@ void CdBG<k>::construct()
     std::cout << "Extracted the maximal unitigs. Time taken = " << std::chrono::duration_cast<std::chrono::duration<double>>(t_extract - t_dfa).count() << " seconds.\n";
 
 
+#ifndef CF_DEVELOP_MODE
     const double max_disk = static_cast<double>(max_disk_usage(vertex_stats)) / (1024.0 * 1024.0 * 1024.0);
     std::cout << "\nMaximum temporary disk-usage: " << max_disk << "GB.\n";
+#endif
 }
 
 

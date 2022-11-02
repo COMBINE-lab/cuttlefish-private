@@ -169,7 +169,7 @@ bool Build_Params::is_valid() const
 #ifndef CF_DEVELOP_MODE
     if(!vertex_db_path_.empty() || !edge_db_path_.empty())
     {
-        std::cout << "Paths to vertex- and edge-databases are supported only in debug mode.\n";
+        std::cout << "Paths to vertex- and edge-databases are supported only in develop mode.\n";
         valid = false;
     }
 #endif
