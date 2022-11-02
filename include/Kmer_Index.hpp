@@ -68,11 +68,6 @@ private:
     std::vector<std::size_t> path_ends_vec; // Vector for the ending indices, possibly with many unused bits, of the paths in the concatenated sequence.
     path_end_vector_t* path_ends;   // The ending indices of the paths in the concatenated sequence.
 
-    const uint16_t l_;  // Size of the l-minimizers.
-
-    const uint16_t producer_count;  // Number of producer threads supplying the paths to the indexer.
-    const uint16_t worker_count;    // Number of worker threads for various multi-threaded tasks.
-
     std::size_t path_count_;    // Number of paths deposited to the sequence.
     std::size_t sum_paths_len_; // Sum length of all the path-sequences.
     uint64_t num_instances_;    // Number of minimizer instances in the paths.
@@ -107,16 +102,9 @@ private:
 
     min_vector_t* overflow_kmer_map;    // Mapping of each overflown k-mer to its corresponding minimizer-instance's index (into its block).
 
-    const bool retain;  // Whether to retain the index in memory after construction.
-
     std::size_t curr_token; // Number of tokens generated for the producers so far.
 
     mutable Spin_Lock lock; // Mutually-exclusive access lock for different producers.
-
-    const std::string output_pref;  // Prefix of the output path for the index.
-    const std::string working_dir;  // Path to the working directory for the index construction.
-
-    const Build_Params* const params;   // Build parameters wrapped inside.
 
 
     // Saves the configuration constants of the index, such as the k-mer and
