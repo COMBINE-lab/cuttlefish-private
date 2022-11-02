@@ -354,7 +354,6 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
                     [offset_shift](auto& p) { p += offset_shift; }
                 );
 
-    path_ends_vec.reserve(path_ends_vec.size() + path_end_buf.size());
     path_ends_vec.insert(path_ends_vec.end(), path_end_buf.cbegin(), path_end_buf.cend());
 
     num_instances_ += min_buf.size();
