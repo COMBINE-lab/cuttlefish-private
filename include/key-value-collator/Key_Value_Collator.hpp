@@ -92,7 +92,7 @@ private:
 
 public:
 
-    Key_Value_Collator() = delete;
+    // Key_Value_Collator() = delete;
     Key_Value_Collator(const Key_Value_Collator&) = delete;
     Key_Value_Collator& operator=(const Key_Value_Collator&) = delete;
 

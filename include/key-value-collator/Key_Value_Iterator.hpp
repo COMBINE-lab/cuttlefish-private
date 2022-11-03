@@ -101,6 +101,13 @@ public:
     // number of pairs read, which is 0 in case when the end of the collection
     // has been reached. It is thread-safe.
     std::size_t read(key_val_pair_t* buf, std::size_t count);
+
+    // Dummy methods.
+    void launch_production() {}
+    bool launched() { return true; }
+    bool value_at(size_t, cuttlefish::minimizer_t&) { return false; }
+    bool tasks_expected(const size_t) const { return false; }
+    void seize_production() {}
 };
 
 
