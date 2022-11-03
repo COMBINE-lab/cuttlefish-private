@@ -2,12 +2,12 @@
 #include "Kmer_Index.hpp"
 #include "Sparse_Lock.hpp"
 #include "Minimizer_Iterator.hpp"
-#include "Minimizer_Instance_Merger.hpp"
 #include "CdBG.hpp"
 #include "Read_CdBG.hpp"
 #include "Build_Params.hpp"
 #include "Input_Defaults.hpp"
 #include "utility.hpp"
+#include "key-value-collator/Key_Value_Iterator.hpp"
 
 #include <string>
 #include <functional>
@@ -17,6 +17,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <cstdio>
+#include <thread>
 #include <chrono>
 
 
@@ -36,10 +37,8 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     max_inst_count_(0),
     producer_path_buf(producer_count),
     producer_path_end_buf(producer_count),
-    producer_minimizer_buf(producer_count),
-    producer_minimizer_file(producer_count),
-    min_group(producer_count, nullptr),
-    min_group_size(producer_count),
+    producer_min_inst_buf(producer_count, nullptr),
+    min_collator(min_instance_path_pref(), 2 * producer_count),
     min_mphf(nullptr),
     min_instance_count(nullptr),
     min_offset(nullptr),
@@ -50,8 +49,6 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     curr_token(0)
 {
     assert(l <= 32);
-    for(uint16_t id = 0; id < producer_count; ++id)
-        producer_minimizer_file[id].open(minimizer_file_path(id), std::ios::out | std::ios::binary);
 
     save_config();
 }
@@ -200,15 +197,13 @@ void Kmer_Index<k>::index()
     std::cout << "Closed the sequence deposit stream.\n";
     const time_point_t t_deposit = now();
 
-    // Load and sort the minimizer files' content.
-    read_and_sort_minimizers();
-    const time_point_t t_sort = now();
-    std::cout << "Read and sorted the minimizers files. Time taken = " << duration(t_sort - t_deposit) << " seconds.\n";
-
-    // Multiway-merge the minimizer instances.
-    merge_minimizers();
-    const time_point_t t_merge = now();
-    std::cout << "Merged the minimizers files. Time taken = " << duration(t_merge - t_sort) << " seconds.\n";
+    // Collate the minimizer-instances.
+    min_collator.collate(worker_count, true);
+    min_count_ = min_collator.unique_key_count();
+    std::cout << "Minimizer-instance count: " << min_collator.pair_count() << ".\n";
+    std::cout << "Unique minimizer count:   " << min_collator.unique_key_count() << ".\n";
+    const time_point_t t_collate = now();
+    std::cout << "Collated the minimizer-instances. Time taken = " << duration(t_collate - t_deposit) << " seconds.\n";
 
     // Construct an MPHF over the unique minimizers.
     construct_minimizer_mphf();
@@ -217,7 +212,7 @@ void Kmer_Index<k>::index()
                     "\tTotal size: " << total_bits / (8U * 1024U * 1024U) << " MB."
                     " Bits per k-mer: " << static_cast<double>(total_bits) / min_count_ << ".\n";
     const time_point_t t_mphf = now();
-    std::cout << "Constructed the minimizer-MPHF. Time taken = " << duration(t_mphf - t_merge) << " seconds.\n";
+    std::cout << "Constructed the minimizer-MPHF. Time taken = " << duration(t_mphf - t_collate) << " seconds.\n";
 
     // Count the instances per minimizer.
     count_minimizer_instances();
@@ -250,9 +245,10 @@ void Kmer_Index<k>::close_deposit_stream()
 
         force_free(producer_path_buf[id]);
         force_free(producer_path_end_buf[id]);
-
-        producer_minimizer_file[id].close();
     }
+
+    min_collator.close_deposit_stream();
+
 
     sum_paths_len_ = paths.size();
 
@@ -281,122 +277,14 @@ void Kmer_Index<k>::close_deposit_stream()
 
 
 template <uint16_t k>
-void Kmer_Index<k>::read_and_sort_minimizers()
-{
-    std::vector<std::thread> worker;
-
-    // TODO: bound memory usage within a provided argument.
-    // TODO: file-manager.
-
-    // Launch sorter threads.
-    for(uint16_t id = 0; id < producer_count; ++id)
-        worker.emplace_back([this](const uint16_t id)
-            {
-                const auto min_buf_bytes = file_size(minimizer_file_path(id));   // What happens if it's zero?
-                min_group[id] = static_cast<Minimizer_Instance*>(std::malloc(min_buf_bytes));
-
-                std::ifstream input(minimizer_file_path(id).c_str(), std::ios::in | std::ios::binary);
-                if(!input.read(reinterpret_cast<char*>(min_group[id]), min_buf_bytes))
-                {
-                    std::cerr << "Error reading the minimizer files. Aborting.\n";
-                    std::exit(EXIT_FAILURE);
-                }
-
-                min_group_size[id] = min_buf_bytes / sizeof(Minimizer_Instance);
-
-                std::sort(min_group[id], min_group[id] + min_group_size[id]);
-            },
-            id);
-
-    // Wait for the sorting to complete.
-    for(uint16_t id = 0; id < producer_count; ++id)
-    {
-        if(!worker[id].joinable())
-        {
-            std::cerr << "Early termination encountered for some worker thread. Aborting.\n";
-            std::exit(EXIT_FAILURE);
-        }
-
-        worker[id].join();
-    }
-}
-
-
-template <uint16_t k>
-void Kmer_Index<k>::merge_minimizers()
-{
-    typedef std::pair<Minimizer_Instance*, std::size_t> min_container_t;
-
-    // Gather the minimizer containers.
-    std::vector<min_container_t> min_container;
-    for(uint16_t id = 0; id < producer_count; ++id)
-        min_container.emplace_back(min_group[id], min_group_size[id]);
-
-    // Multiway merge the minimizer instance containers.
-
-    std::vector<Minimizer_Instance> merged_min_buf;
-    constexpr std::size_t max_buf_sz = buf_sz_th / sizeof(Minimizer_Instance);
-    merged_min_buf.reserve(max_buf_sz);
-
-    Minimizer_Instance_Merger multiway_merger(min_container);
-    Minimizer_Instance min;
-
-    std::ofstream min_file(min_instance_file_path(), std::ios::out | std::ios::binary);
-
-    if(!multiway_merger.peek(min))
-    {
-        std::cerr << "Multiway merge of minimizers initiated on an empty heap. Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-
-    minimizer_t last_min = min.minimizer();
-    min_count_ = 1;
-    while(multiway_merger.next(min))
-    {
-        merged_min_buf.push_back(min);
-        if(merged_min_buf.size() >= max_buf_sz)
-            dump(merged_min_buf, min_file);
-
-        if(last_min != min.minimizer())
-            min_count_++,
-            last_min = min.minimizer();
-    }
-
-    std::cout << "Minimizer instance count: " << num_instances_ << "\n";
-    std::cout << "Unique minimizer count:   " << min_count_ << "\n";
-
-    if(!merged_min_buf.empty())
-        dump(merged_min_buf, min_file);
-
-    min_file.close();
-
-
-    // Release memory of the minimizer containers.
-    for(uint16_t id = 0; id < producer_count; ++id)
-        std::free(min_group[id]);
-
-    force_free(min_group), force_free(min_group_size);
-}
-
-
-template <uint16_t k>
 void Kmer_Index<k>::construct_minimizer_mphf()
 {
-    typedef Minimizer_Instance_Iterator<std::FILE*> min_iter_t;
-    std::FILE* const min_file = std::fopen(min_instance_file_path().c_str(), "rb");
-    const auto data_iterator = boomphf::range(min_iter_t(min_file), min_iter_t(nullptr));
-
-    min_mphf = new minimizer_mphf_t(min_count_, data_iterator, working_dir, worker_count, gamma);
+    const auto min_collation_range = boomphf::range(min_collator.begin(), min_collator.end());
+    min_mphf = new minimizer_mphf_t(min_count_, min_collation_range, working_dir, worker_count, gamma);
 
     std::ofstream output(mphf_file_path(), std::ofstream::out);
     min_mphf->save(output);
     output.close();
-
-    if(std::fclose(min_file))
-    {
-        std::cout << "Error closing the minimizer file. Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
 }
 
 
@@ -408,9 +296,8 @@ void Kmer_Index<k>::count_minimizer_instances()
     min_instance_count = new min_vector_t(bits_per_entry, min_count_ + 1);
     min_instance_count->clear_mem();
 
-    std::FILE* const min_file = std::fopen(min_instance_file_path().c_str(), "rb");
-    Minimizer_Instance_Iterator<std::FILE*> min_inst_iter(min_file);
-    constexpr std::size_t min_buf_sz = 5U * 1024U * 1024U / sizeof(Minimizer_Instance); // Minimizer instance chunk size, in elements: 5 MB total.
+    auto min_inst_iter = min_collator.begin();
+    constexpr std::size_t min_buf_sz = 5U * 1024U * 1024U / sizeof(min_inst_t); // Minimizer-instance chunk size, in elements: 5 MB total.
 
     std::vector<std::thread> worker;
     Sparse_Lock<Spin_Lock> idx_lock(min_count_ + 1, idx_lock_count);
@@ -420,17 +307,17 @@ void Kmer_Index<k>::count_minimizer_instances()
         worker.emplace_back(
             [this, &min_inst_iter, &idx_lock](std::size_t& max_c)
             {
-                Minimizer_Instance* min_chunk = static_cast<Minimizer_Instance*>(std::malloc(min_buf_sz * sizeof(Minimizer_Instance)));
+                min_inst_t* const min_chunk = static_cast<min_inst_t*>(std::malloc(min_buf_sz * sizeof(min_inst_t)));
                 std::size_t buf_elem_count;
                 uint64_t h;
                 std::size_t count;
                 auto& mi_count = *min_instance_count;
 
-                max_c = 0;
-                while((buf_elem_count = min_inst_iter.next(min_chunk, min_buf_sz)) != 0)
+                max_c = 0;  // TODO: replace usage with the `mode`-statistic from the collator.
+                while((buf_elem_count = min_inst_iter.read(min_chunk, min_buf_sz)) != 0)
                     for(std::size_t idx = 0; idx < buf_elem_count; ++idx)
                     {
-                        h = hash(min_chunk[idx].minimizer());
+                        h = hash(min_chunk[idx].first);
 
                         idx_lock.lock(h);
                         count = mi_count[h] = mi_count[h] + 1;
@@ -475,9 +362,8 @@ void Kmer_Index<k>::get_minimizer_offsets()
     assert(bits_per_entry > 0);
     min_offset = new min_vector_t(bits_per_entry, num_instances_);
 
-    std::FILE* const min_file = std::fopen(min_instance_file_path().c_str(), "rb");
-    Minimizer_Instance_Iterator<std::FILE*> min_inst_iter(min_file);
-    constexpr std::size_t min_buf_sz = 5U * 1024U * 1024U / sizeof(Minimizer_Instance); // Minimizer instance chunk size, in elements: 5 MB total.
+    auto min_inst_iter = min_collator.begin();
+    constexpr std::size_t min_buf_sz = 5U * 1024U * 1024U / sizeof(min_inst_t); // Minimizer instance chunk size, in elements: 5 MB total.
 
     std::vector<std::thread> worker;
     Sparse_Lock<Spin_Lock> idx_lock(min_count_, idx_lock_count);
@@ -486,17 +372,17 @@ void Kmer_Index<k>::get_minimizer_offsets()
         worker.emplace_back(
             [this, &min_inst_iter, &idx_lock]()
             {
-                Minimizer_Instance* min_chunk = static_cast<Minimizer_Instance*>(std::malloc(min_buf_sz * sizeof(Minimizer_Instance)));
+                min_inst_t* const min_chunk = static_cast<min_inst_t*>(std::malloc(min_buf_sz * sizeof(min_inst_t)));
                 std::size_t buf_elem_count;
                 uint64_t h;
                 std::size_t offset;
                 auto& mi_count = *min_instance_count;
                 auto& m_offset = *min_offset;
 
-                while((buf_elem_count = min_inst_iter.next(min_chunk, min_buf_sz)) != 0)
+                while((buf_elem_count = min_inst_iter.read(min_chunk, min_buf_sz)) != 0)
                     for(std::size_t idx = 0; idx < buf_elem_count; ++idx)
                     {
-                        h = hash(min_chunk[idx].minimizer()) - 1;
+                        h = hash(min_chunk[idx].first) - 1;
 
                         // Tracking the next offsets to put the minimizers' offsets, within `min_instance_count` in-place,
                         // transforms it by sliding it one index to the left. That is, now, `min_instance_count[MPH(min)]`
@@ -506,7 +392,7 @@ void Kmer_Index<k>::get_minimizer_offsets()
                         mi_count[h] = offset + 1;
                         idx_lock.unlock(h);
 
-                        m_offset[offset] = min_chunk[idx].offset();
+                        m_offset[offset] = min_chunk[idx].second;
                     }
             }
         );
@@ -777,16 +663,7 @@ void Kmer_Index<k>::map_overflown_kmers()
 template <uint16_t k>
 void Kmer_Index<k>::remove_temp_files() const
 {
-    bool success = true;
-    for(uint16_t id = 0; id < producer_count; ++id)
-        if(!remove_file(minimizer_file_path(id)))
-            success = false;
-
-    success = (remove_file(min_instance_file_path()) ? success : false);
-    success = (remove_file(overflow_kmers_path()) ? success : false);
-    success = (remove_file(overflow_min_insts_path()) ? success : false);
-
-    if(!success)
+    if(!remove_file(overflow_kmers_path()) || !remove_file(overflow_min_insts_path()))
     {
         std::cerr << "Error removing temporary index files. Aborting.\n";
         std::exit(EXIT_FAILURE);

@@ -56,7 +56,7 @@ private:
     static constexpr char work_file_pref_default[] = ".";   // Default value for the temporary working files' prefixes.
     static constexpr char partition_file_ext[] = ".part";   // File extensions of the temporary partition files.
 
-    static constexpr std::size_t partition_count = (1 << 9);    // Number of partitions for the keys.
+    static constexpr std::size_t partition_count = (1 << 7);    // Number of partitions for the keys.
     static constexpr std::size_t partition_buf_mem = (1LU * 1024 * 1024);   // Maximum memory for a partition buffer: 1MB.
     static constexpr std::size_t partition_buf_elem_th = partition_buf_mem / sizeof(key_val_pair_t);    // Maximum number of pairs to keep in a partition buffer.
 

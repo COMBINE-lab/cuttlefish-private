@@ -10,11 +10,11 @@
 #include "Kmer_Utility.hpp"
 #include "Spin_Lock.hpp"
 #include "Minimizer_Iterator.hpp"
-#include "Minimizer_Instance.hpp"
 #include "Minimizer_Utility.hpp"
 #include "Kmer_Hasher.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
+#include "key-value-collator/Key_Value_Collator.hpp"
 #include "compact_vector/compact_vector.hpp"
 #include "BBHash/BooPHF.h"
 
@@ -22,10 +22,6 @@
 #include <cstddef>
 #include <string>
 #include <vector>
-#include <fstream>
-#include <iostream>
-#include <cstdlib>
-#include <thread>
 
 
 // =============================================================================
@@ -58,6 +54,8 @@ private:
     const bool retain;  // Whether to retain the index in memory after construction.
 
     typedef cuttlefish::minimizer_t minimizer_t;    // Minimizers can be represented using 64-bit integers.
+    typedef key_value_collator::Identity_Functor<minimizer_t> minimizer_collate_hasher_t;   // The minimizer hasher class for the minimizer-instance collator.
+    typedef key_value_collator::Key_Value_Collator<minimizer_t, std::size_t, minimizer_collate_hasher_t> min_collator_t;    // Type of the minimizer-instance collator.
     typedef compact::vector<uint8_t, 2> path_vector_t;      // Type of the bitvector storing the path sequences.
     typedef compact::vector<std::size_t> path_end_vector_t; // Type of the bitvector storing the path endpoints.
     typedef compact::ts_vector<std::size_t> min_vector_t;   // Type of the bitvectors storing the minimizer instance-counts and -indices.
@@ -77,13 +75,9 @@ private:
     std::vector<path_vector_t> producer_path_buf;   // Separate buffer for each producer, to contain their deposited paths.
     std::vector<std::vector<std::size_t>> producer_path_end_buf;    // Separate buffer for each producer, to contain the (exclusive) indices of the path endpoints in their deposited paths.
 
-    std::vector<std::vector<Minimizer_Instance>> producer_minimizer_buf; // Separate buffer for each producer, to contain their minimizers and their offsets into the deposited paths.
-
-    // TODO: replace with a file-manager.
-    std::vector<std::ofstream> producer_minimizer_file; // Separate file for each producer, to store their minimizers' information.
-
-    std::vector<Minimizer_Instance*> min_group; // Separate buffer to read in each minimizer file.
-    std::vector<std::size_t> min_group_size;    // Size of each minimizer file (in element count).
+    std::vector<min_collator_t::buf_t*> producer_min_inst_buf;  // Separate buffer for each producer, to pass the minimizer-instances of their deposited paths to the collator.
+    typedef min_collator_t::key_val_pair_t min_inst_t;  // Type of the minimizer-instances when passed to the collator through buffers.
+    min_collator_t min_collator;    // Key-value collator to collate the minimizer-instances produced from different producers.
 
     typedef boomphf::SingleHashFunctor<minimizer_t> minimizer_hasher_t; // The seeded hasher class for minimizers.
                                                                         // TODO: placeholder for now; think it through.
@@ -192,7 +186,7 @@ private:
     const std::string mphf_file_path() const { return output_pref + MPHF_FILE_EXT; }    // Returns the file-path for the minimizer-MPHF.
     const std::string count_file_path() const { return output_pref + COUNT_FILE_EXT; }  // Returns the file-path for the minimizers' instance-counts.
     const std::string offset_file_path() const { return output_pref + OFFSET_FILE_EXT; }    // Returns the file-path for the minimizer-instances' offsets.
-    const std::string min_instance_file_path() const { return output_pref + MIN_INST_FILE_EXT; }    // Returns the file-path for the unified minimizer-instances.
+    const std::string min_instance_path_pref() const { return working_dir + filename(output_pref) + MIN_INST_FILE_EXT; }    // Returns the path-prefix for the working files of the minimizer-instance collator.
     const std::string overflow_kmers_path() const { return working_dir + filename(output_pref) + OVERFLOW_KMER; }   // Returns the file-path for the k-mers corresponding to the overflowing minimizers.
     const std::string overflow_min_insts_path() const { return working_dir + filename(output_pref) + OVERFLOW_MIN_INST_IDX; }   // Returns the file-path for the overflowing minimizer-instances' relative index.
     const std::string overflow_mphf_file_path() const { return output_pref + OVERFLOW_MPHF_FILE_EXT; }  // Returns the file-path for the overflown k-mers' MPHF.
@@ -282,9 +276,12 @@ inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* cons
         return;
 
     const std::size_t id = token.get_id();          // The producer's id.
+    if(producer_min_inst_buf[id] == nullptr)
+        producer_min_inst_buf[id] = &(min_collator.get_buffer());
+
     auto& path_buf = producer_path_buf[id];         // The producer's concatenated-paths sequence buffer.
     auto& path_end_buf = producer_path_end_buf[id]; // The producer's path-endpoints buffer.
-    auto& min_buf = producer_minimizer_buf[id];     // The producer's minimizer-information buffer.
+    auto& min_inst_buf = *producer_min_inst_buf[id];    // The producer's minimizer-instance buffer.
 
     // Get the minimizers and the path sequence.
 
@@ -298,7 +295,7 @@ inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* cons
     {
         minimizer_iterator.value_at(minimizer, min_idx);
         if(min_idx != last_min_idx)
-            min_buf.emplace_back(minimizer, rel_offset + min_idx),
+            min_inst_buf.emplace_back(minimizer, rel_offset + min_idx),
             last_min_idx = min_idx;
 
         path_buf.push_back(DNA_Utility::map_base(seq[i]));
@@ -315,7 +312,7 @@ inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* cons
     // Get the ending index (exclusive) of this path in the concatenated paths.
     path_end_buf.emplace_back(path_buf.size());
 
-    const std::size_t buf_size = ((path_buf.size() * 2) / 8) + (path_end_buf.size() * sizeof(std::size_t)) + (min_buf.size() * sizeof(Minimizer_Instance)); // Total buffer size (in bytes) of the producer.
+    const std::size_t buf_size = ((path_buf.size() * 2) / 8) + (path_end_buf.size() * sizeof(std::size_t)) + (min_inst_buf.size() * sizeof(min_inst_t));    // Total buffer size (in bytes) of the producer.
     if(buf_size >= buf_sz_th)
         flush(id);
 }
@@ -326,7 +323,7 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
 {
     auto& path_buf = producer_path_buf[producer_id];            // The producer's concatenated paths sequence buffer.
     auto& path_end_buf = producer_path_end_buf[producer_id];    // The producer's path-endpoints buffer.
-    auto& min_buf = producer_minimizer_buf[producer_id];        // The producer's minimizer-information buffer.
+    auto& min_inst_buf = *producer_min_inst_buf[producer_id];   // The producer's minimizer-instance buffer.
 
     // Dump the producer-specific path buffer and the endpoints buffer to the global concatenated-paths and -endpoints.
     lock.lock();
@@ -344,7 +341,7 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
 
     path_ends_vec.insert(path_ends_vec.end(), path_end_buf.cbegin(), path_end_buf.cend());
 
-    num_instances_ += min_buf.size();
+    num_instances_ += min_inst_buf.size();  // TODO: replace with the `count`-statistic from the collator.
 
     lock.unlock();
 
@@ -353,13 +350,13 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
 
 
     // Shift the producer-specific relative indices of the minimizers to their absolute indices into the concatenated paths.
-    std::for_each(min_buf.begin(), min_buf.end(),
-                    [offset_shift](auto& p){ p.shift(offset_shift); }
+    std::for_each(min_inst_buf.begin(), min_inst_buf.end(),
+                    [offset_shift](auto& p){ p.second += offset_shift; }
                 );
 
     // Dump the producer-specific minimizer information to disk.
-    auto& minimizer_file = producer_minimizer_file[producer_id];
-    dump(min_buf, minimizer_file);
+    min_collator.return_buffer(min_inst_buf);
+    producer_min_inst_buf[producer_id] = nullptr;
 }
 
 
