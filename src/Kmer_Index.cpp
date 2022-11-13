@@ -199,9 +199,10 @@ void Kmer_Index<k>::index()
 
     // Collate the minimizer-instances.
     min_collator.collate(worker_count, true);
+    num_instances_ = min_collator.pair_count();
     min_count_ = min_collator.unique_key_count();
-    std::cout << "Minimizer-instance count: " << min_collator.pair_count() << ".\n";
-    std::cout << "Unique minimizer count:   " << min_collator.unique_key_count() << ".\n";
+    std::cout << "Minimizer-instance count: " << num_instances_ << ".\n";
+    std::cout << "Unique minimizer count:   " << min_count_ << ".\n";
     const time_point_t t_collate = now();
     std::cout << "Collated the minimizer-instances. Time taken = " << duration(t_collate - t_deposit) << " seconds.\n";
 
@@ -301,35 +302,29 @@ void Kmer_Index<k>::count_minimizer_instances()
 
     std::vector<std::thread> worker;
     Sparse_Lock<Spin_Lock> idx_lock(min_count_ + 1, idx_lock_count);
-    std::vector<std::size_t> max_count(worker_count);
 
     for(uint16_t t = 0; t < worker_count; ++t)
         worker.emplace_back(
-            [this, &min_inst_iter, &idx_lock](std::size_t& max_c)
+            [this, &min_inst_iter, &idx_lock]()
             {
                 min_inst_t* const min_chunk = static_cast<min_inst_t*>(std::malloc(min_buf_sz * sizeof(min_inst_t)));
                 std::size_t buf_elem_count;
                 uint64_t h;
-                std::size_t count;
                 auto& mi_count = *min_instance_count;
 
-                max_c = 0;  // TODO: replace usage with the `mode`-statistic from the collator.
                 while((buf_elem_count = min_inst_iter.read(min_chunk, min_buf_sz)) != 0)
                     for(std::size_t idx = 0; idx < buf_elem_count; ++idx)
                     {
                         h = hash(min_chunk[idx].first);
 
                         idx_lock.lock(h);
-                        count = mi_count[h] = mi_count[h] + 1;
+                        mi_count[h] = mi_count[h] + 1;
                         idx_lock.unlock(h);
-
-                        if(max_c < count)
-                            max_c = count;
                     }
 
                 std::free(min_chunk);
-            },
-            std::ref(max_count[t]));
+            }
+            );
 
     for(uint16_t t = 0; t < worker_count; ++t)
     {
@@ -340,10 +335,9 @@ void Kmer_Index<k>::count_minimizer_instances()
         }
 
         worker[t].join();
-        if(max_inst_count_ < max_count[t])
-            max_inst_count_ = max_count[t];
     }
 
+    max_inst_count_ = min_collator.mode_frequency();
     std::cout << "Maximum instance count of a minimizer: " << max_inst_count_ << ".\n";
 
 
