@@ -238,7 +238,11 @@ public:
     uint64_t max_inst_count() const { return max_inst_count_; } // Returns the maximum count of instances for some minimizer.
 
     // Returns the size of the path having sequence-ID `path_id`.
-    std::size_t path_size(const std::size_t path_id) const;
+    std::size_t path_size(std::size_t path_id) const;
+
+    // Returns the prefix-sum of path-sizes upto but not including the path with
+    // sequence-ID `path_id`.
+    std::size_t prefix_sum_path_size(std::size_t path_id) const;
 
     // Extracts the k-mer situated at the index `idx` of the path with ID
     // `path_id` into `kmer`.
@@ -372,6 +376,14 @@ inline std::size_t Kmer_Index<k>::path_size(const std::size_t path_id) const
 {
     const auto& p_ends = *path_ends;
     return path_id == 0 ? p_ends[path_id] : (p_ends[path_id] - p_ends[path_id - 1]);
+}
+
+
+template <uint16_t k>
+inline std::size_t Kmer_Index<k>::prefix_sum_path_size(const std::size_t path_id) const
+{
+    const auto& p_ends = *path_ends;
+    return path_id == 0 ? 0 : p_ends[path_id - 1] - path_id * (k - 1);
 }
 
 
