@@ -39,6 +39,10 @@ class Kmer_Index : private Kmer_Index_Utility
 {
     template <uint16_t, uint16_t> friend class Index_Validator;
 
+public:
+
+    class Kmer_Alignment;
+
 private:
 
     const uint16_t l_;  // Size of the l-minimizers.
@@ -169,8 +173,6 @@ private:
     // Tries to align the k-mer `kmer` to the concatenated paths sequence at the
     // index `idx`. Returns `true` iff the alignment succeeds.
     bool align(const Kmer<k>& kmer, std::size_t idx) const;
-
-    class Kmer_Alignment;
 
     // Tries to align the k-mer `kmer` to the concatenated paths sequence such
     // that the `l_`-mer at the index `kmer_min_idx` of `kmer` docks at the
