@@ -106,6 +106,8 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     overflow_kmer_map = new min_vector_t();
     overflow_kmer_map->deserialize(overflow_kmer_map_path());
     overflow_kmer_count_ = overflow_kmer_map->size();
+
+    min_collator.close_deposit_stream();
 }
 
 
