@@ -373,30 +373,12 @@ public:
     input.close();
   }
 
-protected:
-  void enlarge(size_t given = 0) {
-    const size_t new_capacity = !given ? std::max(m_capacity * 2, (size_t)(bitsof<W>::val / bits() + 1)) : given;
-    W* new_mem = allocate(new_capacity);
-    std::copy(m_mem, m_mem + elements_to_words(m_capacity, bits()), new_mem);
-    deallocate(m_mem, m_capacity);
-    m_mem      = new_mem;
-    m_capacity = new_capacity;
-  }
-
   void serialize(std::ofstream &output) const
   {
     output.write(reinterpret_cast<const char*>(&m_size), sizeof(m_size));
     output.write(reinterpret_cast<const char*>(&m_capacity), sizeof(m_capacity));
 
     output.write(reinterpret_cast<const char*>(m_mem), bytes());
-  }
-
-  void serialize_shrunk(std::ofstream &output) const
-  {
-    output.write(reinterpret_cast<const char*>(&m_size), sizeof(m_size));
-    output.write(reinterpret_cast<const char*>(&m_size), sizeof(m_size));
-
-    output.write(reinterpret_cast<const char*>(m_mem), bytes_used());
   }
 
   void deserialize(std::ifstream& input)
@@ -409,6 +391,25 @@ protected:
 
     m_mem = allocate(m_capacity);
     input.read(reinterpret_cast<char*>(m_mem), sizeof(W) * elements_to_words(m_size, bits()));
+  }
+
+
+protected:
+  void enlarge(size_t given = 0) {
+    const size_t new_capacity = !given ? std::max(m_capacity * 2, (size_t)(bitsof<W>::val / bits() + 1)) : given;
+    W* new_mem = allocate(new_capacity);
+    std::copy(m_mem, m_mem + elements_to_words(m_capacity, bits()), new_mem);
+    deallocate(m_mem, m_capacity);
+    m_mem      = new_mem;
+    m_capacity = new_capacity;
+  }
+
+  void serialize_shrunk(std::ofstream &output) const
+  {
+    output.write(reinterpret_cast<const char*>(&m_size), sizeof(m_size));
+    output.write(reinterpret_cast<const char*>(&m_size), sizeof(m_size));
+
+    output.write(reinterpret_cast<const char*>(m_mem), bytes_used());
   }
 };
 
@@ -473,10 +474,10 @@ public:
     return *this;
   }
 
-  void serialize(const std::string& file_path) const
+  void serialize(const std::string& file_path, const bool shrink = false) const
   {
     std::ofstream output(file_path);
-    serialize(output);
+    serialize(output, shrink);
 
     if(!output)
     {
@@ -501,15 +502,13 @@ public:
     input.close();
   }
 
-protected:
-
-  void serialize(std::ofstream& output) const
+  void serialize(std::ofstream& output, const bool shrink = false) const
   {
     const unsigned bits_per_elem = bits();
     output.write(reinterpret_cast<const char*>(&bits_per_elem), sizeof(bits_per_elem));
 
     // Rest of the fields
-    super::serialize(output);
+    shrink ? super::serialize_shrunk(output) : super::serialize(output);
   }
 
   void deserialize(std::ifstream& input)
