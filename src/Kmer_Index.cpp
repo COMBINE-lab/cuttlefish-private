@@ -169,13 +169,6 @@ void Kmer_Index<k>::save_config() const
 
 
 template <uint16_t k>
-const std::string Kmer_Index<k>::minimizer_file_path(const uint16_t producer_id) const
-{
-    return working_dir + std::to_string(producer_id) + MIN_INST_FILE_EXT;
-}
-
-
-template <uint16_t k>
 const typename Kmer_Index<k>::Producer_Token Kmer_Index<k>::get_token()
 {
     lock.lock();

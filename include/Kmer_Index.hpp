@@ -109,19 +109,8 @@ private:
     // the minimizer lengths.
     void save_config() const;
 
-    // Returns the path to the minimizer-information file of producer with ID
-    // `producer_id`.
-    const std::string minimizer_file_path(uint16_t producer_id) const;
-
     // Flushes the buffers of the producer with ID `producer_id`.
     void flush(std::size_t producer_id);
-
-    // Reads in the minimizer instances from each separate minimizer file to
-    // memory, and sorts them in parallel.
-    void read_and_sort_minimizers();
-
-    // Merges the minimizer instances of each separate producer.
-    void merge_minimizers();
 
     // Constructs the MPHF `min_mphf` over the unique minimizers found.
     void construct_minimizer_mphf();
