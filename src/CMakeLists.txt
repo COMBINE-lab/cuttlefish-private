@@ -46,6 +46,7 @@ set(PROJECT_SRC
         Kmers_Validator.cpp
         utility.cpp
         Kmer_Index.cpp
+        Kmer_Index_Utility.cpp
         Minimizer_Instance_Iterator.cpp
         Multiway_Merger.cpp
         commands.cpp
