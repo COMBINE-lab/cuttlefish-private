@@ -113,6 +113,13 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     overflow_kmer_map->deserialize(deserialize_stream);
     overflow_kmer_count_ = overflow_kmer_map->size();
 
+    deserialize_stream.close();
+    if(!deserialize_stream)
+    {
+        std::cerr << "Error reading from the k-mer index file at " << index_file_path(idx_path) << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
     min_collator.close_deposit_stream();
 }
 
