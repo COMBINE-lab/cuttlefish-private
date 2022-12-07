@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <fstream>
 
 
 // =============================================================================
@@ -100,6 +101,8 @@ private:
 
     min_vector_t* overflow_kmer_map;    // Mapping of each overflown k-mer to its corresponding minimizer-instance's index (into its block).
 
+    mutable std::ofstream serialize_stream; // Serialization stream for the index.
+
     std::size_t curr_token; // Number of tokens generated for the producers so far.
 
     mutable Spin_Lock lock; // Mutually-exclusive access lock for different producers.
@@ -156,8 +159,9 @@ private:
     // remaining content to disk.
     void close_deposit_stream();
 
-    // Removes the temporary files used in the index construction.
-    void remove_temp_files() const;
+    // Removes the temporary files used in the index construction and closes the
+    // output stream of the index.
+    void close_output() const;
 
     // Tries to align the k-mer `kmer` to the concatenated paths sequence at the
     // index `idx`. Returns `true` iff the alignment succeeds.
@@ -172,16 +176,9 @@ private:
     bool align_contained(const Kmer<k>& kmer, std::size_t kmer_min_idx, std::size_t min_idx, Kmer_Alignment& alignment) const;
 
     uint16_t l() const { return l_; }   // Returns the size of the l-minimizers.
-    const std::string path_file_path() const { return output_pref + PATH_FILE_EXT; }    // Returns the file-path for the concatenated paths.
-    const std::string path_end_file_path() const { return output_pref + PATH_END_FILE_EXT; }    // Returns the file-path for the path-end offsets.
-    const std::string mphf_file_path() const { return output_pref + MPHF_FILE_EXT; }    // Returns the file-path for the minimizer-MPHF.
-    const std::string count_file_path() const { return output_pref + COUNT_FILE_EXT; }  // Returns the file-path for the minimizers' instance-counts.
-    const std::string offset_file_path() const { return output_pref + OFFSET_FILE_EXT; }    // Returns the file-path for the minimizer-instances' offsets.
     const std::string min_instance_path_pref() const { return working_dir + filename(output_pref) + MIN_INST_FILE_EXT; }    // Returns the path-prefix for the working files of the minimizer-instance collator.
     const std::string overflow_kmers_path() const { return working_dir + filename(output_pref) + OVERFLOW_KMER; }   // Returns the file-path for the k-mers corresponding to the overflowing minimizers.
     const std::string overflow_min_insts_path() const { return working_dir + filename(output_pref) + OVERFLOW_MIN_INST_IDX; }   // Returns the file-path for the overflowing minimizer-instances' relative index.
-    const std::string overflow_mphf_file_path() const { return output_pref + OVERFLOW_MPHF_FILE_EXT; }  // Returns the file-path for the overflown k-mers' MPHF.
-    const std::string overflow_kmer_map_path() const { return output_pref + OVERFLOW_KMER_MAP_EXT; }    // Returns the file-path for the overflown k-mers' mapping to their minimizer-instances' relative indices.
 
 public:
 

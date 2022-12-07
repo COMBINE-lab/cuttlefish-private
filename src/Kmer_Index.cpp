@@ -46,6 +46,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     overflow_kmer_count_(0),
     kmer_mphf(nullptr),
     overflow_kmer_map(nullptr),
+    serialize_stream(index_file_path(output_pref), std::ios::out | std::ios::binary),
     curr_token(0)
 {
     assert(l <= 32);
@@ -56,7 +57,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
 
 template <uint16_t k>
 Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
-    l_(minimizer_len(config_file_path(idx_path))),
+    l_(minimizer_len(index_file_path(idx_path))),
     output_pref(idx_path),
     working_dir(dirname(idx_path) + "/"),
     producer_count(0),
@@ -75,36 +76,41 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     kmer_mphf(nullptr),
     overflow_kmer_map(nullptr)
 {
-    const uint16_t idx_k = kmer_len(config_file_path(idx_path));
+    const uint16_t idx_k = kmer_len(index_file_path(idx_path));
     if(idx_k != k)
     {
         std::cerr << "The k-mer length of the requested index is " << idx_k << ", which doesn't match with this execution. Aborting.\n";
         std::exit(EXIT_FAILURE);
     }
 
-    paths.deserialize(path_file_path());
+
+    std::ifstream deserialize_stream(index_file_path(idx_path), std::ios::in | std::ios::binary);
+
+    deserialize_stream.seekg(sizeof(k) + sizeof(l_), std::ios::beg);    // Fast forward over the `k` and the `l` values.
+
+    paths.deserialize(deserialize_stream);
     sum_paths_len_ = paths.size();
 
     path_ends = new path_end_vector_t();
-    path_ends->deserialize(path_end_file_path());
+    path_ends->deserialize(deserialize_stream);
     path_count_ = path_ends->size();
 
-    min_mphf = new minimizer_mphf_t(mphf_file_path());
+    min_mphf = new minimizer_mphf_t(deserialize_stream);
     // min_count = min_mphf->nbKeys();
 
     min_instance_count = new min_vector_t();
-    min_instance_count->deserialize(count_file_path());
+    min_instance_count->deserialize(deserialize_stream);
     min_count_ = min_instance_count->size();
 
     min_offset = new min_vector_t();
-    min_offset->deserialize(offset_file_path());
+    min_offset->deserialize(deserialize_stream);
     num_instances_ = min_offset->size();
 
-    kmer_mphf = new kmer_mphf_t(overflow_mphf_file_path());
+    kmer_mphf = new kmer_mphf_t(deserialize_stream);
     // overflow_kmer_count_ = kmer_mphf->nbKeys();
 
     overflow_kmer_map = new min_vector_t();
-    overflow_kmer_map->deserialize(overflow_kmer_map_path());
+    overflow_kmer_map->deserialize(deserialize_stream);
     overflow_kmer_count_ = overflow_kmer_map->size();
 
     min_collator.close_deposit_stream();
@@ -152,19 +158,10 @@ void Kmer_Index<k>::construct()
 template <uint16_t k>
 void Kmer_Index<k>::save_config() const
 {
-    std::ofstream config_file(config_file_path(output_pref).c_str(), std::ios::out | std::ios::binary);
-
+    // TODO: maybe also output configuration to the CF json file?
     constexpr uint16_t K = k;
-    config_file.write(reinterpret_cast<const char*>(&K), sizeof(K));
-    config_file.write(reinterpret_cast<const char*>(&l_), sizeof(l_));
-
-    if(!config_file)
-    {
-        std::cerr << "Error writing to the index configuration file " << config_file_path(output_pref) << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-
-    config_file.close();
+    serialize_stream.write(reinterpret_cast<const char*>(&K), sizeof(K));
+    serialize_stream.write(reinterpret_cast<const char*>(&l_), sizeof(l_));
 }
 
 
@@ -225,8 +222,8 @@ void Kmer_Index<k>::index()
     const time_point_t t_overflow = now();
     std::cout << "Constructed the minimizer-overflow index. Time taken = " << duration(t_overflow - t_off) << " seconds.\n";
 
-    // Remove temporary files.
-    remove_temp_files();
+    // Save the index and remove temporary files.
+    close_output();
 }
 
 
@@ -248,7 +245,7 @@ void Kmer_Index<k>::close_deposit_stream()
 
     sum_paths_len_ = paths.size();
 
-    paths.serialize(path_file_path(), true);
+    paths.serialize(serialize_stream, true);
 
     // Release memory of the concatenated paths if required.
     if(!retain)
@@ -266,7 +263,7 @@ void Kmer_Index<k>::close_deposit_stream()
 
     force_free(path_ends_vec);
 
-    p_end.serialize(path_end_file_path());
+    p_end.serialize(serialize_stream);
     if(!retain)
         delete path_ends, path_ends = nullptr;
 }
@@ -278,9 +275,7 @@ void Kmer_Index<k>::construct_minimizer_mphf()
     const auto min_collation_range = boomphf::range(min_collator.begin(), min_collator.end());
     min_mphf = new minimizer_mphf_t(min_count_, min_collation_range, working_dir, worker_count, gamma);
 
-    std::ofstream output(mphf_file_path(), std::ofstream::out);
-    min_mphf->save(output);
-    output.close();
+    min_mphf->save(serialize_stream);
 }
 
 
@@ -400,11 +395,9 @@ void Kmer_Index<k>::get_minimizer_offsets()
 
     // After the in-place transformation (see note above), `min_instance_count` need not have that extra last entry anymore.
     min_instance_count->resize(min_count_);
+    min_instance_count->serialize(serialize_stream, true);  // Shrink while serializing to remove the last redundant entry.
 
-    min_instance_count->serialize(count_file_path());
-
-
-    min_offset->serialize(offset_file_path());
+    min_offset->serialize(serialize_stream);
 
 
     // Release the portion of the index still in memory if required.
@@ -571,10 +564,7 @@ void Kmer_Index<k>::construct_overflow_kmer_mphf()
     const auto data_iterator = boomphf::range(kmer_file.begin(), kmer_file.end());
 
     kmer_mphf = new kmer_mphf_t(overflow_kmer_count_, data_iterator, working_dir, worker_count, gamma);
-
-    std::ofstream output(overflow_mphf_file_path(), std::ofstream::out);
-    kmer_mphf->save(output);
-    output.close();
+    kmer_mphf->save(serialize_stream);
 
     std::cout <<    "Constructed an MPHF over the overflown k-mers.\n"
                     "\tBits / k-mer: " << (static_cast<double>(kmer_mphf->totalBitSize()) / overflow_kmer_count_) << ".\n";
@@ -643,18 +633,25 @@ void Kmer_Index<k>::map_overflown_kmers()
     std::fclose(kmer_file);
     std::fclose(inst_id_file);
 
-    overflow_kmer_map->serialize(overflow_kmer_map_path());
+    overflow_kmer_map->serialize(serialize_stream);
 
     std::cout << "Mapped the overflown k-mers to their associated minimizer-instances.\n";
 }
 
 
 template <uint16_t k>
-void Kmer_Index<k>::remove_temp_files() const
+void Kmer_Index<k>::close_output() const
 {
     if(!remove_file(overflow_kmers_path()) || !remove_file(overflow_min_insts_path()))
     {
         std::cerr << "Error removing temporary index files. Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    serialize_stream.close();
+    if(!serialize_stream)
+    {
+        std::cerr << "Error writing to the k-mer index file at " << index_file_path(output_pref) << ". Aborting.\n";
         std::exit(EXIT_FAILURE);
     }
 }

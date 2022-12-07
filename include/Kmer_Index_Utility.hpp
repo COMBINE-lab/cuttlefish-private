@@ -27,30 +27,22 @@ protected:
     constexpr static std::size_t overflow_threshold = (1 << 5); // Threshold size for minimizer instances to be put in the overflow index.
 
     // TODO: move to file_extensions.hpp
-    static constexpr char PATH_FILE_EXT[] = ".paths";
-    static constexpr char PATH_END_FILE_EXT[] = ".ends";
-    static constexpr char MPHF_FILE_EXT[] = ".min.mphf";
-    static constexpr char COUNT_FILE_EXT[] = ".min.count";
-    static constexpr char OFFSET_FILE_EXT[] = ".min.offset";
-    static constexpr char CONFIG_FILE_EXT[] = ".idx.conf";  // TODO: maybe also output configuration to the CF json file?
+    static constexpr char IDX_FILE_EXT[] = ".idx";
     static constexpr char MIN_INST_FILE_EXT[] = ".mins";
     static constexpr char OVERFLOW_KMER[] = ".overflow.kmers";
     static constexpr char OVERFLOW_MIN_INST_IDX[] = ".overflow.offset";
-    static constexpr char OVERFLOW_MPHF_FILE_EXT[] = ".overflow.mphf";
-    static constexpr char OVERFLOW_KMER_MAP_EXT[] = ".overflow.map";
 
 
-    // Returns the configuration file path for the k-mer index present at path
-    // prefix `idx_path`.
-    static const std::string config_file_path(const std::string& idx_path);
+    // Returns the k-mer index file-path at the path-prefix `idx_pref`.
+    static const std::string index_file_path(const std::string& idx_pref);
 
-    // Reads the k-mer length of some k-mer index from its configuration file
-    // at path `config_path` and returns it.
-    static uint16_t kmer_len(const std::string& config_path);
+    // Reads the k-mer length of some k-mer index from its index file at path
+    // `idx_path` and returns it.
+    static uint16_t kmer_len(const std::string& idx_path);
 
-    // Reads the minimizer length of some k-mer index from its configuration
-    // file at path `config_path` and returns it.
-    static uint16_t minimizer_len(const std::string& config_path);
+    // Reads the minimizer length of some k-mer index from its index file at
+    // path `idx_path` and returns it.
+    static uint16_t minimizer_len(const std::string& idx_path);
 
     // Dumps the data from `container` to the stream `output`, clearing
     // `container`.
