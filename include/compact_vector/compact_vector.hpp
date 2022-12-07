@@ -347,7 +347,7 @@ public:
   void serialize(const std::string& file_path, const bool shrink = false) const
   {
     std::ofstream output(file_path);
-    shrink ? serialize_shrunk(output) : serialize(output);
+    serialize(output, shrink);
 
     if(!output)
     {
@@ -373,12 +373,14 @@ public:
     input.close();
   }
 
-  void serialize(std::ofstream &output) const
+  void serialize(std::ofstream& output, const bool shrink = false) const
   {
     output.write(reinterpret_cast<const char*>(&m_size), sizeof(m_size));
-    output.write(reinterpret_cast<const char*>(&m_capacity), sizeof(m_capacity));
 
-    output.write(reinterpret_cast<const char*>(m_mem), bytes());
+    const std::size_t cap = (shrink ? m_size : m_capacity);
+    output.write(reinterpret_cast<const char*>(&cap), sizeof(cap));
+
+    output.write(reinterpret_cast<const char*>(m_mem), shrink ? bytes_used() : bytes());
   }
 
   void deserialize(std::ifstream& input)
@@ -390,7 +392,7 @@ public:
     input.read(reinterpret_cast<char*>(&m_capacity), sizeof(m_capacity));
 
     m_mem = allocate(m_capacity);
-    input.read(reinterpret_cast<char*>(m_mem), sizeof(W) * elements_to_words(m_size, bits()));
+    input.read(reinterpret_cast<char*>(m_mem), bytes());
   }
 
 
@@ -402,14 +404,6 @@ protected:
     deallocate(m_mem, m_capacity);
     m_mem      = new_mem;
     m_capacity = new_capacity;
-  }
-
-  void serialize_shrunk(std::ofstream &output) const
-  {
-    output.write(reinterpret_cast<const char*>(&m_size), sizeof(m_size));
-    output.write(reinterpret_cast<const char*>(&m_size), sizeof(m_size));
-
-    output.write(reinterpret_cast<const char*>(m_mem), bytes_used());
   }
 };
 
@@ -508,7 +502,7 @@ public:
     output.write(reinterpret_cast<const char*>(&bits_per_elem), sizeof(bits_per_elem));
 
     // Rest of the fields
-    shrink ? super::serialize_shrunk(output) : super::serialize(output);
+    super::serialize(output, shrink);
   }
 
   void deserialize(std::ifstream& input)
