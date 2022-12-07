@@ -1,10 +1,11 @@
 
 #include "Kmer_Index_Utility.hpp"
+#include "File_Extensions.hpp"
 
 
 const std::string Kmer_Index_Utility::index_file_path(const std::string& idx_pref)
 {
-    return idx_pref + IDX_FILE_EXT;
+    return idx_pref + cuttlefish::file_ext::idx_file_ext;
 }
 
 

@@ -26,12 +26,6 @@ protected:
     // TODO: move to build-params.
     constexpr static std::size_t overflow_threshold = (1 << 5); // Threshold size for minimizer instances to be put in the overflow index.
 
-    // TODO: move to file_extensions.hpp
-    static constexpr char IDX_FILE_EXT[] = ".idx";
-    static constexpr char MIN_INST_FILE_EXT[] = ".mins";
-    static constexpr char OVERFLOW_KMER[] = ".overflow.kmers";
-    static constexpr char OVERFLOW_MIN_INST_IDX[] = ".overflow.offset";
-
 
     // Returns the k-mer index file-path at the path-prefix `idx_pref`.
     static const std::string index_file_path(const std::string& idx_pref);

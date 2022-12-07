@@ -12,6 +12,7 @@
 #include "Minimizer_Iterator.hpp"
 #include "Minimizer_Utility.hpp"
 #include "Kmer_Hasher.hpp"
+#include "File_Extensions.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 #include "key-value-collator/Key_Value_Collator.hpp"
@@ -107,6 +108,9 @@ private:
 
     mutable Spin_Lock lock; // Mutually-exclusive access lock for different producers.
 
+    static constexpr char OVERFLOW_KMER[] = ".overflow.kmers";  // Extension of the temporary file for the k-mers corresponding to the overflowing minimizers.
+    static constexpr char OVERFLOW_MIN_INST_IDX[] = ".overflow.offset"; // Extension of the temporary file of the overflowing minimizer-instances' relative indices.
+
 
     // Saves the configuration constants of the index, such as the k-mer and
     // the minimizer lengths.
@@ -176,7 +180,7 @@ private:
     bool align_contained(const Kmer<k>& kmer, std::size_t kmer_min_idx, std::size_t min_idx, Kmer_Alignment& alignment) const;
 
     uint16_t l() const { return l_; }   // Returns the size of the l-minimizers.
-    const std::string min_instance_path_pref() const { return working_dir + filename(output_pref) + MIN_INST_FILE_EXT; }    // Returns the path-prefix for the working files of the minimizer-instance collator.
+    const std::string min_instance_path_pref() const { return working_dir + filename(output_pref) + cuttlefish::file_ext::min_inst_file_ext; }  // Returns the path-prefix for the working files of the minimizer-instance collator.
     const std::string overflow_kmers_path() const { return working_dir + filename(output_pref) + OVERFLOW_KMER; }   // Returns the file-path for the k-mers corresponding to the overflowing minimizers.
     const std::string overflow_min_insts_path() const { return working_dir + filename(output_pref) + OVERFLOW_MIN_INST_IDX; }   // Returns the file-path for the overflowing minimizer-instances' relative index.
 
