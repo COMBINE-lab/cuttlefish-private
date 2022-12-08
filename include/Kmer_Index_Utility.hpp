@@ -27,9 +27,6 @@ protected:
     constexpr static std::size_t overflow_threshold = (1 << 5); // Threshold size for minimizer instances to be put in the overflow index.
 
 
-    // Returns the k-mer index file-path at the path-prefix `idx_pref`.
-    static const std::string index_file_path(const std::string& idx_pref);
-
     // Reads the k-mer length of some k-mer index from its index file at path
     // `idx_path` and returns it.
     static uint16_t kmer_len(const std::string& idx_path);
@@ -56,6 +53,11 @@ protected:
     // Otherwise, returns `right + 1`.
     template <typename T_container_>
     static int64_t upper_bound(const T_container_& container, int64_t left, int64_t right, typename T_container_::value_type val);
+
+public:
+
+    // Returns the k-mer index file-path at the path-prefix `idx_pref`.
+    static const std::string index_file_path(const std::string& idx_pref);
 };
 
 
