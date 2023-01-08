@@ -227,6 +227,9 @@ public:
     uint64_t min_count() const { return min_count_; }   // Returns the number of unique minimizers in the paths.
     uint64_t max_inst_count() const { return max_inst_count_; } // Returns the maximum count of instances for some minimizer.
 
+    // Returns the number of k-mers in the index.
+    std::size_t size() const;
+
     // Returns the size of the path having sequence-ID `path_id`.
     std::size_t path_size(std::size_t path_id) const;
 
@@ -358,6 +361,13 @@ template <uint16_t k>
 inline uint64_t Kmer_Index<k>::hash(const cuttlefish::minimizer_t min) const
 {
     return min_mphf->lookup(min) + 1;
+}
+
+
+template <uint16_t k>
+inline std::size_t Kmer_Index<k>::size() const
+{
+    return sum_paths_len_ - path_count_ * (k - 1);
 }
 
 
