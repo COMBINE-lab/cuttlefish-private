@@ -230,7 +230,7 @@ public:
     // Returns the number of k-mers in the index.
     std::size_t size() const;
 
-    // Returns the size of the path having sequence-ID `path_id`.
+    // Returns the size of the path (in k-mers) having sequence-ID `path_id`.
     std::size_t path_size(std::size_t path_id) const;
 
     // Returns the prefix-sum of path-sizes upto but not including the path with
@@ -375,7 +375,7 @@ template <uint16_t k>
 inline std::size_t Kmer_Index<k>::path_size(const std::size_t path_id) const
 {
     const auto& p_ends = *path_ends;
-    return path_id == 0 ? p_ends[path_id] : (p_ends[path_id] - p_ends[path_id - 1]);
+    return (path_id == 0 ? p_ends[path_id] : (p_ends[path_id] - p_ends[path_id - 1])) - (k - 1);
 }
 
 
