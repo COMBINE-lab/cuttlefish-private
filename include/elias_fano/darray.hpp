@@ -3,6 +3,8 @@
 #include "util.hpp"
 #include "bit_vector.hpp"
 
+#include <algorithm>
+
 namespace elias_fano {
 namespace detail {
 
@@ -89,6 +91,14 @@ struct darray {
         visitor.visit(m_block_inventory);
         visitor.visit(m_subblock_inventory);
         visitor.visit(m_overflow_positions);
+    }
+
+    void swap(darray& other)
+    {
+        std::swap(m_positions, other.m_positions);
+        m_block_inventory.swap(other.m_block_inventory);
+        m_subblock_inventory.swap(other.m_subblock_inventory);
+        m_overflow_positions.swap(other.m_overflow_positions);
     }
 
 protected:

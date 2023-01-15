@@ -181,6 +181,15 @@ struct sequence {
         visitor.visit(m_low_bits);
     }
 
+    void swap(sequence& other)
+    {
+        std::swap(m_universe, other.m_universe);
+        m_high_bits.swap(other.m_high_bits);
+        m_high_bits_d1.swap(other.m_high_bits_d1);
+        m_high_bits_d0.swap(other.m_high_bits_d0);
+        m_low_bits.swap(other.m_low_bits);
+    }
+
 private:
     uint64_t m_universe;
     bit_vector m_high_bits;
