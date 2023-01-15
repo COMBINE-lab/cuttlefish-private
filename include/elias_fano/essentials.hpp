@@ -22,6 +22,8 @@
 #include <cxxabi.h>  // for name demangling
 #endif
 
+namespace elias_fano {
+
 namespace essentials {
 
 [[maybe_unused]] static void logger(std::string const& msg) {
@@ -708,3 +710,5 @@ private:
 }
 
 }  // namespace essentials
+
+}   // namespace elias_fano
