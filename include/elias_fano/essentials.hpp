@@ -269,20 +269,11 @@ private:
 };
 
 struct loader {
-    loader(char const* filename)
+    loader(std::ifstream& is)
         : m_num_bytes_pods(0)
         , m_num_bytes_vecs_of_pods(0)
-        , m_is(filename, std::ios::binary) {
-        if (!m_is.good()) {
-            throw std::runtime_error(
-                "Error in opening binary "
-                "file.");
-        }
-    }
-
-    ~loader() {
-        m_is.close();
-    }
+        , m_is(is)
+    {}
 
     template <typename T>
     void visit(T& val) {
@@ -323,22 +314,13 @@ struct loader {
 private:
     size_t m_num_bytes_pods;
     size_t m_num_bytes_vecs_of_pods;
-    std::ifstream m_is;
+    std::ifstream& m_is;
 };
 
 struct saver {
-    saver(char const* filename)
-        : m_os(filename, std::ios::binary) {
-        if (!m_os.good()) {
-            throw std::runtime_error(
-                "Error in opening binary "
-                "file.");
-        }
-    }
-
-    ~saver() {
-        m_os.close();
-    }
+    saver(std::ofstream& os)
+    : m_os(os)
+    {}
 
     template <typename T>
     void visit(T& val) {
@@ -365,7 +347,7 @@ struct saver {
     }
 
 private:
-    std::ofstream m_os;
+    std::ofstream& m_os;
 };
 
 [[maybe_unused]] static std::string demangle(char const* mangled_name) {
@@ -587,16 +569,16 @@ private:
     size_t m_size;
 };
 
-template <typename T, typename Visitor>
-static size_t visit(T& data_structure, char const* filename) {
-    Visitor visitor(filename);
+template <typename T, typename Visitor, typename Visitor_Param>
+static size_t visit(T& data_structure, Visitor_Param param) {
+    Visitor visitor(param);
     visitor.visit(data_structure);
     return visitor.bytes();
 }
 
-template <typename T>
-static size_t load(T& data_structure, char const* filename) {
-    return visit<T, loader>(data_structure, filename);
+template <typename T, typename Input>
+static size_t load(T& data_structure, Input input) {
+    return visit<T, loader>(data_structure, input);
 }
 
 template <typename T>
@@ -604,9 +586,9 @@ static size_t load_with_custom_memory_allocation(T& data_structure, char const* 
     return data_structure.get_allocator().allocate(data_structure, filename);
 }
 
-template <typename T>
-static size_t save(T& data_structure, char const* filename) {
-    return visit<T, saver>(data_structure, filename);
+template <typename T, typename Output>
+static size_t save(T& data_structure, Output output) {
+    return visit<T, saver>(data_structure, output);
 }
 
 template <typename T, typename Device>
