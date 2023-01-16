@@ -18,6 +18,7 @@
 #include "key-value-collator/Key_Value_Collator.hpp"
 #include "compact_vector/compact_vector.hpp"
 #include "BBHash/BooPHF.h"
+#include "elias_fano/sequence.hpp"
 
 #include <cstdint>
 #include <cstddef>
@@ -70,7 +71,7 @@ private:
     path_vector_t paths;    // The concatenated path-sequences.
 
     std::vector<std::size_t> path_ends_vec; // Vector for the ending indices, possibly with many unused bits, of the paths in the concatenated sequence.
-    path_end_vector_t* path_ends;   // The ending indices of the paths in the concatenated sequence.
+    elias_fano::sequence<true> path_ends;   // Elias-Fano encoded ending indices of the paths in the concatenated sequence.
 
     std::size_t path_count_;    // Number of paths deposited to the sequence.
     std::size_t sum_paths_len_; // Sum length of all the path-sequences.
@@ -374,16 +375,14 @@ inline std::size_t Kmer_Index<k>::size() const
 template <uint16_t k>
 inline std::size_t Kmer_Index<k>::path_size(const std::size_t path_id) const
 {
-    const auto& p_ends = *path_ends;
-    return (path_id == 0 ? p_ends[path_id] : (p_ends[path_id] - p_ends[path_id - 1])) - (k - 1);
+    return (path_id == 0 ? path_ends[path_id] : (path_ends[path_id] - path_ends[path_id - 1])) - (k - 1);
 }
 
 
 template <uint16_t k>
 inline std::size_t Kmer_Index<k>::prefix_sum_path_size(const std::size_t path_id) const
 {
-    const auto& p_ends = *path_ends;
-    return path_id == 0 ? 0 : p_ends[path_id - 1] - path_id * (k - 1);
+    return path_id == 0 ? 0 : path_ends[path_id - 1] - path_id * (k - 1);
 }
 
 
@@ -392,9 +391,8 @@ inline void Kmer_Index<k>::get_kmer(const std::size_t path_id, const std::size_t
 {
     assert(path_id < path_count_);
 
-    const auto& p_ends = *path_ends;
-    const std::size_t base_idx = (path_id > 0 ? p_ends[path_id - 1] : 0);
-    assert(base_idx + k <= p_ends[path_id]);
+    const std::size_t base_idx = (path_id > 0 ? path_ends[path_id - 1] : 0);
+    assert(base_idx + k <= path_ends[path_id]);
 
     get_kmer(base_idx + idx, kmer);
 }
@@ -486,16 +484,15 @@ inline bool Kmer_Index<k>::align_contained(const Kmer<k>& kmer, const std::size_
     if(!align(kmer, min_idx - kmer_min_idx))
         return false;
 
-    const auto& p_end = *path_ends;
-    const int64_t l = lower_bound(p_end, 0, path_count_ - 1, min_idx);  // ID of the path preceding this path.
-    const std::size_t l_end = (l < 0 ? 0 : p_end[l]);   // Index of the left end of the path containing this instance.
+    const int64_t l = path_ends.prev_leq(min_idx);  // ID of the path preceding this path.
+    const std::size_t l_end = (l < 0 ? 0 : path_ends[l]);   // Index of the left end of the path containing this instance.
     if(min_idx - kmer_min_idx < l_end)  // Alignment starting position of the k-mer exceeds the left end.
         return false;
 
     // const int64_t r = upper_bound(p_end, 0, path_count_ - 1, min_idx);   // ID of this path.
     const int64_t r = l + 1;    // ID of this path.
-    assert(r == upper_bound(p_end, 0, path_count_ - 1, min_idx));
-    const std::size_t r_end = p_end[r]; // Index of the right end (exclusive) of the path containing this instance.
+    assert(r == upper_bound(path_ends, 0, path_count_ - 1, min_idx));
+    const std::size_t r_end = path_ends[r]; // Index of the right end (exclusive) of the path containing this instance.
     if(min_idx + (k - kmer_min_idx) > r_end)    // Alignment ending position of the k-mer exceeds the right end.
         return false;
 

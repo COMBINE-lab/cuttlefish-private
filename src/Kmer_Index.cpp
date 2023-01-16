@@ -8,6 +8,7 @@
 #include "Input_Defaults.hpp"
 #include "utility.hpp"
 #include "key-value-collator/Key_Value_Iterator.hpp"
+#include "elias_fano/sequence.hpp"
 
 #include <string>
 #include <functional>
@@ -31,7 +32,6 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     worker_count(producer_count),
     params(params),
     retain(retain),
-    path_ends(nullptr),
     num_instances_(0),
     min_count_(0),
     max_inst_count_(0),
@@ -64,7 +64,6 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     worker_count(0),
     params(nullptr),
     retain(true),
-    path_ends(nullptr),
     num_instances_(0),
     min_count_(0),
     max_inst_count_(0),  // TODO: think if this might have repercussions, as we don't have it saved (though, inferrable).
@@ -91,9 +90,8 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     paths.deserialize(deserialize_stream);
     sum_paths_len_ = paths.size();
 
-    path_ends = new path_end_vector_t();
-    path_ends->deserialize(deserialize_stream);
-    path_count_ = path_ends->size();
+    elias_fano::essentials::load(path_ends, std::ref(deserialize_stream));
+    path_count_ = path_ends.size();
 
     min_mphf = new minimizer_mphf_t(deserialize_stream);
     // min_count = min_mphf->nbKeys();
@@ -133,7 +131,6 @@ Kmer_Index<k>::Kmer_Index(const Build_Params& params):
 template <uint16_t k>
 Kmer_Index<k>::~Kmer_Index()
 {
-    delete path_ends;
     delete min_mphf;
     delete min_instance_count;
     delete min_offset;
@@ -259,20 +256,15 @@ void Kmer_Index<k>::close_deposit_stream()
         force_free(paths);
 
 
-    // Compact the path endpoints to just as many bits as required.
-    const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len_ + 1)));
-    assert(bits_per_entry > 0);
+    // Elias-Fano encode the path-endpoints.
     path_count_ = path_ends_vec.size();
-    path_ends = new path_end_vector_t(bits_per_entry, path_count_);
-    auto& p_end = *path_ends;
-    for(std::size_t i = 0; i < path_count_; ++i)
-        p_end[i] = path_ends_vec[i];
+    path_ends.encode(path_ends_vec.cbegin(), path_count_, path_ends_vec.back());
 
     force_free(path_ends_vec);
 
-    p_end.serialize(serialize_stream);
+    elias_fano::essentials::save(path_ends, std::ref(serialize_stream));
     if(!retain)
-        delete path_ends, path_ends = nullptr;
+        force_free(path_ends);
 }
 
 
@@ -489,7 +481,6 @@ void Kmer_Index<k>::collect_overflown_kmers(const std::size_t low, const std::si
 {
     const auto& mi_count = *min_instance_count;
     const auto& m_offset = *min_offset;
-    const auto& p_end = *path_ends;
 
     std::vector<Kmer<k>> kmers; // Buffer for the k-mers from the overflowing minimizers.
     std::vector<std::size_t> inst_idx;  // Buffer for the indices of the minimizer instances into their corresponding blocks, of the overflown k-mers.
@@ -522,10 +513,10 @@ void Kmer_Index<k>::collect_overflown_kmers(const std::size_t low, const std::si
 
                 // Extract each k-mer from the paths that have this minimizer instance as their minimizer.
 
-                const int64_t l = lower_bound(p_end, 0, path_count_ - 1, min_inst_idx); // ID of the path preceding the path containing this instance.
+                const int64_t l = path_ends.prev_leq(min_inst_idx); // ID of the path preceding the path containing this instance.
                 const int64_t r = l + 1;    // ID of the path containing this instance.
-                const std::size_t l_end = (l < 0 ? 0 : p_end[l]);   // Index of the left end of the path containing this instance.
-                const std::size_t r_end = p_end[r]; // Index of the right end (exclusive) of the path containing this instance.
+                const std::size_t l_end = (l < 0 ? 0 : path_ends[l]);   // Index of the left end of the path containing this instance.
+                const std::size_t r_end = path_ends[r]; // Index of the right end (exclusive) of the path containing this instance.
 
                 const std::size_t window_start = (l_end + k - l_ <= min_inst_idx ? (min_inst_idx + l_ - k) : l_end);    // (Inclusive) left-end of the k-mer sliding window.
                 const std::size_t window_end = (min_inst_idx + k <= r_end ? min_inst_idx + k : r_end);  // (Exclusive) right-end of the k-mer sliding window.

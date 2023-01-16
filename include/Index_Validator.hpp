@@ -119,7 +119,7 @@ inline bool Index_Validator<k, l>::validate(const std::string& file_path)
         return false;
 
     for(std::size_t i = 0; i < ends.size(); ++i)
-        if(ends[i] != kmer_index.path_ends->at(i))
+        if(ends[i] != kmer_index.path_ends[i])
             return false;
 
     std::cout << "Path endpoint indices matched.\n";
@@ -199,7 +199,7 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
 
     const std::size_t path_count = kmer_idx.path_count_;
     const auto& paths = kmer_idx.paths;
-    const auto& p_end = *kmer_idx.path_ends;
+    const auto& p_end = kmer_idx.path_ends;
 
 
     // Load the original sequences.
