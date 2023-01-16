@@ -40,7 +40,7 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     producer_min_inst_buf(producer_count, nullptr),
     min_collator(min_instance_path_pref(), 2 * producer_count),
     min_mphf(nullptr),
-    min_instance_count(nullptr),
+    min_inst_count_bv(nullptr),
     min_offset(nullptr),
     overflow_min_count_(0),
     overflow_kmer_count_(0),
@@ -68,7 +68,7 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     min_count_(0),
     max_inst_count_(0),  // TODO: think if this might have repercussions, as we don't have it saved (though, inferrable).
     min_mphf(nullptr),
-    min_instance_count(nullptr),
+    min_inst_count_bv(nullptr),
     min_offset(nullptr),
     overflow_min_count_(0),
     overflow_kmer_count_(0),
@@ -96,9 +96,8 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     min_mphf = new minimizer_mphf_t(deserialize_stream);
     // min_count = min_mphf->nbKeys();
 
-    min_instance_count = new min_vector_t();
-    min_instance_count->deserialize(deserialize_stream);
-    min_count_ = min_instance_count->size();
+    elias_fano::essentials::load(min_inst_count, std::ref(deserialize_stream));
+    min_count_ = min_inst_count.size();
 
     min_offset = new min_vector_t();
     min_offset->deserialize(deserialize_stream);
@@ -132,7 +131,7 @@ template <uint16_t k>
 Kmer_Index<k>::~Kmer_Index()
 {
     delete min_mphf;
-    delete min_instance_count;
+    delete min_inst_count_bv;
     delete min_offset;
     delete kmer_mphf;
     delete overflow_kmer_map;
@@ -259,6 +258,7 @@ void Kmer_Index<k>::close_deposit_stream()
     // Elias-Fano encode the path-endpoints.
     path_count_ = path_ends_vec.size();
     path_ends.encode(path_ends_vec.cbegin(), path_count_, path_ends_vec.back());
+    assert(path_ends_vec.back() == sum_paths_len_);
 
     force_free(path_ends_vec);
 
@@ -283,8 +283,8 @@ void Kmer_Index<k>::count_minimizer_instances()
 {
     const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(num_instances_ + 1)));
     assert(bits_per_entry > 0);
-    min_instance_count = new min_vector_t(bits_per_entry, min_count_ + 1);
-    min_instance_count->clear_mem();
+    min_inst_count_bv = new min_vector_t(bits_per_entry, min_count_ + 1);
+    min_inst_count_bv->clear_mem();
 
     auto min_inst_iter = min_collator.begin();
     constexpr std::size_t min_buf_sz = 5U * 1024U * 1024U / sizeof(min_inst_t); // Minimizer-instance chunk size, in elements: 5 MB total.
@@ -299,7 +299,7 @@ void Kmer_Index<k>::count_minimizer_instances()
                 min_inst_t* const min_chunk = static_cast<min_inst_t*>(std::malloc(min_buf_sz * sizeof(min_inst_t)));
                 std::size_t buf_elem_count;
                 uint64_t h;
-                auto& mi_count = *min_instance_count;
+                auto& mi_count = *min_inst_count_bv;
 
                 while((buf_elem_count = min_inst_iter.read(min_chunk, min_buf_sz)) != 0)
                     for(std::size_t idx = 0; idx < buf_elem_count; ++idx)
@@ -330,11 +330,11 @@ void Kmer_Index<k>::count_minimizer_instances()
     std::cout << "Maximum instance count of a minimizer: " << max_inst_count_ << ".\n";
 
 
-    // Transform the instance counts to cumulative counts, ordered per the minimizers' hash.
-    auto& mi_count = *min_instance_count;
-    uint64_t cum_count = (mi_count[0] = 0);
+    // Transform the instance counts to cumulative counts, i.e. prefix-sums, ordered per the minimizers' hash.
+    auto& mi_count = *min_inst_count_bv;
+    uint64_t pref_sum = (mi_count[0] = 0);
     for(std::size_t i = 1; i <= min_count_; ++i)
-        mi_count[i] = (cum_count += mi_count[i]);
+        mi_count[i] = (pref_sum += mi_count[i]);
 }
 
 
@@ -359,7 +359,7 @@ void Kmer_Index<k>::get_minimizer_offsets()
                 std::size_t buf_elem_count;
                 uint64_t h;
                 std::size_t offset;
-                auto& mi_count = *min_instance_count;
+                auto& mi_count = *min_inst_count_bv;
                 auto& m_offset = *min_offset;
 
                 while((buf_elem_count = min_inst_iter.read(min_chunk, min_buf_sz)) != 0)
@@ -393,8 +393,12 @@ void Kmer_Index<k>::get_minimizer_offsets()
 
 
     // After the in-place transformation (see note above), `min_instance_count` need not have that extra last entry anymore.
-    min_instance_count->resize(min_count_);
-    min_instance_count->serialize(serialize_stream, true);  // Shrink while serializing to remove the last redundant entry.
+    min_inst_count_bv->resize(min_count_);
+    min_inst_count.encode(min_inst_count_bv->cbegin(), min_count_, min_inst_count_bv->back());
+    assert(min_inst_count_bv->back() == num_instances_);
+
+    delete min_inst_count_bv, min_inst_count_bv = nullptr;
+    elias_fano::essentials::save(min_inst_count, std::ref(serialize_stream));
 
     min_offset->serialize(serialize_stream);
 
@@ -403,7 +407,7 @@ void Kmer_Index<k>::get_minimizer_offsets()
     if(!retain)
     {
         delete min_mphf, min_mphf = nullptr;
-        delete min_instance_count, min_instance_count = nullptr;
+        force_free(min_inst_count);
         delete min_offset, min_offset = nullptr;
     }
 }
@@ -479,7 +483,6 @@ void Kmer_Index<k>::collect_overflown_kmers()
 template <uint16_t k>
 void Kmer_Index<k>::collect_overflown_kmers(const std::size_t low, const std::size_t high, std::ofstream& kmer_op, std::ofstream& inst_idx_op, std::size_t& num_min, std::size_t& num_kmer) const
 {
-    const auto& mi_count = *min_instance_count;
     const auto& m_offset = *min_offset;
 
     std::vector<Kmer<k>> kmers; // Buffer for the k-mers from the overflowing minimizers.
@@ -501,8 +504,8 @@ void Kmer_Index<k>::collect_overflown_kmers(const std::size_t low, const std::si
     kmers.reserve(buf_elem_th), inst_idx.reserve(buf_elem_th);
     for(std::size_t id = low; id < high; ++id)  // Go over each minimizer.
     {
-        const std::size_t idx_begin = (id > 0 ? mi_count[id - 1] : 0);  // Offset of the block of indices of the minimizer's instances.
-        const std::size_t idx_end = mi_count[id];   // End-offset of the instance block (exclusive).
+        const std::size_t idx_begin = (id > 0 ? min_inst_count[id - 1] : 0);    // Offset of the block of indices of the minimizer's instances.
+        const std::size_t idx_end = min_inst_count[id]; // End-offset of the instance block (exclusive).
         const std::size_t inst_count = idx_end - idx_begin; // Number of instances of this minimizer.
 
         if(inst_count >= overflow_threshold)

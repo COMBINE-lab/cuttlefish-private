@@ -91,7 +91,8 @@ private:
     typedef boomphf::mphf<minimizer_t, minimizer_hasher_t, false> minimizer_mphf_t; // The minimizer-MPHF type.
     const minimizer_mphf_t* min_mphf;   // MPHF of the minimizers.
 
-    min_vector_t* min_instance_count;   // Count of instances per each unique minimizer.
+    min_vector_t* min_inst_count_bv;    // Count of instances per each unique minimizer. Only used in index construction and not a part of the index.
+    elias_fano::sequence<false> min_inst_count; // Elias-Fano encoded counts of instances per each unique minimizer.
 
     min_vector_t* min_offset;   // Offsets of the instances for the unique minimizers, laid flat all together.
 
@@ -448,11 +449,10 @@ inline bool Kmer_Index<k>::query(const Kmer<k>& kmer, Kmer_Alignment& result) co
     if(h >= min_count_) // The k-mer's minimizer is absent in the index.
         return false;
 
-    const auto& mi_count = *min_instance_count;
     const auto& m_offset = *min_offset;
 
-    const std::size_t idx_begin = (h > 0 ? mi_count[h - 1] : 0);    // Offset of the block of indices of the minimizer's instances.
-    const std::size_t idx_end = mi_count[h];    // End-offset of the instance block (exclusive).
+    const std::size_t idx_begin = (h > 0 ? min_inst_count[h - 1] : 0);  // Offset of the block of indices of the minimizer's instances.
+    const std::size_t idx_end = min_inst_count[h];  // End-offset of the instance block (exclusive).
 
     const std::size_t inst_count = idx_end - idx_begin; // Number of instances of this minimizer.
     if(inst_count >= overflow_threshold)

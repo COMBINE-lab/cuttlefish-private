@@ -142,7 +142,7 @@ inline bool Index_Validator<k, l>::validate(const std::string& file_path)
     if(M.size() != kmer_index.min_count_ || inst_count != kmer_index.num_instances_)
         return false;
 
-    const auto& mi_count = *kmer_index.min_instance_count;
+    const auto& mi_count = kmer_index.min_inst_count;
     const auto& m_offset = *kmer_index.min_offset;
     for(const auto p : M)
     {
@@ -325,7 +325,7 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
     if(M.size() != kmer_idx.min_count_ || inst_count != kmer_idx.num_instances_)
         return false;
 
-    const auto& mi_count = *kmer_idx.min_instance_count;
+    const auto& mi_count = kmer_idx.min_inst_count;
     const auto& m_offset = *kmer_idx.min_offset;
 
     std::vector<std::size_t> offs;
