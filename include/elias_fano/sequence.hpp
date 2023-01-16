@@ -88,6 +88,11 @@ struct sequence {
                m_low_bits.access(i);
     }
 
+    inline uint64_t operator[](const std::size_t offset) const
+    {
+        return access(offset);
+    }
+
     /*
         Return [position,value] of the leftmost smallest element >= x.
         Return [size(),back()] if x > back() (largest element).
@@ -163,6 +168,17 @@ struct sequence {
 
     //     return {pos, val};
     // }
+
+    /*
+        Return the position of the leftmost largest element <= x.
+        Return size() if x > back() (largest element).
+        Returns -1 if x < front() (smallest element).
+    */
+    inline int64_t prev_leq(const uint64_t x) const
+    {
+        auto [pos, val] = next_geq(x);
+        return static_cast<int64_t>(pos) - (val > x);
+    }
 
     inline uint64_t back() const { return m_universe; }
     inline uint64_t size() const { return m_low_bits.size(); }
