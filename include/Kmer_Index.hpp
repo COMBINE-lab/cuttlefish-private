@@ -336,11 +336,9 @@ inline void Kmer_Index<k>::flush(const std::size_t producer_id)
         paths.push_back(*p);
 
     // Shift the producer-specific relative indices of the path-endpoints to their absolute indices into the concatenated paths.
-    std::for_each(path_end_buf.begin(), path_end_buf.end(),
-                    [offset_shift](auto& p) { p += offset_shift; }
-                );  // TODO: merge this redundant update into the following insertion into global `path_ends_vec`.
-
-    path_ends_vec.insert(path_ends_vec.end(), path_end_buf.cbegin(), path_end_buf.cend());
+    std::for_each(path_end_buf.cbegin(), path_end_buf.cend(),
+                    [offset_shift, &p_ends = path_ends_vec](const auto& p) { p_ends.emplace_back(p + offset_shift); }
+                );
 
     lock.unlock();
 
