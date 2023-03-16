@@ -23,7 +23,7 @@
 
 
 template <uint16_t k>
-Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const bool retain, const std::string& output_pref, const std::string& working_dir, const Build_Params* const params):
+Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const bool retain, const std::string& output_pref, const std::string& working_dir, const std::optional<Build_Params> params):
     // TODO: reserve space for `paths`, preferably from additional k-mer count field
     l_(l),
     output_pref(output_pref),
@@ -39,13 +39,8 @@ Kmer_Index<k>::Kmer_Index(const uint16_t l, const uint16_t producer_count, const
     producer_path_end_buf(producer_count),
     producer_min_inst_buf(producer_count, nullptr),
     min_collator(min_instance_path_pref(), 2 * producer_count),
-    min_mphf(nullptr),
-    min_inst_count_bv(nullptr),
-    min_offset(nullptr),
     overflow_min_count_(0),
     overflow_kmer_count_(0),
-    kmer_mphf(nullptr),
-    overflow_kmer_map(nullptr),
     serialize_stream(index_file_path(output_pref), std::ios::out | std::ios::binary),
     curr_token(0)
 {
@@ -62,18 +57,12 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     working_dir(dirname(idx_path) + "/"),
     producer_count(0),
     worker_count(0),
-    params(nullptr),
     retain(true),
     num_instances_(0),
     min_count_(0),
     max_inst_count_(0),  // TODO: think if this might have repercussions, as we don't have it saved (though, inferrable).
-    min_mphf(nullptr),
-    min_inst_count_bv(nullptr),
-    min_offset(nullptr),
     overflow_min_count_(0),
-    overflow_kmer_count_(0),
-    kmer_mphf(nullptr),
-    overflow_kmer_map(nullptr)
+    overflow_kmer_count_(0)
 {
     const uint16_t idx_k = kmer_len(index_file_path(idx_path));
     if(idx_k != k)
@@ -93,20 +82,20 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
     elias_fano::essentials::load(path_ends, std::ref(deserialize_stream));
     path_count_ = path_ends.size();
 
-    min_mphf = new minimizer_mphf_t(deserialize_stream);
+    min_mphf.emplace(deserialize_stream);
     // min_count = min_mphf->nbKeys();
 
     elias_fano::essentials::load(min_inst_count, std::ref(deserialize_stream));
     min_count_ = min_inst_count.size();
 
-    min_offset = new min_vector_t();
+    min_offset.emplace();
     min_offset->deserialize(deserialize_stream);
     num_instances_ = min_offset->size();
 
-    kmer_mphf = new kmer_mphf_t(deserialize_stream);
+    kmer_mphf.emplace(deserialize_stream);
     // overflow_kmer_count_ = kmer_mphf->nbKeys();
 
-    overflow_kmer_map = new min_vector_t();
+    overflow_kmer_map.emplace();
     overflow_kmer_map->deserialize(deserialize_stream);
     overflow_kmer_count_ = overflow_kmer_map->size();
 
@@ -123,25 +112,14 @@ Kmer_Index<k>::Kmer_Index(const std::string& idx_path):
 
 template <uint16_t k>
 Kmer_Index<k>::Kmer_Index(const Build_Params& params):
-    Kmer_Index(params.min_len(), params.thread_count(), true, params.output_prefix(), params.working_dir_path(), &params)
+    Kmer_Index(params.min_len(), params.thread_count(), true, params.output_prefix(), params.working_dir_path(), params)
 {}
-
-
-template <uint16_t k>
-Kmer_Index<k>::~Kmer_Index()
-{
-    delete min_mphf;
-    delete min_inst_count_bv;
-    delete min_offset;
-    delete kmer_mphf;
-    delete overflow_kmer_map;
-}
 
 
 template <uint16_t k>
 void Kmer_Index<k>::construct()
 {
-    assert(params != nullptr);
+    assert(params);
 
     if(params->is_read_graph() || params->is_ref_graph())
     {
@@ -272,7 +250,7 @@ template <uint16_t k>
 void Kmer_Index<k>::construct_minimizer_mphf()
 {
     const auto min_collation_range = boomphf::range(min_collator.begin(), min_collator.end());
-    min_mphf = new minimizer_mphf_t(min_count_, min_collation_range, working_dir, worker_count, gamma);
+    min_mphf.emplace(min_count_, min_collation_range, working_dir, worker_count, gamma);
 
     min_mphf->save(serialize_stream);
 }
@@ -283,7 +261,7 @@ void Kmer_Index<k>::count_minimizer_instances()
 {
     const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(num_instances_ + 1)));
     assert(bits_per_entry > 0);
-    min_inst_count_bv = new min_vector_t(bits_per_entry, min_count_ + 1);
+    min_inst_count_bv.emplace(bits_per_entry, min_count_ + 1);
     min_inst_count_bv->clear_mem();
 
     auto min_inst_iter = min_collator.begin();
@@ -343,7 +321,7 @@ void Kmer_Index<k>::get_minimizer_offsets()
 {
     const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(sum_paths_len_))); // The path-sequence is 0-indexed—no need for +1.
     assert(bits_per_entry > 0);
-    min_offset = new min_vector_t(bits_per_entry, num_instances_);
+    min_offset.emplace(bits_per_entry, num_instances_);
 
     auto min_inst_iter = min_collator.begin();
     constexpr std::size_t min_buf_sz = 5U * 1024U * 1024U / sizeof(min_inst_t); // Minimizer instance chunk size, in elements: 5 MB total.
@@ -397,7 +375,7 @@ void Kmer_Index<k>::get_minimizer_offsets()
     min_inst_count.encode(min_inst_count_bv->cbegin(), min_count_, min_inst_count_bv->back());
     assert(min_inst_count_bv->back() == num_instances_);
 
-    delete min_inst_count_bv, min_inst_count_bv = nullptr;
+    min_inst_count_bv.reset();
     elias_fano::essentials::save(min_inst_count, std::ref(serialize_stream));
 
     min_offset->serialize(serialize_stream);
@@ -406,9 +384,9 @@ void Kmer_Index<k>::get_minimizer_offsets()
     // Release the portion of the index still in memory if required.
     if(!retain)
     {
-        delete min_mphf, min_mphf = nullptr;
+        min_mphf.reset();
         force_free(min_inst_count);
-        delete min_offset, min_offset = nullptr;
+        min_offset.reset();
     }
 }
 
@@ -426,8 +404,8 @@ void Kmer_Index<k>::construct_overflow_index()
     // Release the overflow index if required.
     if(!retain)
     {
-        delete kmer_mphf, kmer_mphf = nullptr;
-        delete overflow_kmer_map, overflow_kmer_map = nullptr;
+        kmer_mphf.reset();
+        overflow_kmer_map.reset();
     }
 }
 
@@ -564,7 +542,7 @@ void Kmer_Index<k>::construct_overflow_kmer_mphf()
     const boomphf::file_binary<Kmer<k>> kmer_file(overflow_kmers_path().c_str());
     const auto data_iterator = boomphf::range(kmer_file.begin(), kmer_file.end());
 
-    kmer_mphf = new kmer_mphf_t(overflow_kmer_count_, data_iterator, working_dir, worker_count, gamma);
+    kmer_mphf.emplace(overflow_kmer_count_, data_iterator, working_dir, worker_count, gamma);
     kmer_mphf->save(serialize_stream);
 
     std::cout <<    "Constructed an MPHF over the overflown k-mers.\n"
@@ -577,7 +555,7 @@ void Kmer_Index<k>::map_overflown_kmers()
 {
     const uint32_t bits_per_entry = static_cast<uint32_t>(std::ceil(std::log2(max_inst_count_)));   // The minimizer-instance blocks are 0-indexed–no need for +1.
     assert(bits_per_entry > 0);
-    overflow_kmer_map = new min_vector_t(bits_per_entry, overflow_kmer_count_);
+    overflow_kmer_map.emplace(bits_per_entry, overflow_kmer_count_);
 
     std::FILE* const kmer_file = std::fopen(overflow_kmers_path().c_str(), "rb");
     std::FILE* const inst_id_file = std::fopen(overflow_min_insts_path().c_str(), "rb");

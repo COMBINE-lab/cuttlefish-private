@@ -13,6 +13,7 @@
 #include "Minimizer_Utility.hpp"
 #include "Kmer_Hasher.hpp"
 #include "File_Extensions.hpp"
+#include "Build_Params.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 #include "key-value-collator/Key_Value_Collator.hpp"
@@ -24,13 +25,12 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <utility>
 #include <fstream>
 
 
 // =============================================================================
 
-
-class Build_Params;
 
 // TODO: use `assert`s aggressively.
 
@@ -56,7 +56,7 @@ private:
     const uint16_t producer_count;  // Number of producer threads supplying the paths to the indexer.
     const uint16_t worker_count;    // Number of worker threads for various multi-threaded tasks.
 
-    const Build_Params* const params;   // Build parameters wrapped inside.
+    const std::optional<Build_Params> params;   // Build parameters wrapped inside.
 
     const bool retain;  // Whether to retain the index in memory after construction.
 
@@ -89,20 +89,20 @@ private:
     typedef boomphf::SingleHashFunctor<minimizer_t> minimizer_hasher_t; // The seeded hasher class for minimizers.
                                                                         // TODO: placeholder for now; think it through.
     typedef boomphf::mphf<minimizer_t, minimizer_hasher_t, false> minimizer_mphf_t; // The minimizer-MPHF type.
-    const minimizer_mphf_t* min_mphf;   // MPHF of the minimizers.
+    std::optional<const minimizer_mphf_t> min_mphf; // MPHF of the minimizers.
 
-    min_vector_t* min_inst_count_bv;    // Count of instances per each unique minimizer. Only used in index construction and not a part of the index.
+    std::optional<min_vector_t> min_inst_count_bv;  // Count of instances per each unique minimizer. Only used in index construction and not a part of the index.
     elias_fano::sequence<false> min_inst_count; // Elias-Fano encoded counts of instances per each unique minimizer.
 
-    min_vector_t* min_offset;   // Offsets of the instances for the unique minimizers, laid flat all together.
+    std::optional<min_vector_t> min_offset; // Offsets of the instances for the unique minimizers, laid flat all together.
 
     uint64_t overflow_min_count_;   // Number of unique minimizers with instance-counts exceeding the preset threshold.
     uint64_t overflow_kmer_count_;  // Number of k-mers associated to the overflowing minimizers.
 
     typedef boomphf::mphf<Kmer<k>, Kmer_Hasher<k>, false> kmer_mphf_t;  // The MPHF type for the overflown k-mers.
-    const kmer_mphf_t* kmer_mphf;   // MPHF of the overflown k-mers.
+    std::optional<const kmer_mphf_t> kmer_mphf; // MPHF of the overflown k-mers.
 
-    min_vector_t* overflow_kmer_map;    // Mapping of each overflown k-mer to its corresponding minimizer-instance's index (into its block).
+    std::optional<min_vector_t> overflow_kmer_map;  // Mapping of each overflown k-mer to its corresponding minimizer-instance's index (into its block).
 
     mutable std::ofstream serialize_stream; // Serialization stream for the index.
 
@@ -195,7 +195,7 @@ public:
     // is used to store temporary files during the construction. An optional
     // build-parameters pack `params` can be provided, if compacted de Bruijn
     // graph construction is to be done from this object.
-    Kmer_Index(uint16_t l, uint16_t producer_count, bool retain, const std::string& output_pref, const std::string& working_dir, const Build_Params* params = nullptr);
+    Kmer_Index(uint16_t l, uint16_t producer_count, bool retain, const std::string& output_pref, const std::string& working_dir, std::optional<Build_Params> params = std::optional<Build_Params>());
 
     // Loads the k-mer index stored at path `idx_path`.
     Kmer_Index(const std::string& idx_path);
@@ -203,9 +203,6 @@ public:
     // Constructs a k-mer indexer object with the parameters required for the
     // index construction wrapped in `params`.
     Kmer_Index(const Build_Params& params);
-
-    // Destructs the k-mer index object.
-    ~Kmer_Index();
 
     // Constructs an index over the underlying de Bruijn graph's k-mers.
     void construct();
