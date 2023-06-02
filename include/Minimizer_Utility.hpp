@@ -11,7 +11,7 @@
 #include <cstddef>
 
 
-template <typename T_seq_> class Minimizer_Iterator;
+template <typename T_seq_, bool is_canonical_> class Minimizer_Iterator;
 
 
 // =============================================================================
@@ -31,6 +31,10 @@ public:
     // `idx`.
     template <uint16_t k>
     static void get_minimizer(const Kmer<k>& kmer, const uint16_t l, cuttlefish::minimizer_t& min, std::size_t& idx);
+
+    // Extracts the minimizer of the k-mer `kmer` into `min`.
+    template <uint16_t k>
+    static cuttlefish::minimizer_t canonical_minimizer(const Kmer<k>& kmer, const uint16_t l);
 };
 
 
@@ -39,7 +43,7 @@ public:
 class Lmer_Tuple
 {
     friend class Minimizer_Utility;
-    template <typename T_seq_> friend class Minimizer_Iterator;
+    template <typename T_seq_, bool is_canonical_> friend class Minimizer_Iterator;
 
     typedef cuttlefish::minimizer_t minimizer_t;
 
@@ -121,6 +125,20 @@ inline void Minimizer_Utility::get_minimizer(const Kmer<K>& kmer, const uint16_t
     }
 
     min = min_lmer.lmer, idx = min_lmer.index;
+}
+
+
+template <uint16_t k>
+inline cuttlefish::minimizer_t Minimizer_Utility::canonical_minimizer(const Kmer<k>& kmer, const uint16_t l)
+{
+    cuttlefish::minimizer_t min_f, min_r;
+    std::size_t min_idx;
+
+    get_minimizer(kmer, l, min_f, min_idx);
+    get_minimizer(kmer.reverse_complement(), l, min_r, min_idx);
+
+    const auto h_f = hash(min_f), h_r = hash(min_r);
+    return h_f != h_r ? (h_f < h_r ? min_f : min_r) : std::min(min_f, min_r);
 }
 
 
