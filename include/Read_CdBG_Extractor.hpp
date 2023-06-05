@@ -38,7 +38,7 @@ private:
     const Build_Params params;  // Required parameters (wrapped inside).
     Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash_table; // Hash table for the vertices (i.e. canonical k-mers) of the original (uncompacted) de Bruijn graph.
 
-    Kmer_Index<k>& kmer_idx;    // Index over the k-mers of the graph.
+    Kmer_Index<k>* const kmer_idx;  // Index over the k-mers of the graph.
 
     // typedef std::ofstream sink_t;
     typedef Async_Logger_Wrapper sink_t;
@@ -100,9 +100,13 @@ private:
 public:
 
     // Constructs a vertex-extractor object for some compacted read de Bruijn graph, with the required
-    // parameters wrapped inside `params`, and uses the Cuttlefish hash table `hash_table`. If a k-mer
-    // index is to be constructed downstream, then the extracted vertices will be deposited to `kmer_idx`.
-    Read_CdBG_Extractor(const Build_Params& params, Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash_table, Kmer_Index<k>& kmer_idx);
+    // parameters wrapped inside `params`, and uses the Cuttlefish hash table `hash_table`.
+    Read_CdBG_Extractor(const Build_Params& params, Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash_table);
+
+    // Constructs a vertex-extractor object for some compacted read de Bruijn graph, with the required
+    // parameters wrapped inside `params`, and uses the Cuttlefish hash table `hash_table`. The extracted
+    // vertices will be deposited to `kmer_idx` to index the k-mers of the de Bruijn graph.
+    Read_CdBG_Extractor(const Build_Params& params, Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash_table, Kmer_Index<k>* kmer_idx);
 
     // Extracts the maximal unitigs of the de Bruijn graph with the vertex set at path prefix `vertex_db_path`,
     // into the output file at `output_file_path`.

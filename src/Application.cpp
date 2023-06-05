@@ -3,6 +3,7 @@
 #include "globals.hpp"
 #include "CdBG.hpp"
 #include "Read_CdBG.hpp"
+#include "Kmer_Index.hpp"
 
 
 template <uint16_t k, template <uint16_t> typename T_App>
@@ -107,3 +108,4 @@ bool Application<1, T_App>::validate() const
 // Template instantiations for the required instances.
 template class Application<cuttlefish::MAX_K, CdBG>;
 template class Application<cuttlefish::MAX_K, Read_CdBG>;
+template class Application<cuttlefish::MAX_K, Kmer_Index>;

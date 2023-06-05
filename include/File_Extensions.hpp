@@ -23,6 +23,12 @@ namespace cuttlefish
         constexpr char gfa2_ext[] = ".gfa2";
         constexpr char seg_ext[] = ".cf_seg";
         constexpr char seq_ext[] = ".cf_seq";
+
+
+        // For k-mer index.
+
+        static constexpr char idx_file_ext[] = ".idx";
+        static constexpr char min_inst_file_ext[] = ".mins";
     }
 }
 

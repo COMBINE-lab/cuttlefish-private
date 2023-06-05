@@ -101,17 +101,7 @@ void Kmer_Hash_Table<k, BITS_PER_KEY>::build_mph_function(const uint16_t thread_
 template <uint16_t k, uint8_t BITS_PER_KEY>
 void Kmer_Hash_Table<k, BITS_PER_KEY>::load_mph_function(const std::string& file_path)
 {
-    std::ifstream input(file_path.c_str(), std::ifstream::in);
-    if(input.fail())
-    {
-        std::cerr << "Error opening file " << file_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-
-    mph = new mphf_t();
-    mph->load(input);
-
-    input.close();
+    mph = new mphf_t(file_path);
 }
 
 

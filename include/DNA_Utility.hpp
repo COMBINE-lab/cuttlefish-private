@@ -100,20 +100,6 @@ private:
         DNA::Base::N, DNA::Base::A, DNA::Base::C, DNA::Base::G, DNA::Base::T
     };
 
-    // Returns a nibble / quartet constructed from the DNA-bases `b1` and `b0`.
-    static constexpr auto Q = [](const DNA::Base b1, const DNA::Base b0) -> uint8_t { return (b1 << 2) | b0; };
-
-    // Base-reversed value of each possible nibble value, i.e. given a nibble
-    // `B_1 B_0` for the bases `B_1` and `B_0`, `base_rev_nibble[Q(B_1, B_0)]`
-    // contains the base-reversed nibble `Q(B_0, B_1)`.
-    static constexpr uint8_t base_rev_nibble[16] =
-    {
-        Q(A, A), Q(C, A), Q(G, A), Q(T, A),
-        Q(A, C), Q(C, C), Q(G, C), Q(T, C),
-        Q(A, G), Q(C, G), Q(G, G), Q(T, G),
-        Q(A, T), Q(C, T), Q(G, T), Q(T, T)
-    };
-
 
 public:
 
@@ -167,46 +153,12 @@ public:
         return REVERSE_MAPPED_EXTENDED_BASE[static_cast<std::size_t>(extended_base)];
     }
 
-    // Returns the base-reversed representation of the `B`-base (DNA) binary
-    // representation of `val`: if `val` represents `b_{B - 1} ... b_1 b_0`,
-    // then returns `b_0 b_1 ... b_{B - 1}`.
-    template <uint16_t B>
-    static uint64_t base_reverse(uint64_t val);
-};
-
-
-template <uint16_t B>
-inline uint64_t DNA_Utility::base_reverse(const uint64_t val)
-{
-    if constexpr(B == 1)
-        return val;
-
-    if constexpr(B == 2)
-        return base_rev_nibble[val];
-
-    if constexpr(B == 3)
-        return ((val & 0b110000) >> 4) | (val & 0b1100) | ((val & 0b11) << 4);
-
-
-    if constexpr(B >= 4)
+    // Returns the mapping integer value of the given integer `base`.
+    static DNA::Base map_base(const uint8_t base)
     {
-        constexpr uint16_t bits    = 2 * B;
-        constexpr uint64_t nibble  = 0b1111;
-
-        const uint64_t low_nibble  = val & nibble;
-        const uint64_t high_nibble = val >> (bits - 4);
-        const uint64_t part_res    = ((uint64_t)base_rev_nibble[low_nibble] << (bits - 4)) | (base_rev_nibble[high_nibble]);
-
-        constexpr uint64_t mask    = (~nibble) & (~(nibble << (bits - 4)));
-        const uint64_t rem_val     = (val & mask) >> 4;
-        const uint64_t rem_res     = base_reverse<B - 4>(rem_val);
-
-        return part_res | (rem_res << 4);
+        return DNA::Base(base);
     }
-
-
-    return 0;
-}
+};
 
 
 

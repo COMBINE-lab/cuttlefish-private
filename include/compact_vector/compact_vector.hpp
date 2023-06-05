@@ -7,6 +7,8 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
+#include <iostream>
+#include <cassert>
 
 #include "compact_iterator.hpp"
 
@@ -258,6 +260,7 @@ public:
   W* get() { return m_mem; }
   const W* get() const { return m_mem; }
   size_t bytes() const { return sizeof(W) * elements_to_words(m_capacity, bits()); }
+  size_t bytes_used() const { return sizeof(W) * elements_to_words(m_size, bits()); }
   inline unsigned bits() const { return static_cast<const Derived*>(this)->bits(); }
   static constexpr unsigned static_bits() { return BITS; }
   static constexpr unsigned used_bits() { return UB; }
@@ -341,10 +344,10 @@ public:
     std::memset(get(), 0, bytes());
   }
 
-  void serialize(const std::string& file_path) const
+  void serialize(const std::string& file_path, const bool shrink = false) const
   {
     std::ofstream output(file_path);
-    serialize(output);
+    serialize(output, shrink);
 
     if(!output)
     {
@@ -370,22 +373,14 @@ public:
     input.close();
   }
 
-protected:
-  void enlarge(size_t given = 0) {
-    const size_t new_capacity = !given ? std::max(m_capacity * 2, (size_t)(bitsof<W>::val / bits() + 1)) : given;
-    W* new_mem = allocate(new_capacity);
-    std::copy(m_mem, m_mem + elements_to_words(m_capacity, bits()), new_mem);
-    deallocate(m_mem, m_capacity);
-    m_mem      = new_mem;
-    m_capacity = new_capacity;
-  }
-
-  void serialize(std::ofstream &output) const
+  void serialize(std::ofstream& output, const bool shrink = false) const
   {
     output.write(reinterpret_cast<const char*>(&m_size), sizeof(m_size));
-    output.write(reinterpret_cast<const char*>(&m_capacity), sizeof(m_capacity));
 
-    output.write(reinterpret_cast<const char*>(m_mem), bytes());
+    const std::size_t cap = (shrink ? m_size : m_capacity);
+    output.write(reinterpret_cast<const char*>(&cap), sizeof(cap));
+
+    output.write(reinterpret_cast<const char*>(m_mem), shrink ? bytes_used() : bytes());
   }
 
   void deserialize(std::ifstream& input)
@@ -397,7 +392,18 @@ protected:
     input.read(reinterpret_cast<char*>(&m_capacity), sizeof(m_capacity));
 
     m_mem = allocate(m_capacity);
-    input.read(reinterpret_cast<char*>(m_mem), sizeof(W) * elements_to_words(m_size, bits()));
+    input.read(reinterpret_cast<char*>(m_mem), bytes());
+  }
+
+
+protected:
+  void enlarge(size_t given = 0) {
+    const size_t new_capacity = !given ? std::max(m_capacity * 2, (size_t)(bitsof<W>::val / bits() + 1)) : given;
+    W* new_mem = allocate(new_capacity);
+    std::copy(m_mem, m_mem + elements_to_words(m_capacity, bits()), new_mem);
+    deallocate(m_mem, m_capacity);
+    m_mem      = new_mem;
+    m_capacity = new_capacity;
   }
 };
 
@@ -462,10 +468,10 @@ public:
     return *this;
   }
 
-  void serialize(const std::string& file_path) const
+  void serialize(const std::string& file_path, const bool shrink = false) const
   {
     std::ofstream output(file_path);
-    serialize(output);
+    serialize(output, shrink);
 
     if(!output)
     {
@@ -490,15 +496,13 @@ public:
     input.close();
   }
 
-protected:
-
-  void serialize(std::ofstream& output) const
+  void serialize(std::ofstream& output, const bool shrink = false) const
   {
     const unsigned bits_per_elem = bits();
     output.write(reinterpret_cast<const char*>(&bits_per_elem), sizeof(bits_per_elem));
 
     // Rest of the fields
-    super::serialize(output);
+    super::serialize(output, shrink);
   }
 
   void deserialize(std::ifstream& input)

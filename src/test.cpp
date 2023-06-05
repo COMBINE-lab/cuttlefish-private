@@ -12,6 +12,7 @@
 // #include "Ref_Parser.hpp"
 // #include "Minimizer_Iterator.hpp"
 // #include "Multiway_Merger.hpp"
+// #include "Kmer_Index.hpp"
 // #include "kseq/kseq.h"
 // #include "spdlog/spdlog.h"
 // #include "spdlog/async.h"
@@ -757,7 +758,100 @@ void minimizer_iterator_test(const char* const file_path)
 
     input.close();
 }
+
+
+template <uint16_t k>
+void cross_check_terminal_kmers(const std::string& path_pref)
+{
+    Kmer_Index<k> kmer_idx(path_pref);
+
+    std::vector<Kmer<k>> from_idx, from_fa;
+
+    Kmer<k> kmer;
+    for(std::size_t id = 0; id < kmer_idx.path_count(); ++id)
+    {
+        kmer_idx.get_kmer(id, 0, kmer);
+        from_idx.emplace_back(kmer);
+
+        if(kmer_idx.path_size(id) > k)
+        {
+            kmer_idx.get_kmer(id, kmer_idx.path_size(id) - k, kmer);
+            from_idx.emplace_back(kmer);
+        }
+    }
+
+    std::cout << "Collected terminal k-mers from the k-mer index.\n";
+
+
+    std::ifstream input(path_pref + ".fa");
+    std::string path;
+    while(input >> path)
+    {
+        if(path.front() == '>')
+            continue;
+
+        from_fa.emplace_back(path, 0);
+
+        if(path.length() > k)
+            from_fa.emplace_back(path, path.length() - k);
+    }
+
+    std::cout << "Collected terminal k-mers from the CdBG output.\n";
+
+    std::cout << "# from k-mer idx: " << from_idx.size() << "\n";
+    std::cout << "# from CdBG o/p:  " << from_fa.size() << "\n";
+
+
+    std::sort(from_idx.begin(), from_idx.end());
+    std::sort(from_fa.begin(), from_fa.end());
+    std::cout << "Terminal k-mers " << (from_idx == from_fa ? "matched" : " doesn't match") << "\n";
+}
+
+
+template <uint16_t k>
+void cross_check_index_kmers(const std::string& op_pref)
+{
+    Kmer_Index<k> kmer_idx(op_pref);
+
+    std::vector<Kmer<k>> from_idx, from_fa;
+
+    Kmer<k> kmer;
+    for(std::size_t id = 0; id < kmer_idx.path_count(); ++id)
+    {
+        const std::size_t path_size = kmer_idx.path_size(id);
+        for(std::size_t idx = 0; idx + k <= path_size; ++idx)
+        {
+            kmer_idx.get_kmer(id, idx, kmer);
+            from_idx.emplace_back(kmer);
+        }
+    }
+
+    std::cout << "Collected all k-mers from the k-mer index.\n";
+
+
+    std::ifstream input(op_pref + ".fa");
+    std::string path;
+    while(input >> path)
+    {
+        if(path.front() == '>')
+            continue;
+
+        for(std::size_t idx = 0; idx + k <= path.length(); ++idx)
+            from_fa.emplace_back(path, idx);
+    }
+
+    std::cout << "Collected all k-mers from the CdBG output.\n";
+
+    std::cout << "# from k-mer idx: " << from_idx.size() << "\n";
+    std::cout << "# from CdBG o/p:  " << from_fa.size() << "\n";
+
+
+    std::sort(from_idx.begin(), from_idx.end());
+    std::sort(from_fa.begin(), from_fa.end());
+    std::cout << "All k-mers " << (from_idx == from_fa ? "matched" : " doesn't match") << "\n";
+}
 */
+
 
 int main(int argc, char** argv)
 {

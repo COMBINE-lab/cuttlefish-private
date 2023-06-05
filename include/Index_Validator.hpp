@@ -6,6 +6,7 @@
 
 
 #include "Kmer_Index.hpp"
+#include "Minimizer_Utility.hpp"
 #include "Ref_Parser.hpp"
 
 #include <cstdint>
@@ -16,6 +17,8 @@
 
 
 // =============================================================================
+
+// TODO: better document and better log messages.
 
 
 // A class to contain the validation algorithms for the Cuttlefish indexings.
@@ -74,12 +77,12 @@ inline bool Index_Validator<k, l>::validate(const std::string& file_path)
         {
             Kmer<l> min_lmer(seq, kmer_idx);
             std::size_t min_idx = kmer_idx;
-            uint64_t min_hash = Minimizer_Iterator::hash(min_lmer.as_int());
+            uint64_t min_hash = Minimizer_Utility::hash(min_lmer.as_int());
 
             for(std::size_t i = kmer_idx + 1; i + l <= kmer_idx + k; ++i)
             {
                 const Kmer<l> lmer(seq, i);
-                const uint64_t lmer_hash = Minimizer_Iterator::hash(lmer.as_int());
+                const uint64_t lmer_hash = Minimizer_Utility::hash(lmer.as_int());
 
                 if(min_hash < lmer_hash)
                     continue;
@@ -111,12 +114,12 @@ inline bool Index_Validator<k, l>::validate(const std::string& file_path)
 
     // Check paths' validity.
 
-    std::cout << "Path counts:\n\tNaive idx: " << ends.size() << ", Cuttlefish idx: " << kmer_index.path_count << ".\n";
-    if(ends.size() != kmer_index.path_count)
+    std::cout << "Path counts:\n\tNaive idx: " << ends.size() << ", Cuttlefish idx: " << kmer_index.path_count_ << ".\n";
+    if(ends.size() != kmer_index.path_count_)
         return false;
 
     for(std::size_t i = 0; i < ends.size(); ++i)
-        if(ends[i] != kmer_index.path_ends->at(i))
+        if(ends[i] != kmer_index.path_ends[i])
             return false;
 
     std::cout << "Path endpoint indices matched.\n";
@@ -134,12 +137,12 @@ inline bool Index_Validator<k, l>::validate(const std::string& file_path)
 
     // Check minimizer instance counts and their offsets in the paths.
 
-    std::cout << "Unique minimizer count:\n\tNaive idx: " << M.size() << ", Cuttlefish idx: " << kmer_index.min_count << ".\n";
-    std::cout << "Minimizer instance count:\n\tNaive idx: " << inst_count << ", Cuttlefish idx: " << kmer_index.num_instances << ".\n";
-    if(M.size() != kmer_index.min_count || inst_count != kmer_index.num_instances)
+    std::cout << "Unique minimizer count:\n\tNaive idx: " << M.size() << ", Cuttlefish idx: " << kmer_index.min_count_ << ".\n";
+    std::cout << "Minimizer instance count:\n\tNaive idx: " << inst_count << ", Cuttlefish idx: " << kmer_index.num_instances_ << ".\n";
+    if(M.size() != kmer_index.min_count_ || inst_count != kmer_index.num_instances_)
         return false;
 
-    const auto& mi_count = *kmer_index.min_instance_count;
+    const auto& mi_count = kmer_index.min_inst_count;
     const auto& m_offset = *kmer_index.min_offset;
     for(const auto p : M)
     {
@@ -187,9 +190,16 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
 
     std::cout << "Loaded the Cuttlefish index.\n";
 
-    const std::size_t path_count = kmer_idx.path_count;
+    if(kmer_idx.l() != l)
+    {
+        std::cout <<    "The minimizer length in the k-mer index is " << kmer_idx.l() <<
+                        ", while the validation is requested for minimizer length " << l << ".\n";
+        return false;
+    }
+
+    const std::size_t path_count = kmer_idx.path_count_;
     const auto& paths = kmer_idx.paths;
-    const auto& p_end = *kmer_idx.path_ends;
+    const auto& p_end = kmer_idx.path_ends;
 
 
     // Load the original sequences.
@@ -224,6 +234,8 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
     std::size_t sum_paths_len = 0;
     std::size_t last_idx = 0;
     std::string path;
+    std::size_t kmer_id = 0;
+    typename Kmer_Index<k>::Kmer_Alignment result;
 
     for(std::size_t path_id = 0; path_id < path_count; ++path_id)
     {
@@ -243,12 +255,12 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
         {
             Kmer<l> min_lmer(seq, idx);
             std::size_t min_idx = idx;
-            uint64_t min_hash = Minimizer_Iterator::hash(min_lmer.as_int());
+            uint64_t min_hash = Minimizer_Utility::hash(min_lmer.as_int());
 
             for(std::size_t i = idx + 1; i + l <= idx + k; ++i)
             {
                 const Kmer<l> lmer(seq, i);
-                const uint64_t lmer_hash = Minimizer_Iterator::hash(lmer.as_int());
+                const uint64_t lmer_hash = Minimizer_Utility::hash(lmer.as_int());
 
                 if(min_hash < lmer_hash)
                     continue;
@@ -276,13 +288,16 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
             }
 
             // Check if the k-mer's containing path ID is correct.
-            if(kmer_idx.query(kmer) != (int64_t)path_id)
+            if(!kmer_idx.query(kmer, result) || result.path_id() != path_id || result.kmer_id() != kmer_id || result.kmer_id_in_path() != idx)
             {
                 std::cout << "Query failed for k-mer: " << kmer << "\n";
 
                 std::cout << "Some k-mer queries failed for true-positive k-mers.\n";
                 return false;
             }
+
+
+            kmer_id++;
         }
 
         sum_paths_len += len;
@@ -305,12 +320,12 @@ inline bool Index_Validator<k, l>::validate(const std::string& seq_path, const s
     std::cout << "Path sequences aligned.\n";
 
 
-    std::cout << "Unique minimizer count:\n\tNaive idx: " << M.size() << ", Cuttlefish idx: " << kmer_idx.min_count << ".\n";
-    std::cout << "Minimizer instance count:\n\tNaive idx: " << inst_count << ", Cuttlefish idx: " << kmer_idx.num_instances << ".\n";
-    if(M.size() != kmer_idx.min_count || inst_count != kmer_idx.num_instances)
+    std::cout << "Unique minimizer count:\n\tNaive idx: " << M.size() << ", Cuttlefish idx: " << kmer_idx.min_count_ << ".\n";
+    std::cout << "Minimizer instance count:\n\tNaive idx: " << inst_count << ", Cuttlefish idx: " << kmer_idx.num_instances_ << ".\n";
+    if(M.size() != kmer_idx.min_count_ || inst_count != kmer_idx.num_instances_)
         return false;
 
-    const auto& mi_count = *kmer_idx.min_instance_count;
+    const auto& mi_count = kmer_idx.min_inst_count;
     const auto& m_offset = *kmer_idx.min_offset;
 
     std::vector<std::size_t> offs;

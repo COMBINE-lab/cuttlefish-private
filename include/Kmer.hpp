@@ -150,6 +150,9 @@ public:
     // Returns the binary data of the k-mer.
     const uint64_t* data() const;
 
+    // Returns the binary data of the k-mer.
+    uint64_t* data();
+
     // Returns `true` iff the k-mer is in the forward direction relative to
     // the other k-mer `kmer_hat`.
     bool in_forward(const Kmer<k>& kmer_hat) const;
@@ -535,6 +538,13 @@ inline DNA::Base Kmer<k>::back() const
 
 template <uint16_t k>
 inline const uint64_t* Kmer<k>::data() const
+{
+    return kmer_data;
+}
+
+
+template <uint16_t k>
+inline uint64_t* Kmer<k>::data()
 {
     return kmer_data;
 }
