@@ -109,17 +109,14 @@ inline bool Minimizer_Iterator<T_seq_, is_canonical_>::operator++()
         last_lmer_bar = (last_lmer_bar >> 2) | (static_cast<minimizer_t>(DNA_Utility::complement(base)) << (2 * (l - 1)));
 
 
-    if(last_lmer_idx + l - 1 >= k)  // The window is now passing over k-length substrings, and slid by offset 1 to the right.
-    {
-        // End of the current k-mer, e = last_lmer_idx + l - 1; So start of the current k-mer: e - (k - 1).
-        const std::size_t curr_kmer_idx = last_lmer_idx + l - 1 - (k - 1);
-        if(dq_f.front().index < curr_kmer_idx)    // This candidate l-mer falls out of the current k-mer.
-            dq_f.pop_front();
+    // End of the current k-mer, e = last_lmer_idx + l - 1; So start of the current k-mer: e - (k - 1).
+    const std::size_t curr_kmer_idx = (last_lmer_idx + l - 1 >= k - 1lu ? last_lmer_idx + l - 1 - (k - 1) : 0);
+    if(dq_f.front().index < curr_kmer_idx)    // This candidate l-mer falls out of the current k-mer.
+        dq_f.pop_front();
 
-        if constexpr(is_canonical_)
-            if(dq_r.front().index < curr_kmer_idx)  // This candidate l-mer falls out of the current k-mer.
-                dq_r.pop_front();
-    }
+    if constexpr(is_canonical_)
+        if(dq_r.front().index < curr_kmer_idx)  // This candidate l-mer falls out of the current k-mer.
+            dq_r.pop_front();
 
 
     const auto fix_dq =
