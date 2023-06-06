@@ -18,14 +18,11 @@ template <typename T_seq_, bool is_canonical_> class Minimizer_Iterator;
 // A class containing various utility methods for k-mer minimizers.
 class Minimizer_Utility
 {
-private:
-
-    constexpr static uint64_t seed = 0; // Seed for hashing l-mers.
-
 public:
 
-    // Returns the hash value of the l-mer `lmer`.
-    static uint64_t hash(cuttlefish::minimizer_t lmer);
+    // Returns the hash value of the l-mer `lmer`. The seed-value `seed` is used
+    // in hashing.
+    static uint64_t hash(cuttlefish::minimizer_t lmer, uint64_t seed = 0);
 
     // Extracts the minimizer of the k-mer `kmer` into `min`, and its index into
     // `idx`.
@@ -93,7 +90,7 @@ inline bool Lmer_Tuple::operator<(const Lmer_Tuple& rhs) const
 }
 
 
-inline uint64_t Minimizer_Utility::hash(const cuttlefish::minimizer_t lmer)
+inline uint64_t Minimizer_Utility::hash(const cuttlefish::minimizer_t lmer, const uint64_t seed)
 {
 #ifdef CF_DEVELOP_MODE
     return lmer;    // TODO: add as debug option for developer.
