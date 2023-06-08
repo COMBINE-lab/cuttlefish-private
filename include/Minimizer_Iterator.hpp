@@ -33,6 +33,8 @@ private:
     const uint16_t k;   // Size of the k-mers.
     const uint16_t l;   // Size of the minimizers.
 
+    const uint64_t seed;    // Seed for hashing l-mers.
+
     minimizer_t last_lmer;  // The last l-mer processed.
     minimizer_t last_lmer_bar;  // Reverse complement of the last l-mer processed.
     std::size_t last_lmer_idx;  // Index into the sequence of the last l-mer processed.
@@ -43,14 +45,13 @@ private:
     // is for the forward-strand and `dq_r` is for the reverse-strand.
     std::deque<Lmer_Tuple> dq_f, dq_r;
 
-    constexpr static uint64_t seed = 0; // Seed for hashing l-mers.
-
 public:
 
     // Constructs a minimizer iterator to iterate over `l`-minimizers of
     // the `k`-mers of the sequence `seq`, of length `seq_len`, in a streaming
     // manner. The iterator sits at the first k-mer after the construction.
-    Minimizer_Iterator(T_seq_ seq, std::size_t seq_len, uint16_t k, uint16_t l);
+    // The seed-value `seed` is used in hashing the `l`-mers.
+    Minimizer_Iterator(T_seq_ seq, std::size_t seq_len, uint16_t k, uint16_t l, uint64_t seed = 0);
 
     // Moves the iterator to the next k-mer in the sequence. Returns `true` iff
     // the current k-mer is not the last k-mer in the sequence.
@@ -64,11 +65,12 @@ public:
 
 
 template <typename T_seq_, bool is_canonical_>
-inline Minimizer_Iterator<T_seq_, is_canonical_>::Minimizer_Iterator(T_seq_ const seq, const std::size_t seq_len, const uint16_t k, const uint16_t l):
+inline Minimizer_Iterator<T_seq_, is_canonical_>::Minimizer_Iterator(T_seq_ const seq, const std::size_t seq_len, const uint16_t k, const uint16_t l, const uint64_t seed):
     seq(seq),
     seq_len(seq_len),
     k(k),
     l(l),
+    seed(seed),
     clear_MSN_mask(~(static_cast<minimizer_t>(0b11) << (2 * (l - 1))))
 {
     assert(l <= k);
@@ -87,9 +89,9 @@ inline Minimizer_Iterator<T_seq_, is_canonical_>::Minimizer_Iterator(T_seq_ cons
             last_lmer_bar |= (static_cast<minimizer_t>(DNA_Utility::complement(base)) << (2 * idx));
     }
 
-    dq_f.emplace_back(last_lmer, last_lmer_idx, Minimizer_Utility::hash(last_lmer));
+    dq_f.emplace_back(last_lmer, last_lmer_idx, Minimizer_Utility::hash(last_lmer, seed));
     if constexpr(is_canonical_)
-        dq_r.emplace_back(last_lmer_bar, last_lmer_idx, Minimizer_Utility::hash(last_lmer_bar));
+        dq_r.emplace_back(last_lmer_bar, last_lmer_idx, Minimizer_Utility::hash(last_lmer_bar, seed));
 
     while(last_lmer_idx + (l - 1) < static_cast<std::size_t>(k - 1))
         operator++();
@@ -132,9 +134,9 @@ inline bool Minimizer_Iterator<T_seq_, is_canonical_>::operator++()
         };
 
 
-    fix_dq(dq_f, Lmer_Tuple(last_lmer, last_lmer_idx, Minimizer_Utility::hash(last_lmer)));
+    fix_dq(dq_f, Lmer_Tuple(last_lmer, last_lmer_idx, Minimizer_Utility::hash(last_lmer, seed)));
     if constexpr(is_canonical_)
-        fix_dq(dq_r, Lmer_Tuple(last_lmer_bar, last_lmer_idx, Minimizer_Utility::hash(last_lmer_bar)));
+        fix_dq(dq_r, Lmer_Tuple(last_lmer_bar, last_lmer_idx, Minimizer_Utility::hash(last_lmer_bar, seed)));
 
     return true;
 }
