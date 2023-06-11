@@ -36,7 +36,7 @@ public:
 
     // Construct an edge `({(u, s_u), (v, s_v)}, w, b)`. `u_is_phi` and
     // `v_is_phi` denote whether `u` and `v` are ϕ, respectively.
-    Discontinuity_Edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, uint32_t w, uint16_t b, bool u_is_phi = false, bool v_is_phi = false);
+    Discontinuity_Edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, uint16_t w, uint16_t b, bool u_is_phi = false, bool v_is_phi = false);
 
     // Returns the `u` endpoint of the edge.
     const Kmer<k>& u() const { return u_; }
@@ -56,7 +56,7 @@ public:
 
 
 template <uint16_t k>
-inline Discontinuity_Edge<k>::Discontinuity_Edge(const Kmer<k>& u, const cuttlefish::side_t s_u, const Kmer<k>& v, const cuttlefish::side_t s_v, const uint32_t w, const uint16_t b, bool u_is_phi, bool v_is_phi):
+inline Discontinuity_Edge<k>::Discontinuity_Edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const uint16_t w, const uint16_t b, const bool u_is_phi, const bool v_is_phi):
       u_(u)
     , v_(v)
     , s_u(s_u)
