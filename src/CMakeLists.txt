@@ -49,6 +49,7 @@ set(PROJECT_SRC
         Kmer_Index_Utility.cpp
         Minimizer_Instance_Iterator.cpp
         Multiway_Merger.cpp
+        Edge_Matrix.cpp
         commands.cpp
     )
 
