@@ -28,8 +28,8 @@ private:
 
     Kmer<k> u_; // An endpoint of the edge.
     Kmer<k> v_; // An endpoint of the edge.
-    side_t s_u; // Side of the vertex `u_` to which the edge is incident to.
-    side_t s_v; // Side of the vertex `v_` to which the edge is incident to.
+    side_t s_u_;    // Side of the vertex `u_` to which the edge is incident to.
+    side_t s_v_;    // Side of the vertex `v_` to which the edge is incident to.
     bool u_is_phi_; // Whether `u_` is the ϕ vertex.
     bool v_is_phi_; // Whether `v_` is the ϕ vertex.
     uint16_t bucket_id; // ID of the bucket of this edge.
@@ -51,6 +51,15 @@ public:
     // Returns the `v` endpoint of the edge.
     const Kmer<k>& v() const { return v_; }
 
+    // Returns the side of the `u` endpoint to which the edge is incident to.
+    side_t s_u() const { return s_u_; }
+
+    // Returns the side of the `v` endpoint to which the edge is incident to.
+    side_t s_v() const { return s_v_; }
+
+    // Returns the weight of the edge.
+    weight_t w() const { return weight; }
+
     // Returns whether `u` is the ϕ vertex.
     bool u_is_phi() const { return u_is_phi_; }
 
@@ -66,8 +75,8 @@ template <uint16_t k>
 inline Discontinuity_Edge<k>::Discontinuity_Edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const weight_t w, const uint16_t b, const bool u_is_phi, const bool v_is_phi):
       u_(u)
     , v_(v)
-    , s_u(s_u)
-    , s_v(s_v)
+    , s_u_(s_u)
+    , s_v_(s_v)
     , u_is_phi_(u_is_phi)
     , v_is_phi_(v_is_phi)
     , bucket_id(b)
@@ -79,7 +88,7 @@ template <uint16_t k>
 inline void Discontinuity_Edge<k>::invert()
 {
     std::swap(u_, v_);
-    std::swap(s_u, s_v);
+    std::swap(s_u_, s_v_);
     std::swap(u_is_phi_, v_is_phi_);
 }
 
