@@ -102,7 +102,7 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
         }
     }
 
-    E.serialize();
+    // E.serialize();
 
 
     std::cerr << "#vertices: " << vertex_count << "\n";

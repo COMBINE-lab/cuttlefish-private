@@ -58,7 +58,10 @@ public:
     // are ϕ, respectively.
     void add(Kmer<k> u, side_t s_u, Kmer<k> v, side_t s_v, uint16_t w, uint16_t b, bool u_is_phi = false, bool v_is_phi = false);
 
-    // Serializes the matrix to external-memory.
+    // Serializes the matrix to external-memory. Edges should not be added
+    // anymore once this has been invoked. This method is required only if the
+    // entirety of the edge-matrix needs to live in external-memory after the
+    // parent process finishes.
     void serialize();
 
     // Reads a chunk of edges from the column `j` into `buf`. Returns `true` iff

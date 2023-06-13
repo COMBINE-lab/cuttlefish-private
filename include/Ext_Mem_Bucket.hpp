@@ -7,9 +7,11 @@
 #include <cstddef>
 #include <vector>
 #include <string>
+#include <cstring>
 #include <fstream>
 #include <filesystem>
 #include <cstdlib>
+#include <cassert>
 
 
 namespace cuttlefish
@@ -58,7 +60,9 @@ public:
     // the bucket.
     template <typename... Args> void emplace(Args&&... args);
 
-    // Closes the bucket.
+    // Closes the bucket. Elements should not be added anymore once this has
+    // been invoked. This method is required only if the entirety of the bucket
+    // needs to live in external-memory after the parent process finishes.
     void close();
 
     // Loads the bucket into the vector `v`.
@@ -125,7 +129,10 @@ void Ext_Mem_Bucket<T_>::load(std::vector<T_>& v) const
     std::error_code ec;
     const auto file_sz = std::filesystem::file_size(file_path, ec);
 
-    v.resize(file_sz / sizeof(T_));
+    assert(file_sz % sizeof(T_) == 0);
+    assert(file_sz / sizeof(T_) + buf.size() == size_);
+
+    v.resize(size_);
 
     std::ifstream input(file_path);
     input.read(reinterpret_cast<char*>(v.data()), file_sz);
@@ -136,6 +143,9 @@ void Ext_Mem_Bucket<T_>::load(std::vector<T_>& v) const
         std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
         std::exit(EXIT_FAILURE);
     }
+
+
+    std::memcpy(reinterpret_cast<char*>(v.data()) + file_sz, reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
 }
 
 }
