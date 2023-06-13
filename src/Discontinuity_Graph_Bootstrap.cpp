@@ -4,7 +4,6 @@
 #include "Minimizer_Iterator.hpp"
 #include "Discontinuity_Edge.hpp"
 #include "Ref_Parser.hpp"
-#include "Edge_Matrix.hpp"
 #include "globals.hpp"
 
 #include <cstddef>
@@ -14,24 +13,25 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Discontinuity_Graph_Bootstrap<k>::Discontinuity_Graph_Bootstrap(const std::string& cdbg_path, const uint16_t l, const uint64_t seed):
+Discontinuity_Graph_Bootstrap<k>::Discontinuity_Graph_Bootstrap(const std::string& cdbg_path, const uint16_t l, const std::size_t part_count, const std::string& graph_path, const uint64_t seed):
       cdbg_path(cdbg_path)
     , l(l)
     , minimizer_seed(seed)
+    , part_count(part_count)
+    , graph_path(graph_path)
     , phi(phi_label)
+    , E(part_count, graph_path)
 {}
 
 
 template <uint16_t k>
-void Discontinuity_Graph_Bootstrap<k>::generate(const std::size_t part_count, const std::string& path) const
+void Discontinuity_Graph_Bootstrap<k>::generate()
 {
     uint64_t vertex_count = 0;  // Number of discontinuity k-mers.
     uint64_t edge_count = 0;    // Number of edges in the discontinuity graph.
 
     uint64_t trivial_unitig_count = 0;  // Number of maximal unitigs in the dBG without a discontinuity k-mer.
     std::size_t max_trivial_len = 0;    // Length of the longest maximal unitig without a discontinuity k-mer.
-
-    Edge_Matrix<k> E(part_count, path);
 
     Ref_Parser parser(cdbg_path);
     while(parser.read_next_seq())
