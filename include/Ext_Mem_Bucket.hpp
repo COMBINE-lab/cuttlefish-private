@@ -25,8 +25,8 @@ private:
     static constexpr std::size_t in_memory_bytes = 16lu * 1024; // 16KB.
 
     const std::string file_path;    // Path to the file storing the bucket.
-    const std::size_t max_buf_bytes;    // Maximum size of the in-memory buffer in bytes.
-    const std::size_t max_buf_elems;    // Maximum size of the in-memory buffer in elements.
+    const std::size_t max_write_buf_bytes;  // Maximum size of the in-memory write-buffer in bytes.
+    const std::size_t max_write_buf_elems;  // Maximum size of the in-memory write-buffer in elements.
 
     std::vector<T_> buf;    // In-memory buffer of the bucket-elements.
     std::size_t size_;  // Number of elements added to the bucket.
@@ -48,6 +48,9 @@ public:
     Ext_Mem_Bucket(): Ext_Mem_Bucket("", 0)
     {}
 
+    // Returns the size of the bucket.
+    std::size_t size() const { return size_; }
+
     // Adds the element `elem` to the bucket.
     void add(const T_& elem);
 
@@ -66,11 +69,11 @@ public:
 template <typename T_>
 inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(const std::string& file_path, const std::size_t buf_sz):
       file_path(file_path)
-    , max_buf_bytes(buf_sz)
-    , max_buf_elems(buf_sz / sizeof(T_))
+    , max_write_buf_bytes(buf_sz)
+    , max_write_buf_elems(buf_sz / sizeof(T_))
     , size_(0)
 {
-    buf.reserve(max_buf_elems);
+    buf.reserve(max_write_buf_elems);
 
     if(!file_path.empty())
         file.open(file_path);
@@ -82,7 +85,7 @@ void Ext_Mem_Bucket<T_>::add(const T_& elem)
 {
     buf.push_back(elem);
     size_++;
-    if(buf.size() >= max_buf_elems)
+    if(buf.size() >= max_write_buf_elems)
         flush();
 }
 
@@ -93,7 +96,7 @@ void Ext_Mem_Bucket<T_>::emplace(Args&&... args)
 {
     buf.emplace_back(std::forward<Args>(args)...);  // TODO: learn details.
     size_++;
-    if(buf.size() >= max_buf_elems)
+    if(buf.size() >= max_write_buf_elems)
         flush();
 }
 
