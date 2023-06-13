@@ -12,7 +12,7 @@ template <uint16_t k> const std::string Edge_Matrix<k>::edge_block_ext(".blk");
 
 template <uint16_t k>
 Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
-      vertex_part_count(part_count)
+      vertex_part_count_(part_count)
     , path(path)
 {
     // TODO: fix better policy.
@@ -40,8 +40,8 @@ const std::string Edge_Matrix<k>::bucket_file_path(const std::size_t i, const st
 template <uint16_t k>
 void Edge_Matrix<k>::serialize()
 {
-    for(std::size_t i = 0; i <= vertex_part_count; ++i)
-        for(std::size_t j = 0; j <= vertex_part_count; ++j)
+    for(std::size_t i = 0; i <= vertex_part_count_; ++i)
+        for(std::size_t j = 0; j <= vertex_part_count_; ++j)
             edge_matrix[i][j].close();
 }
 

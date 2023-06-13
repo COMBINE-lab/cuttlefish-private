@@ -26,7 +26,7 @@ private:
 
     static const std::string edge_block_ext;
 
-    const std::size_t vertex_part_count;    // Number of vertex-partitions in the graph; it needs to be a power of 2.
+    const std::size_t vertex_part_count_;   // Number of vertex-partitions in the graph; it needs to be a power of 2.
     const std::string path; // File-path prefix to the external-memory blocks of the matrix.
     std::vector<std::vector<Ext_Mem_Bucket<Discontinuity_Edge<k>>>> edge_matrix;    // Blocked edge matrix.
 
@@ -44,6 +44,9 @@ public:
     // partition-count needs to be a power of 2.
     Edge_Matrix(std::size_t part_count, const std::string& path);
 
+    // Returns the number of vertex-partitions in the graph.
+    std::size_t vertex_part_count() const { return vertex_part_count_; }
+
     // Adds a discontinuity-edge `e` to the matrix.
     void add(Discontinuity_Edge<k> e);
 
@@ -60,7 +63,7 @@ public:
 template <uint16_t k>
 inline std::size_t Edge_Matrix<k>::partition(const Kmer<k>& kmer) const
 {
-    return (kmer.to_u64() & (vertex_part_count - 1)) + 1;
+    return (kmer.to_u64() & (vertex_part_count_ - 1)) + 1;
 }
 
 
