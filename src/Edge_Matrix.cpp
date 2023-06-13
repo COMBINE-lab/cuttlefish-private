@@ -8,6 +8,8 @@
 namespace cuttlefish
 {
 
+template <uint16_t k> const std::string Edge_Matrix<k>::edge_block_ext(".blk");
+
 template <uint16_t k>
 Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
       vertex_part_count(part_count)
@@ -24,7 +26,14 @@ Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
     for(std::size_t i = 0; i <= part_count; ++i)
         for(std::size_t j = 0; j <= part_count; ++j)
             j < i ? edge_matrix[i].emplace_back() :
-                    edge_matrix[i].emplace_back(path + std::string(".") + std::to_string(i) + "-" + std::to_string(j) + std::string(".blk"));
+                    edge_matrix[i].emplace_back(bucket_file_path(i, j));
+}
+
+
+template <uint16_t k>
+const std::string Edge_Matrix<k>::bucket_file_path(const std::size_t i, const std::size_t j) const
+{
+    return path + std::string(".") + std::to_string(i) + "-" + std::to_string(j) + edge_block_ext;
 }
 
 

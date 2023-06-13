@@ -24,10 +24,15 @@ class Edge_Matrix
 {
 private:
 
+    static const std::string edge_block_ext;
+
     const std::size_t vertex_part_count;    // Number of vertex-partitions in the graph; it needs to be a power of 2.
     const std::string path; // File-path prefix to the external-memory blocks of the matrix.
     std::vector<std::vector<Ext_Mem_Bucket<Discontinuity_Edge<k>>>> edge_matrix;    // Blocked edge matrix.
 
+    // Returns the path to the file storing the `[i, j]`'th block in external
+    // memory.
+    const std::string bucket_file_path(std::size_t i, std::size_t j) const;
 
     // Returns the partition ID for the k-mer `kmer`.
     std::size_t partition(const Kmer<k>& kmer) const;
