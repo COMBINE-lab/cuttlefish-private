@@ -14,6 +14,7 @@ template <uint16_t k>
 Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
       vertex_part_count_(part_count)
     , path(path)
+    , row_to_read(part_count + 1, 0)
 {
     // TODO: fix better policy.
     if((part_count & (part_count - 1)) != 0)
@@ -43,6 +44,19 @@ void Edge_Matrix<k>::serialize()
     for(std::size_t i = 0; i <= vertex_part_count_; ++i)
         for(std::size_t j = 0; j <= vertex_part_count_; ++j)
             edge_matrix[i][j].close();
+}
+
+
+template <uint16_t k>
+bool Edge_Matrix<k>::read_column_buffered(const std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const
+{
+    if(row_to_read[j] >= j)
+        return false;
+
+    edge_matrix[row_to_read[j]][j].load(buf);
+    row_to_read[j]++;
+
+    return true;
 }
 
 }

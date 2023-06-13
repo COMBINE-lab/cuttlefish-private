@@ -38,6 +38,9 @@ private:
 
 public:
 
+    // Constructs a placeholder edge.
+    Discontinuity_Edge(){}
+
     // Construct an edge `({(u, s_u), (v, s_v)}, w, b)`. `u_is_phi` and
     // `v_is_phi` denote whether `u` and `v` are ϕ, respectively.
     Discontinuity_Edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, weight_t w, uint16_t b, bool u_is_phi = false, bool v_is_phi = false);

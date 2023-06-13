@@ -30,6 +30,9 @@ private:
     const std::string path; // File-path prefix to the external-memory blocks of the matrix.
     std::vector<std::vector<Ext_Mem_Bucket<Discontinuity_Edge<k>>>> edge_matrix;    // Blocked edge matrix.
 
+    mutable std::vector<std::size_t> row_to_read;   // `j`'th entry contains the row of the next block to read from column `j`.
+
+
     // Returns the path to the file storing the `[i, j]`'th block in external
     // memory.
     const std::string bucket_file_path(std::size_t i, std::size_t j) const;
@@ -57,6 +60,11 @@ public:
 
     // Serializes the matrix to external-memory.
     void serialize();
+
+    // Reads a chunk of edges from the column `j` into `buf`. Returns `true` iff
+    // some edges are read, i.e. the column had remaining edges to be read off.
+    // NB: this does not read the blocks in the diagonal.
+    bool read_column_buffered(std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const;
 };
 
 
