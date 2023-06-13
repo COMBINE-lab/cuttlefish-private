@@ -8,6 +8,8 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <filesystem>
+#include <cstdlib>
 
 
 namespace cuttlefish
@@ -56,8 +58,8 @@ public:
     // Closes the bucket.
     void close();
 
-    // Returns the size of the bucket.
-    std::size_t size() const { return size_; }
+    // Loads the bucket into the vector `v`.
+    void load(std::vector<T_>& v) const;
 };
 
 
@@ -111,6 +113,26 @@ void Ext_Mem_Bucket<T_>::close()
         flush();
 
     file.close();
+}
+
+
+template <typename T_>
+void Ext_Mem_Bucket<T_>::load(std::vector<T_>& v) const
+{
+    std::error_code ec;
+    const auto file_sz = std::filesystem::file_size(file_path, ec);
+
+    v.resize(file_sz / sizeof(T_));
+
+    std::ifstream input(file_path);
+    input.read(reinterpret_cast<char*>(v.data()), file_sz);
+    input.close();
+
+    if(ec || !input)
+    {
+        std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 }
