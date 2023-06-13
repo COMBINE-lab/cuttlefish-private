@@ -20,6 +20,10 @@ namespace cuttlefish
 template <uint16_t k>
 class Discontinuity_Edge
 {
+public:
+
+    typedef uint16_t weight_t;
+
 private:
 
     Kmer<k> u_; // An endpoint of the edge.
@@ -29,14 +33,14 @@ private:
     bool u_is_phi_; // Whether `u_` is the ϕ vertex.
     bool v_is_phi_; // Whether `v_` is the ϕ vertex.
     uint16_t bucket_id; // ID of the bucket of this edge.
-    uint16_t weight;    // Weight of the edge.
+    weight_t weight;    // Weight of the edge.
 
 
 public:
 
     // Construct an edge `({(u, s_u), (v, s_v)}, w, b)`. `u_is_phi` and
     // `v_is_phi` denote whether `u` and `v` are ϕ, respectively.
-    Discontinuity_Edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, uint16_t w, uint16_t b, bool u_is_phi = false, bool v_is_phi = false);
+    Discontinuity_Edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, weight_t w, uint16_t b, bool u_is_phi = false, bool v_is_phi = false);
 
     // Returns the `u` endpoint of the edge.
     const Kmer<k>& u() const { return u_; }
@@ -56,7 +60,7 @@ public:
 
 
 template <uint16_t k>
-inline Discontinuity_Edge<k>::Discontinuity_Edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const uint16_t w, const uint16_t b, const bool u_is_phi, const bool v_is_phi):
+inline Discontinuity_Edge<k>::Discontinuity_Edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const weight_t w, const uint16_t b, const bool u_is_phi, const bool v_is_phi):
       u_(u)
     , v_(v)
     , s_u(s_u)
