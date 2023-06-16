@@ -20,10 +20,6 @@ namespace cuttlefish
 template <uint16_t k>
 class Discontinuity_Edge
 {
-public:
-
-    typedef uint16_t weight_t;
-
 private:
 
     Kmer<k> u_; // An endpoint of the edge.

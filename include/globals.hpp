@@ -62,6 +62,9 @@ namespace cuttlefish
 
     // Minimizers can be represented using 64-bit integers.
     typedef uint64_t minimizer_t;
+
+    // Type of weights of edges in the discontinuity-graph.
+    typedef uint16_t weight_t;
 }
 
 
