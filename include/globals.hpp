@@ -50,10 +50,11 @@ namespace cuttlefish
     };
 
 
-    typedef enum class Side: bool
+    typedef enum class Side: uint8_t
     {
-        front = false,
-        back = true
+        front = 0,
+        back = 1,
+        unspecified = 2
     } side_t;
 
 
