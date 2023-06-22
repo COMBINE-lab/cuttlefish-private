@@ -64,6 +64,9 @@ public:
     // parent process finishes.
     void serialize();
 
+    // Reads the edges from the `[j, j]`'th block into `buf`.
+    void read_diagonal_block(std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const;
+
     // Reads a chunk of edges from the column `j` into `buf`. Returns `true` iff
     // some edges are read, i.e. the column had remaining edges to be read off.
     // NB: this does not read the blocks in the diagonal.

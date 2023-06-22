@@ -48,6 +48,13 @@ void Edge_Matrix<k>::serialize()
 
 
 template <uint16_t k>
+void Edge_Matrix<k>::read_diagonal_block(const std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const
+{
+    edge_matrix[j][j].load(buf);
+}
+
+
+template <uint16_t k>
 bool Edge_Matrix<k>::read_column_buffered(const std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const
 {
     if(row_to_read[j] >= j)
