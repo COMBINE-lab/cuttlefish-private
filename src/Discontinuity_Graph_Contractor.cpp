@@ -8,9 +8,10 @@ namespace cuttlefish
 template <uint16_t k>
 Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, const std::string& temp_path):
       E(E)
+    , work_path(temp_path)
 {
     for(std::size_t i = 0; i <= E.vertex_part_count() + 1; ++i)
-        P_v.emplace_back(temp_path + std::string("_") + std::to_string(i));
+        P_v.emplace_back(work_path + std::string("P_v_") + std::to_string(i));
 }
 
 

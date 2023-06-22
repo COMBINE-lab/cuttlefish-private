@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <string>
 #include <unordered_map>
 #include <tuple>
 
@@ -29,6 +30,8 @@ class Discontinuity_Graph_Contractor
 private:
 
     Edge_Matrix<k>& E;  // Edge matrix of the discontinuity-graph.
+
+    const std::string work_path;    // Path-prefix to temporary working files.
 
     std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
 
