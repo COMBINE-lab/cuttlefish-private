@@ -15,7 +15,7 @@
 #include <cstddef>
 #include <vector>
 #include <unordered_map>
-#include <utility>
+#include <tuple>
 
 
 namespace cuttlefish
@@ -44,8 +44,9 @@ private:
     void contract_diagonal_block(std::size_t j);
 
     // Traverses the chain of vertices seen so far connected to `u`; returns the
-    // endpoint of the chain and the total edge-cost encountered up-to that.
-    std::pair<Kmer<k>, weight_t> traverse_chain(Kmer<k> u) const;
+    // endpoint of the chain, the side through which it is connected to the
+    // chain, and the total edge-cost encountered up-to that.
+    std::tuple<Kmer<k>, side_t, weight_t> traverse_chain(Kmer<k> u) const;
 
     // Forms a meta-vertex in the contracted graph with the vertex `v` belonging
     // to the vertex-partition `p_id`. In the contracted graph, `v` has a `w_1`

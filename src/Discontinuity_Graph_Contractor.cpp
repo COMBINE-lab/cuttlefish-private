@@ -1,8 +1,6 @@
 
 #include "Discontinuity_Graph_Contractor.hpp"
 
-#include <utility>
-
 
 namespace cuttlefish
 {
@@ -96,17 +94,24 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
     E.read_diagonal_block(j, buf);
     for(const auto& e : buf)
     {
-        const auto [u, w_u] = traverse_chain(e.u());
-        const auto [v, w_v] = traverse_chain(e.v());
-        M[u] = Other_End(v, side_t::unspecified, false, w_u + e.w() + w_v, true);
-        M[v] = Other_End(u, side_t::unspecified, false, w_v + e.w() + w_u, true);
+        auto [u, s_u, w_u] = traverse_chain(e.u());
+        auto [v, s_v, w_v] = traverse_chain(e.v());
+
+        if(s_u == side_t::unspecified)
+            s_u = e.s_u();
+        if(s_v == side_t::unspecified)
+            s_v = e.s_v();
+
+        M[u] = Other_End(v, s_v, false, w_u + e.w() + w_v, true);
+        M[v] = Other_End(u, s_u, false, w_v + e.w() + w_u, true);
       }
 }
 
 
 template <uint16_t k>
-std::pair<Kmer<k>, weight_t> Discontinuity_Graph_Contractor<k>::traverse_chain(Kmer<k> u) const
+std::tuple<Kmer<k>, side_t, weight_t> Discontinuity_Graph_Contractor<k>::traverse_chain(Kmer<k> u) const
 {
+    side_t s_u = side_t::unspecified;   // Side through which `u` is connected to the chain.
     weight_t w = 0;   // Weight of the traversed chain.
     Kmer<k> p_u = u;  // Last vertex seen before `u`.
 
@@ -122,10 +127,11 @@ std::pair<Kmer<k>, weight_t> Discontinuity_Graph_Contractor<k>::traverse_chain(K
 
         p_u = u;
         u = other_end.v();
+        s_u = other_end.s_v();
         w += other_end.w();
     }
 
-    return std::make_pair(u, w);
+    return std::make_tuple(u, s_u, w);
 }
 
 }
