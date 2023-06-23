@@ -50,6 +50,7 @@ set(PROJECT_SRC
         Minimizer_Instance_Iterator.cpp
         Multiway_Merger.cpp
         Discontinuity_Graph_Bootstrap.cpp
+        dBG_Contractor.cpp
         Edge_Matrix.cpp
         Discontinuity_Graph_Contractor.cpp
         Contracted_Graph_Expander.cpp
