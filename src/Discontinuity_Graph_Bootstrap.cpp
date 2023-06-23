@@ -13,14 +13,12 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Discontinuity_Graph_Bootstrap<k>::Discontinuity_Graph_Bootstrap(const std::string& cdbg_path, const uint16_t l, const std::size_t part_count, const std::string& graph_path, const uint64_t seed):
+Discontinuity_Graph_Bootstrap<k>::Discontinuity_Graph_Bootstrap(const std::string& cdbg_path, const uint16_t l, Edge_Matrix<k>& E, const uint64_t seed):
       cdbg_path(cdbg_path)
     , l(l)
     , minimizer_seed(seed)
-    , part_count(part_count)
-    , graph_path(graph_path)
     , phi(phi_label)
-    , E(part_count, graph_path)
+    , E(E)
 {}
 
 

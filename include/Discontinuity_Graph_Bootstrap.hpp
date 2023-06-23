@@ -27,9 +27,6 @@ private:
     const uint16_t l;   // Minimizer size.
     const uint64_t minimizer_seed;  // Seed used in computing minimizer-hashes.
 
-    const std::size_t part_count;   // Number of vertex-partitions in the discontinuity graph.
-    const std::string graph_path;   // Path-prefix to the constructed graph.
-
     // k-mer (super-)label of the ϕ-vertex in the discontinuity graph.  // TODO: do better.
     static constexpr const char phi_label[] =   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
                                                 "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
@@ -37,15 +34,16 @@ private:
                                                 "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
     const Kmer<k> phi;  // ϕ k-mer connected to each chain-end in the discontinuity graph.
 
-    Edge_Matrix<k> E;   // The edge-matrix of the discontinuity-graph.
+    Edge_Matrix<k>& E;  // The edge-matrix of the discontinuity-graph.
 
 
 public:
 
-    // Constructs a graph-bootstrapper from the compacted de Bruijn graph at the
-    // path `cdbg_path`. `l`-minimizers are used for the graph, and the seed-
-    // value `seed` is used in minimizer-hashing.
-    Discontinuity_Graph_Bootstrap(const std::string& cdbg_path, uint16_t l, std::size_t part_count, const std::string& graph_path, uint64_t seed = 0);
+    // Constructs a discontinuity graph bootstrapper from the compacted de
+    // Bruijn graph at the path `cdbg_path`. `l`-minimizers are used for the
+    // graph, and the seed-value `seed` is used in minimizer-hashing. The graph
+    // is constructed at the edge-matrix `E`.
+    Discontinuity_Graph_Bootstrap(const std::string& cdbg_path, uint16_t l, Edge_Matrix<k>& E, uint64_t seed = 0);
 
     // Generates the discontinuity-graph
     void generate();
