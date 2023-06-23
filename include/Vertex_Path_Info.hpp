@@ -54,6 +54,37 @@ public:
     side_t o() const { return o_; }
 };
 
+
+// A vertex and its path-information.
+template <uint16_t k>
+class Vertex_Path_Info_Pair
+{
+private:
+
+    Kmer<k> v_; // The vertex.
+    Vertex_Path_Info<k> path_info_; // Path-information of the vertex.
+
+
+public:
+
+    typedef typename Vertex_Path_Info<k>::path_id_t path_id_t;
+
+    // For a vertex `v`, constructs a pairing of it with its path-info specified
+    // with its path-ID `p` and rank in the path `r` when the path is traversed
+    // in the orientation such that the traversal exits `v` through side `o`.
+    Vertex_Path_Info_Pair(const Kmer<k> v, const path_id_t p, const weight_t r, const side_t o):
+          v_(v)
+        , path_info_(p, r, o)
+    {}
+
+
+    // Returns the vertex.
+    const auto v() const { return v_; }
+
+    // Returns the path-info of the vertex.
+    const auto path_info() const { return path_info_; }
+};
+
 }
 
 
