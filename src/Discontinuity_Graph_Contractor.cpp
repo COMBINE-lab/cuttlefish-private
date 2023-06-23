@@ -8,14 +8,11 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, const std::string& temp_path):
+Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Vertex_Path_Info_Pair<k>>>& P_v, const std::string& temp_path):
       E(E)
+    , P_v(P_v)
     , work_path(temp_path)
-{
-    P_v.emplace_back();
-    for(std::size_t i = 1; i <= E.vertex_part_count(); ++i)
-        P_v.emplace_back(work_path + std::string(".P_v_") + std::to_string(i));
-}
+{}
 
 
 template <uint16_t k>
@@ -115,7 +112,7 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
     }
 
 
-    std::ofstream output(work_path + std::string(".D_") + std::to_string(j));
+    std::ofstream output(work_path + std::string("D_") + std::to_string(j));
     output.write(reinterpret_cast<const char*>(D_j.data()), D_j.size() * sizeof(Discontinuity_Edge<k>));
     output.close();
 }
