@@ -12,7 +12,8 @@ Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>
       E(E)
     , work_path(temp_path)
 {
-    for(std::size_t i = 0; i <= E.vertex_part_count() + 1; ++i)
+    P_v.emplace_back();
+    for(std::size_t i = 1; i <= E.vertex_part_count(); ++i)
         P_v.emplace_back(work_path + std::string(".P_v_") + std::to_string(i));
 }
 
