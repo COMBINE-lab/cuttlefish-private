@@ -52,6 +52,7 @@ set(PROJECT_SRC
         Discontinuity_Graph_Bootstrap.cpp
         Edge_Matrix.cpp
         Discontinuity_Graph_Contractor.cpp
+        Contracted_Graph_Expander.cpp
         commands.cpp
     )
 
