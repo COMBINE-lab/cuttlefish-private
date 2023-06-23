@@ -1,6 +1,8 @@
 
 #include "Discontinuity_Graph_Contractor.hpp"
 
+#include <fstream>
+
 
 namespace cuttlefish
 {
@@ -11,7 +13,7 @@ Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>
     , work_path(temp_path)
 {
     for(std::size_t i = 0; i <= E.vertex_part_count() + 1; ++i)
-        P_v.emplace_back(work_path + std::string("P_v_") + std::to_string(i));
+        P_v.emplace_back(work_path + std::string(".P_v_") + std::to_string(i));
 }
 
 
@@ -92,6 +94,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
 template <uint16_t k>
 void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_t j)
 {
+    D_j.clear();
     E.read_diagonal_block(j, buf);
     for(const auto& e : buf)
     {
@@ -103,9 +106,17 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
         if(s_v == side_t::unspecified)
             s_v = e.s_v();
 
-        M[u] = Other_End(v, s_v, false, w_u + e.w() + w_v, true);
-        M[v] = Other_End(u, s_u, false, w_v + e.w() + w_u, true);
-      }
+        const auto w = w_u + e.w() + w_v;
+        M[u] = Other_End(v, s_v, false, w, true);
+        M[v] = Other_End(u, s_u, false, w, true);
+
+        D_j.emplace_back(u, s_u, v, s_v, w, w == 1 ? e.b() : 0);
+    }
+
+
+    std::ofstream output(work_path + std::string(".D_") + std::to_string(j));
+    output.write(reinterpret_cast<const char*>(D_j.data()), D_j.size() * sizeof(Discontinuity_Edge<k>));
+    output.close();
 }
 
 

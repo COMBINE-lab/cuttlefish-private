@@ -56,6 +56,9 @@ public:
     // Returns the weight of the edge.
     weight_t w() const { return weight; }
 
+    // Returns the ID of the bucket of this edge.
+    uint16_t b() const { return bucket_id; }
+
     // Returns whether `u` is the ϕ vertex.
     bool u_is_phi() const { return u_is_phi_; }
 
