@@ -26,7 +26,6 @@ public:
 
 private:
 
-    const Kmer<k> v_;   // The vertex.
     const path_id_t p_v_;   // The path-ID of the vertex.
     const weight_t r_v_;    // The rank of the vertex in the path.
     const side_t o_v_;  // The orientation of the vertex in its specified rank—the path traversal exits `v` through the side `o_v`.
@@ -34,19 +33,14 @@ private:
 
 public:
 
-    // Constructs a path-info object for the k-mer `v` such that its path-ID is
-    // `p_v` and rank in the path is `r_v` when the path is traversed in the
+    // Constructs a path-info object for a k-mer such that its path-ID is `p_v`
+    // and rank in the path is `r_v` when the path is traversed in the
     // orientation such that the traversal exits `v` through its side `o_v`.
-    Vertex_Path_Info(const Kmer<k> v, const path_id_t p_v, const weight_t r_v, const side_t o_v):
-          v_(v)
-        , p_v_(p_v)
+    Vertex_Path_Info(const path_id_t p_v, const weight_t r_v, const side_t o_v):
+          p_v_(p_v)
         , r_v_(r_v)
         , o_v_(o_v)
     {}
-
-
-    // Returns the vertex.
-    const Kmer<k> v() const { return v_; }
 
     // Returns the path-ID of the vertex.
     const path_id_t p_v() const { return p_v_; }

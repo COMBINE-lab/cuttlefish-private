@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 #include <tuple>
+#include <utility>
 
 
 namespace cuttlefish
@@ -41,7 +42,7 @@ private:
     std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block.
     std::vector<std::tuple<Kmer<k>, Kmer<k>, weight_t>> D;  // Edges corresponding to compressed diagonal chains.
 
-    std::vector<Ext_Mem_Bucket<Vertex_Path_Info<k>>> P_v;   // `P_v[j]` contains path-info for vertices in partition `j`.
+    std::vector<Ext_Mem_Bucket<std::pair<Kmer<k>, Vertex_Path_Info<k>>>> P_v;   // `P_v[j]` contains path-info for vertices in partition `j`.
 
 
     // Contracts the `[j, j]`'th edge-block.
@@ -126,7 +127,7 @@ public:
 template <uint16_t k>
 inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t p_id, const side_t s_1, const weight_t w_1, const weight_t w_2)
 {
-    P_v[p_id].emplace(v, v, (s_1 == side_t::back ? w_2 : w_1), side_t::back);   // The path-traversal exits `v` through its back.
+    P_v[p_id].emplace(v, Vertex_Path_Info(v, (s_1 == side_t::back ? w_2 : w_1), side_t::back)); // The path-traversal exits `v` through its back.
     meta_v_c++;
 }
 
