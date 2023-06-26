@@ -31,6 +31,7 @@ private:
     std::vector<std::vector<Ext_Mem_Bucket<Discontinuity_Edge<k>>>> edge_matrix;    // Blocked edge matrix.
 
     mutable std::vector<std::size_t> row_to_read;   // `j`'th entry contains the row of the next block to read from column `j`.
+    mutable std::vector<std::size_t> col_to_read;   // `i`'th entry contains the column of the next block to read from row `i`.
 
 
     // Returns the path to the file storing the `[i, j]`'th block in external
@@ -71,6 +72,11 @@ public:
     // some edges are read, i.e. the column had remaining edges to be read off.
     // NB: this does not read the blocks in the diagonal.
     bool read_column_buffered(std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const;
+
+    // Reads a chunk of edges from the row `i` into `buf`. Returns `true` iff
+    // some edges are read, i.e. the row had remaining edges to be read off.
+    // NB: this does not read the blocks in the diagonal.
+    bool read_row_buffered(std::size_t i, std::vector<Discontinuity_Edge<k>>& buf) const;
 };
 
 
