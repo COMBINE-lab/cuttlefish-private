@@ -14,8 +14,8 @@ namespace cuttlefish
 {
 
 // =============================================================================
-// Path-information, i.e. path-ID, rank within the path, and orientation of a
-// vertex in a discontinuity-graph.
+// Path-information of a vertex in a discontinuity graph: its path-ID, rank in a
+// fixed traversal of the path, and orientation in that traversal.
 template <uint16_t k>
 class Vertex_Path_Info
 {
