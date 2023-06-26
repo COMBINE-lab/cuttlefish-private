@@ -30,6 +30,13 @@ private:
 
     const std::string work_path;    // Path-prefix to temporary working files.
 
+    std::vector<Discontinuity_Edge<k>> D_i; // New edges introduced in contracted diagonal blocks.
+
+    std::unordered_map<Kmer<k>, Vertex_Path_Info<k>, Kmer_Hasher<k>> M; // `M[v]` is the path-info for vertex `v`.
+
+
+    // Expands the `[i, i]`'th (contracted) edge-block.
+    void expand_diagonal_block(std::size_t i);
 
     // Infers a vertex v's path-info from that of vertex u's path-info `u_inf`
     // and returns it. The vertices are connected with an edge of weight `w`
