@@ -57,6 +57,10 @@ namespace cuttlefish
         unspecified = 2
     } side_t;
 
+    constexpr auto inv_side = [](const side_t s) { return s == side_t::back ?   side_t::front :
+                                                                                (s == side_t::front ? side_t::back : side_t::unspecified); };
+
+
 
     constexpr uint8_t BITS_PER_REF_KMER = 5;
     constexpr uint8_t BITS_PER_READ_KMER = 6;
