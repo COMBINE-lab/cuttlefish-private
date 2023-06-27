@@ -484,9 +484,7 @@ inline bool Kmer_Index<k>::align_contained(const Kmer<k>& kmer, const std::size_
     if(min_idx - kmer_min_idx < l_end)  // Alignment starting position of the k-mer exceeds the left end.
         return false;
 
-    // const int64_t r = upper_bound(p_end, 0, path_count_ - 1, min_idx);   // ID of this path.
     const int64_t r = l + 1;    // ID of this path.
-    assert(r == upper_bound(path_ends, 0, path_count_ - 1, min_idx));
     const std::size_t r_end = path_ends[r]; // Index of the right end (exclusive) of the path containing this instance.
     if(min_idx + (k - kmer_min_idx) > r_end)    // Alignment ending position of the k-mer exceeds the right end.
         return false;
