@@ -35,19 +35,13 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
     {
         const auto& e = *d_it;
 
-        assert(M.find(e.u()) != M.end() || M.find(e.v()) != M.end);
+        assert(M.find(e.u()) != M.end() || M.find(e.v()) != M.end());
 
         auto it = M.find(e.v());
         if(it == M.end())
             M.emplace(e.v(), infer(M.find(e.u())->second, e.s_u(), e.s_v(), e.w()));
         else
             M.emplace(e.u(), infer(it->second, e.s_v(), e.s_u(), e.w()));
-
-
-        if(e.w() == 1)
-        {
-            // TODO: add edge path-info appropriately.
-        }
     }
 }
 
