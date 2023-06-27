@@ -38,9 +38,6 @@ private:
     // memory.
     const std::string bucket_file_path(std::size_t i, std::size_t j) const;
 
-    // Returns the partition ID for the k-mer `kmer`.
-    std::size_t partition(const Kmer<k>& kmer) const;
-
 
 public:
 
@@ -50,6 +47,9 @@ public:
 
     // Returns the number of vertex-partitions in the graph.
     std::size_t vertex_part_count() const { return vertex_part_count_; }
+
+    // Returns the partition ID for the k-mer `kmer`.
+    std::size_t partition(const Kmer<k>& kmer) const;
 
     // Adds a discontinuity-edge `e` to the matrix.
     void add(Discontinuity_Edge<k> e);
@@ -77,6 +77,9 @@ public:
     // some edges are read, i.e. the row had remaining edges to be read off.
     // NB: this does not read the blocks in the diagonal.
     bool read_row_buffered(std::size_t i, std::vector<Discontinuity_Edge<k>>& buf) const;
+
+    // Reads the edges from the `[i, j]`'th block into `buf`.
+    void read_block(std::size_t i, std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const;
 };
 
 

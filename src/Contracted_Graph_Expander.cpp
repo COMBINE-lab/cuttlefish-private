@@ -19,6 +19,70 @@ Contracted_Graph_Expander<k>::Contracted_Graph_Expander(Edge_Matrix<k>& E, std::
 
 
 template <uint16_t k>
+void Contracted_Graph_Expander<k>::expand()
+{
+    for(std::size_t i = 1; i <= E.vertex_part_count(); ++i)
+    {
+        M.clear();
+        load_path_info(i);
+
+        expand_diagonal_block(i);
+
+        while(E.read_row_buffered(i, buf))
+            for(const auto& e : buf)
+            {
+                const auto it = M.find(e.u());
+                assert(it != M.end());
+
+                const auto v_inf = infer(it->second, e.s_u(), e.s_v(), e.w());
+                const auto j = E.partition(e.v());  // TODO: consider obtaining this info during the edge-reading process.
+                P_v[j].emplace(e.v(), v_inf.p(), v_inf.r(), v_inf.o());
+
+                if(e.w() == 1)
+                {
+                    // TODO: add edge path-info appropriately.
+                    og_edge_c++;
+                }
+            }
+
+
+        // TODO: consider making the following two blocks more efficient.
+
+        E.read_diagonal_block(i, buf);
+        for(const auto& e : buf)
+            if(e.w() == 1)
+            {
+                // TODO:
+                og_edge_c++;
+            }
+
+        E.read_block(0, i, buf);
+        for(const auto& e : buf)
+            if(e.w() == 1)
+            {
+                // TODO:
+                og_edge_c++;
+            }
+    }
+
+
+    std::cerr << "Encountered " << og_edge_c << " original edges\n";
+}
+
+
+template <uint16_t k>
+void Contracted_Graph_Expander<k>::load_path_info(const std::size_t i)
+{
+    P_v[i].load(p_v_buf);
+    for(const auto& p_v : p_v_buf)
+    {
+        assert(M.find(p_v.v()) == M.end() || M.find(p_v.v())->second == p_v.path_info());
+        M.emplace(p_v.v(), p_v.path_info());
+    }
+}
+
+
+template <uint16_t k>
 void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
 {
     const std::string d_i_path(work_path + std::string("D_") + std::to_string(i));

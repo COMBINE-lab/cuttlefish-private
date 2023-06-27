@@ -38,7 +38,7 @@ Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
 template <uint16_t k>
 const std::string Edge_Matrix<k>::bucket_file_path(const std::size_t i, const std::size_t j) const
 {
-    return path + std::string(".") + std::to_string(i) + "-" + std::to_string(j) + edge_block_ext;
+    return path + std::to_string(i) + "-" + std::to_string(j) + edge_block_ext;
 }
 
 
@@ -81,6 +81,14 @@ bool Edge_Matrix<k>::read_row_buffered(const std::size_t i, std::vector<Disconti
     col_to_read[i]++;
 
     return true;
+}
+
+
+template <uint16_t k>
+void Edge_Matrix<k>::read_block(std::size_t i, std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const
+{
+    assert(i <= vertex_part_count_ && j <= vertex_part_count_);
+    edge_matrix[i][j].load(buf);
 }
 
 }

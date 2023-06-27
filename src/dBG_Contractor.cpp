@@ -2,6 +2,7 @@
 #include "dBG_Contractor.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
 #include "Discontinuity_Graph_Contractor.hpp"
+#include "Contracted_Graph_Expander.hpp"
 #include "globals.hpp"
 
 
@@ -28,6 +29,9 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
 
     Discontinuity_Graph_Contractor<k> contractor(E, P_v, work_path);
     contractor.contract();
+
+    Contracted_Graph_Expander<k> expander(E, P_v, work_path);
+    expander.expand();
 }
 
 }

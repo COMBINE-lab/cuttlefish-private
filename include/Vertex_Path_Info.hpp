@@ -26,12 +26,16 @@ public:
 
 private:
 
-    const path_id_t p_; // The path-ID of the vertex.
-    const weight_t r_;  // The rank of the vertex in the path.
-    const side_t o_;    // The orientation of the vertex in its specified rank—the path traversal exits `v` through the side `o_v`.
+    path_id_t p_;   // The path-ID of the vertex.
+    weight_t r_;    // The rank of the vertex in the path.
+    side_t o_;  // The orientation of the vertex in its specified rank—the path traversal exits `v` through the side `o_v`.
 
 
 public:
+
+    Vertex_Path_Info()
+    {}
+
 
     // Constructs a path-info object for a vertex such that its path-ID is `p`
     // and rank in the path is `r` when the path is traversed in the
@@ -43,6 +47,7 @@ public:
         , o_(o)
     {}
 
+
     // Returns the path-ID of the vertex.
     const path_id_t p() const { return p_; }
 
@@ -52,6 +57,9 @@ public:
     // Returns the orientation `o_v` of the vertex in its specified rank—the
     // path traversal exits the vertex through the side `o_v`.
     side_t o() const { return o_; }
+
+    // Returns `true` iff this information is the same as in `rhs`.
+    bool operator==(const Vertex_Path_Info<k>& rhs) const { return p_ == rhs.p_ && r_ == rhs.r_ && o_ == rhs.o_; }
 };
 
 
@@ -69,6 +77,10 @@ public:
 
     typedef typename Vertex_Path_Info<k>::path_id_t path_id_t;
 
+    Vertex_Path_Info_Pair()
+    {}
+
+
     // For a vertex `v`, constructs a pairing of it with its path-info specified
     // with its path-ID `p` and rank in the path `r` when the path is traversed
     // in the orientation such that the traversal exits `v` through side `o`.
@@ -83,6 +95,9 @@ public:
 
     // Returns the path-info of the vertex.
     const auto path_info() const { return path_info_; }
+
+    // Returns `true` iff this information is the same as in `rhs`.
+    bool operator==(const Vertex_Path_Info_Pair<k>& rhs) const { return v_ == rhs.v_ && path_info_ == rhs.path_info_; }
 };
 
 }

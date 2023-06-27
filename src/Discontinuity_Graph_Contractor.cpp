@@ -75,9 +75,6 @@ void Discontinuity_Graph_Contractor<k>::contract()
             else
                 E.add(m_u.v(), m_u.s_v(), m_v.v(), m_v.s_v(), m_u.w() + w_uv + m_v.w(), 0, m_u.is_phi(), m_v.is_phi());
         }
-
-
-        P_v[j].close(); // TODO: remove
     }
 
 
