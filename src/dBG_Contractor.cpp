@@ -24,7 +24,7 @@ dBG_Contractor<k>::dBG_Contractor(const std::size_t part_count, const std::strin
 template <uint16_t k>
 void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
 {
-    Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E);
+    Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E, work_path);
     dgb.generate();
 
     Discontinuity_Graph_Contractor<k> contractor(E, P_v, work_path);
