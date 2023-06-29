@@ -1,6 +1,6 @@
 
-#ifndef VERTEX_PATH_INFO_HPP
-#define VERTEX_PATH_INFO_HPP
+#ifndef PATH_INFO_HPP
+#define PATH_INFO_HPP
 
 
 

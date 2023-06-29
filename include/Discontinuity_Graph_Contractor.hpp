@@ -8,7 +8,7 @@
 #include "Kmer_Hasher.hpp"
 #include "Discontinuity_Edge.hpp"
 #include "Edge_Matrix.hpp"
-#include "Vertex_Path_Info.hpp"
+#include "Path_Info.hpp"
 #include "Ext_Mem_Bucket.hpp"
 
 #include <cstdint>

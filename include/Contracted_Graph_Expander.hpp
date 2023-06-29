@@ -6,7 +6,7 @@
 
 #include "Edge_Matrix.hpp"
 #include "Discontinuity_Edge.hpp"
-#include "Vertex_Path_Info.hpp"
+#include "Path_Info.hpp"
 #include "Ext_Mem_Bucket.hpp"
 #include "Kmer.hpp"
 #include "Kmer_Hasher.hpp"
