@@ -55,9 +55,10 @@ public:
     void add(Discontinuity_Edge<k> e);
 
     // Adds the discontinuity-edge `({(u, s_u), (v, s_v)}, w, b)` to the matrix.
+    // `b_idx` is the index of the corresponding unitig in its bucket.
     // `u_is_phi` and `v_is_phi` denote whether the `u` and the `v` endpoints
     // are ϕ, respectively.
-    void add(Kmer<k> u, side_t s_u, Kmer<k> v, side_t s_v, uint16_t w, uint16_t b, bool u_is_phi = false, bool v_is_phi = false);
+    void add(Kmer<k> u, side_t s_u, Kmer<k> v, side_t s_v, uint16_t w, uint16_t b, std::size_t b_idx, bool u_is_phi, bool v_is_phi);
 
     // Serializes the matrix to external-memory. Edges should not be added
     // anymore once this has been invoked. This method is required only if the
@@ -105,15 +106,15 @@ inline void Edge_Matrix<k>::add(Discontinuity_Edge<k> e)
 
 
 template <uint16_t k>
-inline void Edge_Matrix<k>::add(const Kmer<k> u, const side_t s_u, const Kmer<k> v, const side_t s_v, const uint16_t w, const uint16_t b, const bool u_is_phi, const bool v_is_phi)
+inline void Edge_Matrix<k>::add(const Kmer<k> u, const side_t s_u, const Kmer<k> v, const side_t s_v, const uint16_t w, const uint16_t b, const std::size_t b_idx, const bool u_is_phi, const bool v_is_phi)
 {
     auto p = u_is_phi ? 0 : partition(u);
     auto q = v_is_phi ? 0 : partition(v);
 
     if(p <= q)
-        edge_matrix[p][q].emplace(u, s_u, v, s_v, w, b, u_is_phi, v_is_phi);
+        edge_matrix[p][q].emplace(u, s_u, v, s_v, w, b, b_idx, u_is_phi, v_is_phi);
     else    // p and q needs to be swapped along with the edge endpoints
-        edge_matrix[q][p].emplace(v, s_v, u, s_u, w, b, v_is_phi, u_is_phi);
+        edge_matrix[q][p].emplace(v, s_v, u, s_u, w, b, b_idx, v_is_phi, u_is_phi);
 }
 
 }

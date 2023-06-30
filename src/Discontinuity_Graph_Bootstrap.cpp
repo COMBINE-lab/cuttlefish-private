@@ -86,8 +86,8 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
 
                     edge_count++;
 
+                    E.add(x_hat, s_x, y_hat, s_y, 1, file_idx, lm_utig_file[file_idx].unitig_count(), false, false);
                     lm_utig_file[file_idx].add(seq + last_v_idx, seq + kmer_idx + k);
-                    E.add(x_hat, s_x, y_hat, s_y, 1, file_idx);
                     file_idx = (file_idx == lm_utig_file_count - 1 ? 0 : file_idx + 1);
 
                     max_lmtig_len = std::max(max_lmtig_len, kmer_idx + k - last_v_idx);
@@ -114,16 +114,16 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
         {
             edge_count += 2;
 
-            lm_utig_file[file_idx].add(seq + 0, seq + first_v_idx + k);
             E.add(  p, side_t::back,
                     first_vertex.canonical(), first_vertex == first_vertex.canonical() ? side_t::front : side_t::back,
-                    1, file_idx, true);
+                    1, file_idx, lm_utig_file[file_idx].unitig_count(), true, false);
+            lm_utig_file[file_idx].add(seq + 0, seq + first_v_idx + k);
             file_idx = (file_idx == lm_utig_file_count - 1 ? 0 : file_idx + 1);
 
-            lm_utig_file[file_idx].add(seq + last_v_idx, seq + seq_len);
             E.add(  p, side_t::back,
                     last_vertex.canonical(), last_vertex == last_vertex.canonical() ? side_t::back : side_t::front,
-                    1, file_idx, true);
+                    1, file_idx, lm_utig_file[file_idx].unitig_count(), true, false);
+            lm_utig_file[file_idx].add(seq + last_v_idx, seq + seq_len);
             file_idx = (file_idx == lm_utig_file_count - 1 ? 0 : file_idx + 1);
 
             max_lmtig_len = std::max(max_lmtig_len, std::max(first_v_idx + k, seq_len - last_v_idx));

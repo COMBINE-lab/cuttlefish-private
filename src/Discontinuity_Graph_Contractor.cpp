@@ -57,7 +57,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
                         continue;
                     }
 
-                    E.add(e.u(), e.s_u(), w.v(), w.s_v(), e.w() + w.w(), 0, e.u_is_phi(), w.is_phi());
+                    E.add(e.u(), e.s_u(), w.v(), w.s_v(), e.w() + w.w(), 0, 0, e.u_is_phi(), w.is_phi());
                 }
             }
 
@@ -73,7 +73,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
             if(m_u.is_phi() && m_v.is_phi())
                 form_meta_vertex(u, j, m_u.s_v(), m_u.w(), w_uv + m_v.w());
             else
-                E.add(m_u.v(), m_u.s_v(), m_v.v(), m_v.s_v(), m_u.w() + w_uv + m_v.w(), 0, m_u.is_phi(), m_v.is_phi());
+                E.add(m_u.v(), m_u.s_v(), m_v.v(), m_v.s_v(), m_u.w() + w_uv + m_v.w(), 0, 0, m_u.is_phi(), m_v.is_phi());
         }
     }
 
@@ -105,7 +105,7 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
         M[u] = Other_End(v, s_v, false, w, true);
         M[v] = Other_End(u, s_u, false, w, true);
 
-        D_j.emplace_back(u, s_u, v, s_v, w, w == 1 ? e.b() : 0);
+        D_j.emplace_back(u, s_u, v, s_v, w, w == 1 ? e.b() : 0, w == 1 ? e.b_idx() : 0, false, false);
     }
 
 

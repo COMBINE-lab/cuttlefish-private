@@ -48,6 +48,8 @@ public:
 
     Unitig_File_Writer(const std::string& file_path);
 
+    auto unitig_count() const { return unitig_c; }
+
     template <typename T_it_> void add(T_it_ beg, T_it_ end);
 
     void close();

@@ -28,8 +28,9 @@ private:
     side_t s_v_;    // Side of the vertex `v_` to which the edge is incident to.
     bool u_is_phi_; // Whether `u_` is the ϕ vertex.
     bool v_is_phi_; // Whether `v_` is the ϕ vertex.
-    uint16_t bucket_id; // ID of the bucket of this edge.
     weight_t weight;    // Weight of the edge.
+    uint16_t bucket_id; // ID of the bucket of the unitig corresponding to the edge.
+    std::size_t b_idx_; // Index of the corresponding unitig within its bucket.
 
 
 public:
@@ -37,9 +38,12 @@ public:
     // Constructs a placeholder edge.
     Discontinuity_Edge(){}
 
-    // Construct an edge `({(u, s_u), (v, s_v)}, w, b)`. `u_is_phi` and
-    // `v_is_phi` denote whether `u` and `v` are ϕ, respectively.
-    Discontinuity_Edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, weight_t w, uint16_t b, bool u_is_phi = false, bool v_is_phi = false);
+    // Constructs an edge `{(u, s_u), (v, s_v)}` between the vertices `u` and
+    // `v` that connects there sides `s_u` and `s_v` resp. It has weight `w`.
+    // The locally-maximal unitig corresponding to this edge is stored in the
+    // `b`'th bucket, at index `b_idx`. `u_is_phi` and `v_is_phi` denote whether
+    // `u` and `v` are ϕ, respectively.
+    Discontinuity_Edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, weight_t w, uint16_t b, std::size_t b_idx, bool u_is_phi, bool v_is_phi);
 
     // Returns the `u` endpoint of the edge.
     const Kmer<k>& u() const { return u_; }
@@ -59,6 +63,9 @@ public:
     // Returns the ID of the bucket of this edge.
     uint16_t b() const { return bucket_id; }
 
+    // Returns the index of the corresponding unitig within its bucket.
+    std::size_t b_idx() const { return b_idx_; }
+
     // Returns whether `u` is the ϕ vertex.
     bool u_is_phi() const { return u_is_phi_; }
 
@@ -71,15 +78,16 @@ public:
 
 
 template <uint16_t k>
-inline Discontinuity_Edge<k>::Discontinuity_Edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const weight_t w, const uint16_t b, const bool u_is_phi, const bool v_is_phi):
+inline Discontinuity_Edge<k>::Discontinuity_Edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const weight_t w, const uint16_t b, const std::size_t b_idx, const bool u_is_phi, const bool v_is_phi):
       u_(u)
     , v_(v)
     , s_u_(s_u)
     , s_v_(s_v)
     , u_is_phi_(u_is_phi)
     , v_is_phi_(v_is_phi)
-    , bucket_id(b)
     , weight(w)
+    , bucket_id(b)
+    , b_idx_(b_idx)
 {}
 
 
