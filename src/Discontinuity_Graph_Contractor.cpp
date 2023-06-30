@@ -105,7 +105,7 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
         M[u] = Other_End(v, s_v, false, w, true);
         M[v] = Other_End(u, s_u, false, w, true);
 
-        D_j.emplace_back(u, s_u, v, s_v, w, w == 1 ? e.b() : 0, w == 1 ? e.b_idx() : 0, false, false);
+        D_j.emplace_back(u, s_u, v, s_v, w, w == 1 ? e.b() : 0, w == 1 ? e.b_idx() : 0, false, false, side_t::unspecified);
     }
 
 

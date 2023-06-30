@@ -20,7 +20,11 @@ namespace cuttlefish
 template <uint16_t k>
 class Discontinuity_Edge
 {
+    typedef uint32_t uni_idx_t;
+
 private:
+
+    // TODO: try packing booleans and sides.
 
     Kmer<k> u_; // An endpoint of the edge.
     Kmer<k> v_; // An endpoint of the edge.
@@ -30,7 +34,8 @@ private:
     bool v_is_phi_; // Whether `v_` is the ϕ vertex.
     weight_t weight;    // Weight of the edge.
     uint16_t bucket_id; // ID of the bucket of the unitig corresponding to the edge.
-    std::size_t b_idx_; // Index of the corresponding unitig within its bucket.
+    uni_idx_t b_idx_;   // Index of the corresponding unitig within its bucket.
+    side_t o_;  // Orientation of the corresponding literal unitig wrt the `(u, v)` orientation of the edge.
 
 
 public:
@@ -42,8 +47,9 @@ public:
     // `v` that connects there sides `s_u` and `s_v` resp. It has weight `w`.
     // The locally-maximal unitig corresponding to this edge is stored in the
     // `b`'th bucket, at index `b_idx`. `u_is_phi` and `v_is_phi` denote whether
-    // `u` and `v` are ϕ, respectively.
-    Discontinuity_Edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, weight_t w, uint16_t b, std::size_t b_idx, bool u_is_phi, bool v_is_phi);
+    // `u` and `v` are ϕ, respectively. `o` is the orientation of the
+    // corresponding literal unitig (if any) wrt to the `(u, v)` orientation.
+    Discontinuity_Edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, weight_t w, uint16_t b, std::size_t b_idx, bool u_is_phi, bool v_is_phi, side_t o);
 
     // Returns the `u` endpoint of the edge.
     const Kmer<k>& u() const { return u_; }
@@ -72,13 +78,14 @@ public:
     // Returns whether `v` is the ϕ vertex.
     bool v_is_phi() const { return v_is_phi_; }
 
-    // Inverts the `u` and the `v` endpoints of the edge.
-    void invert();
+    // Returns orientation of the corresponding literal unitig wrt the `(u, v)`
+    // orientation of the edge.
+    side_t o() const { return o_; }
 };
 
 
 template <uint16_t k>
-inline Discontinuity_Edge<k>::Discontinuity_Edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const weight_t w, const uint16_t b, const std::size_t b_idx, const bool u_is_phi, const bool v_is_phi):
+inline Discontinuity_Edge<k>::Discontinuity_Edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const weight_t w, const uint16_t b, const std::size_t b_idx, const bool u_is_phi, const bool v_is_phi, const side_t o):
       u_(u)
     , v_(v)
     , s_u_(s_u)
@@ -88,16 +95,8 @@ inline Discontinuity_Edge<k>::Discontinuity_Edge(const Kmer<k>& u, const side_t 
     , weight(w)
     , bucket_id(b)
     , b_idx_(b_idx)
+    , o_(o)
 {}
-
-
-template <uint16_t k>
-inline void Discontinuity_Edge<k>::invert()
-{
-    std::swap(u_, v_);
-    std::swap(s_u_, s_v_);
-    std::swap(u_is_phi_, v_is_phi_);
-}
 
 }
 

@@ -51,9 +51,6 @@ public:
     // Returns the partition ID for the k-mer `kmer`.
     std::size_t partition(const Kmer<k>& kmer) const;
 
-    // Adds a discontinuity-edge `e` to the matrix.
-    void add(Discontinuity_Edge<k> e);
-
     // Adds the discontinuity-edge `({(u, s_u), (v, s_v)}, w, b)` to the matrix.
     // `b_idx` is the index of the corresponding unitig in its bucket.
     // `u_is_phi` and `v_is_phi` denote whether the `u` and the `v` endpoints
@@ -92,29 +89,15 @@ inline std::size_t Edge_Matrix<k>::partition(const Kmer<k>& kmer) const
 
 
 template <uint16_t k>
-inline void Edge_Matrix<k>::add(Discontinuity_Edge<k> e)
-{
-    auto p = e.u_is_phi() ? 0 : partition(e.u());
-    auto q = e.v_is_phi() ? 0 : partition(e.v());
-
-    if(p > q)
-        e.invert(),
-        std::swap(p, q);
-
-    edge_matrix[p][q].add(e);
-}
-
-
-template <uint16_t k>
 inline void Edge_Matrix<k>::add(const Kmer<k> u, const side_t s_u, const Kmer<k> v, const side_t s_v, const uint16_t w, const uint16_t b, const std::size_t b_idx, const bool u_is_phi, const bool v_is_phi)
 {
     auto p = u_is_phi ? 0 : partition(u);
     auto q = v_is_phi ? 0 : partition(v);
 
     if(p <= q)
-        edge_matrix[p][q].emplace(u, s_u, v, s_v, w, b, b_idx, u_is_phi, v_is_phi);
+        edge_matrix[p][q].emplace(u, s_u, v, s_v, w, b, b_idx, u_is_phi, v_is_phi, side_t::back);
     else    // p and q needs to be swapped along with the edge endpoints
-        edge_matrix[q][p].emplace(v, s_v, u, s_u, w, b, b_idx, v_is_phi, u_is_phi);
+        edge_matrix[q][p].emplace(v, s_v, u, s_u, w, b, b_idx, v_is_phi, u_is_phi, side_t::front);
 }
 
 }
