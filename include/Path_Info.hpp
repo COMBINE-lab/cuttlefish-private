@@ -14,10 +14,10 @@ namespace cuttlefish
 {
 
 // =============================================================================
-// Path-information of a vertex in a discontinuity graph: its path-ID, rank in a
-// fixed traversal of the path, and orientation in that traversal.
+// Path-information of an object in a discontinuity graph: its path-ID, rank in
+// a fixed traversal of the path, and orientation in that traversal.
 template <uint16_t k>
-class Vertex_Path_Info
+class Path_Info
 {
 public:
 
@@ -26,40 +26,40 @@ public:
 
 private:
 
-    path_id_t p_;   // The path-ID of the vertex.
-    weight_t r_;    // The rank of the vertex in the path.
-    side_t o_;  // The orientation of the vertex in its specified rank—the path traversal exits `v` through the side `o_v`.
+    path_id_t p_;   // The path-ID.
+    weight_t r_;    // The rank.
+    side_t o_;  // The orientation of the vertex in its specified rank—the path traversal exits `v` through the side `o`.
 
 
 public:
 
-    Vertex_Path_Info()
+    Path_Info()
     {}
 
 
-    // Constructs a path-info object for a vertex such that its path-ID is `p`
+    // Constructs a path-info object for an object such that its path-ID is `p`
     // and rank in the path is `r` when the path is traversed in the
-    // orientation such that the traversal exits the vertex through its side
+    // orientation such that the traversal exits the object through its side
     // `o`.
-    Vertex_Path_Info(const path_id_t p, const weight_t r, const side_t o):
+    Path_Info(const path_id_t p, const weight_t r, const side_t o):
           p_(p)
         , r_(r)
         , o_(o)
     {}
 
 
-    // Returns the path-ID of the vertex.
+    // Returns the path-ID.
     const path_id_t p() const { return p_; }
 
-    // Returns the rank of the vertex in the path.
+    // Returns the rank.
     weight_t r() const { return r_; }
 
-    // Returns the orientation `o_v` of the vertex in its specified rank—the
-    // path traversal exits the vertex through the side `o_v`.
+    // Returns the orientation `o` of the object in its specified rank—the
+    // path traversal exits the object through the side `o`.
     side_t o() const { return o_; }
 
     // Returns `true` iff this information is the same as in `rhs`.
-    bool operator==(const Vertex_Path_Info<k>& rhs) const { return p_ == rhs.p_ && r_ == rhs.r_ && o_ == rhs.o_; }
+    bool operator==(const Path_Info<k>& rhs) const { return p_ == rhs.p_ && r_ == rhs.r_ && o_ == rhs.o_; }
 };
 
 
@@ -70,12 +70,12 @@ class Vertex_Path_Info_Pair
 private:
 
     Kmer<k> v_; // The vertex.
-    Vertex_Path_Info<k> path_info_; // Path-information of the vertex.
+    Path_Info<k> path_info_;    // Path-information of the vertex.
 
 
 public:
 
-    typedef typename Vertex_Path_Info<k>::path_id_t path_id_t;
+    typedef typename Path_Info<k>::path_id_t path_id_t;
 
     Vertex_Path_Info_Pair()
     {}

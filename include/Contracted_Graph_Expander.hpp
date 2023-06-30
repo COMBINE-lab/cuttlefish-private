@@ -37,7 +37,7 @@ private:
 
     std::vector<Discontinuity_Edge<k>> D_i; // New edges introduced in contracted diagonal blocks.
 
-    std::unordered_map<Kmer<k>, Vertex_Path_Info<k>, Kmer_Hasher<k>> M; // `M[v]` is the path-info for vertex `v`.
+    std::unordered_map<Kmer<k>, Path_Info<k>, Kmer_Hasher<k>> M;    // `M[v]` is the path-info for vertex `v`.
 
     std::vector<Vertex_Path_Info_Pair<k>> p_v_buf;  // Buffer to read-in path-information of vertices.
 
@@ -53,7 +53,7 @@ private:
     // Infers a vertex v's path-info from that of vertex u's path-info `u_inf`
     // and returns it. The vertices are connected with an edge of weight `w`
     // through their sides `s_v` and `s_u`, respectively.
-    Vertex_Path_Info<k> infer(Vertex_Path_Info<k> u_inf, side_t s_u, side_t s_v, weight_t w);
+    Path_Info<k> infer(Path_Info<k> u_inf, side_t s_u, side_t s_v, weight_t w);
 
     // Debug
     std::size_t og_edge_c = 0;
@@ -72,13 +72,13 @@ public:
 
 
 template <uint16_t k>
-Vertex_Path_Info<k> Contracted_Graph_Expander<k>::infer(const Vertex_Path_Info<k> u_inf, const side_t s_u, const side_t s_v, const weight_t w)
+Path_Info<k> Contracted_Graph_Expander<k>::infer(const Path_Info<k> u_inf, const side_t s_u, const side_t s_v, const weight_t w)
 {
     // const auto p_v = u_inf.p(); // Path-ID.
     const weight_t r_v = (s_u == u_inf.o() ? u_inf.r() + w : u_inf.r() - w);    // Rank.
     const side_t o_v = (s_u == u_inf.o() ? inv_side(s_v) : s_v);    // Orientation.
 
-    return Vertex_Path_Info(u_inf.p(), r_v, o_v);
+    return Path_Info(u_inf.p(), r_v, o_v);
 }
 
 }
