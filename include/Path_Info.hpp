@@ -15,7 +15,8 @@ namespace cuttlefish
 
 // =============================================================================
 // Path-information of an object in a discontinuity graph: its path-ID, rank in
-// a fixed traversal of the path, and orientation in that traversal.
+// a fixed traversal of the path, and orientation in that traversal. Path-IDs
+// are k-mers.
 template <uint16_t k>
 class Path_Info
 {
@@ -28,7 +29,7 @@ private:
 
     path_id_t p_;   // The path-ID.
     weight_t r_;    // The rank.
-    side_t o_;  // The orientation of the vertex in its specified rank—the path traversal exits `v` through the side `o`.
+    side_t o_;  // The orientation of the object in its specified rank—the path traversal exits `v` through the side `o`.
 
 
 public:
@@ -63,41 +64,41 @@ public:
 };
 
 
-// A vertex and its path-information.
-template <uint16_t k>
-class Vertex_Path_Info_Pair
+// An object and associated path-information. Path-IDs are k-mers.
+template <typename T_, uint16_t k>
+class Obj_Path_Info_Pair
 {
 private:
 
-    Kmer<k> v_; // The vertex.
-    Path_Info<k> path_info_;    // Path-information of the vertex.
+    T_ obj_;    // The object.
+    Path_Info<k> path_info_;    // Path-information of the object.
 
 
 public:
 
     typedef typename Path_Info<k>::path_id_t path_id_t;
 
-    Vertex_Path_Info_Pair()
+    Obj_Path_Info_Pair()    // TODO: consider removing.
     {}
 
-
-    // For a vertex `v`, constructs a pairing of it with its path-info specified
+    // For an object, constructs a pairing of it with its path-info specified
     // with its path-ID `p` and rank in the path `r` when the path is traversed
-    // in the orientation such that the traversal exits `v` through side `o`.
-    Vertex_Path_Info_Pair(const Kmer<k> v, const path_id_t p, const weight_t r, const side_t o):
-          v_(v)
+    // in the orientation such that the traversal exits the object through its
+    // side `o`.
+    Obj_Path_Info_Pair(const T_ obj, const path_id_t p, const weight_t r, const side_t o):
+          obj_(obj)
         , path_info_(p, r, o)
     {}
 
 
-    // Returns the vertex.
-    const auto v() const { return v_; }
+    // Returns the object.
+    const auto obj() const { return obj_; }
 
-    // Returns the path-info of the vertex.
+    // Returns the path-info of the object.
     const auto path_info() const { return path_info_; }
 
     // Returns `true` iff this information is the same as in `rhs`.
-    bool operator==(const Vertex_Path_Info_Pair<k>& rhs) const { return v_ == rhs.v_ && path_info_ == rhs.path_info_; }
+    bool operator==(const Obj_Path_Info_Pair& rhs) const { return obj_ == rhs.obj_ && path_info_ == rhs.path_info_; }
 };
 
 }

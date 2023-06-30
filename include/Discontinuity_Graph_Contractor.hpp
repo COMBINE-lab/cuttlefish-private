@@ -31,7 +31,7 @@ private:
 
     Edge_Matrix<k>& E;  // Edge matrix of the discontinuity-graph.
 
-    std::vector<Ext_Mem_Bucket<Vertex_Path_Info_Pair<k>>>& P_v; // `P_v[j]` contains path-info for vertices in partition `j`.
+    std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;   // `P_v[j]` contains path-info for vertices in partition `j`.
 
     const std::string work_path;    // Path-prefix to temporary working files.
 
@@ -67,7 +67,7 @@ public:
     // Constructs a contractor for the discontinuity-graph with edge-matrix `E`.
     // `P_v[j]` is to contain path-information for vertices at partition `j`.
     // Temporary files are stored at path-prefix `temp_path`.
-    Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Vertex_Path_Info_Pair<k>>>& P_v, const std::string& temp_path);
+    Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path);
 
     // Contracts the discontinuity-graph.
     void contract();

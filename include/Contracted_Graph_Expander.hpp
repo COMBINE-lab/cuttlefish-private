@@ -31,7 +31,7 @@ private:
 
     Edge_Matrix<k>& E;  // Edge matrix of the (augmented) discontinuity graph.
 
-    std::vector<Ext_Mem_Bucket<Vertex_Path_Info_Pair<k>>>& P_v; // `P_v[i]` contains path-info for vertices in partition `i`.
+    std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;   // `P_v[i]` contains path-info for vertices in partition `i`.
 
     const std::string work_path;    // Path-prefix to temporary working files.
 
@@ -39,12 +39,13 @@ private:
 
     std::unordered_map<Kmer<k>, Path_Info<k>, Kmer_Hasher<k>> M;    // `M[v]` is the path-info for vertex `v`.
 
-    std::vector<Vertex_Path_Info_Pair<k>> p_v_buf;  // Buffer to read-in path-information of vertices.
+    std::vector<Obj_Path_Info_Pair<Kmer<k>, k>> p_v_buf;    // Buffer to read-in path-information of vertices.
 
     std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
 
 
-    // Loads the available path-info of vertices from partition `i`.
+    // Loads the available path-info of vertices from partition `i` into the
+    // hash table `M`.
     void load_path_info(std::size_t i);
 
     // Expands the `[i, i]`'th (contracted) edge-block.
@@ -64,7 +65,7 @@ public:
     // Constructs an expander for the contracted discontinuity-graph with edge-
     // matrix `E`. `P_v[i]` is to contain path-information for vertices at
     // partition `i`. Temporary files are stored at path-prefix `temp_path`.
-    Contracted_Graph_Expander(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Vertex_Path_Info_Pair<k>>>& P_v, const std::string& temp_path);
+    Contracted_Graph_Expander(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path);
 
     // Expands the contracted discontinuity-graph.
     void expand();
