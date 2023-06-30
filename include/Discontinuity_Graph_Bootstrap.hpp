@@ -37,6 +37,7 @@ private:
     Edge_Matrix<k>& E;  // The edge-matrix of the discontinuity-graph.
 
     const std::string unitigs_path; // Path-prefix to the output files containing unitigs.
+    const std::size_t unitig_buckets;   // Number of buckets for unitigs.
 
 
 public:
@@ -45,8 +46,8 @@ public:
     // Bruijn graph at the path `cdbg_path`. `l`-minimizers are used for the
     // graph, and the seed-value `seed` is used in minimizer-hashing. The graph
     // is constructed at the edge-matrix `E`. The generated unitigs are stored
-    // at path-prefix `unitigs_path`.
-    Discontinuity_Graph_Bootstrap(const std::string& cdbg_path, uint16_t l, Edge_Matrix<k>& E, const std::string& unitigs_path, uint64_t seed = 0);
+    // at path-prefix `unitigs_path` into `unitig_buckets` number of files.
+    Discontinuity_Graph_Bootstrap(const std::string& cdbg_path, uint16_t l, Edge_Matrix<k>& E, const std::string& unitigs_path, std::size_t unitig_buckets, uint64_t seed = 0);
 
     // Generates the discontinuity-graph
     void generate();

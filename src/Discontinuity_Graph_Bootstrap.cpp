@@ -15,13 +15,14 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Discontinuity_Graph_Bootstrap<k>::Discontinuity_Graph_Bootstrap(const std::string& cdbg_path, const uint16_t l, Edge_Matrix<k>& E, const std::string& unitigs_path, const uint64_t seed):
+Discontinuity_Graph_Bootstrap<k>::Discontinuity_Graph_Bootstrap(const std::string& cdbg_path, const uint16_t l, Edge_Matrix<k>& E, const std::string& unitigs_path, const std::size_t unitig_buckets, const uint64_t seed):
       cdbg_path(cdbg_path)
     , l(l)
     , minimizer_seed(seed)
     , phi(phi_label)
     , E(E)
     , unitigs_path(unitigs_path)
+    , unitig_buckets(unitig_buckets)
 {}
 
 
@@ -38,11 +39,10 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
 
     Unitig_File_Writer m_utig_file(unitigs_path + std::string(".mutig"));
     std::vector<Unitig_File_Writer> lm_utig_file;
-    constexpr std::size_t lm_utig_file_count = 1024;
-    for(std::size_t i = 0; i < lm_utig_file_count; ++i)
+    for(std::size_t i = 0; i < unitig_buckets; ++i)
         lm_utig_file.emplace_back(unitigs_path + std::string(".lmutig_") + std::to_string(i));
 
-    std::size_t file_idx = 0;
+    std::size_t bucket_idx = 0;
 
     Ref_Parser parser(cdbg_path);
     while(parser.read_next_seq())
@@ -86,9 +86,9 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
 
                     edge_count++;
 
-                    E.add(x_hat, s_x, y_hat, s_y, 1, file_idx, lm_utig_file[file_idx].unitig_count(), false, false);
-                    lm_utig_file[file_idx].add(seq + last_v_idx, seq + kmer_idx + k);
-                    file_idx = (file_idx == lm_utig_file_count - 1 ? 0 : file_idx + 1);
+                    E.add(x_hat, s_x, y_hat, s_y, 1, bucket_idx, lm_utig_file[bucket_idx].unitig_count(), false, false);
+                    lm_utig_file[bucket_idx].add(seq + last_v_idx, seq + kmer_idx + k);
+                    bucket_idx = (bucket_idx == unitig_buckets - 1 ? 0 : bucket_idx + 1);
 
                     max_lmtig_len = std::max(max_lmtig_len, kmer_idx + k - last_v_idx);
                 }
@@ -116,15 +116,15 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
 
             E.add(  p, side_t::back,
                     first_vertex.canonical(), first_vertex == first_vertex.canonical() ? side_t::front : side_t::back,
-                    1, file_idx, lm_utig_file[file_idx].unitig_count(), true, false);
-            lm_utig_file[file_idx].add(seq + 0, seq + first_v_idx + k);
-            file_idx = (file_idx == lm_utig_file_count - 1 ? 0 : file_idx + 1);
+                    1, bucket_idx, lm_utig_file[bucket_idx].unitig_count(), true, false);
+            lm_utig_file[bucket_idx].add(seq + 0, seq + first_v_idx + k);
+            bucket_idx = (bucket_idx == unitig_buckets - 1 ? 0 : bucket_idx + 1);
 
             E.add(  p, side_t::back,
                     last_vertex.canonical(), last_vertex == last_vertex.canonical() ? side_t::back : side_t::front,
-                    1, file_idx, lm_utig_file[file_idx].unitig_count(), true, false);
-            lm_utig_file[file_idx].add(seq + last_v_idx, seq + seq_len);
-            file_idx = (file_idx == lm_utig_file_count - 1 ? 0 : file_idx + 1);
+                    1, bucket_idx, lm_utig_file[bucket_idx].unitig_count(), true, false);
+            lm_utig_file[bucket_idx].add(seq + last_v_idx, seq + seq_len);
+            bucket_idx = (bucket_idx == unitig_buckets - 1 ? 0 : bucket_idx + 1);
 
             max_lmtig_len = std::max(max_lmtig_len, std::max(first_v_idx + k, seq_len - last_v_idx));
         }
@@ -132,7 +132,7 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
 
 
     m_utig_file.close();
-    for(std::size_t i = 0; i < lm_utig_file_count; ++i)
+    for(std::size_t i = 0; i < unitig_buckets; ++i)
         lm_utig_file[i].close();
 
 
