@@ -3,6 +3,7 @@
 #include "Discontinuity_Graph_Bootstrap.hpp"
 #include "Discontinuity_Graph_Contractor.hpp"
 #include "Contracted_Graph_Expander.hpp"
+#include "Unitig_Collator.hpp"
 #include "globals.hpp"
 
 
@@ -37,6 +38,8 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
 
     Contracted_Graph_Expander<k> expander(E, P_v, P_e, work_path);
     expander.expand();
+
+    Unitig_Collator<k> collator(P_e, work_path);
 }
 
 }

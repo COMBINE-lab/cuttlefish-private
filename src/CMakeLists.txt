@@ -55,6 +55,7 @@ set(PROJECT_SRC
         Edge_Matrix.cpp
         Discontinuity_Graph_Contractor.cpp
         Contracted_Graph_Expander.cpp
+        Unitig_Collator.cpp
         commands.cpp
     )
 
