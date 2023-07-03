@@ -22,6 +22,8 @@ Contracted_Graph_Expander<k>::Contracted_Graph_Expander(Edge_Matrix<k>& E, std::
 template <uint16_t k>
 void Contracted_Graph_Expander<k>::expand()
 {
+    std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
+
     for(std::size_t i = 1; i <= E.vertex_part_count(); ++i)
     {
         M.clear();

@@ -45,8 +45,6 @@ private:
 
     std::vector<Obj_Path_Info_Pair<Kmer<k>, k>> p_v_buf;    // Buffer to read-in path-information of vertices.
 
-    std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
-
 
     // Loads the available path-info of vertices from partition `i` into the
     // hash table `M`.
