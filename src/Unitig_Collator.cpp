@@ -21,7 +21,18 @@ void Unitig_Collator<k>::collate()
     for(std::size_t i = 1; i <= unitig_bucket_count; ++i)
     {
         M.clear();
+        load_path_info(i);
     }
+}
+
+
+template <uint16_t k>
+void Unitig_Collator<k>::load_path_info(std::size_t b)
+{
+    P_e[b].load(p_e_buf);
+    M.resize(p_e_buf.size());
+    for(const auto& p_e : p_e_buf)
+        M[p_e.obj()] = p_e.path_info();
 }
 
 }

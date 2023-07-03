@@ -30,12 +30,13 @@ private:
 
     const std::string work_path;    // Path-prefix to temporary working files.
 
-    std::unordered_map<uni_idx_t, Path_Info<k>> M;  // `M[idx]` is the path-info for the `idx`'th edge in some bucket.
+    std::vector<Path_Info<k>> M;    // `M[idx]` is the path-info for the `idx`'th edge in some bucket.
 
     std::vector<Obj_Path_Info_Pair<uni_idx_t, k>> p_e_buf;  // Buffer to read-in path-information of edges.
 
 
-    void load_path_info(std::size_t i);
+    // Loads the path-info of edges from bucket `b` into the table `M`.
+    void load_path_info(std::size_t b);
 
 
 public:
