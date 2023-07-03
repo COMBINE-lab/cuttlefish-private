@@ -27,11 +27,14 @@ namespace cuttlefish
 template <uint16_t k>
 class Contracted_Graph_Expander
 {
+    typedef uint32_t uni_idx_t; // Type of the index of a unitig in a bucket.
+
 private:
 
     Edge_Matrix<k>& E;  // Edge matrix of the (augmented) discontinuity graph.
 
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;   // `P_v[i]` contains path-info for vertices in partition `i`.
+    std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e; // `P_e[b]` contains path-info for edges in bucket `b`.
 
     const std::string work_path;    // Path-prefix to temporary working files.
 
@@ -64,8 +67,9 @@ public:
 
     // Constructs an expander for the contracted discontinuity-graph with edge-
     // matrix `E`. `P_v[i]` is to contain path-information for vertices at
-    // partition `i`. Temporary files are stored at path-prefix `temp_path`.
-    Contracted_Graph_Expander(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path);
+    // partition `i`, and `P_e[b]` is to contain path-information for edges at
+    // bucket `b`. Temporary files are stored at path-prefix `temp_path`.
+    Contracted_Graph_Expander(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path);
 
     // Expands the contracted discontinuity-graph.
     void expand();
@@ -73,7 +77,7 @@ public:
 
 
 template <uint16_t k>
-Path_Info<k> Contracted_Graph_Expander<k>::infer(const Path_Info<k> u_inf, const side_t s_u, const side_t s_v, const weight_t w)
+inline Path_Info<k> Contracted_Graph_Expander<k>::infer(const Path_Info<k> u_inf, const side_t s_u, const side_t s_v, const weight_t w)
 {
     // const auto p_v = u_inf.p(); // Path-ID.
     const weight_t r_v = (s_u == u_inf.o() ? u_inf.r() + w : u_inf.r() - w);    // Rank.

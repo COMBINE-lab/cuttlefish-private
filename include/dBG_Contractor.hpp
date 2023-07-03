@@ -22,6 +22,8 @@ namespace cuttlefish
 template <uint16_t k>
 class dBG_Contractor
 {
+    typedef uint32_t uni_idx_t; // Type of the index of a unitig in a bucket.
+
 private:
 
     const std::size_t part_count;   // Number of vertex-partitions in the discontinuity graph; needs to be a power of 2.
@@ -31,6 +33,7 @@ private:
     Edge_Matrix<k> E;  // Edge-matrix of the discontinuity graph.
 
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>> P_v;    // `P_v[j]` contains path-info for vertices in partition `j`.
+    std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>> P_e;  // `P_e[b]` contains path-info for edges in bucket `b`.
 
 
 public:

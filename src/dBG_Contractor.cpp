@@ -19,6 +19,10 @@ dBG_Contractor<k>::dBG_Contractor(const std::size_t part_count, const std::size_
     P_v.emplace_back();
     for(std::size_t j = 1; j <= part_count; ++j)
         P_v.emplace_back(work_path + std::string("P_v_") + std::to_string(j));
+
+    P_e.emplace_back();
+    for(std::size_t b = 1; b <= unitig_bucket_count; ++b)
+        P_e.emplace_back(work_path + std::string("P_e_") + std::to_string(b));
 }
 
 
@@ -31,7 +35,7 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     Discontinuity_Graph_Contractor<k> contractor(E, P_v, work_path);
     contractor.contract();
 
-    Contracted_Graph_Expander<k> expander(E, P_v, work_path);
+    Contracted_Graph_Expander<k> expander(E, P_v, P_e, work_path);
     expander.expand();
 }
 
