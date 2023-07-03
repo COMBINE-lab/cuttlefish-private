@@ -17,6 +17,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <algorithm>
 
 
 namespace cuttlefish
@@ -59,6 +60,14 @@ private:
     // through their sides `s_v` and `s_u`, respectively.
     Path_Info<k> infer(Path_Info<k> u_inf, side_t s_u, side_t s_v, weight_t w);
 
+    // Computes the path-info of the edge `e` from its endpoints' path-info,
+    // `u_inf` and `v_inf`, and adds the info to `e`'s path-info bucket.
+    void add_edge_path_info(const Discontinuity_Edge<k>& e, Path_Info<k> u_inf, Path_Info<k> v_inf);
+
+    // Computes the path-info of the edge `e` of form `(ϕ, v)` from `v`'s path-
+    // info, `v_inf`, and adds the info to `e`'s path-info bucket.
+    void add_edge_path_info(const Discontinuity_Edge<k>& e, Path_Info<k> v_inf);
+
     // Debug
     std::size_t og_edge_c = 0;
 
@@ -84,6 +93,31 @@ inline Path_Info<k> Contracted_Graph_Expander<k>::infer(const Path_Info<k> u_inf
     const side_t o_v = (s_u == u_inf.o() ? inv_side(s_v) : s_v);    // Orientation.
 
     return Path_Info(u_inf.p(), r_v, o_v);
+}
+
+
+template <uint16_t k>
+inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> u_inf, const Path_Info<k> v_inf)
+{
+    // const auto p = u_inf.p();
+    assert(!e.u_is_phi() && !e.v_is_phi());
+    assert(u_inf.p() == v_inf.p());
+
+    const auto r = std::min(u_inf.r(), v_inf.r());
+    const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));  // The ranking of the vertices in the unitig goes from u to v.
+    P_e[e.b()].emplace(e.b_idx(), u_inf.p(), r, o); // `u_inf.p() == v_inf.p()`
+}
+
+
+template <uint16_t k>
+inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> v_inf)
+{
+    // const auto p = v_inf.p();
+    assert(e.u_is_phi() && !e.v_is_phi());
+
+    const auto r = (v_inf.r() == 1 ? 0 : v_inf.r());
+    const auto o = (r == 0 ? e.o() : inv_side(e.o()));
+    P_e[e.b()].emplace(e.b_idx(), v_inf.p(), r, o);
 }
 
 }

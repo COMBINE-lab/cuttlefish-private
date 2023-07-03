@@ -35,13 +35,14 @@ void Contracted_Graph_Expander<k>::expand()
                 const auto it = M.find(e.u());
                 assert(it != M.end());
 
-                const auto v_inf = infer(it->second, e.s_u(), e.s_v(), e.w());
+                const auto& u_inf = it->second;
+                const auto v_inf = infer(u_inf, e.s_u(), e.s_v(), e.w());
                 const auto j = E.partition(e.v());  // TODO: consider obtaining this info during the edge-reading process.
                 P_v[j].emplace(e.v(), v_inf.p(), v_inf.r(), v_inf.o());
 
                 if(e.w() == 1)
                 {
-                    // TODO: add edge path-info appropriately.
+                    add_edge_path_info(e, u_inf, v_inf);
                     og_edge_c++;
                 }
             }
@@ -53,7 +54,8 @@ void Contracted_Graph_Expander<k>::expand()
         for(const auto& e : buf)
             if(e.w() == 1)
             {
-                // TODO:
+                assert(M.find(e.u()) != M.end() && M.find(e.v()) != M.end());
+                add_edge_path_info(e, M[e.u()], M[e.v()]);
                 og_edge_c++;
             }
 
@@ -61,7 +63,8 @@ void Contracted_Graph_Expander<k>::expand()
         for(const auto& e : buf)
             if(e.w() == 1)
             {
-                // TODO:
+                assert(M.find(e.v()) != M.end());
+                add_edge_path_info(e, M[e.v()]);
                 og_edge_c++;
             }
     }
