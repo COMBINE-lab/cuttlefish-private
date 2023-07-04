@@ -70,13 +70,15 @@ public:
 template <typename T_>
 inline Virtual_File<T_>::Virtual_File(const char* const file_path, const std::size_t buf_bytes):
       buf_sz(buf_bytes)
+    , buf_elem_count(buf_sz / sizeof(T_))
     , file_elem_count(std::filesystem::file_size(file_path) / sizeof(T_))
-    , buf(std::malloc(buf_sz))
+    , buf(reinterpret_cast<T_*>(std::malloc(buf_sz)))
     , chunk_start_idx(0)
     , chunk_end_idx(0)
     , fp(std::fopen(file_path, "rb"))
     , next_acc_idx(0)
 {
+    assert(buf_elem_count > 0);
     assert(std::filesystem::file_size(file_path) % sizeof(T_) == 0);
 }
 
@@ -85,10 +87,8 @@ template <typename T_>
 inline Virtual_File<T_>::~Virtual_File()
 {
     std::free(buf);
-    buf = nullptr;
 
     std::fclose(fp);
-    fp = nullptr;
 }
 
 
