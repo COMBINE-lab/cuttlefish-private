@@ -71,6 +71,7 @@ inline void Unitig_File_Writer::add(const T_it_ beg, const T_it_ end)
     buf.insert(buf.end(), beg, end);
     total_sz += (end - beg);
     unitig_c++;
+    assert((end - beg) <= std::numeric_limits<uni_len_t>::max());
 
     if(buf.size() >= in_memory_bytes)
         flush_unitigs();
