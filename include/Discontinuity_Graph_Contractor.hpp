@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 #include <tuple>
+#include <cassert>
 
 
 namespace cuttlefish
@@ -53,10 +54,10 @@ private:
     std::tuple<Kmer<k>, side_t, weight_t> traverse_chain(Kmer<k> u) const;
 
     // Forms a meta-vertex in the contracted graph with the vertex `v` belonging
-    // to the vertex-partition `p_id`. In the contracted graph, `v` has a `w_1`
+    // to the vertex-partition `part`. In the contracted graph, `v` has a `w_1`
     // weighted edge incident to its side `s_1` and a `w_2` weighted edge
     // incident to the other side.
-    void form_meta_vertex(Kmer<k> v, std::size_t p_id, side_t s_1, weight_t w_1, weight_t w_2);
+    void form_meta_vertex(Kmer<k> v, std::size_t part, side_t s_1, weight_t w_1, weight_t w_2);
 
     // Debug
     std::size_t meta_v_c = 0;
@@ -125,9 +126,10 @@ public:
 
 
 template <uint16_t k>
-inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t p_id, const side_t s_1, const weight_t w_1, const weight_t w_2)
+inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s_1, const weight_t w_1, const weight_t w_2)
 {
-    P_v[p_id].emplace(v, v, (s_1 == side_t::back ? w_2 : w_1), side_t::back);   // The path-traversal exits `v` through its back.
+    assert(part < P_v.size());
+    P_v[part].emplace(v, v, (s_1 == side_t::back ? w_2 : w_1), side_t::back);   // The path-traversal exits `v` through its back.
     meta_v_c++;
 }
 

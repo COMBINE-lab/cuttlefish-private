@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <algorithm>
+#include <cassert>
 
 
 namespace cuttlefish
@@ -103,6 +104,8 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
 
     const auto r = std::min(u_inf.r(), v_inf.r());
     const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));  // The ranking of the vertices in the unitig goes from u to v.
+
+    assert(e.b() < P_e.size());
     P_e[e.b()].emplace(e.b_idx(), u_inf.p(), r, o); // `u_inf.p() == v_inf.p()`
 }
 
@@ -115,6 +118,8 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
 
     const auto r = (v_inf.r() == 1 ? 0 : v_inf.r());
     const auto o = (r == 0 ? e.o() : inv_side(e.o()));
+
+    assert(e.b() < P_e.size());
     P_e[e.b()].emplace(e.b_idx(), v_inf.p(), r, o);
 }
 
