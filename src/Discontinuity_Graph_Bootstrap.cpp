@@ -132,8 +132,8 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
 
 
     m_utig_file.close();
-    for(std::size_t i = 0; i < unitig_buckets; ++i)
-        lm_utig_file[i].close();
+    for(std::size_t b = 0; b <= unitig_buckets; ++b)
+        lm_utig_file[b].close();
 
 
     std::cerr << "#vertices: " << vertex_count << "\n";
