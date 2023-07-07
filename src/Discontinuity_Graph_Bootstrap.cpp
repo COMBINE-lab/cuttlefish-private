@@ -120,9 +120,9 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
             lm_utig_file[bucket_idx].add(seq + 0, seq + first_v_idx + k);
             bucket_idx = (bucket_idx == unitig_buckets ? 1 : bucket_idx + 1);
 
-            E.add(  p, side_t::back,
-                    last_vertex.canonical(), last_vertex == last_vertex.canonical() ? side_t::back : side_t::front,
-                    1, bucket_idx, lm_utig_file[bucket_idx].unitig_count(), true, false);
+            E.add(  last_vertex.canonical(), last_vertex == last_vertex.canonical() ? side_t::back : side_t::front,
+                    p, side_t::back,
+                    1, bucket_idx, lm_utig_file[bucket_idx].unitig_count(), false, true);
             lm_utig_file[bucket_idx].add(seq + last_v_idx, seq + seq_len);
             bucket_idx = (bucket_idx == unitig_buckets ? 1 : bucket_idx + 1);
 
