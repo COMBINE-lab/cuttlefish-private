@@ -40,7 +40,8 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     Contracted_Graph_Expander<k> expander(E, P_v, P_e, work_path);
     expander.expand();
 
-    Unitig_Collator<k> collator(P_e, work_path);
+    Unitig_Collator<k> collator(P_e, output_path, work_path);
+    collator.collate();
 }
 
 }
