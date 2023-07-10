@@ -28,6 +28,7 @@ private:
 
     const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e;   // `P_e[b]` contains path-info for edges in bucket `b`.
 
+    const std::string output_path;  // Path-prefix to output paths.
     const std::string work_path;    // Path-prefix to temporary working files.
 
     std::vector<Path_Info<k>> M;    // `M[idx]` is the path-info for the `idx`'th edge in some bucket.
@@ -43,9 +44,9 @@ public:
 
     // Constructs a unitig-collator for unitigs with their associated path-info
     // at `P_e`, i.e. `P_e[b]` contains path-information of the unitigs'
-    // corresponding edges at bucket `b`. Temporary files are stored at path-
-    // prefix `temp_path`.
-    Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path);
+    // corresponding edges at bucket `b`. Output files and temporary files are
+    // stored at path-prefixes `output_path` and`temp_path`, respectively.
+    Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& output_path, const std::string& temp_path);
 
     void collate();
 };

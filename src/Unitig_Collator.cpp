@@ -9,8 +9,9 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path):
+Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& output_path, const std::string& temp_path):
       P_e(P_e)
+    , output_path(output_path)
     , work_path(temp_path)
 {}
 

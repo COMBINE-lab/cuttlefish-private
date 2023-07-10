@@ -11,9 +11,10 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-dBG_Contractor<k>::dBG_Contractor(const std::size_t part_count, const std::size_t unitig_bucket_count, const std::string& temp_path):
+dBG_Contractor<k>::dBG_Contractor(const std::size_t part_count, const std::size_t unitig_bucket_count, const std::string& output_path, const std::string& temp_path):
       part_count(part_count)
     , unitig_bucket_count(unitig_bucket_count)
+    , output_path(output_path)
     , work_path(temp_path)
     , E(part_count, temp_path + std::string("E_"))
 {
