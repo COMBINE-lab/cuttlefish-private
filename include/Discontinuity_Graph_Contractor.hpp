@@ -42,7 +42,7 @@ private:
     std::unordered_map<Kmer<k>, Other_End, Kmer_Hasher<k>> M;   // `M[v]` is the associated vertex to `v` at a given time.
 
     std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block.
-    std::vector<std::tuple<Kmer<k>, Kmer<k>, weight_t>> D;  // Edges corresponding to compressed diagonal chains.
+    std::vector<Discontinuity_Edge<k>> D_c; // Edges corresponding to compressed diagonal chains.
 
 
     // Contracts the `[j, j]`'th edge-block.

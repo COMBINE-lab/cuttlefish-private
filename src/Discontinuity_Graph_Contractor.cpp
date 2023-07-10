@@ -1,5 +1,6 @@
 
 #include "Discontinuity_Graph_Contractor.hpp"
+#include "globals.hpp"
 
 #include <fstream>
 
@@ -27,7 +28,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
     for(auto j = E.vertex_part_count(); j >= 1; --j)
     {
         M.clear();
-        D.clear();
+        D_c.clear();
 
 
         contract_diagonal_block(j);
@@ -50,8 +51,9 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
                     if(w.in_same_part())
                     {
+                        assert(!w.is_phi());
                         if(e.v() < w.v())
-                            D.emplace_back(e.v(), w.v(), w.w());
+                            D_c.emplace_back(e.v(), inv_side(e.s_v()), w.v(), w.s_v(), w.w(), 0, 0, false, false, side_t::unspecified);
 
                         w = Other_End(e.u(), e.s_u(), e.u_is_phi(), e.w(), false);
                         continue;
@@ -62,16 +64,14 @@ void Discontinuity_Graph_Contractor<k>::contract()
             }
 
 
-        for(const auto& e : D)
+        for(const auto& e : D_c)
         {
-            const auto u = std::get<0>(e);
-            const auto v = std::get<1>(e);
-            const auto w_uv = std::get<2>(e);
-            const auto& m_u = M[u];
-            const auto& m_v = M[v];
+            const auto w_uv = e.w();
+            const auto& m_u = M[e.u()];
+            const auto& m_v = M[e.v()];
 
             if(m_u.is_phi() && m_v.is_phi())
-                form_meta_vertex(u, j, m_u.s_v(), m_u.w(), w_uv + m_v.w());
+                form_meta_vertex(e.u(), j, inv_side(e.s_u()), m_u.w(), w_uv + m_v.w());
             else
                 E.add(m_u.v(), m_u.s_v(), m_v.v(), m_v.s_v(), m_u.w() + w_uv + m_v.w(), 0, 0, m_u.is_phi(), m_v.is_phi());
         }
