@@ -6,6 +6,8 @@
 #include "Unitig_Collator.hpp"
 #include "globals.hpp"
 
+#include <chrono>
+
 
 namespace cuttlefish
 {
@@ -31,17 +33,32 @@ dBG_Contractor<k>::dBG_Contractor(const std::size_t part_count, const std::size_
 template <uint16_t k>
 void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
 {
+    // TODO: move these utility functionalities out.
+    constexpr auto now = std::chrono::high_resolution_clock::now;
+    constexpr auto duration = [](const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
+    const auto t_s = now();
+
+    (void)l, (void)cdbg_path;
     // Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E, work_path, unitig_bucket_count);
     // dgb.generate();
 
     Discontinuity_Graph_Contractor<k> contractor(E, P_v, work_path);
     contractor.contract();
 
+    const auto t_c = now();
+    std::cerr << "Discontinuity-graph contraction completed. Time taken: " << duration(t_c - t_s) << " seconds.\n";
+
     Contracted_Graph_Expander<k> expander(E, P_v, P_e, work_path);
     expander.expand();
 
+    const auto t_e = now();
+    std::cerr << "Expansion of contracted graph completed. Time taken: " << duration(t_e - t_c) << " seconds.\n";
+
     Unitig_Collator<k> collator(P_e, output_path, work_path);
     collator.collate();
+
+    const auto t_uc = now();
+    std::cerr << "Unitigs-collation completed. Time taken: " << duration(t_uc - t_e) << " seconds.\n";
 }
 
 }

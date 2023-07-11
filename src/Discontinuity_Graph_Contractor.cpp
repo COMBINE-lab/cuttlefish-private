@@ -19,11 +19,6 @@ Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>
 template <uint16_t k>
 void Discontinuity_Graph_Contractor<k>::contract()
 {
-    // TODO: move these utility functionalities out.
-    constexpr auto now = std::chrono::high_resolution_clock::now;
-    constexpr auto duration = [](const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
-    const auto t_b = now();
-
     // TODO: set `buf` to max-block size of E.
     for(auto j = E.vertex_part_count(); j >= 1; --j)
     {
@@ -79,10 +74,6 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
 
     std::cerr << "Formed " << meta_v_c << " meta-vertices.\n";
-
-
-    const auto t_e = now();
-    std::cerr << "Discontinuity-graph contraction completed. Time taken: " << duration(t_e - t_b) << " seconds.\n";
 }
 
 
