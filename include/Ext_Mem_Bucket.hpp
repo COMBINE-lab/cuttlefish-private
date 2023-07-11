@@ -45,7 +45,9 @@ public:
 
     // Constructs an external-memory bucket at path `file_path`. An optional in-
     // memory buffer size (in bytes) `buf_sz` for the bucket can be specified.
-    Ext_Mem_Bucket(const std::string& file_path, const std::size_t buf_sz = in_memory_bytes);
+    // Specifying `append` indicates that the bucket exists and new elements are
+    // to be appended to it.
+    Ext_Mem_Bucket(const std::string& file_path, bool append = false, const std::size_t buf_sz = in_memory_bytes);
 
     // Constructs a placeholder bucket.
     Ext_Mem_Bucket(): Ext_Mem_Bucket("", 0)
@@ -72,7 +74,7 @@ public:
 
 
 template <typename T_>
-inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(const std::string& file_path, const std::size_t buf_sz):
+inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(const std::string& file_path, const bool append, const std::size_t buf_sz):
       file_path(file_path)
     , max_write_buf_bytes(buf_sz)
     , max_write_buf_elems(buf_sz / sizeof(T_))
@@ -80,8 +82,25 @@ inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(const std::string& file_path, const st
 {
     buf.reserve(max_write_buf_elems);
 
-    if(!file_path.empty())
-        file.open(file_path);
+    if(append)
+    {
+        assert(!file_path.empty());
+
+        std::error_code ec;
+        const auto file_sz = std::filesystem::file_size(file_path, ec);
+        if(ec)
+        {
+            std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        assert(file_sz % sizeof(T_) == 0);
+        size_ = file_sz / sizeof(T_);
+
+        file.open(file_path, std::ios::app | std::ios::binary);
+    }
+    else if(!file_path.empty())
+        file.open(file_path, std::ios::out | std::ios::binary);
 }
 
 

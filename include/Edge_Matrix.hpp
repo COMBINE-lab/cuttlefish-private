@@ -42,8 +42,9 @@ private:
 public:
 
     // Constructs a blocked edge-matrix for `part_count` vertex-partitions. The
-    // partition-count needs to be a power of 2.
-    Edge_Matrix(std::size_t part_count, const std::string& path);
+    // partition-count needs to be a power of 2. Specifying `append` indicates
+    // that the matrix already exists and new edges are to be appended to it.
+    Edge_Matrix(std::size_t part_count, const std::string& path, bool append = false);
 
     // Returns the number of vertex-partitions in the graph.
     std::size_t vertex_part_count() const { return vertex_part_count_; }
