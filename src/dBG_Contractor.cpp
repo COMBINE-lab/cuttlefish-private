@@ -16,7 +16,7 @@ dBG_Contractor<k>::dBG_Contractor(const std::size_t part_count, const std::size_
     , unitig_bucket_count(unitig_bucket_count)
     , output_path(output_path)
     , work_path(temp_path)
-    , E(part_count, temp_path + std::string("E_"))
+    , E(part_count, temp_path + std::string("E_"), true)
 {
     P_v.emplace_back();
     for(std::size_t j = 1; j <= part_count; ++j)
@@ -31,8 +31,8 @@ dBG_Contractor<k>::dBG_Contractor(const std::size_t part_count, const std::size_
 template <uint16_t k>
 void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
 {
-    Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E, work_path, unitig_bucket_count);
-    dgb.generate();
+    // Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E, work_path, unitig_bucket_count);
+    // dgb.generate();
 
     Discontinuity_Graph_Contractor<k> contractor(E, P_v, work_path);
     contractor.contract();

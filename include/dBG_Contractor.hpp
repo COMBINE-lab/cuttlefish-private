@@ -26,6 +26,7 @@ class dBG_Contractor
 
 private:
 
+    // TODO: wrap the following primitive fields in `Build_Params`.
     const std::size_t part_count;   // Number of vertex-partitions in the discontinuity graph; needs to be a power of 2.
     const std::size_t unitig_bucket_count;  // Number of buckets storing literal unitigs.
 

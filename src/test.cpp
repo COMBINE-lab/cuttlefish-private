@@ -13,6 +13,7 @@
 // #include "Minimizer_Iterator.hpp"
 // #include "Multiway_Merger.hpp"
 // #include "Kmer_Index.hpp"
+#include "Discontinuity_Graph_Bootstrap.hpp"
 // #include "kseq/kseq.h"
 // #include "spdlog/spdlog.h"
 // #include "spdlog/async.h"
@@ -853,6 +854,16 @@ void cross_check_index_kmers(const std::string& op_pref)
 */
 
 
+template <uint16_t k>
+void bootstrap_discontinuity_graph(const uint16_t l, const std::string& cdbg_path, const std::string& dg_path, const std::size_t part_count, const std::size_t unitig_bucket_count)
+{
+    cuttlefish::Edge_Matrix<k> E(part_count, dg_path + "E_");
+    cuttlefish::Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E, dg_path, unitig_bucket_count);
+    dgb.generate();
+    E.serialize();
+}
+
+
 int main(int argc, char** argv)
 {
     (void)argc;
@@ -883,18 +894,16 @@ int main(int argc, char** argv)
 
     // count_kmers_in_unitigs(argv[1], atoi(argv[2]));
 
-    // static constexpr uint16_t k = 31;
-    // static const size_t consumer_count = std::atoi(argv[2]);
+    static constexpr uint16_t k = 31;
+    static constexpr uint16_t l = 11;
 
-    // test_buffered_iterator_performance<k>(argv[1]);
-    // test_SPMC_iterator_performance<k>(argv[1], consumer_count);
-    // test_SPSC_iterator_performance<k>(argv[1]);
-    // test_iterator_correctness<k>(argv[1], consumer_count);
-    // write_kmers<32>(argv[1], std::atoi(argv[2]), argv[3]);
-    // test_multiway_merge<k>(std::string(argv[1]));
+    const std::size_t parts = 64;
+    const std::size_t unitig_buckets = 1024;
+    const std::string cdbg_path(argv[1]);
+    const std::string output_path(argv[2]);
+    const std::string temp_path(argv[3]);
 
-    // static constexpr uint16_t l = 20;
-    // minimizer_iterator_test<k, l>(argv[1]);
+    bootstrap_discontinuity_graph<k>(l, cdbg_path, output_path, parts, unitig_buckets);
 
     return 0;
 }
