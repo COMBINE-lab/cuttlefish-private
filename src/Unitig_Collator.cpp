@@ -41,7 +41,7 @@ void Unitig_Collator<k>::collate()
         M.clear();
         load_path_info(b);
 
-        Unitig_File_Reader unitig_reader(work_path + std::string(".lmutig_") + std::to_string(b));
+        Unitig_File_Reader unitig_reader(work_path + std::string("lmutig_") + std::to_string(b));
         uni_idx_t uni_idx = 0;
         while(unitig_reader.read_next_unitig(unitig))
         {
@@ -113,7 +113,7 @@ void Unitig_Collator<k>::collate()
     }
 
     std::size_t mu_tig = 0;
-    Unitig_File_Reader mu_tig_reader(work_path + std::string(".mutig"));
+    Unitig_File_Reader mu_tig_reader(work_path + std::string("mutig"));
     while(mu_tig_reader.read_next_unitig(max_unitig))
     {
         max_u_rc = max_unitig;

@@ -37,10 +37,10 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
     uint64_t trivial_unitig_count = 0;  // Number of maximal unitigs in the dBG without a discontinuity k-mer.
     std::size_t max_trivial_len = 0;    // Length of the longest maximal unitig without a discontinuity k-mer.
 
-    Unitig_File_Writer m_utig_file(unitigs_path + std::string(".mutig"));
+    Unitig_File_Writer m_utig_file(unitigs_path + std::string("mutig"));
     std::vector<Unitig_File_Writer> lm_utig_file;
     for(std::size_t b = 0; b <= unitig_buckets; ++b)
-        lm_utig_file.emplace_back(unitigs_path + std::string(".lmutig_") + std::to_string(b));
+        lm_utig_file.emplace_back(unitigs_path + std::string("lmutig_") + std::to_string(b));
 
     std::size_t bucket_idx = 1;
 
