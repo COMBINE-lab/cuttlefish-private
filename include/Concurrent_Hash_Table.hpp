@@ -69,8 +69,9 @@ public:
 
     // Inserts the key `key` with value `val` into the table. Returns `false` if
     // the key already exists in the table. Otherwise returns `true` iff the
-    // insertion succeeds, i.e. free space was found for the insertion.
-    bool insert(T_key_ key, T_val_ val);
+    // insertion succeeds, i.e. free space was found for the insertion. `mt_`
+    // denotes whether multiple threads may access the hash table or not.
+    template <bool mt_ = true> bool insert(T_key_ key, T_val_ val);
 
     // Searches for `key` in the table and returns `true` iff it is found. If
     // found, the associated value is stored in `val`. `val` remains unchanged
@@ -98,13 +99,19 @@ inline Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Concurrent_Hash_Table(c
 
 
 template <typename T_key_, typename T_val_, typename T_hasher_>
+template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key_ key, const T_val_ val)
 {
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
     {
         if(T[i].key == empty_key_)
         {
-            if(CAS(&T[i].key, empty_key_, key))
+            if constexpr(!mt_)
+            {
+                T[i].key = key, T[i].val = val;
+                return true;
+            }
+            else if(CAS(&T[i].key, empty_key_, key))
             {
                 T[i].val = val;
                 return true;
