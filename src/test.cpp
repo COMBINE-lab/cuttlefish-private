@@ -3,7 +3,8 @@
 // #include "Kmer_Container.hpp"
 // #include "Kmer_SPMC_Iterator.hpp"
 // #include "BBHash/BooPHF.h"
-// #include "Kmer_Hasher.hpp"
+#include "Kmer_Hasher.hpp"
+#include "Kmer.hpp"
 // #include "Validator.hpp"
 // #include "Character_Buffer.hpp"
 // #include "Kmer_SPMC_Iterator.hpp"
@@ -14,6 +15,7 @@
 // #include "Multiway_Merger.hpp"
 // #include "Kmer_Index.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
+#include "Concurrent_Hash_Table.hpp"
 // #include "kseq/kseq.h"
 // #include "spdlog/spdlog.h"
 // #include "spdlog/async.h"
@@ -30,6 +32,8 @@
 // #include <cstring>
 // #include <set>
 // #include <map>
+#include <unordered_map>
+#include <random>
 
 
 /*
@@ -864,6 +868,102 @@ void bootstrap_discontinuity_graph(const uint16_t l, const std::string& cdbg_pat
 }
 
 
+template <uint16_t k>
+void benchmark_hash_table(std::size_t elem_count, double load_factor = 0.8)
+{
+    cuttlefish::Concurrent_Hash_Table<Kmer<k>, std::size_t, Kmer_Hasher<k>> ht(elem_count, load_factor);
+    std::vector<Kmer<k>> kmers;
+    std::vector<std::size_t> vals;
+
+    kmers.reserve(elem_count);
+    vals.reserve(elem_count);
+
+    std::random_device random_device;
+    std::mt19937 random_engine(random_device());
+    std::uniform_int_distribution<std::size_t> distribution(0lu, std::numeric_limits<std::size_t>::max());
+
+    for(std::size_t i = 0; i < elem_count; ++i)
+        kmers.emplace_back(Kmer<k>(distribution(random_engine))),
+        vals.emplace_back(distribution(random_engine));
+
+    constexpr auto now = std::chrono::high_resolution_clock::now;
+    constexpr auto duration = [](const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
+
+    auto t_st = now();
+    for(std::size_t i = 0; i < elem_count; ++i)
+        ht.insert(kmers[i], vals[i]);
+    auto t_en = now();
+
+    std::cerr << "Inserted " << elem_count << " elements into custom hash-table in time " << duration(t_en - t_st) << " seconds.\n";
+
+
+    std::unordered_map<Kmer<k>, std::size_t, Kmer_Hasher<k>> M;
+    M.reserve(elem_count);
+    t_st = now();
+    for(std::size_t i = 0; i < elem_count; ++i)
+        M.emplace(kmers[i], vals[i]);
+    t_en = now();
+
+    std::cerr << "Inserted " << elem_count << " elements into std::unordered_map in time " << duration(t_en - t_st) << " seconds.\n";
+
+
+    std::size_t val;
+
+    t_st = now();
+    for(std::size_t i = 0; i < elem_count; ++i)
+        if(!ht.find(kmers[i], val) || val != vals[i])
+        {
+            std::cerr << "True positive not found or value incorrect in custom hash-table\n";
+            return;
+        }
+    t_en = now();
+    std::cerr << "Searched " << elem_count << " true-positive elements into custom hash-table in time " << duration(t_en - t_st) << " seconds.\n";
+
+    t_st = now();
+    for(std::size_t i = 0; i < elem_count; ++i)
+        if(M.find(kmers[i]) == M.end())
+        {
+            std::cerr << "True positive not found in std::unordered_map\n";
+            return;
+        }
+    t_en = now();
+    std::cerr << "Searched " << elem_count << " true-positive elements into std::unordered_map in time " << duration(t_en - t_st) << " seconds.\n";
+
+    std::vector<Kmer<k>> kmers_false;
+    kmers_false.reserve(elem_count);
+    for(std::size_t i = 0; i < elem_count; ++i)
+    {
+        std::size_t x;
+        do
+            x = distribution(random_engine);
+        while(M.find(x) != M.end());
+
+        kmers_false.emplace_back(Kmer<k>(x));
+    }
+
+    t_st = now();
+    for(std::size_t i = 0; i < elem_count; ++i)
+        if(ht.find(kmers_false[i], val))
+        {
+            std::cerr << "True negative found in custom hash-table\n";
+            return;
+        }
+    t_en = now();
+    std::cerr << "Searched " << elem_count << " true-negative elements into custom hash-table in time " << duration(t_en - t_st) << " seconds.\n";
+
+    t_st = now();
+    for(std::size_t i = 0; i < elem_count; ++i)
+        if(M.find(kmers_false[i]) != M.end())
+        {
+            std::cerr << "True negative found in std::unordered_map\n";
+            return;
+        }
+    t_en = now();
+    std::cerr << "Searched " << elem_count << " true-negative elements into std::unordered_map in time " << duration(t_en - t_st) << " seconds.\n";
+
+}
+
+
 int main(int argc, char** argv)
 {
     (void)argc;
@@ -895,15 +995,19 @@ int main(int argc, char** argv)
     // count_kmers_in_unitigs(argv[1], atoi(argv[2]));
 
     static constexpr uint16_t k = 31;
-    static constexpr uint16_t l = 11;
+    // static constexpr uint16_t l = 11;
 
-    const std::size_t parts = 64;
-    const std::size_t unitig_buckets = 1024;
-    const std::string cdbg_path(argv[1]);
-    const std::string output_path(argv[2]);
-    const std::string temp_path(argv[3]);
+    const std::size_t elem_count = std::atoi(argv[1]);
+    const double lf = 0.75;
+    benchmark_hash_table<k>(elem_count, lf);
 
-    bootstrap_discontinuity_graph<k>(l, cdbg_path, output_path, parts, unitig_buckets);
+    // const std::size_t parts = 64;
+    // const std::size_t unitig_buckets = 1024;
+    // const std::string cdbg_path(argv[1]);
+    // const std::string output_path(argv[2]);
+    // const std::string temp_path(argv[3]);
+
+    // bootstrap_discontinuity_graph<k>(l, cdbg_path, output_path, parts, unitig_buckets);
 
     return 0;
 }
