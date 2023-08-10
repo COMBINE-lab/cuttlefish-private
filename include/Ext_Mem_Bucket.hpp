@@ -105,7 +105,7 @@ inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(const std::string& file_path, const bo
 
 
 template <typename T_>
-void Ext_Mem_Bucket<T_>::add(const T_& elem)
+inline void Ext_Mem_Bucket<T_>::add(const T_& elem)
 {
     buf.push_back(elem);
     size_++;
@@ -116,7 +116,7 @@ void Ext_Mem_Bucket<T_>::add(const T_& elem)
 
 template <typename T_>
 template <typename... Args>
-void Ext_Mem_Bucket<T_>::emplace(Args&&... args)
+inline void Ext_Mem_Bucket<T_>::emplace(Args&&... args)
 {
     buf.emplace_back(std::forward<Args>(args)...);  // TODO: learn details.
     size_++;
@@ -134,7 +134,7 @@ inline void Ext_Mem_Bucket<T_>::flush()
 
 
 template <typename T_>
-void Ext_Mem_Bucket<T_>::close()
+inline void Ext_Mem_Bucket<T_>::close()
 {
     if(!buf.empty())
         flush();
@@ -144,7 +144,7 @@ void Ext_Mem_Bucket<T_>::close()
 
 
 template <typename T_>
-void Ext_Mem_Bucket<T_>::load(std::vector<T_>& v) const
+inline void Ext_Mem_Bucket<T_>::load(std::vector<T_>& v) const
 {
     std::error_code ec;
     const auto file_sz = std::filesystem::file_size(file_path, ec);

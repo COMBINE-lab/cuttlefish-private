@@ -52,6 +52,7 @@ bool dir_exists(const std::string& dir_path)
 
 std::size_t file_size(const std::string& file_path)
 {
+    // TODO: update policy for 0-sized files.
     std::error_code ec;
     const uintmax_t size = std::filesystem::file_size(file_path, ec);
     return ec ? 0 : static_cast<std::size_t>(size);

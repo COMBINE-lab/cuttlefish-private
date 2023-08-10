@@ -107,7 +107,7 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
 
         assert(M.find(e.u()) != M.end() || M.find(e.v()) != M.end());
 
-        auto it = M.find(e.v());
+        const auto it = M.find(e.v());
         if(it == M.end())
             M.emplace(e.v(), infer(M.find(e.u())->second, e.s_u(), e.s_v(), e.w()));
         else
