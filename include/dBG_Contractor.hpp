@@ -36,7 +36,7 @@ private:
     Edge_Matrix<k> E;  // Edge-matrix of the discontinuity graph.
 
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>> P_v;    // `P_v[j]` contains path-info for vertices in partition `j`.
-    std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>> P_e;  // `P_e[b]` contains path-info for edges in bucket `b`.
+    std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>> P_e;  // `P_e[b]` contains path-info for edges induced by unitigs in bucket `b`.
 
 
 public:
@@ -44,9 +44,11 @@ public:
     dBG_Contractor(const dBG_Contractor&) = delete;
     dBG_Contractor& operator=(const dBG_Contractor&) = delete;
 
-    // Constructs a compacted de Bruijn constructor that operates with
-    // `part_count` vertex-partitions in its discontinuity graph and stores
-    // temporary working files at path-prefix `temp_path`.
+    // Constructs a compacted de Bruijn graph constructor that operates with
+    // `part_count` vertex-partitions in its discontinuity graph, and stores the
+    // locally-maximal unitigs from the partitioned subgraphs of the dBG into
+    // `unitig_bucket_count` buckets. Output files are stored at the path-prefix
+    // `output_path`, and temporary working files at path-prefix `temp_path`.
     dBG_Contractor(std::size_t part_count, std::size_t unitig_bucket_count, const std::string& output_path, const std::string& temp_path);
 
     // Contracts the bootstrapped discontinuity graph generated from the
