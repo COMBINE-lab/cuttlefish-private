@@ -3,6 +3,7 @@
 #include "globals.hpp"
 
 #include <cstddef>
+#include <algorithm>
 
 
 namespace cuttlefish
@@ -89,6 +90,30 @@ void Edge_Matrix<k>::read_block(std::size_t i, std::size_t j, std::vector<Discon
 {
     assert(i <= vertex_part_count_ && j <= vertex_part_count_);
     edge_matrix[i][j].load(buf);
+}
+
+
+template <uint16_t k>
+std::size_t Edge_Matrix<k>::row_size(const std::size_t i) const
+{
+    assert(i <= vertex_part_count_);
+
+    std::size_t sz = 0;
+    for(std::size_t j = std::max(1lu, i); j <= vertex_part_count_; ++j)
+        sz += edge_matrix[i][j].size();
+
+    return sz;
+}
+
+
+template <uint16_t k>
+std::size_t Edge_Matrix<k>::size() const
+{
+    std::size_t sz = 0;
+    for(std::size_t i = 0; i <= vertex_part_count_; ++i)
+        sz += row_size(i);
+
+    return sz;
 }
 
 }

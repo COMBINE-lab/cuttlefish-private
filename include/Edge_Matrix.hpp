@@ -79,6 +79,12 @@ public:
 
     // Reads the edges from the `[i, j]`'th block into `buf`.
     void read_block(std::size_t i, std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const;
+
+    // Returns the number of edges stored in row `i`.
+    std::size_t row_size(std::size_t i) const;
+
+    // Returns the number of edges stores in the matrix.
+    std::size_t size() const;
 };
 
 
