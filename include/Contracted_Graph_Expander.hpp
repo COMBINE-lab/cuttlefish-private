@@ -99,7 +99,7 @@ template <uint16_t k>
 inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> u_inf, const Path_Info<k> v_inf)
 {
     // const auto p = u_inf.p();
-    assert(!e.u_is_phi() && !e.v_is_phi());
+    assert(!e.x_is_phi() && !e.y_is_phi());
     assert(u_inf.p() == v_inf.p());
 
     const auto r = std::min(u_inf.r(), v_inf.r());
@@ -114,7 +114,7 @@ template <uint16_t k>
 inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> v_inf)
 {
     // const auto p = v_inf.p();
-    assert(e.u_is_phi() && !e.v_is_phi());
+    assert(e.x_is_phi() && !e.y_is_phi());
 
     const auto r = (v_inf.r() == 1 ? 0 : v_inf.r());
     const auto o = (r == 0 ? e.o() : inv_side(e.o()));

@@ -63,6 +63,18 @@ public:
     // Returns the side of the `v` endpoint to which the edge is incident to.
     side_t s_v() const { return s_v_; }
 
+    // Returns the `u` endpoint of the edge.
+    const Kmer<k>& x() const { return u(); }
+
+    // Returns the `v` endpoint of the edge.
+    const Kmer<k>& y() const { return v(); }
+
+    // Returns the side of the `u` endpoint to which the edge is incident to.
+    side_t s_x() const { return s_u(); }
+
+    // Returns the side of the `v` endpoint to which the edge is incident to.
+    side_t s_y() const { return s_v(); }
+
     // Returns the weight of the edge.
     weight_t w() const { return weight; }
 
@@ -77,6 +89,12 @@ public:
 
     // Returns whether `v` is the ϕ vertex.
     bool v_is_phi() const { return v_is_phi_; }
+
+    // Returns whether `u` is the ϕ vertex.
+    bool x_is_phi() const { return u_is_phi(); }
+
+    // Returns whether `v` is the ϕ vertex.
+    bool y_is_phi() const { return v_is_phi(); }
 
     // Returns orientation of the corresponding literal unitig wrt the `(u, v)`
     // orientation of the edge.

@@ -34,17 +34,17 @@ void Contracted_Graph_Expander<k>::expand()
         while(E.read_row_buffered(i, buf))
             for(const auto& e : buf)
             {
-                const auto it = M.find(e.u());
+                const auto it = M.find(e.x());
                 assert(it != M.end());
 
-                const auto& u_inf = it->second;
-                const auto v_inf = infer(u_inf, e.s_u(), e.s_v(), e.w());
-                const auto j = E.partition(e.v());  // TODO: consider obtaining this info during the edge-reading process.
-                P_v[j].emplace(e.v(), v_inf.p(), v_inf.r(), v_inf.o());
+                const auto& x_inf = it->second;
+                const auto y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
+                const auto j = E.partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
+                P_v[j].emplace(e.y(), y_inf.p(), y_inf.r(), y_inf.o());
 
                 if(e.w() == 1)
                 {
-                    add_edge_path_info(e, u_inf, v_inf);
+                    add_edge_path_info(e, x_inf, y_inf);
                     og_edge_c++;
                 }
             }
@@ -56,8 +56,8 @@ void Contracted_Graph_Expander<k>::expand()
         for(const auto& e : buf)
             if(e.w() == 1)
             {
-                assert(M.find(e.u()) != M.end() && M.find(e.v()) != M.end());
-                add_edge_path_info(e, M[e.u()], M[e.v()]);
+                assert(M.find(e.x()) != M.end() && M.find(e.y()) != M.end());
+                add_edge_path_info(e, M[e.x()], M[e.y()]);
                 og_edge_c++;
             }
 
@@ -65,8 +65,8 @@ void Contracted_Graph_Expander<k>::expand()
         for(const auto& e : buf)
             if(e.w() == 1)
             {
-                assert(M.find(e.v()) != M.end());
-                add_edge_path_info(e, M[e.v()]);
+                assert(M.find(e.y()) != M.end());
+                add_edge_path_info(e, M[e.y()]);
                 og_edge_c++;
             }
     }
@@ -105,13 +105,13 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
     {
         const auto& e = *d_it;
 
-        assert(M.find(e.u()) != M.end() || M.find(e.v()) != M.end());
+        assert(M.find(e.x()) != M.end() || M.find(e.y()) != M.end());
 
-        const auto it = M.find(e.v());
+        const auto it = M.find(e.y());
         if(it == M.end())
-            M.emplace(e.v(), infer(M.find(e.u())->second, e.s_u(), e.s_v(), e.w()));
+            M.emplace(e.y(), infer(M.find(e.x())->second, e.s_x(), e.s_y(), e.w()));
         else
-            M.emplace(e.u(), infer(it->second, e.s_v(), e.s_u(), e.w()));
+            M.emplace(e.x(), infer(it->second, e.s_y(), e.s_x(), e.w()));
     }
 }
 
