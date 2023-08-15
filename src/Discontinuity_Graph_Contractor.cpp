@@ -13,6 +13,8 @@ Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>
       E(E)
     , P_v(P_v)
     , work_path(temp_path)
+    , n_(E.size() - E.row_size(0) / 2)  // each separate chain has exactly two ϕ-adjacent edges
+    , M(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.1))
 {}
 
 
@@ -25,50 +27,49 @@ void Discontinuity_Graph_Contractor<k>::contract()
         M.clear();
         D_c.clear();
 
-
         contract_diagonal_block(j);
 
+        Other_End* p_z;
         while(E.read_column_buffered(j, buf))
             for(const auto& e : buf)
             {
-                auto it = M.find(e.y());
-                if(it == M.end())
-                    M.emplace(e.y(), Other_End(e.x(), e.s_x(), e.x_is_phi(), e.w(), false));
-                else
+                if(M.insert(e.y(), Other_End(e.x(), e.s_x(), e.x_is_phi(), e.w(), false), p_z))
+                    continue;
+
+                auto& z = *p_z;
+                if(z.is_phi() && e.x_is_phi())
                 {
-                    auto& w = it->second;
-
-                    if(w.is_phi() && e.x_is_phi())
-                    {
-                        form_meta_vertex(e.y(), j, e.s_y(), e.w(), w.w());
-                        continue;
-                    }
-
-                    if(w.in_same_part())
-                    {
-                        assert(!w.is_phi());
-                        if(e.y() < w.v())
-                            D_c.emplace_back(e.y(), inv_side(e.s_y()), w.v(), w.s_v(), w.w(), 0, 0, false, false, side_t::unspecified);
-
-                        w = Other_End(e.x(), e.s_x(), e.x_is_phi(), e.w(), false);
-                        continue;
-                    }
-
-                    E.add(e.x(), e.s_x(), w.v(), w.s_v(), e.w() + w.w(), 0, 0, e.x_is_phi(), w.is_phi());
+                    form_meta_vertex(e.y(), j, e.s_y(), e.w(), z.w());
+                    continue;
                 }
+
+                if(z.in_same_part())
+                {
+                    assert(!z.is_phi());
+                    if(e.y() < z.v())
+                        D_c.emplace_back(e.y(), inv_side(e.s_y()), z.v(), z.s_v(), z.w(), 0, 0, false, false, side_t::unspecified);
+
+                    z = Other_End(e.x(), e.s_x(), e.x_is_phi(), e.w(), false);
+                    continue;
+                }
+
+                E.add(e.x(), e.s_x(), z.v(), z.s_v(), e.w() + z.w(), 0, 0, e.x_is_phi(), z.is_phi());
             }
 
 
         for(const auto& e : D_c)
         {
-            const auto w_uv = e.w();
-            const auto& m_x = M[e.x()];
-            const auto& m_y = M[e.y()];
+            assert(M.find(e.x()));
+            assert(M.find(e.y()));
+
+            const auto w_xy = e.w();
+            const auto& m_x = *M.find(e.x());
+            const auto& m_y = *M.find(e.y());
 
             if(m_x.is_phi() && m_y.is_phi())
-                form_meta_vertex(e.x(), j, inv_side(e.s_x()), m_x.w(), w_uv + m_y.w());
+                form_meta_vertex(e.x(), j, inv_side(e.s_x()), m_x.w(), w_xy + m_y.w());
             else
-                E.add(m_x.v(), m_x.s_v(), m_y.v(), m_y.s_v(), m_x.w() + w_uv + m_y.w(), 0, 0, m_x.is_phi(), m_y.is_phi());
+                E.add(m_x.v(), m_x.s_v(), m_y.v(), m_y.s_v(), m_x.w() + w_xy + m_y.w(), 0, 0, m_x.is_phi(), m_y.is_phi());
         }
     }
 
@@ -84,19 +85,21 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
     E.read_diagonal_block(j, buf);
     for(const auto& e : buf)
     {
-        auto [x, s_x, w_x] = traverse_chain(e.x());
-        auto [y, s_y, w_y] = traverse_chain(e.y());
+        const Other_End* const end_x = M.find(e.x());
+        const Other_End* const end_y = M.find(e.y());
 
-        if(s_x == side_t::unspecified)
-            s_x = e.s_x();
-        if(s_y == side_t::unspecified)
-            s_y = e.s_y();
+        const auto& u  = (end_x ? end_x->v() : e.x());
+        const auto s_u = (end_x ? end_x->s_v() : e.s_x());
+        const auto w_u = (end_x ? end_x->w() : 0);
+        const auto& v  = (end_y ? end_y->v() : e.y());
+        const auto s_v = (end_y ? end_y->s_v() : e.s_y());
+        const auto w_v = (end_y ? end_y->w() : 0);
+        const auto w   = w_u + e.w() + w_v;
 
-        const auto w = w_x + e.w() + w_y;
-        M[x] = Other_End(y, s_y, false, w, true);
-        M[y] = Other_End(x, s_x, false, w, true);
+        M.insert_overwrite(u, Other_End(v, s_v, false, w, true));
+        M.insert_overwrite(v, Other_End(u, s_u, false, w, true));
 
-        D_j.emplace_back(x, s_x, y, s_y, w, w == 1 ? e.b() : 0, w == 1 ? e.b_idx() : 0, false, false, side_t::unspecified);
+        D_j.emplace_back(u, s_u, v, s_v, w, w == 1 ? e.b() : 0, w == 1 ? e.b_idx() : 0, false, false, side_t::unspecified);
     }
 
 
@@ -105,32 +108,6 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
     output.close();
 }
 
-
-template <uint16_t k>
-std::tuple<Kmer<k>, side_t, weight_t> Discontinuity_Graph_Contractor<k>::traverse_chain(Kmer<k> u) const
-{
-    side_t s_u = side_t::unspecified;   // Side through which `u` is connected to the chain.
-    weight_t w = 0;   // Weight of the traversed chain.
-    Kmer<k> p_u = u;  // Last vertex seen before `u`.
-
-    while(true)
-    {
-        const auto it = M.find(u);
-        if(it == M.end())
-            break;
-
-        const Other_End& other_end = it->second;
-        if(other_end.v() == p_u)
-            break;
-
-        p_u = u;
-        u = other_end.v();
-        s_u = other_end.s_v();
-        w += other_end.w();
-    }
-
-    return std::make_tuple(u, s_u, w);
-}
 
 }
 

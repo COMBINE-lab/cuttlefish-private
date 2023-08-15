@@ -10,6 +10,7 @@
 #include "Edge_Matrix.hpp"
 #include "Path_Info.hpp"
 #include "Ext_Mem_Bucket.hpp"
+#include "Concurrent_Hash_Table.hpp"
 
 #include <cstdint>
 #include <cstddef>
@@ -36,10 +37,12 @@ private:
 
     const std::string work_path;    // Path-prefix to temporary working files.
 
+    const std::size_t n_;   // Number of discontinuity-vertices.
+
     std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
 
     class Other_End;
-    std::unordered_map<Kmer<k>, Other_End, Kmer_Hasher<k>> M;   // `M[v]` is the associated vertex to `v` at a given time.
+    Concurrent_Hash_Table<Kmer<k>, Other_End, Kmer_Hasher<k>> M;    // `M[v]` is the associated vertex to `v` at a given time.
 
     std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block.
     std::vector<Discontinuity_Edge<k>> D_c; // Edges corresponding to compressed diagonal chains.
@@ -47,11 +50,6 @@ private:
 
     // Contracts the `[j, j]`'th edge-block.
     void contract_diagonal_block(std::size_t j);
-
-    // Traverses the chain of vertices seen so far connected to `u`; returns the
-    // endpoint of the chain, the side through which it is connected to the
-    // chain, and the total edge-cost encountered up-to that.
-    std::tuple<Kmer<k>, side_t, weight_t> traverse_chain(Kmer<k> u) const;
 
     // Forms a meta-vertex in the contracted graph with the vertex `v` belonging
     // to the vertex-partition `part`. In the contracted graph, `v` has a `w_1`
@@ -105,7 +103,6 @@ public:
         , w_(w)
         , in_same_part_(in_same_part)
     {}
-
 
     // Returns the endpoint vertex.
     auto v() const { return v_; }
