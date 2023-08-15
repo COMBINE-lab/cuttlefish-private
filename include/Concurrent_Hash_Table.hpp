@@ -73,6 +73,25 @@ public:
     // denotes whether multiple threads may access the hash table or not.
     template <bool mt_ = true> bool insert(T_key_ key, T_val_ val);
 
+    // Inserts the key `key` with value `val` into the table. Returns `false` if
+    // the key already exists in the table; and in that case, the address of the
+    // existing value for the key is stored in `val_add`. Otherwise returns
+    // `true` iff the insertion succeeds, i.e. free space was found for the
+    // insertion. `mt_` denotes whether multiple threads may access the hash
+    // table or not.
+    template <bool mt_ = true> bool insert(T_key_ key, T_val_ val, T_val_*& val_add);
+
+    // Inserts the key `key` with value `val` into the table. Returns `false` if
+    // the key already exists in the table; and in that case, the existing value
+    // associated to `key` is overwritten with `val`. Otherwise returns `true`
+    // iff the insertion succeeds, i.e. free space was found for the insertion.
+    // `mt_` denotes whether multiple threads may access the hash table or not.
+    template <bool mt_ = true> bool insert_overwrite(T_key_ key, T_val_ val);
+
+    // Searches for `key` in the table and returns the address of the value
+    // associated to it iff it is found. Returns `nullptr` otherwise.
+    const T_val_* find(const T_key_ key) const;
+
     // Searches for `key` in the table and returns `true` iff it is found. If
     // found, the associated value is stored in `val`. `val` remains unchanged
     // otherwise.
@@ -127,16 +146,90 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key
 
 
 template <typename T_key_, typename T_val_, typename T_hasher_>
-inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(const T_key_ key, T_val_& val) const
+template <bool mt_>
+inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key_ key, const T_val_ val, T_val_*& val_add)
 {
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
+    {
         if(T[i].key == empty_key_)
-            return false;
-        else if(T[i].key == key)
         {
-            val = T[i].val;
-            return true;
+            if constexpr(!mt_)
+            {
+                T[i].key = key, T[i].val = val;
+                return true;
+            }
+            else if(CAS(&T[i].key, empty_key_, key))
+            {
+                T[i].val = val;
+                return true;
+            }
         }
+
+        if(T[i].key == key)
+        {
+            val_add = &T[i].val;
+            return false;
+        }
+    }
+
+    return false;
+}
+
+
+template <typename T_key_, typename T_val_, typename T_hasher_>
+template <bool mt_>
+inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_overwrite(const T_key_ key, const T_val_ val)
+{
+    for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
+    {
+        if(T[i].key == empty_key_)
+        {
+            if constexpr(!mt_)
+            {
+                T[i].key = key, T[i].val = val;
+                return true;
+            }
+            else if(CAS(&T[i].key, empty_key_, key))
+            {
+                T[i].val = val;
+                return true;
+            }
+        }
+
+        if(T[i].key == key)
+        {
+            T[i].val = val;
+            return false;
+        }
+    }
+
+    return false;
+}
+
+
+template <typename T_key_, typename T_val_, typename T_hasher_>
+inline const T_val_* Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(const T_key_ key) const
+{
+    for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
+        if(T[i].key == key)
+            return &T[i].val;
+        else if(T[i].key == empty_key_)
+            break;
+
+    return nullptr;
+}
+
+
+
+template <typename T_key_, typename T_val_, typename T_hasher_>
+inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(const T_key_ key, T_val_& val) const
+{
+    const auto val_add = find(key);
+    if(val_add != nullptr)
+    {
+        val = *val_add;
+        return true;
+    }
 
     return false;
 }
