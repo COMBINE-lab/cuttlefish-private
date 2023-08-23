@@ -4,6 +4,8 @@
 
 
 
+#include "xxHash/xxhash.h"
+
 #include <cstddef>
 #include <cstring>
 #include <cstdlib>
@@ -96,6 +98,12 @@ public:
     // found, the associated value is stored in `val`. `val` remains unchanged
     // otherwise.
     bool find(const T_key_ key, T_val_& val) const;
+
+    // Returns a 64-bit signature of the key-set of the hash table.
+    uint64_t signature() const;
+
+    // Returns a 64-bit signature of the values in the hash table.
+    uint64_t signature_vals() const;
 };
 
 
@@ -258,6 +266,31 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::CAS(T_key_* const 
         return __sync_bool_compare_and_swap(reinterpret_cast<__uint128_t*>(ptr), pun_type<__uint128_t>(old_key), pun_type<__uint128_t>(new_key));
 
     return false;
+}
+
+
+template <typename T_key_, typename T_val_, typename T_hasher_>
+inline uint64_t Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::signature() const
+{
+    uint64_t sign = 0;
+    for(std::size_t i = 0; i < capacity_; ++i)
+        if(T[i].key != empty_key_)
+            sign = sign ^ (XXH3_64bits(&T[i].key, sizeof(T[i].key)));
+
+    return sign;
+}
+
+
+// Returns a 64-bit signature of the values in the hash table.
+template <typename T_key_, typename T_val_, typename T_hasher_>
+inline uint64_t Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>:: signature_vals() const
+{
+    uint64_t sign = 0;
+    for(std::size_t i = 0; i < capacity_; ++i)
+        if(T[i].key != empty_key_)
+            sign = sign ^ XXH3_64bits(&T[i].val, sizeof(T[i].val));
+
+    return sign;
 }
 
 }
