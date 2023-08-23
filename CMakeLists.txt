@@ -190,6 +190,20 @@ set_target_properties(kmc PROPERTIES IMPORTED_LOCATION ${EXT_LIB}/libkmc_core.a)
 add_dependencies(kmc prj_kmc)
 
 
+# Prepare the `parlay` library—a parallel algorithms programming toolkit.
+message("Build system will fetch and install parlaylib")
+ExternalProject_Add(prj_parlaylib
+    DOWNLOAD_DIR        ${CMAKE_SOURCE_DIR}/external
+    DOWNLOAD_COMMAND    git clone https://github.com/cmuparlay/parlaylib.git
+    SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/parlaylib
+    BUILD_IN_SOURCE     TRUE
+    INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external
+    CONFIGURE_COMMAND   ""
+    BUILD_COMMAND       ""
+    INSTALL_COMMAND     cp -rf include/parlay ${EXT_INCLUDE}
+)
+
+
 # The `Debug` configuration optimizes the program for debugging and enables full debug information.
 # The `Release` configuration enables most compiler optimizations for speed and defines `NDEBUG`
 # (No Debug) which will remove all traces of the standard library assert calls.
