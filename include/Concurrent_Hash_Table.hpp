@@ -254,7 +254,7 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::CAS(T_key_* const 
     if constexpr(sizeof(T_key_) == 8)
         return __sync_bool_compare_and_swap(reinterpret_cast<uint64_t*>(ptr), pun_type<uint64_t>(old_key), pun_type<uint64_t>(new_key));
 
-    if constexpr(sizeof(T_key_) == 128)
+    if constexpr(sizeof(T_key_) == 16)
         return __sync_bool_compare_and_swap(reinterpret_cast<__uint128_t*>(ptr), pun_type<__uint128_t>(old_key), pun_type<__uint128_t>(new_key));
 
     return false;
