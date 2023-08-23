@@ -4,13 +4,14 @@
 
 
 
+#include "Spin_Lock.hpp"
 #include "xxHash/xxhash.h"
 
 #include <cstddef>
+#include <vector>
 #include <cstring>
 #include <cstdlib>
 #include <cmath>
-
 
 namespace cuttlefish
 {
@@ -38,6 +39,8 @@ private:
 
     Key_Val_Pair* const T;  // The flat table of key-value collection.
     // std::size_t size_;  // Number of elements in the table. Probably not usable cheaply with concurrency.
+
+    std::vector<Spin_Lock> lock;    // Locks for atomic storing of key-value entries.
 
     // Maps the hash value `h` to an index into the table.
     std::size_t hash_to_idx(std::size_t h) const { return h & idx_wrapper_mask; }
@@ -114,6 +117,7 @@ inline Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Concurrent_Hash_Table(c
     , capacity_(static_cast<std::size_t>(1) << static_cast<std::size_t>(std::ceil(std::log2(max_n / load_factor))))
     , idx_wrapper_mask(capacity_ - 1)
     , T(static_cast<Key_Val_Pair*>(std::malloc(capacity_ * sizeof(Key_Val_Pair))))
+    , lock(capacity_)
 {
     constexpr auto key_bytes = sizeof(T_key_);
     static_assert(  key_bytes == 1 || key_bytes == 2 || key_bytes == 4 || key_bytes == 8 || key_bytes == 16,
@@ -129,20 +133,20 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key_ key, const T_val_ val)
 {
+    bool success = false;
+
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
     {
-        if(T[i].key == empty_key_)
+        if(T[i].key == empty_key_)  // TODO: check atomic-read / partial-read guarantees.
         {
-            if constexpr(!mt_)
-            {
-                T[i].key = key, T[i].val = val;
+            if constexpr(mt_)   lock[i].lock();
+            if(T[i].key == empty_key_)
+                T[i].key = key, T[i].val = val,
+                success = true;
+            if constexpr(mt_)   lock[i].unlock();
+
+            if(success)
                 return true;
-            }
-            else if(CAS(&T[i].key, empty_key_, key))
-            {
-                T[i].val = val;
-                return true;
-            }
         }
 
         if(T[i].key == key)
@@ -157,25 +161,28 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key_ key, const T_val_ val, T_val_*& val_add)
 {
+    bool success = false;
+
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
     {
         if(T[i].key == empty_key_)
         {
-            if constexpr(!mt_)
-            {
-                T[i].key = key, T[i].val = val;
+            if constexpr(mt_)   lock[i].lock();
+            if(T[i].key == empty_key_)
+                T[i].key = key, T[i].val = val,
+                success = true;
+            if constexpr(mt_)   lock[i].unlock();
+
+            if(success)
                 return true;
-            }
-            else if(CAS(&T[i].key, empty_key_, key))
-            {
-                T[i].val = val;
-                return true;
-            }
         }
 
         if(T[i].key == key)
         {
+            if constexpr(mt_)   lock[i].lock();
             val_add = &T[i].val;
+            if constexpr(mt_)   lock[i].unlock();
+
             return false;
         }
     }
@@ -188,25 +195,28 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_overwrite(const T_key_ key, const T_val_ val)
 {
+    bool success = false;
+
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
     {
         if(T[i].key == empty_key_)
         {
-            if constexpr(!mt_)
-            {
-                T[i].key = key, T[i].val = val;
+            if constexpr(mt_)   lock[i].lock();
+            if(T[i].key == empty_key_)
+                T[i].key = key, T[i].val = val,
+                success = true;
+            if constexpr(mt_)   lock[i].unlock();
+
+            if(success)
                 return true;
-            }
-            else if(CAS(&T[i].key, empty_key_, key))
-            {
-                T[i].val = val;
-                return true;
-            }
         }
 
         if(T[i].key == key)
         {
+            if constexpr(mt_)   lock[i].lock();
             T[i].val = val;
+            if constexpr(mt_)   lock[i].unlock();
+
             return false;
         }
     }
