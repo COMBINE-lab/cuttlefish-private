@@ -5,11 +5,14 @@
 
 
 #include "Spin_Lock.hpp"
+#include "utility.hpp"
 #include "xxHash/xxhash.h"
+#include "parlay/parallel.h"
 
 #include <cstddef>
 #include <vector>
 #include <cstring>
+#include <numeric>
 #include <cstdlib>
 #include <cmath>
 
@@ -55,6 +58,11 @@ private:
     // Returns the memory-equivalent value of `val` in type `T_to`.
     template <typename T_to_, typename T_from_>
     static T_to_ pun_type(const T_from_ val) { return *reinterpret_cast<const T_to_*>(&val); }
+
+    // Returns a 64-bit signature of the key-set of the hash table if
+    // `hash_key_set_` is true. Otherwise returns a 64-bit signature of the
+    // value-collection of the table.
+    template <bool hash_key_set_> uint64_t signature() const;
 
 
 public:
@@ -103,10 +111,10 @@ public:
     bool find(const T_key_ key, T_val_& val) const;
 
     // Returns a 64-bit signature of the key-set of the hash table.
-    uint64_t signature() const;
+    uint64_t signature() const { return signature<true>(); };
 
     // Returns a 64-bit signature of the values in the hash table.
-    uint64_t signature_vals() const;
+    uint64_t signature_vals() const { return signature<false>(); };
 };
 
 
@@ -280,28 +288,26 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::CAS(T_key_* const 
 
 
 template <typename T_key_, typename T_val_, typename T_hasher_>
+template <bool hash_key_set_>
 inline uint64_t Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::signature() const
 {
-    uint64_t sign = 0;
-    for(std::size_t i = 0; i < capacity_; ++i)
-        if(T[i].key != empty_key_)
-            sign = sign ^ (XXH3_64bits(&T[i].key, sizeof(T[i].key)));
+    std::vector<Padded_Data<uint64_t>> sign(parlay::num_workers(), 0);
 
-    return sign;
+    const auto hash =
+        [&](const std::size_t idx)
+        {
+            if(T[idx].key != empty_key_)
+                if constexpr(hash_key_set_)
+                    sign[parlay::worker_id()].data() ^= XXH3_64bits(&T[idx].key, sizeof(T[idx].key));
+                else
+                    sign[parlay::worker_id()].data() ^= XXH3_64bits(&T[idx].val, sizeof(T[idx].val));
+        };
+
+    parlay::parallel_for(0, capacity_, hash, capacity_ / parlay::num_workers());
+
+    return std::accumulate(sign.cbegin(), sign.cend(), 0lu, [](const uint64_t r, const Padded_Data<uint64_t>& p_data){ return r ^ p_data.data(); });
 }
 
-
-// Returns a 64-bit signature of the values in the hash table.
-template <typename T_key_, typename T_val_, typename T_hasher_>
-inline uint64_t Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>:: signature_vals() const
-{
-    uint64_t sign = 0;
-    for(std::size_t i = 0; i < capacity_; ++i)
-        if(T[i].key != empty_key_)
-            sign = sign ^ XXH3_64bits(&T[i].val, sizeof(T[i].val));
-
-    return sign;
-}
 
 }
 
