@@ -89,6 +89,9 @@ public:
 
     // Returns the number of edges stores in the matrix.
     std::size_t size() const;
+
+    // Returns the maximum block-size of the matrix.
+    std::size_t max_block_size() const;
 };
 
 

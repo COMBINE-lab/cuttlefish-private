@@ -129,6 +129,18 @@ std::size_t Edge_Matrix<k>::size() const
     return sz;
 }
 
+
+template <uint16_t k>
+std::size_t Edge_Matrix<k>::max_block_size() const
+{
+    std::size_t max_sz = 0;
+    for(std::size_t i = 0; i <= vertex_part_count_; ++i)
+        for(std::size_t j = std::max(1lu, i); j <= vertex_part_count_; ++j)
+            max_sz = std::max(max_sz, edge_matrix[i][j].size());
+
+    return max_sz;
+}
+
 }
 
 
