@@ -10,7 +10,9 @@
 #include "Edge_Matrix.hpp"
 #include "Path_Info.hpp"
 #include "Ext_Mem_Bucket.hpp"
+#include "Spin_Lock.hpp"
 #include "Concurrent_Hash_Table.hpp"
+#include "utility.hpp"
 
 #include <cstdint>
 #include <cstddef>
@@ -45,7 +47,9 @@ private:
     Concurrent_Hash_Table<Kmer<k>, Other_End, Kmer_Hasher<k>> M;    // `M[v]` is the associated vertex to `v` at a given time.
 
     std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block.
-    std::vector<Discontinuity_Edge<k>> D_c; // Edges corresponding to compressed diagonal chains.
+    std::vector<Padded_Data<std::vector<Discontinuity_Edge<k>>>> D_c;   // `D_c[t]` contains the edges corresponding to compressed diagonal chains by worker `t`.
+
+    Spin_Lock lck_meta_v;   // Lock to ensure exclusive access to meta-vertex formation. TODO: remove.
 
 
     // Contracts the `[j, j]`'th edge-block.
@@ -59,6 +63,12 @@ private:
 
     // Debug
     std::size_t meta_v_c = 0;
+    double meta_v_time = 0;
+
+    static constexpr auto now = std::chrono::high_resolution_clock::now;    // Current time-point in nanoseconds.
+
+    // Returns the equivalent time-duration in seconds from `d` nanoseconds.
+    static constexpr auto duration = [](const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
 
 
 public:
@@ -126,8 +136,14 @@ template <uint16_t k>
 inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s_1, const weight_t w_1, const weight_t w_2)
 {
     assert(part < P_v.size());
+
+    const auto t_s = now();
+    lck_meta_v.lock();
     P_v[part].emplace(v, v, (s_1 == side_t::back ? w_2 : w_1), side_t::back);   // The path-traversal exits `v` through its back.
     meta_v_c++;
+    const auto t_e = now();
+    meta_v_time += duration(t_e - t_s);
+    lck_meta_v.unlock();
 }
 
 }
