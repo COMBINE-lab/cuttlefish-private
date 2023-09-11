@@ -4,6 +4,7 @@
 #include "parlay/parallel.h"
 
 #include <fstream>
+#include <algorithm>
 
 
 namespace cuttlefish
@@ -13,6 +14,7 @@ template <uint16_t k>
 Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path):
       E(E)
     , P_v(P_v)
+    , P_v_local(parlay::num_workers())
     , work_path(temp_path)
     , n_(E.size() - E.row_size(0) / 2)  // each separate chain has exactly two ϕ-adjacent edges
     , M(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.1))
@@ -23,15 +25,18 @@ Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>
 template <uint16_t k>
 void Discontinuity_Graph_Contractor<k>::contract()
 {
+    // Debug
     double edge_proc_time = 0;  // Time taken to process the non-diagonal edges.
     double diag_elim_time = 0;  // Time taken to eliminate the compressed diagonal chains.
     double diag_cont_time = 0;  // Time taken to compress the diagonal chains.
+    double v_info_cp_time = 0;  // Time taken to copy worker-local vertex path-info to global repo.
 
     buf.resize(E.max_block_size());
     for(auto j = E.vertex_part_count(); j >= 1; --j)
     {
         M.clear();
         std::for_each(D_c.begin(), D_c.end(), [](auto& v){ v.data().clear(); });
+        std::for_each(P_v_local.begin(), P_v_local.end(), [](auto& v){ v.data().clear(); });
 
         std::cerr << "\rPart: " << j;
 
@@ -103,6 +108,16 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
         t_e = now();
         diag_elim_time += duration(t_e - t_s);
+
+        t_s = now();
+        for(const auto& v : P_v_local)
+        {
+            P_v[j].add(v.data().data(), v.data().size());
+            meta_v_c += v.data().size();
+        }
+
+        t_e = now();
+        v_info_cp_time += duration(t_e - t_s);
     }
 
     std::cerr << "\n";
@@ -110,7 +125,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
     std::cerr << "Formed " << meta_v_c << " meta-vertices.\n";
     std::cerr << "Non-diagonal edges contraction time: " << edge_proc_time << ".\n";
-    std::cerr << "Meta-vertex formation time: " << meta_v_time << ".\n";
+    std::cerr << "Meta-vertex copy time: " << v_info_cp_time << ".\n";
     std::cerr << "Diagonal-contraction time: " << diag_cont_time << ".\n";
     std::cerr << "Diagonal-elimination time: " << diag_elim_time << ".\n";
 }

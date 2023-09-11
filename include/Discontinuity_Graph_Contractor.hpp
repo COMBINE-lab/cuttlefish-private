@@ -35,7 +35,9 @@ private:
 
     Edge_Matrix<k>& E;  // Edge matrix of the discontinuity-graph.
 
-    std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;   // `P_v[j]` contains path-info for vertices in partition `j`.
+    typedef Obj_Path_Info_Pair<Kmer<k>, k> kmer_path_info_t;
+    std::vector<Ext_Mem_Bucket<kmer_path_info_t>>& P_v; // `P_v[j]` contains path-info for vertices in partition `j`—specifically, the meta-vertices.
+    std::vector<Padded_Data<std::vector<kmer_path_info_t>>> P_v_local;  // `P_v_local[t]` contains information of the meta-vertices formed by worker `t`.
 
     const std::string work_path;    // Path-prefix to temporary working files.
 
@@ -49,8 +51,6 @@ private:
     std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block.
     std::vector<Padded_Data<std::vector<Discontinuity_Edge<k>>>> D_c;   // `D_c[t]` contains the edges corresponding to compressed diagonal chains by worker `t`.
 
-    Spin_Lock lck_meta_v;   // Lock to ensure exclusive access to meta-vertex formation. TODO: remove.
-
 
     // Contracts the `[j, j]`'th edge-block.
     void contract_diagonal_block(std::size_t j);
@@ -63,7 +63,6 @@ private:
 
     // Debug
     std::size_t meta_v_c = 0;
-    double meta_v_time = 0;
 
     static constexpr auto now = std::chrono::high_resolution_clock::now;    // Current time-point in nanoseconds.
 
@@ -137,13 +136,7 @@ inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v,
 {
     assert(part < P_v.size());
 
-    const auto t_s = now();
-    lck_meta_v.lock();
-    P_v[part].emplace(v, v, (s_1 == side_t::back ? w_2 : w_1), side_t::back);   // The path-traversal exits `v` through its back.
-    meta_v_c++;
-    const auto t_e = now();
-    meta_v_time += duration(t_e - t_s);
-    lck_meta_v.unlock();
+    P_v_local[parlay::worker_id()].data().emplace_back(v, v, (s_1 == side_t::back ? w_2 : w_1), side_t::back);  // The path-traversal exits `v` through its back.
 }
 
 }
