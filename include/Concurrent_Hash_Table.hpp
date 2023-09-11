@@ -297,10 +297,12 @@ inline uint64_t Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::signature() co
         [&](const std::size_t idx)
         {
             if(T[idx].key != empty_key_)
+            {
                 if constexpr(hash_key_set_)
                     sign[parlay::worker_id()].data() ^= XXH3_64bits(&T[idx].key, sizeof(T[idx].key));
                 else
                     sign[parlay::worker_id()].data() ^= XXH3_64bits(&T[idx].val, sizeof(T[idx].val));
+            }
         };
 
     parlay::parallel_for(0, capacity_, hash, capacity_ / parlay::num_workers());
