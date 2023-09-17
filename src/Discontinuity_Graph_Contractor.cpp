@@ -27,6 +27,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
 {
     // Debug
     double edge_proc_time = 0;  // Time taken to process the non-diagonal edges.
+    double edge_read_time = 0;  // Time taken to read the non-diagonal edges.
     double diag_elim_time = 0;  // Time taken to eliminate the compressed diagonal chains.
     double diag_cont_time = 0;  // Time taken to compress the diagonal chains.
     double v_info_cp_time = 0;  // Time taken to copy worker-local vertex path-info to global repo.
@@ -45,7 +46,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
         auto t_e = now();
         diag_cont_time += duration(t_e - t_s);
 
-        const auto process_edge = [&](const std::size_t idx)
+        const auto process_non_diagonal_edge = [&](const std::size_t idx)
         {
             const auto& e = buf[idx];
             Other_End* p_z;
@@ -83,8 +84,16 @@ void Discontinuity_Graph_Contractor<k>::contract()
         };
 
         t_s = now();
-        while(E.read_column_buffered(j, buf))
-            parlay::parallel_for(0, buf.size(), process_edge, buf.size() / parlay::num_workers());
+        while(true)
+        {
+            const auto t_s = now();
+            if(!E.read_column_buffered(j, buf))
+                break;
+            t_e = now();
+            edge_read_time += duration(t_e - t_s);
+
+            parlay::parallel_for(0, buf.size(), process_non_diagonal_edge, buf.size() / parlay::num_workers());
+        }
         t_e = now();
         edge_proc_time += duration(t_e - t_s);
 
@@ -124,6 +133,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
 
     std::cerr << "Formed " << meta_v_c << " meta-vertices.\n";
+    std::cerr << "Non-diagonal edges reading time: " << edge_read_time << ".\n";
     std::cerr << "Non-diagonal edges contraction time: " << edge_proc_time << ".\n";
     std::cerr << "Meta-vertex copy time: " << v_info_cp_time << ".\n";
     std::cerr << "Diagonal-contraction time: " << diag_cont_time << ".\n";
