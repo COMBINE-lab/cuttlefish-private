@@ -10,7 +10,9 @@
 #include "Edge_Matrix.hpp"
 #include "Path_Info.hpp"
 #include "Ext_Mem_Bucket.hpp"
+#include "Spin_Lock.hpp"
 #include "Concurrent_Hash_Table.hpp"
+#include "utility.hpp"
 
 #include <cstdint>
 #include <cstddef>
@@ -33,7 +35,9 @@ private:
 
     Edge_Matrix<k>& E;  // Edge matrix of the discontinuity-graph.
 
-    std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;   // `P_v[j]` contains path-info for vertices in partition `j`.
+    typedef Obj_Path_Info_Pair<Kmer<k>, k> kmer_path_info_t;
+    std::vector<Ext_Mem_Bucket<kmer_path_info_t>>& P_v; // `P_v[j]` contains path-info for vertices in partition `j`—specifically, the meta-vertices.
+    std::vector<Padded_Data<std::vector<kmer_path_info_t>>> P_v_local;  // `P_v_local[t]` contains information of the meta-vertices formed by worker `t`.
 
     const std::string work_path;    // Path-prefix to temporary working files.
 
@@ -45,7 +49,7 @@ private:
     Concurrent_Hash_Table<Kmer<k>, Other_End, Kmer_Hasher<k>> M;    // `M[v]` is the associated vertex to `v` at a given time.
 
     std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block.
-    std::vector<Discontinuity_Edge<k>> D_c; // Edges corresponding to compressed diagonal chains.
+    std::vector<Padded_Data<std::vector<Discontinuity_Edge<k>>>> D_c;   // `D_c[t]` contains the edges corresponding to compressed diagonal chains by worker `t`.
 
 
     // Contracts the `[j, j]`'th edge-block.
@@ -59,6 +63,11 @@ private:
 
     // Debug
     std::size_t meta_v_c = 0;
+
+    static constexpr auto now = std::chrono::high_resolution_clock::now;    // Current time-point in nanoseconds.
+
+    // Returns the equivalent time-duration in seconds from `d` nanoseconds.
+    static constexpr auto duration = [](const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
 
 
 public:
@@ -126,8 +135,8 @@ template <uint16_t k>
 inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s_1, const weight_t w_1, const weight_t w_2)
 {
     assert(part < P_v.size());
-    P_v[part].emplace(v, v, (s_1 == side_t::back ? w_2 : w_1), side_t::back);   // The path-traversal exits `v` through its back.
-    meta_v_c++;
+
+    P_v_local[parlay::worker_id()].data().emplace_back(v, v, (s_1 == side_t::back ? w_2 : w_1), side_t::back);  // The path-traversal exits `v` through its back.
 }
 
 }

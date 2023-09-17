@@ -6,6 +6,7 @@
 
 #include "Discontinuity_Edge.hpp"
 #include "Ext_Mem_Bucket.hpp"
+#include "Spin_Lock.hpp"
 
 #include <cstdint>
 #include <cstddef>
@@ -29,6 +30,7 @@ private:
     const std::size_t vertex_part_count_;   // Number of vertex-partitions in the graph; it needs to be a power of 2.
     const std::string path; // File-path prefix to the external-memory blocks of the matrix.
     std::vector<std::vector<Ext_Mem_Bucket<Discontinuity_Edge<k>>>> edge_matrix;    // Blocked edge matrix.
+    std::vector<Spin_Lock*> lock;   // Locks for the blocks for concurrent updates.
 
     mutable std::vector<std::size_t> row_to_read;   // `j`'th entry contains the row of the next block to read from column `j`.
     mutable std::vector<std::size_t> col_to_read;   // `i`'th entry contains the column of the next block to read from row `i`.
@@ -45,6 +47,8 @@ public:
     // partition-count needs to be a power of 2. Specifying `append` indicates
     // that the matrix already exists and new edges are to be appended to it.
     Edge_Matrix(std::size_t part_count, const std::string& path, bool append = false);
+
+    ~Edge_Matrix();
 
     // Returns the number of vertex-partitions in the graph.
     std::size_t vertex_part_count() const { return vertex_part_count_; }
@@ -85,6 +89,9 @@ public:
 
     // Returns the number of edges stores in the matrix.
     std::size_t size() const;
+
+    // Returns the maximum block-size of the matrix.
+    std::size_t max_block_size() const;
 };
 
 
@@ -102,9 +109,17 @@ inline void Edge_Matrix<k>::add(const Kmer<k> u, const side_t s_u, const Kmer<k>
     auto q = v_is_phi ? 0 : partition(v);
 
     if(p <= q)
+    {
+        lock[p][q].lock();
         edge_matrix[p][q].emplace(u, s_u, v, s_v, w, b, b_idx, u_is_phi, v_is_phi, side_t::back);
+        lock[p][q].unlock();
+    }
     else    // p and q needs to be swapped along with the edge endpoints
+    {
+        lock[q][p].lock();
         edge_matrix[q][p].emplace(v, s_v, u, s_u, w, b, b_idx, v_is_phi, u_is_phi, side_t::front);
+        lock[q][p].unlock();
+    }
 }
 
 }

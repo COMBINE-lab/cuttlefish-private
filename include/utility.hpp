@@ -71,4 +71,35 @@ void force_free(T_container_& container)
 // TODO: Add thread-joiner wrapper.
 
 
+// Wrapper class for a data-element of type `T_` to ensure that in a linear
+// collection of `T_`'s, each element is aligned to a cache-line boundary.
+template <typename T_>
+class alignas(2 * L1_CACHE_LINE_SIZE)
+    Padded_Data
+{
+private:
+
+    T_ data_;
+
+
+public:
+
+    Padded_Data()
+    {}
+
+    Padded_Data(const T_& data):
+      data_(data)
+    {}
+
+    Padded_Data(T_&& data):
+        data_(std::move(data))
+    {}
+
+    T_& data() { return data_; }
+
+    const T_& data() const { return data_; }
+};
+
+
+
 #endif
