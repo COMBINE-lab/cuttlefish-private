@@ -103,12 +103,12 @@ public:
 
     // Searches for `key` in the table and returns the address of the value
     // associated to it iff it is found. Returns `nullptr` otherwise.
-    const T_val_* find(const T_key_ key) const;
+    const T_val_* find(T_key_ key) const;
 
     // Searches for `key` in the table and returns `true` iff it is found. If
     // found, the associated value is stored in `val`. `val` remains unchanged
     // otherwise.
-    bool find(const T_key_ key, T_val_& val) const;
+    bool find(T_key_ key, T_val_& val) const;
 
     // Returns a 64-bit signature of the key-set of the hash table.
     uint64_t signature() const { return signature<true>(); };
@@ -157,7 +157,7 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key
                 return true;
         }
 
-        if(T[i].key == key)
+        if(T[i].key == key) // TODO: check atomic-read / partial-read guarantees.
             return false;
     }
 
@@ -173,7 +173,7 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key
 
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
     {
-        if(T[i].key == empty_key_)
+        if(T[i].key == empty_key_)  // TODO: check atomic-read / partial-read guarantees.
         {
             if constexpr(mt_)   lock[i].lock();
             if(T[i].key == empty_key_)
@@ -185,7 +185,7 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key
                 return true;
         }
 
-        if(T[i].key == key)
+        if(T[i].key == key) // TODO: check atomic-read / partial-read guarantees.
         {
             if constexpr(mt_)   lock[i].lock();
             val_add = &T[i].val;
@@ -207,7 +207,7 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_overwrite(c
 
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
     {
-        if(T[i].key == empty_key_)
+        if(T[i].key == empty_key_)  // TODO: check atomic-read / partial-read guarantees.
         {
             if constexpr(mt_)   lock[i].lock();
             if(T[i].key == empty_key_)
@@ -219,7 +219,7 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_overwrite(c
                 return true;
         }
 
-        if(T[i].key == key)
+        if(T[i].key == key) // TODO: check atomic-read / partial-read guarantees.
         {
             if constexpr(mt_)   lock[i].lock();
             T[i].val = val;
@@ -244,7 +244,6 @@ inline const T_val_* Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(cons
 
     return nullptr;
 }
-
 
 
 template <typename T_key_, typename T_val_, typename T_hasher_>
