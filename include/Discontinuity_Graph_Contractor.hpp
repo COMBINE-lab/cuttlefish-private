@@ -47,6 +47,7 @@ private:
     class Other_End;
     Concurrent_Hash_Table<Kmer<k>, Other_End, Kmer_Hasher<k>> M;    // `M[v]` is the associated vertex to `v` at a given time.
 
+    // TODO: remove `D_j` by adopting a more parallelization-amenable algorithm for diagonal contraction-expansion.
     std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block.
     std::vector<Padded_Data<std::vector<Discontinuity_Edge<k>>>> D_c;   // `D_c[t]` contains the edges corresponding to compressed diagonal chains by worker `t`.
 
