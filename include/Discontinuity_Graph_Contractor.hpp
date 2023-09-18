@@ -34,14 +34,13 @@ class Discontinuity_Graph_Contractor
 private:
 
     Edge_Matrix<k>& E;  // Edge matrix of the discontinuity-graph.
+    const std::size_t n_;   // Number of discontinuity-vertices.
 
     typedef Obj_Path_Info_Pair<Kmer<k>, k> kmer_path_info_t;
     std::vector<Ext_Mem_Bucket<kmer_path_info_t>>& P_v; // `P_v[j]` contains path-info for vertices in partition `j`—specifically, the meta-vertices.
     std::vector<Padded_Data<std::vector<kmer_path_info_t>>> P_v_local;  // `P_v_local[t]` contains information of the meta-vertices formed by worker `t`.
 
     const std::string work_path;    // Path-prefix to temporary working files.
-
-    const std::size_t n_;   // Number of discontinuity-vertices.
 
     std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
 
@@ -72,10 +71,10 @@ private:
 
 public:
 
-    // Constructs a contractor for the discontinuity-graph with edge-matrix `E`.
-    // `P_v[j]` is to contain path-information for vertices at partition `j`.
-    // Temporary files are stored at path-prefix `temp_path`.
-    Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path);
+    // Constructs a contractor for the discontinuity-graph with edge-matrix `E`
+    // and `n` vertices. `P_v[j]` is to contain path-information for vertices at
+    // partition `j`. Temporary files are stored at path-prefix `temp_path`.
+    Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path);
 
     // Contracts the discontinuity-graph.
     void contract();

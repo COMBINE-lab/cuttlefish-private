@@ -11,12 +11,13 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path):
+Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, const std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path):
       E(E)
+    , n_(n)
     , P_v(P_v)
     , P_v_local(parlay::num_workers())
     , work_path(temp_path)
-    , n_(E.size() - E.row_size(0) / 2)  // each separate chain has exactly two ϕ-adjacent edges
+    , n_(n)
     , M(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.1))
     , D_c(parlay::num_workers())
 {}

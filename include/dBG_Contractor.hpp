@@ -35,6 +35,8 @@ private:
 
     Edge_Matrix<k> E;  // Edge-matrix of the discontinuity graph.
 
+    const std::size_t n_disc_v; // Number of discontinuity-vertices.
+
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>> P_v;    // `P_v[j]` contains path-info for vertices in partition `j`.
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>> P_e;  // `P_e[b]` contains path-info for edges induced by unitigs in bucket `b`.
 
