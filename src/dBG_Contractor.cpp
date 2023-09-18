@@ -49,7 +49,7 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     const auto t_c = now();
     std::cerr << "Discontinuity-graph contraction completed. Time taken: " << duration(t_c - t_s) << " seconds.\n";
 
-    Contracted_Graph_Expander<k> expander(E, P_v, P_e, work_path);
+    Contracted_Graph_Expander<k> expander(E, n_disc_v, P_v, P_e, work_path);
     expander.expand();
 
     const auto t_e = now();

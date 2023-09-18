@@ -11,8 +11,9 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Contracted_Graph_Expander<k>::Contracted_Graph_Expander(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path):
+Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Edge_Matrix<k>& E, const std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path):
       E(E)
+    , n_(n)
     , P_v(P_v)
     , P_e(P_e)
     , work_path(temp_path)

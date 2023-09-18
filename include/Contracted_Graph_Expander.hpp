@@ -33,7 +33,8 @@ class Contracted_Graph_Expander
 
 private:
 
-    Edge_Matrix<k>& E;  // Edge matrix of the (augmented) discontinuity graph.
+    const Edge_Matrix<k>& E;    // Edge matrix of the (augmented) discontinuity graph.
+    const std::size_t n_;   // Number of discontinuity-vertices.
 
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;   // `P_v[i]` contains path-info for vertices in partition `i`.
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e; // `P_e[b]` contains path-info for edges in bucket `b`.
@@ -74,10 +75,11 @@ private:
 public:
 
     // Constructs an expander for the contracted discontinuity-graph with edge-
-    // matrix `E`. `P_v[i]` is to contain path-information for vertices at
-    // partition `i`, and `P_e[b]` is to contain path-information for edges at
-    // bucket `b`. Temporary files are stored at path-prefix `temp_path`.
-    Contracted_Graph_Expander(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path);
+    // matrix `E` and `n` vertices. `P_v[i]` is to contain path-information for
+    // vertices at partition `i`, and `P_e[b]` is to contain path-information
+    // for edges at bucket `b`. Temporary files are stored at path-prefix
+    // `temp_path`.
+    Contracted_Graph_Expander(const Edge_Matrix<k>& E, std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path);
 
     // Expands the contracted discontinuity-graph.
     void expand();
