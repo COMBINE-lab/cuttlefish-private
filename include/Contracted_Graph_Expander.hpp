@@ -10,6 +10,7 @@
 #include "Ext_Mem_Bucket.hpp"
 #include "Kmer.hpp"
 #include "Kmer_Hasher.hpp"
+#include "Concurrent_Hash_Table.hpp"
 #include "globals.hpp"
 
 #include <cstdint>
@@ -43,13 +44,13 @@ private:
 
     std::vector<Discontinuity_Edge<k>> D_i; // New edges introduced in contracted diagonal blocks.
 
-    std::unordered_map<Kmer<k>, Path_Info<k>, Kmer_Hasher<k>> M;    // `M[v]` is the path-info for vertex `v`.
+    Concurrent_Hash_Table<Kmer<k>, Path_Info<k>, Kmer_Hasher<k>> M; // `M[v]` is the path-info for vertex `v`.
 
     std::vector<Obj_Path_Info_Pair<Kmer<k>, k>> p_v_buf;    // Buffer to read-in path-information of vertices.
 
 
-    // Loads the available path-info of vertices from partition `i` into the
-    // hash table `M`.
+    // Loads the available path-info of meta-vertices from partition `i` into
+    // the hash table `M`.
     void load_path_info(std::size_t i);
 
     // Expands the `[i, i]`'th (contracted) edge-block.

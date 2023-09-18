@@ -17,6 +17,7 @@ Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Edge_Matrix<k>& E,
     , P_v(P_v)
     , P_e(P_e)
     , work_path(temp_path)
+    , M(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.25))
 {}
 
 
@@ -25,6 +26,8 @@ void Contracted_Graph_Expander<k>::expand()
 {
     std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
 
+    buf.resize(E.max_block_size());
+    p_v_buf.reserve(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.25)); // TODO: check the maximum size empirically, as repetitions are possible in the info-buckets.
     for(std::size_t i = 1; i <= E.vertex_part_count(); ++i)
     {
         M.clear();
@@ -32,15 +35,17 @@ void Contracted_Graph_Expander<k>::expand()
 
         expand_diagonal_block(i);
 
+        Path_Info<k> x_inf; // Computed (earlier) path-information of the endpoint of the edge that is in the current partition.
         while(E.read_row_buffered(i, buf))
             for(const auto& e : buf)
             {
-                const auto it = M.find(e.x());
-                assert(it != M.end());
+                const bool has_x = M.find(e.x(), x_inf);
+                assert(has_x);
+                (void)has_x;
 
-                const auto& x_inf = it->second;
                 const auto y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
                 const auto j = E.partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
+                assert(j > i);
                 P_v[j].emplace(e.y(), y_inf.p(), y_inf.r(), y_inf.o());
 
                 if(e.w() == 1)
@@ -57,8 +62,8 @@ void Contracted_Graph_Expander<k>::expand()
         for(const auto& e : buf)
             if(e.w() == 1)
             {
-                assert(M.find(e.x()) != M.end() && M.find(e.y()) != M.end());
-                add_edge_path_info(e, M[e.x()], M[e.y()]);
+                assert(M.find(e.x()) && M.find(e.y()));
+                add_edge_path_info(e, *M.find(e.x()), *M.find(e.y()));
                 og_edge_c++;
             }
 
@@ -66,8 +71,8 @@ void Contracted_Graph_Expander<k>::expand()
         for(const auto& e : buf)
             if(e.w() == 1)
             {
-                assert(M.find(e.y()) != M.end());
-                add_edge_path_info(e, M[e.y()]);
+                assert(M.find(e.y()));
+                add_edge_path_info(e, *M.find(e.y()));
                 og_edge_c++;
             }
     }
@@ -81,11 +86,10 @@ template <uint16_t k>
 void Contracted_Graph_Expander<k>::load_path_info(const std::size_t i)
 {
     P_v[i].load(p_v_buf);
+    Path_Info<k>* curr_val_add;
     for(const auto& p_v : p_v_buf)
-    {
-        assert(M.find(p_v.obj()) == M.end() || M.find(p_v.obj())->second == p_v.path_info());
-        M.emplace(p_v.obj(), p_v.path_info());
-    }
+        if(!M.insert(p_v.obj(), p_v.path_info(), curr_val_add))
+            assert(*curr_val_add == p_v.path_info());
 }
 
 
@@ -101,18 +105,23 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
     input.read(reinterpret_cast<char*>(D_i.data()), file_sz);
     input.close();
 
+    Path_Info<k> y_inf;
     // In reverse order of the newly introduced diagonal-edges to always ensure one endpoint having path-info ready.
     for(auto d_it = D_i.rbegin(); d_it != D_i.rend(); ++d_it)
     {
         const auto& e = *d_it;
+        assert(M.find(e.x()) || M.find(e.y()));
 
-        assert(M.find(e.x()) != M.end() || M.find(e.y()) != M.end());
-
-        const auto it = M.find(e.y());
-        if(it == M.end())
-            M.emplace(e.y(), infer(M.find(e.x())->second, e.s_x(), e.s_y(), e.w()));
+        if(!M.find(e.y(), y_inf))
+        {
+            assert(M.find(e.x()));
+            M.insert(e.y(), infer(*M.find(e.x()), e.s_x(), e.s_y(), e.w()));
+        }
         else
-            M.emplace(e.x(), infer(it->second, e.s_y(), e.s_x(), e.w()));
+        {
+            assert(M.find(e.y()));
+            M.insert(e.x(), infer(y_inf, e.s_y(), e.s_x(), e.w()));
+        }
     }
 }
 
