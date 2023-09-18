@@ -17,7 +17,6 @@ Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>
     , P_v(P_v)
     , P_v_local(parlay::num_workers())
     , work_path(temp_path)
-    , n_(n)
     , M(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.1))
     , D_c(parlay::num_workers())
 {}
