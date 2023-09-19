@@ -77,8 +77,8 @@ public:
     // T_key_ empty_key() const { return empty_key_; }
 
     // Clears the hash table.
-    // TODO: use `parlay::parallel_for` to efficiently fill the table with custom empty-key.
-    void clear() { std::memset(reinterpret_cast<char*>(T), -1, capacity_ * sizeof(Key_Val_Pair)); }
+    // TODO: consider whether a generic empty-key might be required in our particular use-cases ever or not.
+    void clear();
 
     // Inserts the key `key` with value `val` into the table. Returns `false` if
     // the key already exists in the table. Otherwise returns `true` iff the
@@ -134,6 +134,28 @@ inline Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Concurrent_Hash_Table(c
     std::memset(reinterpret_cast<char*>(&empty_key_), -1, sizeof(empty_key_));
 
     clear();
+}
+
+template <typename T_key_, typename T_val_, typename T_hasher_>
+inline void Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::clear()
+{
+    // Straightforward way.
+    // parlay::parallel_for(0, capacity_, [&](std::size_t idx){ T[idx].key = empty_key_; });
+
+    const auto byte_count = capacity_ * sizeof(Key_Val_Pair);
+    const auto cache_line_count = byte_count / L1_CACHE_LINE_SIZE;
+    const auto lines_per_w = cache_line_count / parlay::num_workers();
+    const auto bytes_per_w = lines_per_w * L1_CACHE_LINE_SIZE;
+
+    const auto clear_segment = [&](const std::size_t w_id)
+    {
+        const auto bytes_to_clear = (w_id < parlay::num_workers() - 1 ?
+                                        bytes_per_w : byte_count - bytes_per_w * w_id);
+
+        std::memset(reinterpret_cast<char*>(T) + bytes_per_w * w_id, -1, bytes_to_clear);
+    };
+
+    parlay::parallel_for(0, parlay::num_workers(), clear_segment, 1);
 }
 
 
