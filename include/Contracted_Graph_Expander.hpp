@@ -72,6 +72,15 @@ private:
 
     // Debug
     std::size_t og_edge_c = 0;
+    double p_v_load_time = 0;   // Time to load vertices' path-info.
+    double edge_read_time = 0;  // Time taken to read the edges.
+    double map_fill_time = 0;   // Time taken to fill the hash map with already inferred vertices' path-info for a partition.
+
+    static constexpr auto now = std::chrono::high_resolution_clock::now;    // Current time-point in nanoseconds.
+
+    // Returns the equivalent time-duration in seconds from `d` nanoseconds.
+    static constexpr auto duration = [](const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
+
 
 
 public:
