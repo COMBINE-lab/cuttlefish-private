@@ -63,6 +63,7 @@ private:
 
     // Debug
     std::size_t meta_v_c = 0;
+    double edge_read_time = 0;  // Time taken to read the edges.
 
     static constexpr auto now = std::chrono::high_resolution_clock::now;    // Current time-point in nanoseconds.
 
@@ -136,6 +137,7 @@ inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v,
 {
     assert(part < P_v.size());
 
+    (void)part;
     P_v_local[parlay::worker_id()].data().emplace_back(v, v, (s_1 == side_t::back ? w_2 : w_1), side_t::back);  // The path-traversal exits `v` through its back.
 }
 

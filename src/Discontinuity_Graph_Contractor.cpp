@@ -26,24 +26,30 @@ template <uint16_t k>
 void Discontinuity_Graph_Contractor<k>::contract()
 {
     // Debug
+    double map_clr_time = 0;    // Time taken to clear the hash map.
     double edge_proc_time = 0;  // Time taken to process the non-diagonal edges.
-    double edge_read_time = 0;  // Time taken to read the non-diagonal edges.
     double diag_elim_time = 0;  // Time taken to eliminate the compressed diagonal chains.
     double diag_cont_time = 0;  // Time taken to compress the diagonal chains.
     double v_info_cp_time = 0;  // Time taken to copy worker-local vertex path-info to global repo.
 
+    // TODO: document the phases.
+
     buf.resize(E.max_block_size());
     for(auto j = E.vertex_part_count(); j >= 1; --j)
     {
+        auto t_s = now();
         M.clear();
+        auto t_e = now();
+        map_clr_time += duration(t_e - t_s);
+
         std::for_each(D_c.begin(), D_c.end(), [](auto& v){ v.data().clear(); });
         std::for_each(P_v_local.begin(), P_v_local.end(), [](auto& v){ v.data().clear(); });
 
         std::cerr << "\rPart: " << j;
 
-        auto t_s = now();
+        t_s = now();
         contract_diagonal_block(j);
-        auto t_e = now();
+        t_e = now();
         diag_cont_time += duration(t_e - t_s);
 
         const auto process_non_diagonal_edge = [&](const std::size_t idx)
@@ -80,22 +86,23 @@ void Discontinuity_Graph_Contractor<k>::contract()
                 return;
             }
 
+            // TODO: add edges in a lock-free manner, accumulating new edges in thread-local buffers and copying to the global repo afterwards.
             E.add(e.x(), e.s_x(), z.v(), z.s_v(), e.w() + z.w(), 0, 0, e.x_is_phi(), z.is_phi());
         };
 
-        t_s = now();
         while(true)
         {
-            const auto t_s = now();
+            t_s = now();
             if(!E.read_column_buffered(j, buf))
                 break;
             t_e = now();
             edge_read_time += duration(t_e - t_s);
 
+            t_s = now();
             parlay::parallel_for(0, buf.size(), process_non_diagonal_edge, buf.size() / parlay::num_workers());
+            t_e = now();
+            edge_proc_time += duration(t_e - t_s);
         }
-        t_e = now();
-        edge_proc_time += duration(t_e - t_s);
 
 
         t_s = now();
@@ -133,7 +140,8 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
 
     std::cerr << "Formed " << meta_v_c << " meta-vertices.\n";
-    std::cerr << "Non-diagonal edges reading time: " << edge_read_time << ".\n";
+    std::cerr << "Map clearing time: " << map_clr_time << ".\n";
+    std::cerr << "Edges reading time: " << edge_read_time << ".\n";
     std::cerr << "Non-diagonal edges contraction time: " << edge_proc_time << ".\n";
     std::cerr << "Meta-vertex copy time: " << v_info_cp_time << ".\n";
     std::cerr << "Diagonal-contraction time: " << diag_cont_time << ".\n";
@@ -145,7 +153,11 @@ template <uint16_t k>
 void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_t j)
 {
     D_j.clear();
+    const auto t_s = now();
     E.read_diagonal_block(j, buf);
+    const auto t_e = now();
+    edge_read_time += duration(t_e - t_s);
+
     for(const auto& e : buf)
     {
         const Other_End* const end_x = M.find(e.x());
