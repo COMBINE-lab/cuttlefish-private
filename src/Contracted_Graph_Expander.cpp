@@ -1,6 +1,7 @@
 
 #include "Contracted_Graph_Expander.hpp"
 #include "globals.hpp"
+#include "parlay/parallel.h"
 
 #include <fstream>
 #include <filesystem>
@@ -136,10 +137,15 @@ void Contracted_Graph_Expander<k>::load_path_info(const std::size_t i)
     p_v_load_time += duration(t_e - t_s);
 
     t_s = now();
-    Path_Info<k>* curr_val_add;
-    for(const auto& p_v : p_v_buf)
-        if(!M.insert(p_v.obj(), p_v.path_info(), curr_val_add))
-            assert(*curr_val_add == p_v.path_info());
+    const auto load_vertex_info = [&](const std::size_t idx)
+    {
+        const auto& p_v = p_v_buf[idx];
+        if(!M.insert(p_v.obj(), p_v.path_info()))
+            assert(*M.find(p_v.obj()) == p_v.path_info());
+    };
+
+    parlay::parallel_for(0, p_v_buf.size(), load_vertex_info, p_v_buf.size() / parlay::num_workers());
+
     t_e = now();
     map_fill_time += duration(t_e - t_s);
 }
