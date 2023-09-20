@@ -81,15 +81,21 @@ public:
     Obj_Path_Info_Pair()    // TODO: consider removing.
     {}
 
-    // For an object, constructs a pairing of it with its path-info specified
-    // with its path-ID `p` and rank in the path `r` when the path is traversed
-    // in the orientation such that the traversal exits the object through its
-    // side `o`.
+    // For an object `obj`, constructs a pairing of it with its path-info
+    // specified with its path-ID `p` and rank in the path `r` when the path is
+    // traversed in the orientation such that the traversal exits the object
+    // through its side `o`.
     Obj_Path_Info_Pair(const T_ obj, const path_id_t p, const weight_t r, const side_t o):
           obj_(obj)
         , path_info_(p, r, o)
     {}
 
+    // For an object `obj`, constructs a pairing of it with its path-info
+    // specified with `path_info`.
+    Obj_Path_Info_Pair(const T_ obj, const Path_Info<k> path_info):
+          obj_(obj)
+        , path_info_(path_info)
+    {}
 
     // Returns the object.
     const auto obj() const { return obj_; }

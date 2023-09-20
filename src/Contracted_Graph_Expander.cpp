@@ -5,6 +5,7 @@
 
 #include <fstream>
 #include <filesystem>
+#include <algorithm>
 #include <cassert>
 
 
@@ -17,6 +18,8 @@ Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Edge_Matrix<k>& E,
     , n_(n)
     , P_v(P_v)
     , P_e(P_e)
+    , P_v_local(parlay::num_workers())
+    , P_e_local(parlay::num_workers())
     , work_path(temp_path)
     , M(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.25))
 {}
@@ -30,6 +33,8 @@ void Contracted_Graph_Expander<k>::expand()
     double diag_exp_time = 0;   // Time taken to expand the compressed diagonal chains.
     double edge_proc_time = 0;  // Time taken to process the non-diagonal edges.
     double spec_case_time = 0;  // Time taken to process the special edge-blocks.
+    double v_inf_cp_time = 0;   // Time taken to copy worker-local vertex path-info to global repo.
+    double e_inf_cp_time = 0;   // Time taken to copy worker-local edge path-info to global repo.
 
     std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
 
@@ -37,10 +42,15 @@ void Contracted_Graph_Expander<k>::expand()
     p_v_buf.reserve(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.25)); // TODO: check the maximum size empirically, as repetitions are possible in the info-buckets.
     for(std::size_t i = 1; i <= E.vertex_part_count(); ++i)
     {
+        std::cerr << "\rPart: " << i;
+
         auto t_s = now();
         M.clear();
         auto t_e = now();
         map_clr_time += duration(t_e - t_s);
+
+        std::for_each(P_v_local.begin(), P_v_local.end(), [](auto& v){ v.data().clear(); });
+        std::for_each(P_e_local.begin(), P_e_local.end(), [](auto& v){ v.data().clear(); });
 
         load_path_info(i);
 
@@ -49,7 +59,19 @@ void Contracted_Graph_Expander<k>::expand()
         t_e = now();
         diag_exp_time += duration(t_e - t_s);
 
-        Path_Info<k> x_inf; // Computed (earlier) path-information of the endpoint of the edge that is in the current partition.
+        const auto process_non_diagonal_edge = [&](const std::size_t idx)
+        {
+            const auto& e = buf[idx];
+
+            assert(M.find(e.x()));
+            const auto x_inf = *M.find(e.x());  // Path-information of the endpoint of the edge that is in the current partition, `i`.
+            const auto y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
+            P_v_local[parlay::worker_id()].data().emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o());
+
+            if(e.w() == 1)
+                add_edge_path_info(e, x_inf, y_inf);
+        };
+
         while(true)
         {
             t_s = now();
@@ -59,23 +81,7 @@ void Contracted_Graph_Expander<k>::expand()
             edge_read_time += duration(t_e - t_s);
 
             t_s = now();
-            for(const auto& e : buf)
-            {
-                const bool has_x = M.find(e.x(), x_inf);
-                assert(has_x);
-                (void)has_x;
-
-                const auto y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
-                const auto j = E.partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
-                assert(j > i);
-                P_v[j].emplace(e.y(), y_inf.p(), y_inf.r(), y_inf.o());
-
-                if(e.w() == 1)
-                {
-                    add_edge_path_info(e, x_inf, y_inf);
-                    og_edge_c++;
-                }
-            }
+            parlay::parallel_for(0, buf.size(), process_non_diagonal_edge, buf.size() / parlay::num_workers());
             t_e = now();
             edge_proc_time += duration(t_e - t_s);
         }
@@ -94,7 +100,6 @@ void Contracted_Graph_Expander<k>::expand()
             {
                 assert(M.find(e.x()) && M.find(e.y()));
                 add_edge_path_info(e, *M.find(e.x()), *M.find(e.y()));
-                og_edge_c++;
             }
         t_e = now();
         spec_case_time += duration(t_e - t_s);
@@ -110,20 +115,47 @@ void Contracted_Graph_Expander<k>::expand()
             {
                 assert(M.find(e.y()));
                 add_edge_path_info(e, *M.find(e.y()));
-                og_edge_c++;
             }
         t_e = now();
         spec_case_time += duration(t_e - t_s);
+
+
+        t_s = now();
+        for(const auto& vec : P_v_local)
+            for(const auto& v_inf : vec.data())
+            {
+                const auto j = E.partition(v_inf.obj());    // TODO: consider obtaining this info during the edge-reading process.
+                assert(j > i);
+                P_v[j].add(v_inf);
+            }
+
+        t_e = now();
+        v_inf_cp_time += duration(t_e - t_s);
+
+        t_s = now();
+        for(const auto& vec : P_e_local)
+            for(const auto& e_inf : vec.data())
+            {
+                assert(e_inf.obj().b_id < P_e.size());
+                P_e[e_inf.obj().b_id].emplace(e_inf.obj().idx, e_inf.path_info());
+            }
+
+        t_e = now();
+        e_inf_cp_time += duration(t_e - t_s);
     }
 
+    std::cerr << "\n";
 
-    std::cerr << "Encountered " << og_edge_c << " original edges\n";
+
+    // std::cerr << "Encountered " << og_edge_c << " original edges\n";
     std::cerr << "Map clearing time: " << map_clr_time << ".\n";
     std::cerr << "Edges reading time: " << edge_read_time << ".\n";
     std::cerr << "Vertex-info load time: " << p_v_load_time << ".\n";
     std::cerr << "Map filling time: " << map_fill_time << ".\n";
     std::cerr << "Non-diagonal blocks expansion time: " << edge_proc_time << ".\n";
     std::cerr << "Diagonal block expansion time: " << diag_exp_time << ".\n";
+    std::cerr << "Vertex path-info copy time: " << v_inf_cp_time << ".\n";
+    std::cerr << "Edge path-info copy time: " << e_inf_cp_time << ".\n";
     std::cerr << "Special case time: " << spec_case_time << ".\n";
 }
 

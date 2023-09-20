@@ -12,12 +12,14 @@
 #include "Kmer_Hasher.hpp"
 #include "Concurrent_Hash_Table.hpp"
 #include "globals.hpp"
+#include "utility.hpp"
 
 #include <cstdint>
 #include <cstddef>
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <algorithm>
 #include <cassert>
 
@@ -39,6 +41,19 @@ private:
 
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;   // `P_v[i]` contains path-info for vertices in partition `i`.
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e; // `P_e[b]` contains path-info for edges in bucket `b`.
+
+    // Coordinate of the literal form (i.e. the unitig) of an edge—its bucket ID
+    // and in-bucket index.
+    struct Edge_Literal_Coord
+    {
+        uint16_t b_id;  // TODO: centralize these types.
+        uni_idx_t idx;
+
+        Edge_Literal_Coord(uint16_t b_id, uni_idx_t idx): b_id(b_id), idx(idx) {}
+    };
+
+    std::vector<Padded_Data<std::vector<Obj_Path_Info_Pair<Kmer<k>, k>>>> P_v_local;    // `P_v_local[w]` contains path-info of vertices computed by worker `w`.
+    std::vector<Padded_Data<std::vector<Obj_Path_Info_Pair<Edge_Literal_Coord, k>>>> P_e_local; // `P_e_local[w]` contains path-info for edges computed by worker `w`.
 
     const std::string work_path;    // Path-prefix to temporary working files.
 
@@ -71,7 +86,6 @@ private:
     void add_edge_path_info(const Discontinuity_Edge<k>& e, Path_Info<k> v_inf);
 
     // Debug
-    std::size_t og_edge_c = 0;
     double p_v_load_time = 0;   // Time to load vertices' path-info.
     double edge_read_time = 0;  // Time taken to read the edges.
     double map_fill_time = 0;   // Time taken to fill the hash map with already inferred vertices' path-info for a partition.
@@ -118,8 +132,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto r = std::min(u_inf.r(), v_inf.r());
     const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));  // The ranking of the vertices in the unitig goes from u to v.
 
-    assert(e.b() < P_e.size());
-    P_e[e.b()].emplace(e.b_idx(), u_inf.p(), r, o); // `u_inf.p() == v_inf.p()`
+    P_e_local[parlay::worker_id()].data().emplace_back(Edge_Literal_Coord(e.b(), e.b_idx()), u_inf.p(), r, o);  // `u_inf.p() == v_inf.p()`
 }
 
 
@@ -134,6 +147,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
 
     assert(e.b() < P_e.size());
     P_e[e.b()].emplace(e.b_idx(), v_inf.p(), r, o);
+    // P_e_local[parlay::worker_id()].data().emplace_back(Edge_Literal_Coord(e.b(), e.b_idx()), v_inf.p(), r, o);
 }
 
 }
