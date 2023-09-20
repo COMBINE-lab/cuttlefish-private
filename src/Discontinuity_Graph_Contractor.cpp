@@ -93,7 +93,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
         while(true)
         {
             t_s = now();
-            if(!E.read_column_buffered(j, buf))
+            if(!E.read_column_buffered(j, buf)) // TODO: run a background buffered reader, that'll have the next buffer ready in time.
                 break;
             t_e = now();
             edge_read_time += duration(t_e - t_s);
