@@ -39,21 +39,14 @@ private:
     const Edge_Matrix<k>& E;    // Edge matrix of the (augmented) discontinuity graph.
     const std::size_t n_;   // Number of discontinuity-vertices.
 
+    // TODO: consider using padding.
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;   // `P_v[i]` contains path-info for vertices in partition `i`.
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e; // `P_e[b]` contains path-info for edges in bucket `b`.
 
-    // Coordinate of the literal form (i.e. the unitig) of an edge—its bucket ID
-    // and in-bucket index.
-    struct Edge_Literal_Coord
-    {
-        uint16_t b_id;  // TODO: centralize these types.
-        uni_idx_t idx;
-
-        Edge_Literal_Coord(uint16_t b_id, uni_idx_t idx): b_id(b_id), idx(idx) {}
-    };
-
-    std::vector<Padded_Data<std::vector<Obj_Path_Info_Pair<Kmer<k>, k>>>> P_v_local;    // `P_v_local[w]` contains path-info of vertices computed by worker `w`.
-    std::vector<Padded_Data<std::vector<Obj_Path_Info_Pair<Edge_Literal_Coord, k>>>> P_e_local; // `P_e_local[w]` contains path-info for edges computed by worker `w`.
+    typedef std::vector<std::vector<Obj_Path_Info_Pair<Kmer<k>, k>>> worker_local_P_v_t;    // `P_v` buffers specific to a worker.
+    typedef std::vector<std::vector<Obj_Path_Info_Pair<uni_idx_t, k>>> worker_local_P_e_t;  // `P_e` buffers specific to a worker.
+    std::vector<Padded_Data<worker_local_P_v_t>> P_v_w; // `P_v_w[w][j]` contains path-info of vertices in partition `j` computed by worker `w`.
+    std::vector<Padded_Data<worker_local_P_e_t>> P_e_w; // `P_e_w[w][b]` contains path-info of edges in bucket `b` computed by worker `w`.
 
     const std::string work_path;    // Path-prefix to temporary working files.
 
@@ -84,6 +77,11 @@ private:
     // Computes the path-info of the edge `e` of form `(ϕ, v)` from `v`'s path-
     // info, `v_inf`, and adds the info to `e`'s path-info bucket.
     void add_edge_path_info(const Discontinuity_Edge<k>& e, Path_Info<k> v_inf);
+
+    // Collates worker local buffers in ID range `[beg, end)` from the
+    // collection `source` into the global repository `dest`. Also clears the
+    // local buffers.
+    template <typename T_s_, typename T_d_> static void collate_w_local_bufs(T_s_& source, std::size_t beg, size_t end, T_d_& dest);
 
     // Debug
     double p_v_load_time = 0;   // Time to load vertices' path-info.
@@ -132,7 +130,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto r = std::min(u_inf.r(), v_inf.r());
     const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));  // The ranking of the vertices in the unitig goes from u to v.
 
-    P_e_local[parlay::worker_id()].data().emplace_back(Edge_Literal_Coord(e.b(), e.b_idx()), u_inf.p(), r, o);  // `u_inf.p() == v_inf.p()`
+    P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), u_inf.p(), r, o);
 }
 
 
@@ -147,7 +145,6 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
 
     assert(e.b() < P_e.size());
     P_e[e.b()].emplace(e.b_idx(), v_inf.p(), r, o);
-    // P_e_local[parlay::worker_id()].data().emplace_back(Edge_Literal_Coord(e.b(), e.b_idx()), v_inf.p(), r, o);
 }
 
 }

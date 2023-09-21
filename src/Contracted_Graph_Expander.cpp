@@ -18,11 +18,14 @@ Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Edge_Matrix<k>& E,
     , n_(n)
     , P_v(P_v)
     , P_e(P_e)
-    , P_v_local(parlay::num_workers())
-    , P_e_local(parlay::num_workers())
+    , P_v_w(parlay::num_workers())
+    , P_e_w(parlay::num_workers())
     , work_path(temp_path)
     , M(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.25))
-{}
+{
+    std::for_each(P_v_w.begin(), P_v_w.end(), [&](auto& v){ v.data().resize(P_v.size()); });
+    std::for_each(P_e_w.begin(), P_e_w.end(), [&](auto& v){ v.data().resize(P_e.size()); });
+}
 
 
 template <uint16_t k>
@@ -49,9 +52,6 @@ void Contracted_Graph_Expander<k>::expand()
         auto t_e = now();
         map_clr_time += duration(t_e - t_s);
 
-        std::for_each(P_v_local.begin(), P_v_local.end(), [](auto& v){ v.data().clear(); });
-        std::for_each(P_e_local.begin(), P_e_local.end(), [](auto& v){ v.data().clear(); });
-
         load_path_info(i);
 
         t_s = now();
@@ -66,7 +66,10 @@ void Contracted_Graph_Expander<k>::expand()
             assert(M.find(e.x()));
             const auto x_inf = *M.find(e.x());  // Path-information of the endpoint of the edge that is in the current partition, `i`.
             const auto y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
-            P_v_local[parlay::worker_id()].data().emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o());
+
+            const auto j = E.partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
+            assert(j > i);
+            P_v_w[parlay::worker_id()].data()[j].emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o());
 
             if(e.w() == 1)
                 add_edge_path_info(e, x_inf, y_inf);
@@ -121,25 +124,12 @@ void Contracted_Graph_Expander<k>::expand()
 
 
         t_s = now();
-        for(const auto& vec : P_v_local)
-            for(const auto& v_inf : vec.data())
-            {
-                const auto j = E.partition(v_inf.obj());    // TODO: consider obtaining this info during the edge-reading process.
-                assert(j > i);
-                P_v[j].add(v_inf);
-            }
-
+        collate_w_local_bufs(P_v_w, i + 1, P_v.size(), P_v);
         t_e = now();
         v_inf_cp_time += duration(t_e - t_s);
 
         t_s = now();
-        for(const auto& vec : P_e_local)
-            for(const auto& e_inf : vec.data())
-            {
-                assert(e_inf.obj().b_id < P_e.size());
-                P_e[e_inf.obj().b_id].emplace(e_inf.obj().idx, e_inf.path_info());
-            }
-
+        collate_w_local_bufs(P_e_w, 0, P_e.size(), P_e);
         t_e = now();
         e_inf_cp_time += duration(t_e - t_s);
     }
@@ -216,6 +206,25 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
             M.insert(e.x(), infer(y_inf, e.s_y(), e.s_x(), e.w()));
         }
     }
+}
+
+
+template <uint16_t k>
+template <typename T_s_, typename T_d_>
+void Contracted_Graph_Expander<k>::collate_w_local_bufs(T_s_& source, const std::size_t beg, const size_t end, T_d_& dest)
+{
+    parlay::parallel_for(beg, end,
+        [&](const std::size_t idx)
+        {
+            for(auto& w_local_buf_list : source)
+            {
+                auto& buf = w_local_buf_list.data()[idx];
+                dest[idx].add(buf.data(), buf.size());
+
+                buf.clear();
+            }
+        },
+        1);
 }
 
 }
