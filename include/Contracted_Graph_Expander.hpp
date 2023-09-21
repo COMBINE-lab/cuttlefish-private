@@ -144,7 +144,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto o = (r == 0 ? e.o() : inv_side(e.o()));
 
     assert(e.b() < P_e.size());
-    P_e[e.b()].emplace(e.b_idx(), v_inf.p(), r, o);
+    P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), v_inf.p(), r, o);
 }
 
 }

@@ -98,12 +98,17 @@ void Contracted_Graph_Expander<k>::expand()
         edge_read_time += duration(t_e - t_s);
 
         t_s = now();
-        for(const auto& e : buf)
-            if(e.w() == 1)
+        parlay::parallel_for(0, buf.size(),
+            [&](const std::size_t idx)
             {
-                assert(M.find(e.x()) && M.find(e.y()));
-                add_edge_path_info(e, *M.find(e.x()), *M.find(e.y()));
-            }
+                const auto& e = buf[idx];
+                if(e.w() == 1)
+                {
+                    assert(M.find(e.x()) && M.find(e.y()));
+                    add_edge_path_info(e, *M.find(e.x()), *M.find(e.y()));
+                }
+            }, 1);
+
         t_e = now();
         spec_case_time += duration(t_e - t_s);
 
@@ -113,12 +118,17 @@ void Contracted_Graph_Expander<k>::expand()
         edge_read_time += duration(t_e - t_s);
 
         t_s = now();
-        for(const auto& e : buf)
-            if(e.w() == 1)
+        parlay::parallel_for(0, buf.size(),
+            [&](const std::size_t idx)
             {
-                assert(M.find(e.y()));
-                add_edge_path_info(e, *M.find(e.y()));
-            }
+                const auto& e = buf[idx];
+                if(e.w() == 1)
+                {
+                    assert(M.find(e.y()));
+                    add_edge_path_info(e, *M.find(e.y()));
+                }
+            }, 1);
+
         t_e = now();
         spec_case_time += duration(t_e - t_s);
 
