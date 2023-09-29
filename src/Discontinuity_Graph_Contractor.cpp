@@ -37,6 +37,8 @@ void Discontinuity_Graph_Contractor<k>::contract()
     buf.resize(E.max_block_size());
     for(auto j = E.vertex_part_count(); j >= 1; --j)
     {
+        std::cerr << "\rPart: " << j;
+
         auto t_s = now();
         M.clear();
         auto t_e = now();
@@ -44,8 +46,6 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
         std::for_each(D_c.begin(), D_c.end(), [](auto& v){ v.data().clear(); });
         std::for_each(P_v_local.begin(), P_v_local.end(), [](auto& v){ v.data().clear(); });
-
-        std::cerr << "\rPart: " << j;
 
         t_s = now();
         contract_diagonal_block(j);

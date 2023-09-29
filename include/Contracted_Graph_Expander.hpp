@@ -134,6 +134,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto r = std::min(u_inf.r(), v_inf.r());
     const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));  // The ranking of the vertices in the unitig goes from u to v.
 
+    assert(e.b() > 0 && e.b() < P_e.size());
     P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), u_inf.p(), r, o);
 
 #ifndef NDEBUG
@@ -151,7 +152,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto r = (v_inf.r() == 1 ? 0 : v_inf.r());
     const auto o = (r == 0 ? e.o() : inv_side(e.o()));
 
-    assert(e.b() < P_e.size());
+    assert(e.b() > 0 && e.b() < P_e.size());
     P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), v_inf.p(), r, o);
 
 #ifndef NDEBUG

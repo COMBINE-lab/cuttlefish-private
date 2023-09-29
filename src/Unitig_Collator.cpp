@@ -37,7 +37,9 @@ void Unitig_Collator<k>::collate()
     std::ofstream output(output_path);
     std::string unitig;
     uint64_t e_c = 0;
+#ifndef NDEBUG
     uint64_t h_p_e = 0;
+#endif
     for(std::size_t b = 1; b <= unitig_bucket_count; ++b)
     {
         M.clear();
@@ -59,6 +61,11 @@ void Unitig_Collator<k>::collate()
             uni_idx++;
         }
     }
+
+    std::cerr << "Found " << e_c << " edges.\n";
+#ifndef NDEBUG
+    std::cerr << "Edges' path-information signature: " << h_p_e << "\n";
+#endif
 
     std::cerr << "KV-store has " << kv_store.size() << " pairs.\n";
     std::sort(kv_store.begin(), kv_store.end());

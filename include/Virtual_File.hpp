@@ -98,6 +98,7 @@ inline std::size_t Virtual_File<T_>::read()
     const std::size_t elems_to_read = std::min(file_elem_count - chunk_end_idx, buf_elem_count);
     const std::size_t elems_read = std::fread(buf, sizeof(T_), elems_to_read, fp);
     assert(elems_read == elems_to_read);
+    (void)elems_read;
 
     return elems_to_read;
 }
