@@ -36,10 +36,17 @@ void Unitig_Collator<k>::collate()
 
     std::ofstream output(output_path);
     std::string unitig;
+    uint64_t e_c = 0;
+    uint64_t h_p_e = 0;
     for(std::size_t b = 1; b <= unitig_bucket_count; ++b)
     {
         M.clear();
         load_path_info(b);
+        e_c += M.size();
+
+#ifndef NDEBUG
+        std::for_each(M.cbegin(), M.cend(), [&](auto p_inf){ h_p_e ^= p_inf.hash(); });
+#endif
 
         Unitig_File_Reader unitig_reader(work_path + std::string("lmutig_") + std::to_string(b));
         uni_idx_t uni_idx = 0;

@@ -81,7 +81,11 @@ private:
     // Collates worker local buffers in ID range `[beg, end)` from the
     // collection `source` into the global repository `dest`. Also clears the
     // local buffers.
-    template <typename T_s_, typename T_d_> static void collate_w_local_bufs(T_s_& source, std::size_t beg, size_t end, T_d_& dest);
+    template <typename T_s_, typename T_d_> static uint64_t collate_w_local_bufs(T_s_& source, std::size_t beg, size_t end, T_d_& dest);
+
+#ifndef NDEBUG
+    std::vector<Padded_Data<uint64_t>> H_p_e_w; // `H_p_e_w[w]` contains 64-bit hash of the path-info of edges computed by worker `w`.
+#endif
 
     // Debug
     double p_v_load_time = 0;   // Time to load vertices' path-info.
@@ -131,6 +135,10 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));  // The ranking of the vertices in the unitig goes from u to v.
 
     P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), u_inf.p(), r, o);
+
+#ifndef NDEBUG
+    H_p_e_w[parlay::worker_id()].data() ^= P_e_w[parlay::worker_id()].data()[e.b()].back().path_info().hash();
+#endif
 }
 
 
@@ -145,6 +153,10 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
 
     assert(e.b() < P_e.size());
     P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), v_inf.p(), r, o);
+
+#ifndef NDEBUG
+    H_p_e_w[parlay::worker_id()].data() ^= P_e_w[parlay::worker_id()].data()[e.b()].back().path_info().hash();
+#endif
 }
 
 }

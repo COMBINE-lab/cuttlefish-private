@@ -6,6 +6,7 @@
 
 #include "Kmer.hpp"
 #include "globals.hpp"
+#include "xxHash/xxhash.h"
 
 #include <cstdint>
 
@@ -61,6 +62,9 @@ public:
 
     // Returns `true` iff this information is the same as in `rhs`.
     bool operator==(const Path_Info<k>& rhs) const { return p_ == rhs.p_ && r_ == rhs.r_ && o_ == rhs.o_; }
+
+    // Returns a 64-bit hash value of the object.
+    uint64_t hash() const { return XXH3_64bits(&p_, sizeof(p_)) ^ XXH3_64bits(&r_, sizeof(r_)) ^ XXH3_64bits(&o_, sizeof(o_)); }
 };
 
 

@@ -22,6 +22,9 @@ Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Edge_Matrix<k>& E,
     , P_e_w(parlay::num_workers())
     , work_path(temp_path)
     , M(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.25))
+#ifndef NDEBUG
+    , H_p_e_w(parlay::num_workers(), 0)
+#endif
 {
     std::for_each(P_v_w.begin(), P_v_w.end(), [&](auto& v){ v.data().resize(P_v.size()); });
     std::for_each(P_e_w.begin(), P_e_w.end(), [&](auto& v){ v.data().resize(P_e.size()); });
@@ -38,6 +41,8 @@ void Contracted_Graph_Expander<k>::expand()
     double spec_case_time = 0;  // Time taken to process the special edge-blocks.
     double v_inf_cp_time = 0;   // Time taken to copy worker-local vertex path-info to global repo.
     double e_inf_cp_time = 0;   // Time taken to copy worker-local edge path-info to global repo.
+    uint64_t v_inf_c = 0;   // Count of vertices whose path-info have been inferred.
+    uint64_t e_inf_c = 0;   // Count of edges whose path-info have been inferred.
 
     std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
 
@@ -134,12 +139,12 @@ void Contracted_Graph_Expander<k>::expand()
 
 
         t_s = now();
-        collate_w_local_bufs(P_v_w, i + 1, P_v.size(), P_v);
+        v_inf_c += collate_w_local_bufs(P_v_w, i + 1, P_v.size(), P_v);
         t_e = now();
         v_inf_cp_time += duration(t_e - t_s);
 
         t_s = now();
-        collate_w_local_bufs(P_e_w, 0, P_e.size(), P_e);
+        e_inf_c += collate_w_local_bufs(P_e_w, 1, P_e.size(), P_e);
         t_e = now();
         e_inf_cp_time += duration(t_e - t_s);
     }
@@ -157,6 +162,15 @@ void Contracted_Graph_Expander<k>::expand()
     std::cerr << "Vertex path-info copy time: " << v_inf_cp_time << ".\n";
     std::cerr << "Edge path-info copy time: " << e_inf_cp_time << ".\n";
     std::cerr << "Special case time: " << spec_case_time << ".\n";
+
+#ifndef NDEBUG
+    uint64_t e_h = 0;
+    std::for_each(H_p_e_w.cbegin(), H_p_e_w.cend(), [&](const auto v){ e_h ^= v.data(); });
+    std::cerr << "Collated edge path-info hash: " << e_h << ".\n";
+#endif
+
+    std::cerr << "Inferred vertex-information instance: " << v_inf_c << ".\n";
+    std::cerr << "Inferred edge-information instance:   " << e_inf_c << ".\n";
 }
 
 
@@ -221,8 +235,10 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
 
 template <uint16_t k>
 template <typename T_s_, typename T_d_>
-void Contracted_Graph_Expander<k>::collate_w_local_bufs(T_s_& source, const std::size_t beg, const size_t end, T_d_& dest)
+uint64_t Contracted_Graph_Expander<k>::collate_w_local_bufs(T_s_& source, const std::size_t beg, const size_t end, T_d_& dest)
 {
+    std::vector<Padded_Data<uint64_t>> C(parlay::num_workers(), 0);
+
     parlay::parallel_for(beg, end,
         [&](const std::size_t idx)
         {
@@ -230,11 +246,15 @@ void Contracted_Graph_Expander<k>::collate_w_local_bufs(T_s_& source, const std:
             {
                 auto& buf = w_local_buf_list.data()[idx];
                 dest[idx].add(buf.data(), buf.size());
+                C[parlay::worker_id()].data() += buf.size();
 
                 buf.clear();
             }
-        },
-        1);
+        }, 1);
+
+    uint64_t c = 0;
+    std::for_each(C.cbegin(), C.cend(), [&](auto v){ c += v.data(); });
+    return c;
 }
 
 }
