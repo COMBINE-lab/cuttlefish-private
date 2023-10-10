@@ -30,7 +30,7 @@ private:
 
     path_id_t p_;   // The path-ID.
     weight_t r_;    // The rank.
-    side_t o_;  // The orientation of the object in its specified rank—the path traversal exits `v` through the side `o`.
+    side_t o_;  // The orientation of the object in its specified rank—the path traversal exits it through the side `o`.
 
 
 public:
@@ -63,7 +63,7 @@ public:
     // Returns `true` iff this information is the same as in `rhs`.
     bool operator==(const Path_Info<k>& rhs) const { return p_ == rhs.p_ && r_ == rhs.r_ && o_ == rhs.o_; }
 
-    // Returns a 64-bit hash value of the object.
+    // Returns a 64-bit hash value of the path-information.
     uint64_t hash() const { return XXH3_64bits(&p_, sizeof(p_)) ^ XXH3_64bits(&r_, sizeof(r_)) ^ XXH3_64bits(&o_, sizeof(o_)); }
 };
 

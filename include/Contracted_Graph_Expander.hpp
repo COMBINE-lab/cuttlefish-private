@@ -132,7 +132,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     assert(u_inf.p() == v_inf.p());
 
     const auto r = std::min(u_inf.r(), v_inf.r());
-    const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));  // The ranking of the vertices in the unitig goes from u to v.
+    const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));  // Whether the ranking of the vertices in the unitig goes from u to v.
 
     assert(e.b() > 0 && e.b() < P_e.size());
     P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), u_inf.p(), r, o);
