@@ -19,6 +19,7 @@ dBG_Contractor<k>::dBG_Contractor(const std::size_t part_count, const std::size_
     , output_path(output_path)
     , work_path(temp_path)
     , E(part_count, temp_path + std::string("E_"), true)
+    , n_disc_v(E.size() - E.row_size(0) / 2)    // Each separate chain has exactly two ϕ-adjacent edges.
 {
     P_v.emplace_back();
     for(std::size_t j = 1; j <= part_count; ++j)
@@ -42,13 +43,13 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     // Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E, work_path, unitig_bucket_count);
     // dgb.generate();
 
-    Discontinuity_Graph_Contractor<k> contractor(E, P_v, work_path);
+    Discontinuity_Graph_Contractor<k> contractor(E, n_disc_v, P_v, work_path);
     contractor.contract();
 
     const auto t_c = now();
     std::cerr << "Discontinuity-graph contraction completed. Time taken: " << duration(t_c - t_s) << " seconds.\n";
 
-    Contracted_Graph_Expander<k> expander(E, P_v, P_e, work_path);
+    Contracted_Graph_Expander<k> expander(E, n_disc_v, P_v, P_e, work_path);
     expander.expand();
 
     const auto t_e = now();

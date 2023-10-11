@@ -10,13 +10,16 @@
 #include "Ext_Mem_Bucket.hpp"
 #include "Kmer.hpp"
 #include "Kmer_Hasher.hpp"
+#include "Concurrent_Hash_Table.hpp"
 #include "globals.hpp"
+#include "utility.hpp"
 
 #include <cstdint>
 #include <cstddef>
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <algorithm>
 #include <cassert>
 
@@ -33,22 +36,30 @@ class Contracted_Graph_Expander
 
 private:
 
-    Edge_Matrix<k>& E;  // Edge matrix of the (augmented) discontinuity graph.
+    const Edge_Matrix<k>& E;    // Edge matrix of the (augmented) discontinuity graph.
+    const std::size_t n_;   // Number of discontinuity-vertices.
 
+    // TODO: consider using padding.
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;   // `P_v[i]` contains path-info for vertices in partition `i`.
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e; // `P_e[b]` contains path-info for edges in bucket `b`.
 
+    typedef std::vector<std::vector<Obj_Path_Info_Pair<Kmer<k>, k>>> worker_local_P_v_t;    // `P_v` buffers specific to a worker.
+    typedef std::vector<std::vector<Obj_Path_Info_Pair<uni_idx_t, k>>> worker_local_P_e_t;  // `P_e` buffers specific to a worker.
+    std::vector<Padded_Data<worker_local_P_v_t>> P_v_w; // `P_v_w[w][j]` contains path-info of vertices in partition `j` computed by worker `w`.
+    std::vector<Padded_Data<worker_local_P_e_t>> P_e_w; // `P_e_w[w][b]` contains path-info of edges in bucket `b` computed by worker `w`.
+
     const std::string work_path;    // Path-prefix to temporary working files.
 
+    // TODO: remove `D_i` by adopting a more parallelization-amenable algorithm for diagonal contraction-expansion.
     std::vector<Discontinuity_Edge<k>> D_i; // New edges introduced in contracted diagonal blocks.
 
-    std::unordered_map<Kmer<k>, Path_Info<k>, Kmer_Hasher<k>> M;    // `M[v]` is the path-info for vertex `v`.
+    Concurrent_Hash_Table<Kmer<k>, Path_Info<k>, Kmer_Hasher<k>> M; // `M[v]` is the path-info for vertex `v`.
 
     std::vector<Obj_Path_Info_Pair<Kmer<k>, k>> p_v_buf;    // Buffer to read-in path-information of vertices.
 
 
-    // Loads the available path-info of vertices from partition `i` into the
-    // hash table `M`.
+    // Loads the available path-info of meta-vertices from partition `i` into
+    // the hash table `M`.
     void load_path_info(std::size_t i);
 
     // Expands the `[i, i]`'th (contracted) edge-block.
@@ -67,17 +78,35 @@ private:
     // info, `v_inf`, and adds the info to `e`'s path-info bucket.
     void add_edge_path_info(const Discontinuity_Edge<k>& e, Path_Info<k> v_inf);
 
+    // Collates worker local buffers in ID range `[beg, end)` from the
+    // collection `source` into the global repository `dest`. Also clears the
+    // local buffers.
+    template <typename T_s_, typename T_d_> static uint64_t collate_w_local_bufs(T_s_& source, std::size_t beg, size_t end, T_d_& dest);
+
+#ifndef NDEBUG
+    std::vector<Padded_Data<uint64_t>> H_p_e_w; // `H_p_e_w[w]` contains 64-bit hash of the path-info of edges computed by worker `w`.
+#endif
+
     // Debug
-    std::size_t og_edge_c = 0;
+    double p_v_load_time = 0;   // Time to load vertices' path-info.
+    double edge_read_time = 0;  // Time taken to read the edges.
+    double map_fill_time = 0;   // Time taken to fill the hash map with already inferred vertices' path-info for a partition.
+
+    static constexpr auto now = std::chrono::high_resolution_clock::now;    // Current time-point in nanoseconds.
+
+    // Returns the equivalent time-duration in seconds from `d` nanoseconds.
+    static constexpr auto duration = [](const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
+
 
 
 public:
 
     // Constructs an expander for the contracted discontinuity-graph with edge-
-    // matrix `E`. `P_v[i]` is to contain path-information for vertices at
-    // partition `i`, and `P_e[b]` is to contain path-information for edges at
-    // bucket `b`. Temporary files are stored at path-prefix `temp_path`.
-    Contracted_Graph_Expander(Edge_Matrix<k>& E, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path);
+    // matrix `E` and `n` vertices. `P_v[i]` is to contain path-information for
+    // vertices at partition `i`, and `P_e[b]` is to contain path-information
+    // for edges at bucket `b`. Temporary files are stored at path-prefix
+    // `temp_path`.
+    Contracted_Graph_Expander(const Edge_Matrix<k>& E, std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path);
 
     // Expands the contracted discontinuity-graph.
     void expand();
@@ -103,10 +132,14 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     assert(u_inf.p() == v_inf.p());
 
     const auto r = std::min(u_inf.r(), v_inf.r());
-    const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));  // The ranking of the vertices in the unitig goes from u to v.
+    const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));  // Whether the ranking of the vertices in the unitig goes from u to v.
 
-    assert(e.b() < P_e.size());
-    P_e[e.b()].emplace(e.b_idx(), u_inf.p(), r, o); // `u_inf.p() == v_inf.p()`
+    assert(e.b() > 0 && e.b() < P_e.size());
+    P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), u_inf.p(), r, o);
+
+#ifndef NDEBUG
+    H_p_e_w[parlay::worker_id()].data() ^= P_e_w[parlay::worker_id()].data()[e.b()].back().path_info().hash();
+#endif
 }
 
 
@@ -119,8 +152,12 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto r = (v_inf.r() == 1 ? 0 : v_inf.r());
     const auto o = (r == 0 ? e.o() : inv_side(e.o()));
 
-    assert(e.b() < P_e.size());
-    P_e[e.b()].emplace(e.b_idx(), v_inf.p(), r, o);
+    assert(e.b() > 0 && e.b() < P_e.size());
+    P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), v_inf.p(), r, o);
+
+#ifndef NDEBUG
+    H_p_e_w[parlay::worker_id()].data() ^= P_e_w[parlay::worker_id()].data()[e.b()].back().path_info().hash();
+#endif
 }
 
 }

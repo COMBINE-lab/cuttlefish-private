@@ -6,6 +6,7 @@
 
 #include "Kmer.hpp"
 #include "globals.hpp"
+#include "xxHash/xxhash.h"
 
 #include <cstdint>
 
@@ -29,7 +30,7 @@ private:
 
     path_id_t p_;   // The path-ID.
     weight_t r_;    // The rank.
-    side_t o_;  // The orientation of the object in its specified rank—the path traversal exits `v` through the side `o`.
+    side_t o_;  // The orientation of the object in its specified rank—the path traversal exits it through the side `o`.
 
 
 public:
@@ -61,6 +62,9 @@ public:
 
     // Returns `true` iff this information is the same as in `rhs`.
     bool operator==(const Path_Info<k>& rhs) const { return p_ == rhs.p_ && r_ == rhs.r_ && o_ == rhs.o_; }
+
+    // Returns a 64-bit hash value of the path-information.
+    uint64_t hash() const { return XXH3_64bits(&p_, sizeof(p_)) ^ XXH3_64bits(&r_, sizeof(r_)) ^ XXH3_64bits(&o_, sizeof(o_)); }
 };
 
 
@@ -81,15 +85,21 @@ public:
     Obj_Path_Info_Pair()    // TODO: consider removing.
     {}
 
-    // For an object, constructs a pairing of it with its path-info specified
-    // with its path-ID `p` and rank in the path `r` when the path is traversed
-    // in the orientation such that the traversal exits the object through its
-    // side `o`.
+    // For an object `obj`, constructs a pairing of it with its path-info
+    // specified with its path-ID `p` and rank in the path `r` when the path is
+    // traversed in the orientation such that the traversal exits the object
+    // through its side `o`.
     Obj_Path_Info_Pair(const T_ obj, const path_id_t p, const weight_t r, const side_t o):
           obj_(obj)
         , path_info_(p, r, o)
     {}
 
+    // For an object `obj`, constructs a pairing of it with its path-info
+    // specified with `path_info`.
+    Obj_Path_Info_Pair(const T_ obj, const Path_Info<k> path_info):
+          obj_(obj)
+        , path_info_(path_info)
+    {}
 
     // Returns the object.
     const auto obj() const { return obj_; }

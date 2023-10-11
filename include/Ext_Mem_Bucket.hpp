@@ -122,11 +122,13 @@ inline void Ext_Mem_Bucket<T_>::add(const T_& elem)
 template <typename T_>
 inline void Ext_Mem_Bucket<T_>::add(const T_* const buf, const std::size_t sz)
 {
-    size_ += sz;
-    if(this->buf.size() + sz >= max_write_buf_elems)
-        file.write(reinterpret_cast<const char*>(buf), sz * sizeof(T_));    // TODO: thrashing possible with an almost full buffer.
-    else
-        std::for_each(buf, buf + sz, [&](const auto elem){ this->buf.push_back(elem); });
+    std::for_each(buf, buf + sz, [&](const auto elem){ add(elem); });
+
+    // size_ += sz;
+    // if(this->buf.size() + sz >= max_write_buf_elems)
+    //     file.write(reinterpret_cast<const char*>(buf), sz * sizeof(T_));    // TODO: thrashing possible with an almost full buffer.
+    // else
+    //     std::for_each(buf, buf + sz, [&](const auto elem){ this->buf.push_back(elem); });
 }
 
 
