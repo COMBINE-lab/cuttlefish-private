@@ -4,6 +4,7 @@
 #include "Kmer.hpp"
 #include "dBG_Utilities.hpp"
 #include "globals.hpp"
+#include "utility.hpp"
 
 #include <vector>
 #include <string>
@@ -21,7 +22,15 @@ Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_In
       P_e(P_e)
     , output_path(output_path)
     , work_path(temp_path)
+    , p_e_buf(nullptr)
 {}
+
+
+template <uint16_t k>
+Unitig_Collator<k>::~Unitig_Collator()
+{
+    deallocate(p_e_buf);
+}
 
 
 template <uint16_t k>
@@ -37,6 +46,7 @@ void Unitig_Collator<k>::collate()
     std::size_t max_bucket_sz = 0;
     std::for_each(P_e.cbegin(), P_e.cend(), [&max_bucket_sz](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.size()); });
     M.resize(max_bucket_sz);
+    p_e_buf = allocate<unitig_path_info_t>(max_bucket_sz);
 
     std::ofstream output(output_path);
     std::string unitig;
@@ -46,9 +56,8 @@ void Unitig_Collator<k>::collate()
 #endif
     for(std::size_t b = 1; b <= unitig_bucket_count; ++b)
     {
-        M.clear();
-        load_path_info(b);
-        e_c += M.size();
+        const auto b_sz = load_path_info(b);
+        e_c += b_sz;
 
 #ifndef NDEBUG
         std::for_each(M.cbegin(), M.cend(), [&](auto p_inf){ h_p_e ^= p_inf.hash(); });
@@ -58,7 +67,7 @@ void Unitig_Collator<k>::collate()
         uni_idx_t uni_idx = 0;
         while(unitig_reader.read_next_unitig(unitig))
         {
-            assert(uni_idx < M.size());
+            assert(uni_idx < b_sz);
             const auto p_e = M[uni_idx];
 
             kv_store.emplace_back(p_e.p(), lmtig_info_t(p_e.r(), unitig, p_e.o()));
@@ -159,16 +168,20 @@ void Unitig_Collator<k>::collate()
 
 
 template <uint16_t k>
-void Unitig_Collator<k>::load_path_info(std::size_t b)
+std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b)
 {
-    P_e[b].load(p_e_buf);
-    assert(p_e_buf.size() <= M.size());
+    const std::size_t b_sz = P_e[b].load(p_e_buf);
+    assert(b_sz <= M.size());
 
-    for(const auto& p_e : p_e_buf)
+    for(std::size_t idx = 0; idx < b_sz; ++idx)
     {
+        const auto& p_e = p_e_buf[idx];
         assert(p_e.obj() < M.size());
+
         M[p_e.obj()] = p_e.path_info();
     }
+
+    return b_sz;
 }
 
 }

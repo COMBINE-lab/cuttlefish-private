@@ -75,6 +75,9 @@ public:
 
     // Loads the bucket into the vector `v`.
     void load(std::vector<T_>& v) const;
+
+    // Loads the bucket into `b` and returns its size.
+    std::size_t load(T_* b) const;
 };
 
 
@@ -184,6 +187,32 @@ inline void Ext_Mem_Bucket<T_>::load(std::vector<T_>& v) const
 
 
     std::memcpy(reinterpret_cast<char*>(v.data()) + file_sz, reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
+}
+
+
+template <typename T_>
+inline std::size_t Ext_Mem_Bucket<T_>::load(T_* b) const
+{
+    std::error_code ec;
+    const auto file_sz = std::filesystem::file_size(file_path);
+
+    assert(file_sz % sizeof(T_) == 0);
+    assert(file_sz / sizeof(T_) + buf.size() == size_);
+
+    std::ifstream input(file_path);
+    input.read(reinterpret_cast<char*>(b), file_sz);
+    input.close();
+
+    if(ec || !input)
+    {
+        std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    if(!buf.empty())
+        std::memcpy(reinterpret_cast<char*>(b) + file_sz, reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
+
+    return size_;
 }
 
 }
