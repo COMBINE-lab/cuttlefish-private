@@ -22,13 +22,18 @@ Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_In
       P_e(P_e)
     , output_path(output_path)
     , work_path(temp_path)
+    , M(nullptr)
     , p_e_buf(nullptr)
-{}
+{
+    max_bucket_sz = 0;
+    std::for_each(P_e.cbegin(), P_e.cend(), [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.size()); });
+}
 
 
 template <uint16_t k>
 Unitig_Collator<k>::~Unitig_Collator()
 {
+    deallocate(M);
     deallocate(p_e_buf);
 }
 
@@ -43,9 +48,7 @@ void Unitig_Collator<k>::collate()
     typedef std::pair<path_id_t, lmtig_info_t> kv_t;    // (p, <r, u ,o>)
     std::vector<kv_t> kv_store;
 
-    std::size_t max_bucket_sz = 0;
-    std::for_each(P_e.cbegin(), P_e.cend(), [&max_bucket_sz](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.size()); });
-    M.resize(max_bucket_sz);
+    M = allocate<Path_Info<k>>(max_bucket_sz);
     p_e_buf = allocate<unitig_path_info_t>(max_bucket_sz);
 
     std::ofstream output(output_path);
@@ -157,6 +160,9 @@ void Unitig_Collator<k>::collate()
 
     output.close();
 
+    deallocate(M);
+    deallocate(p_e_buf);
+
     std::cerr << "Read " << mu_tig << " trivially maximal unitigs.\n";
 
 
@@ -171,12 +177,12 @@ template <uint16_t k>
 std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b)
 {
     const std::size_t b_sz = P_e[b].load(p_e_buf);
-    assert(b_sz <= M.size());
+    assert(b_sz <= max_bucket_sz);
 
     for(std::size_t idx = 0; idx < b_sz; ++idx)
     {
         const auto& p_e = p_e_buf[idx];
-        assert(p_e.obj() < M.size());
+        assert(p_e.obj() < max_bucket_sz);
 
         M[p_e.obj()] = p_e.path_info();
     }
