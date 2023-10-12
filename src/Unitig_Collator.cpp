@@ -34,6 +34,10 @@ void Unitig_Collator<k>::collate()
     typedef std::pair<path_id_t, lmtig_info_t> kv_t;    // (p, <r, u ,o>)
     std::vector<kv_t> kv_store;
 
+    std::size_t max_bucket_sz = 0;
+    std::for_each(P_e.cbegin(), P_e.cend(), [&max_bucket_sz](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.size()); });
+    M.resize(max_bucket_sz);
+
     std::ofstream output(output_path);
     std::string unitig;
     uint64_t e_c = 0;
@@ -158,7 +162,8 @@ template <uint16_t k>
 void Unitig_Collator<k>::load_path_info(std::size_t b)
 {
     P_e[b].load(p_e_buf);
-    M.resize(p_e_buf.size());
+    assert(p_e_buf.size() <= M.size());
+
     for(const auto& p_e : p_e_buf)
     {
         assert(p_e.obj() < M.size());
