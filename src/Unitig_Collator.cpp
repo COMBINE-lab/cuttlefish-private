@@ -74,7 +74,7 @@ void Unitig_Collator<k>::collate()
             assert(uni_idx < b_sz);
             const auto p_e = M[uni_idx];
 
-            kv_store.emplace_back(p_e.p(), lmtig_info_t(p_e.r(), std::string(unitig, uni_len), p_e.o()));
+            kv_store.emplace_back(p_e.p(), lmtig_info_t(p_e.r(), unitig, p_e.o()));
             uni_idx++;
         }
     }
