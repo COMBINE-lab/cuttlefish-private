@@ -68,12 +68,13 @@ void Unitig_Collator<k>::collate()
 
         Unitig_File_Reader unitig_reader(work_path + std::string("lmutig_") + std::to_string(b));
         uni_idx_t uni_idx = 0;
-        while(unitig_reader.read_next_unitig(unitig))
+        std::size_t uni_len;
+        while((uni_len = unitig_reader.read_next_unitig(unitig)))
         {
             assert(uni_idx < b_sz);
             const auto p_e = M[uni_idx];
 
-            kv_store.emplace_back(p_e.p(), lmtig_info_t(p_e.r(), unitig, p_e.o()));
+            kv_store.emplace_back(p_e.p(), lmtig_info_t(p_e.r(), std::string(unitig, uni_len), p_e.o()));
             uni_idx++;
         }
     }

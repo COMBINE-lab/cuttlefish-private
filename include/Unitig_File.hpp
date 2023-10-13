@@ -113,9 +113,9 @@ public:
     // Returns the number of unitigs in the file.
     auto unitig_count() const { return unitig_count_; }
 
-    // Reads the next unitig into `unitig`; returns `true` iff there were
-    // unitigs remaining to be read.
-    template <typename T_> bool read_next_unitig(T_& unitig);
+    // Reads the next unitig into `unitig` and returns its length iff there were
+    // unitigs remaining to be read. Returns 0 otherwise.
+    template <typename T_> std::size_t read_next_unitig(T_& unitig);
 };
 
 
@@ -151,14 +151,14 @@ inline void Unitig_File_Writer::flush_lengths()
 
 
 template <typename T_>
-inline bool Unitig_File_Reader::read_next_unitig(T_& unitig)
+inline std::size_t Unitig_File_Reader::read_next_unitig(T_& unitig)
 {
     if(buf_idx == buf.size())   // Buffer has been parsed completely; try a re-read.
     {
         assert(uni_idx_in_mem == uni_len.size());
 
         if(uni_idx_in_file == unitig_count_)    // All unitigs have been read-off.
-            return false;
+            return 0;
 
         std::streamsize bytes_to_read = 0;
         uni_len.clear();
@@ -191,7 +191,7 @@ inline bool Unitig_File_Reader::read_next_unitig(T_& unitig)
     total_sz += len;
     assert(buf_idx <= buf.size());
 
-    return true;
+    return len;
 }
 
 }
