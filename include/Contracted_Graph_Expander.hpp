@@ -32,8 +32,6 @@ namespace cuttlefish
 template <uint16_t k>
 class Contracted_Graph_Expander
 {
-    typedef uint32_t uni_idx_t; // Type of the index of a unitig in a bucket.
-
 private:
 
     const Edge_Matrix<k>& E;    // Edge matrix of the (augmented) discontinuity graph.

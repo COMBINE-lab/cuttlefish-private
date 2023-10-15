@@ -6,6 +6,7 @@
 
 #include "Ext_Mem_Bucket.hpp"
 #include "Path_Info.hpp"
+#include "globals.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -22,8 +23,6 @@ namespace cuttlefish
 template <uint16_t k>
 class Unitig_Collator
 {
-    typedef uint32_t uni_idx_t; // Type of the index of a unitig in a bucket.
-
 private:
 
     typedef Obj_Path_Info_Pair<uni_idx_t, k> unitig_path_info_t;    // A locally-maximal unitig's index in its bucket and its path-info.

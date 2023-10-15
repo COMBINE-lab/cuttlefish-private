@@ -5,6 +5,7 @@
 
 
 #include "Virtual_File.hpp"
+#include "globals.hpp"
 
 #include <cstddef>
 #include <limits>
@@ -22,10 +23,6 @@ namespace cuttlefish
 // Unitig-file writer manager.
 class Unitig_File_Writer
 {
-    // TODO: use `u16` after testing done with `u32`.
-    // typedef uint16_t uni_len_t; // Type of the length of a unitig in a bucket.
-    typedef uint32_t uni_len_t; // Type of the length of a unitig in a bucket.
-
 private:
 
     static constexpr std::size_t in_memory_bytes = 16lu * 1024; // 16 KB.

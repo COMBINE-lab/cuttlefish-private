@@ -43,7 +43,7 @@ void Unitig_Collator<k>::collate()
 {
     const std::size_t unitig_bucket_count = P_e.size() - 1;
 
-    typedef Kmer<k> path_id_t;
+    typedef max_unitig_id_t<k> path_id_t;
     typedef std::tuple<weight_t, std::string, side_t> lmtig_info_t;
     typedef std::pair<path_id_t, lmtig_info_t> kv_t;    // (p, <r, u ,o>)
     std::vector<kv_t> kv_store;

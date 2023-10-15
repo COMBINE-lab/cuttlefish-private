@@ -23,7 +23,7 @@ class Path_Info
 {
 public:
 
-    typedef Kmer<k> path_id_t;
+    typedef max_unitig_id_t<k> path_id_t;
 
 
 private:
