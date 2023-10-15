@@ -56,6 +56,7 @@ set(PROJECT_SRC
         Discontinuity_Graph_Contractor.cpp
         Contracted_Graph_Expander.cpp
         Unitig_Collator.cpp
+        Unitig_Coord_Bucket.cpp
         commands.cpp
     )
 
