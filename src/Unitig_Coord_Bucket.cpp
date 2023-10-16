@@ -11,6 +11,8 @@ Unitig_Coord_Bucket<k>::Unitig_Coord_Bucket(const std::string& path_pref):
       path_pref(path_pref)
     , coord_bucket(path_pref + ".coord")
     , label_bucket(path_pref + ".label")
+    , size_(0)
+    , label_len_(0)
 {}
 
 }

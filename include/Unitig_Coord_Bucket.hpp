@@ -18,8 +18,8 @@ namespace cuttlefish
 // =============================================================================
 // A bucket storing full coordinates for unitigs: for a specific unitig, it's
 // containing maximal unitig's unique ID, its rank in the maximal unitig in a
-// fixed traversal of the path, its orientation in that traversal, and its
-// literal label.
+// fixed traversal of the path, its orientation in that traversal, and
+// additionally its literal label.
 template <uint16_t k>
 class Unitig_Coord_Bucket
 {
@@ -46,11 +46,21 @@ private:
     Ext_Mem_Bucket<Unitig_Coord> coord_bucket;  // External-memory bucket of the unitig-coordinates.
     Ext_Mem_Bucket<char> label_bucket;  // External-memory bucket of the unitig-labels.
 
+    std::size_t size_;  // Number of unitigs stored in the bucket.
+
+    std::size_t label_len_; // Total length of the labels of the stored unitigs.
+
 
 public:
 
     // Constructs a unitig-coordinate bucket at path-prefix `file_path`.
     Unitig_Coord_Bucket(const std::string& path_pref);
+
+    // Returns the number of unitigs stored in the bucket.
+    std::size_t size() const { return size_; }
+
+    // Returns the total length of the labels of the stored unitigs.
+    std::size_t label_len() const { return label_len_; }
 
     // Adds a unitig to the bucket with its path-information in the de Bruijn
     // graph `path_info`, label `label`, and length `len`.
@@ -63,6 +73,9 @@ inline void Unitig_Coord_Bucket<k>::add(const Path_Info<k>& path_info, const cha
 {
     coord_bucket.emplace(path_info, label_bucket.size(), len);
     label_bucket.add(label, len);
+
+    size_++;
+    label_len_ += len;
 }
 
 }
