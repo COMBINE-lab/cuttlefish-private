@@ -175,20 +175,27 @@ void Unitig_Collator<k>::collate()
 
 
 template <uint16_t k>
-std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b)
+std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>* const M, unitig_path_info_t* const buf)
 {
-    const std::size_t b_sz = P_e[b].load(p_e_buf);
+    const std::size_t b_sz = P_e[b].load(buf);
     assert(b_sz <= max_bucket_sz);
 
     for(std::size_t idx = 0; idx < b_sz; ++idx)
     {
-        const auto& p_e = p_e_buf[idx];
+        const auto& p_e = buf[idx];
         assert(p_e.obj() < max_bucket_sz);
 
         M[p_e.obj()] = p_e.path_info();
     }
 
     return b_sz;
+}
+
+
+template <uint16_t k>
+std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b)
+{
+    return load_path_info(b, M, p_e_buf);
 }
 
 }

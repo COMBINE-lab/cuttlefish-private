@@ -43,6 +43,11 @@ private:
     // returns the size of the bucket.
     std::size_t load_path_info(std::size_t b);
 
+    // Loads the path-info of edges from bucket `b` into the table `M`, and
+    // returns the size of the bucket. Uses the buffer `buf` to transfer the
+    // information from the bucket to the table.
+    std::size_t load_path_info(std::size_t b, Path_Info<k>* M, unitig_path_info_t* buf);
+
 
 public:
 
