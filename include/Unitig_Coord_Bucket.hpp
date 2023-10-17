@@ -74,6 +74,14 @@ public:
     // Adds a unitig to the bucket with its path-information in the de Bruijn
     // graph `path_info`, label `label`, and length `len`.
     void add(const Path_Info<k>& path_info, const char* label, uni_len_t len);
+
+    // Loads all the unitig-coordinates in the bucket to `buf`, and returns this
+    // size.
+    std::size_t load_coords(Unitig_Coord<k>* buf) const;
+
+    // Loads the concatenated label string of the entire bucket into `buf`, and
+    // returns its length.
+    std::size_t load_labels(char* buf) const;
 };
 
 
