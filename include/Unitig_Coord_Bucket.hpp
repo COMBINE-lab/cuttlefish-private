@@ -16,6 +16,29 @@ namespace cuttlefish
 {
 
 // =============================================================================
+// Coordinate information of a unitig, both in the de Bruijn graph and in the
+// dump-string in a bucket.
+template <uint16_t k>
+class Unitig_Coord
+{
+private:
+
+    Path_Info<k> path_info; // Coordinate of the unitig in the de Bruijn graph.
+    uint32_t label_idx; // Index of the label of the unitig into the dump-string of the bucket.
+    uni_len_t label_len;    // Length of the label of the unitig.
+
+
+public:
+
+    Unitig_Coord(const Path_Info<k>& path_info, const uint32_t label_idx, const uni_len_t label_len):
+          path_info(path_info)
+        , label_idx(label_idx)
+        , label_len(label_len)
+    {}
+};
+
+
+// =============================================================================
 // A bucket storing full coordinates for unitigs: for a specific unitig, it's
 // containing maximal unitig's unique ID, its rank in the maximal unitig in a
 // fixed traversal of the path, its orientation in that traversal, and
@@ -25,25 +48,11 @@ class Unitig_Coord_Bucket
 {
     typedef max_unitig_id_t<k> path_id_t;   // Type of a maximal unitig path's ID.
 
-    // Coordinate information of a unitig.
-    struct Unitig_Coord
-    {
-        Path_Info<k> path_info; // Coordinate of the unitig in the de Bruijn graph.
-        uint32_t label_idx; // Index of the label of the unitig into the dump-string of the bucket.
-        uni_len_t label_len;    // Length of the label of the unitig.
-
-        Unitig_Coord(const Path_Info<k>& path_info, const uint32_t label_idx, const uni_len_t label_len):
-              path_info(path_info)
-            , label_idx(label_idx)
-            , label_len(label_len)
-        {}
-    };
-
 private:
 
     const std::string path_pref;    // Path-prefix to the file(s) storing the bucket.
 
-    Ext_Mem_Bucket<Unitig_Coord> coord_bucket;  // External-memory bucket of the unitig-coordinates.
+    Ext_Mem_Bucket<Unitig_Coord<k>> coord_bucket;   // External-memory bucket of the unitig-coordinates.
     Ext_Mem_Bucket<char> label_bucket;  // External-memory bucket of the unitig-labels.
 
     std::size_t size_;  // Number of unitigs stored in the bucket.
