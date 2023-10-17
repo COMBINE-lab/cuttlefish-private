@@ -35,6 +35,10 @@ public:
         , label_idx(label_idx)
         , label_len(label_len)
     {}
+
+    // Returns `true` iff this coordinate's path-info is lexicographically
+    // smaller than `rhs`'s path-info.
+    bool operator<(const Unitig_Coord& rhs) const { return path_info < rhs.path_info; }
 };
 
 
