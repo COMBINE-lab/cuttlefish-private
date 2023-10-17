@@ -63,7 +63,8 @@ void Unitig_Collator<k>::collate()
         e_c += b_sz;
 
 #ifndef NDEBUG
-        std::for_each(M.cbegin(), M.cend(), [&](auto p_inf){ h_p_e ^= p_inf.hash(); });
+        for(std::size_t i = 0; i < b_sz; ++i)
+            h_p_e ^= M[i].hash();
 #endif
 
         Unitig_File_Reader unitig_reader(work_path + std::string("lmutig_") + std::to_string(b));
