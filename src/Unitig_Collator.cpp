@@ -1,10 +1,14 @@
 
 #include "Unitig_Collator.hpp"
 #include "Unitig_File.hpp"
+#include "Unitig_Coord_Bucket.hpp"
 #include "Kmer.hpp"
+#include "Spin_Lock.hpp"
 #include "dBG_Utilities.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
+#include "parlay/parallel.h"
+#include "xxHash/xxh3.h"
 
 #include <vector>
 #include <string>
@@ -27,14 +31,96 @@ Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_In
 {
     max_bucket_sz = 0;
     std::for_each(P_e.cbegin(), P_e.cend(), [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.size()); });
+
+    std::cerr << "Maximum edge-bucket size: " << max_bucket_sz << "\n";
 }
 
 
 template <uint16_t k>
-Unitig_Collator<k>::~Unitig_Collator()
+void Unitig_Collator<k>::par_collate()
 {
-    deallocate(M);
-    deallocate(p_e_buf);
+    typedef Path_Info<k>* map_t;
+    typedef unitig_path_info_t* buf_t;
+
+    std::vector<Padded_Data<map_t>> M_vec(parlay::num_workers());   // Worker-local DATs of edge-index to edge path-info.
+    std::vector<Padded_Data<buf_t>> buf_vec(parlay::num_workers()); // Worker-local buffers to read in edge path-info.
+
+    parlay::parallel_for(0, parlay::num_workers(),
+        [&](const std::size_t w_id)
+        {
+            M_vec[w_id] = allocate<Path_Info<k>>(max_bucket_sz);
+            buf_vec[w_id] = allocate<unitig_path_info_t>(max_bucket_sz);
+        }, 1);
+
+
+    constexpr std::size_t max_unitig_bucket_count = 1024;   // Must be a power-of-2.
+    assert((max_unitig_bucket_count & (max_unitig_bucket_count - 1)) == 0);
+
+    std::vector<Unitig_Coord_Bucket<k>> max_unitig_bucket;  // Key-value collation buckets for lm-unitigs.
+    std::vector<Spin_Lock> lock(max_unitig_bucket_count);   // Locks for maximal-unitig buckets.
+    max_unitig_bucket.reserve(max_unitig_bucket_count);
+
+    for(std::size_t i = 0; i < max_unitig_bucket_count; ++i)
+        max_unitig_bucket.emplace_back(work_path + "U_" + std::to_string(i));
+
+    std::atomic_uint64_t edge_c = 0;    // Number of edges (i.e. unitigs) found.
+#ifndef NDEBUG
+    std::atomic_uint64_t h_p_e = 0; // Hash of the edges' path-information.
+#endif
+
+    // Maps the edges (i.e. unitigs) from bucket `b` to maximal-unitig buckets.
+    const auto map_to_max_unitig_bucket = [&](const std::size_t b)
+    {
+        const auto w_id = parlay::worker_id();
+        auto const M = M_vec[w_id].data();
+        auto const buf = buf_vec[w_id].data();
+
+        const auto b_sz = load_path_info(b, M, buf);
+        edge_c += b_sz;
+
+#ifndef NDEBUG
+        uint64_t h = 0;
+        for(std::size_t i = 0; i < b_sz; ++i)
+            h ^= M[i].hash();
+
+        h_p_e ^= h;
+#endif
+
+
+        Unitig_File_Reader unitig_reader(work_path + "lmutig_" + std::to_string(b));    // TODO: centralize file-location.
+        std::string unitig; // Read-off unitig. TODO: use better-suited container.
+        uni_idx_t idx = 0;  // The unitig's sequential ID in the bucket.
+        std::size_t uni_len;    // The unitig's length in bases.
+        while((uni_len = unitig_reader.read_next_unitig(unitig)) > 0)
+        {
+            assert(idx < b_sz);
+            const auto p = M[idx].p();  // Path-ID of this unitig.
+            const auto mapped_b_id = XXH3_64bits(&p, sizeof(p)) & (max_unitig_bucket_count - 1); // Hashed maximal unitig bucket.
+
+            lock[mapped_b_id].lock();
+            max_unitig_bucket[mapped_b_id].add(M[idx], unitig.data(), uni_len);
+            lock[mapped_b_id].unlock();
+
+            idx++;
+        }
+
+        assert(idx == b_sz);
+    };
+
+    parlay::parallel_for(1, P_e.size(), map_to_max_unitig_bucket, 1);
+
+    parlay::parallel_for(0, parlay::num_workers(),
+        [&](const std::size_t w_id)
+        {
+            deallocate(M_vec[w_id].data());
+            deallocate(buf_vec[w_id].data());
+        }, 1);
+
+
+    std::cerr << "Found " << edge_c << " edges.\n";
+#ifndef NDEBUG
+    std::cerr << "Edges' path-information signature: " << h_p_e << "\n";
+#endif
 }
 
 
@@ -78,6 +164,8 @@ void Unitig_Collator<k>::collate()
             kv_store.emplace_back(p_e.p(), lmtig_info_t(p_e.r(), unitig, p_e.o()));
             uni_idx++;
         }
+
+        assert(uni_idx == b_sz);
     }
 
     std::cerr << "Found " << e_c << " edges.\n";

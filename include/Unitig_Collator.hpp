@@ -59,6 +59,9 @@ public:
 
     // Collates the locally-maximal unitigs into global ones.
     void collate();
+
+    // Collates the locally-maximal unitigs into global ones.
+    void par_collate();
 };
 
 }
