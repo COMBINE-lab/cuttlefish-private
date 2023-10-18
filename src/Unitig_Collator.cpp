@@ -117,6 +117,43 @@ void Unitig_Collator<k>::par_collate()
         }, 1);
 
 
+    std::size_t max_max_uni_b_sz = 0;   // Maximum unitig-count in some maximal unitig bucket.
+    std::size_t max_max_uni_b_label_len = 0;    // Maximum dump-string length in some maximal unitig bucket.
+    for(std::size_t i = 0; i < max_unitig_bucket_count; ++i)
+        max_max_uni_b_sz = std::max(max_max_uni_b_sz, max_unitig_bucket[i].size()),
+        max_max_uni_b_label_len = std::max(max_max_uni_b_label_len, max_unitig_bucket[i].label_len());
+
+
+    typedef Unitig_Coord<k>* coord_buf_t;
+    typedef char* label_buf_t;
+
+    std::vector<Padded_Data<coord_buf_t>> U_vec(parlay::num_workers()); // Worker-local buffers for unitig coordinate information.
+    std::vector<Padded_Data<label_buf_t>> L_vec(parlay::num_workers()); // Worker-local buffers for dump-strings in buckets.
+
+    parlay::parallel_for(0, parlay::num_workers(),
+        [&](const std::size_t w_id)
+        {
+            U_vec[w_id] = allocate<Unitig_Coord<k>>(max_max_uni_b_sz);
+            L_vec[w_id] = allocate<char>(max_max_uni_b_label_len);
+        }, 1);
+
+
+    const auto collate_max_unitig_bucket =
+    [&](const std::size_t b)
+    {
+        const auto w_id = parlay::worker_id();
+        auto const U = U_vec[w_id].data();
+        auto const L = L_vec[w_id].data();
+
+        const auto b_sz = max_unitig_bucket[b].load_coords(U);
+        const auto len = max_unitig_bucket[b].load_labels(L);
+
+        std::sort(U, U + b_sz);
+    };
+
+    parlay::parallel_for(0, max_unitig_bucket_count, collate_max_unitig_bucket, 1);
+
+
     std::cerr << "Found " << edge_c << " edges.\n";
 #ifndef NDEBUG
     std::cerr << "Edges' path-information signature: " << h_p_e << "\n";
