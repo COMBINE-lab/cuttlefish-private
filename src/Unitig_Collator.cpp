@@ -39,6 +39,8 @@ Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_In
 template <uint16_t k>
 void Unitig_Collator<k>::par_collate()
 {
+    // TODO: refactor the definition into separate phases.
+
     typedef Path_Info<k>* map_t;
     typedef unitig_path_info_t* buf_t;
 
@@ -69,7 +71,8 @@ void Unitig_Collator<k>::par_collate()
 #endif
 
     // Maps the edges (i.e. unitigs) from bucket `b` to maximal-unitig buckets.
-    const auto map_to_max_unitig_bucket = [&](const std::size_t b)
+    const auto map_to_max_unitig_bucket =
+    [&](const std::size_t b)
     {
         const auto w_id = parlay::worker_id();
         auto const M = M_vec[w_id].data();
@@ -123,6 +126,9 @@ void Unitig_Collator<k>::par_collate()
         max_max_uni_b_sz = std::max(max_max_uni_b_sz, max_unitig_bucket[i].size()),
         max_max_uni_b_label_len = std::max(max_max_uni_b_label_len, max_unitig_bucket[i].label_len());
 
+    std::cerr << "Maximum maximal unitig bucket size:  " << max_max_uni_b_sz << "\n";
+    std::cerr << "Maximum maximal unitig label length: " << max_max_uni_b_label_len << "\n";
+
 
     typedef Unitig_Coord<k>* coord_buf_t;
     typedef char* label_buf_t;
@@ -138,6 +144,9 @@ void Unitig_Collator<k>::par_collate()
         }, 1);
 
 
+    std::ofstream output(output_path);
+    Spin_Lock op_lock;
+    std::size_t op_sz = 0;
     const auto collate_max_unitig_bucket =
     [&](const std::size_t b)
     {
@@ -149,15 +158,91 @@ void Unitig_Collator<k>::par_collate()
         const auto len = max_unitig_bucket[b].load_labels(L);
 
         std::sort(U, U + b_sz);
+
+
+        std::string max_unitig, max_u_rc;
+        std::string op_str;
+        op_str.reserve(len + b_sz); // Worst-case factor to accommodate new lines.
+
+        std::size_t op_len = 0;
+        std::size_t i, j;
+        for(i = 0; i < b_sz; i = j)
+        {
+            max_unitig.clear();
+
+            const std::size_t s = i;
+            std::size_t e;
+            for(e = s + 1; e < b_sz && U[e].p() == U[s].p(); ++e);  // Find the current maximal unitig's stretch in the bucket.
+
+            if(e - s == 2)  // Special case for handling orientation of path-traversals in the discontinuity graph.
+            {
+                std::string u0(L + U[s].label_idx(), U[s].label_len());
+                std::string u1(L + U[s + 1].label_idx(), U[s + 1].label_len());
+
+                if(U[s].o() == side_t::front)
+                    reverse_complement(u0);
+
+                if(U[s + 1].o() == side_t::front)
+                    reverse_complement(u1);
+
+                reverse_complement(u1);
+                max_unitig = u0 + std::string(u1.begin() + k, u1.end());
+            }
+            else
+                for(j = s; j < e; ++j)
+                {
+                    std::string u_label(L + U[j].label_idx(), U[j].label_len());
+                    if(U[j].o() == side_t::front)
+                        reverse_complement(u_label);
+
+                    max_unitig += (max_unitig.empty() ? u_label : std::string(u_label.begin() + k, u_label.end()));
+                }
+
+
+            max_u_rc = max_unitig;
+            reverse_complement(max_u_rc);
+            if(max_unitig > max_u_rc)
+                max_unitig = max_u_rc;
+
+            op_str += max_unitig;
+            op_str.push_back('\n');
+            op_len += max_unitig.size() + 1;
+
+            j = e;
+        }
+
+        op_lock.lock();
+        output << op_str;
+        op_sz += op_len;
+        op_lock.unlock();
     };
 
     parlay::parallel_for(0, max_unitig_bucket_count, collate_max_unitig_bucket, 1);
+
+
+    std::string max_unitig, max_u_rc;
+    std::size_t mu_tig = 0;
+    Unitig_File_Reader mu_tig_reader(work_path + std::string("mutig"));
+    while(mu_tig_reader.read_next_unitig(max_unitig))
+    {
+        max_u_rc = max_unitig;
+        reverse_complement(max_u_rc);
+        if(max_unitig > max_u_rc)
+            max_unitig = max_u_rc;
+
+        mu_tig++;
+        output << max_unitig << "\n";
+        op_sz += max_unitig.size() + 1;
+    }
+
+    output.close();
 
 
     std::cerr << "Found " << edge_c << " edges.\n";
 #ifndef NDEBUG
     std::cerr << "Edges' path-information signature: " << h_p_e << "\n";
 #endif
+    std::cerr << "O/P size: " << op_sz << "\n";
 }
 
 
