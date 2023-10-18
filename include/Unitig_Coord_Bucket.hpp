@@ -21,20 +21,39 @@ namespace cuttlefish
 template <uint16_t k>
 class Unitig_Coord
 {
+    typedef uint32_t label_idx_t;
+
 private:
 
     Path_Info<k> path_info; // Coordinate of the unitig in the de Bruijn graph.
-    uint32_t label_idx; // Index of the label of the unitig into the dump-string of the bucket.
-    uni_len_t label_len;    // Length of the label of the unitig.
+    label_idx_t label_idx_; // Index of the label of the unitig into the dump-string of the bucket.
+    uni_len_t label_len_;   // Length of the label of the unitig.
 
 
 public:
 
     Unitig_Coord(const Path_Info<k>& path_info, const uint32_t label_idx, const uni_len_t label_len):
           path_info(path_info)
-        , label_idx(label_idx)
-        , label_len(label_len)
+        , label_idx_(label_idx)
+        , label_len_(label_len)
     {}
+
+    // Returns the path-ID of the unitig.
+    auto p() const { return path_info.p(); }
+
+    // Returns the rank of the unitig in a specific traversal orientation.
+    auto r() const { return path_info.r(); }
+
+    // Returns the orientation `o` of the unitig in its specified rank—the path-
+    // traversal exits the object through the side `o`.
+    auto o() const { return path_info.o(); }
+
+    // Returns the index of the label of the unitig into the dump-string of the
+    // bucket.
+    auto label_idx() const { return label_idx_; }
+
+    // Returns the length of the label of the unitig.
+    auto label_len() const { return label_len_; }
 
     // Returns `true` iff this coordinate's path-info is lexicographically
     // smaller than `rhs`'s path-info.
