@@ -6,6 +6,7 @@
 
 #include "Ext_Mem_Bucket.hpp"
 #include "Path_Info.hpp"
+#include "Unitig_Coord_Bucket.hpp"
 #include "globals.hpp"
 
 #include <cstdint>
@@ -34,10 +35,22 @@ private:
 
     std::size_t max_bucket_sz;  // Maximum size of the locally-maximal unitigs' buckets.
 
+    static constexpr std::size_t max_unitig_bucket_count = 1024;    // Must be a power-of-2.
+    std::vector<Unitig_Coord_Bucket<k>> max_unitig_bucket;  // Key-value collation buckets for lm-unitigs.
+
+    // TODO: remove? This is for the naive-collator.
     Path_Info<k>* M;    // `M[idx]` is the path-info for the `idx`'th edge in some bucket.
 
+    // TODO: remove?  This is for the naive-collator.
     unitig_path_info_t* p_e_buf;    // Buffer to read-in path-information of edges.
 
+
+    // Maps each locally-maximal unitig to its maximal unitig's corresponding
+    // bucket.
+    void map();
+
+    // Reduces each maximal unitig bucket to its contained maximal unitigs.
+    void reduce();
 
     // Loads the path-info of edges from bucket `b` into the table `M`, and
     // returns the size of the bucket.

@@ -1,7 +1,6 @@
 
 #include "Unitig_Collator.hpp"
 #include "Unitig_File.hpp"
-#include "Unitig_Coord_Bucket.hpp"
 #include "Kmer.hpp"
 #include "Spin_Lock.hpp"
 #include "dBG_Utilities.hpp"
@@ -29,6 +28,8 @@ Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_In
     , M(nullptr)
     , p_e_buf(nullptr)
 {
+    assert((max_unitig_bucket_count & (max_unitig_bucket_count - 1)) == 0);
+
     max_bucket_sz = 0;
     std::for_each(P_e.cbegin(), P_e.cend(), [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.size()); });
 
@@ -39,8 +40,32 @@ Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_In
 template <uint16_t k>
 void Unitig_Collator<k>::par_collate()
 {
-    // TODO: refactor the definition into separate phases.
+    map();
 
+    reduce();
+
+    std::ofstream output(output_path, std::ios::app);
+    std::string max_unitig, max_u_rc;
+    std::size_t mu_tig = 0;
+    Unitig_File_Reader mu_tig_reader(work_path + std::string("mutig"));
+    while(mu_tig_reader.read_next_unitig(max_unitig))
+    {
+        max_u_rc = max_unitig;
+        reverse_complement(max_u_rc);
+        if(max_unitig > max_u_rc)
+            max_unitig = max_u_rc;
+
+        mu_tig++;
+        output << max_unitig << "\n";
+    }
+
+    output.close();
+}
+
+
+template <uint16_t k>
+void Unitig_Collator<k>::map()
+{
     typedef Path_Info<k>* map_t;
     typedef unitig_path_info_t* buf_t;
 
@@ -55,13 +80,8 @@ void Unitig_Collator<k>::par_collate()
         }, 1);
 
 
-    constexpr std::size_t max_unitig_bucket_count = 1024;   // Must be a power-of-2.
-    assert((max_unitig_bucket_count & (max_unitig_bucket_count - 1)) == 0);
-
-    std::vector<Unitig_Coord_Bucket<k>> max_unitig_bucket;  // Key-value collation buckets for lm-unitigs.
     std::vector<Spin_Lock> lock(max_unitig_bucket_count);   // Locks for maximal-unitig buckets.
     max_unitig_bucket.reserve(max_unitig_bucket_count);
-
     for(std::size_t i = 0; i < max_unitig_bucket_count; ++i)
         max_unitig_bucket.emplace_back(work_path + "U_" + std::to_string(i));
 
@@ -120,6 +140,16 @@ void Unitig_Collator<k>::par_collate()
         }, 1);
 
 
+    std::cerr << "Found " << edge_c << " edges.\n";
+#ifndef NDEBUG
+    std::cerr << "Edges' path-information signature: " << h_p_e << "\n";
+#endif
+}
+
+
+template <uint16_t k>
+void Unitig_Collator<k>::reduce()
+{
     std::size_t max_max_uni_b_sz = 0;   // Maximum unitig-count in some maximal unitig bucket.
     std::size_t max_max_uni_b_label_len = 0;    // Maximum dump-string length in some maximal unitig bucket.
     for(std::size_t i = 0; i < max_unitig_bucket_count; ++i)
@@ -146,7 +176,6 @@ void Unitig_Collator<k>::par_collate()
 
     std::ofstream output(output_path);
     Spin_Lock op_lock;
-    std::size_t op_sz = 0;
     std::size_t max_str_l = 0;
 
     std::vector<Padded_Data<std::string>> op_buf(parlay::num_workers());
@@ -162,6 +191,7 @@ void Unitig_Collator<k>::par_collate()
 
         const auto b_sz = max_unitig_bucket[b].load_coords(U);
         const auto len = max_unitig_bucket[b].load_labels(L);
+        (void)len;
 
         std::sort(U, U + b_sz);
 
@@ -218,12 +248,15 @@ void Unitig_Collator<k>::par_collate()
 
         op_lock.lock();
         output << op_str;
-        op_sz += op_len;
         max_str_l = std::max(max_str_l, op_str.capacity());
         op_lock.unlock();
     };
 
+    std::cerr << "Peak-RAM before collation: " << process_peak_memory() / (1024.0 * 1024.0 * 1024.0) << "\n";
     parlay::parallel_for(0, max_unitig_bucket_count, collate_max_unitig_bucket, 1);
+    std::cerr << "Peak-RAM after collation:  " << process_peak_memory() / (1024.0 * 1024.0 * 1024.0) << "\n";
+
+    output.close();
     std::cerr << "Maximum output-string's length: " << max_str_l << "\n";
 
     parlay::parallel_for(0, parlay::num_workers(),
@@ -232,31 +265,6 @@ void Unitig_Collator<k>::par_collate()
             deallocate(U_vec[w_id].data());
             deallocate(L_vec[w_id].data());
         }, 1);
-
-
-    std::string max_unitig, max_u_rc;
-    std::size_t mu_tig = 0;
-    Unitig_File_Reader mu_tig_reader(work_path + std::string("mutig"));
-    while(mu_tig_reader.read_next_unitig(max_unitig))
-    {
-        max_u_rc = max_unitig;
-        reverse_complement(max_u_rc);
-        if(max_unitig > max_u_rc)
-            max_unitig = max_u_rc;
-
-        mu_tig++;
-        output << max_unitig << "\n";
-        op_sz += max_unitig.size() + 1;
-    }
-
-    output.close();
-
-
-    std::cerr << "Found " << edge_c << " edges.\n";
-#ifndef NDEBUG
-    std::cerr << "Edges' path-information signature: " << h_p_e << "\n";
-#endif
-    std::cerr << "O/P size: " << op_sz << "\n";
 }
 
 
