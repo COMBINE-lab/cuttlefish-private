@@ -147,12 +147,18 @@ void Unitig_Collator<k>::par_collate()
     std::ofstream output(output_path);
     Spin_Lock op_lock;
     std::size_t op_sz = 0;
+    std::size_t max_str_l = 0;
+
+    std::vector<Padded_Data<std::string>> op_buf(parlay::num_workers());
+    std::for_each(op_buf.begin(), op_buf.end(), [&](auto& buf){ buf.data().reserve(max_max_uni_b_label_len + max_max_uni_b_sz); }); // Worst-case factor to accommodate new lines.
+
     const auto collate_max_unitig_bucket =
     [&](const std::size_t b)
     {
         const auto w_id = parlay::worker_id();
         auto const U = U_vec[w_id].data();
         auto const L = L_vec[w_id].data();
+        auto& op_str = op_buf[w_id].data();
 
         const auto b_sz = max_unitig_bucket[b].load_coords(U);
         const auto len = max_unitig_bucket[b].load_labels(L);
@@ -161,8 +167,7 @@ void Unitig_Collator<k>::par_collate()
 
 
         std::string max_unitig, max_u_rc;
-        std::string op_str;
-        op_str.reserve(len + b_sz); // Worst-case factor to accommodate new lines.
+        op_str.clear();
 
         std::size_t op_len = 0;
         std::size_t i, j;
@@ -214,10 +219,19 @@ void Unitig_Collator<k>::par_collate()
         op_lock.lock();
         output << op_str;
         op_sz += op_len;
+        max_str_l = std::max(max_str_l, op_str.capacity());
         op_lock.unlock();
     };
 
     parlay::parallel_for(0, max_unitig_bucket_count, collate_max_unitig_bucket, 1);
+    std::cerr << "Maximum output-string's length: " << max_str_l << "\n";
+
+    parlay::parallel_for(0, parlay::num_workers(),
+        [&](const std::size_t w_id)
+        {
+            deallocate(U_vec[w_id].data());
+            deallocate(L_vec[w_id].data());
+        }, 1);
 
 
     std::string max_unitig, max_u_rc;
