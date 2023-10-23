@@ -4,6 +4,8 @@
 #include "Kmer.hpp"
 #include "Spin_Lock.hpp"
 #include "dBG_Utilities.hpp"
+#include "Character_Buffer.hpp"
+#include "FASTA_Record.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 #include "parlay/parallel.h"
@@ -34,6 +36,10 @@ Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_In
     std::for_each(P_e.cbegin(), P_e.cend(), [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.size()); });
 
     std::cerr << "Maximum edge-bucket size: " << max_bucket_sz << "\n";
+
+    // Prepare output-logger.
+    remove_file(output_path);
+    output_sink.init_sink(output_path);
 }
 
 
@@ -44,7 +50,6 @@ void Unitig_Collator<k>::par_collate()
 
     reduce();
 
-    std::ofstream output(output_path, std::ios::app);
     std::string max_unitig, max_u_rc;
     std::size_t mu_tig = 0;
     Unitig_File_Reader mu_tig_reader(work_path + std::string("mutig"));
@@ -55,11 +60,17 @@ void Unitig_Collator<k>::par_collate()
         if(max_unitig > max_u_rc)
             max_unitig = max_u_rc;
 
+        // TODO: do better writing.
+        output_sink.sink().write(">0\n");
+        output_sink.sink().write(max_unitig.data());
+        output_sink.sink().write("\n");
+
         mu_tig++;
-        output << max_unitig << "\n";
     }
 
-    output.close();
+    output_sink.close_sink();
+
+    // TODO: print meta-information over the maximal unitigs'.
 }
 
 
@@ -173,21 +184,21 @@ void Unitig_Collator<k>::reduce()
             L_vec[w_id] = allocate<char>(max_max_uni_b_label_len);
         }, 1);
 
+    // TODO: add per-worker progress tracker.
 
-    std::ofstream output(output_path);
-    Spin_Lock op_lock;
-    std::size_t max_str_l = 0;
+    // 100 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory per worker, at most, before flushes.
+    constexpr std::size_t BUFF_SZ = 100 * 1024ULL;
+    typedef Character_Buffer<BUFF_SZ, sink_t> op_buf_t;
+    std::vector<Padded_Data<op_buf_t>> output_buf(parlay::num_workers(), Padded_Data(op_buf_t(output_sink.sink())));    // Worker-specific output buffers.
 
-    std::vector<Padded_Data<std::string>> op_buf(parlay::num_workers());
-    std::for_each(op_buf.begin(), op_buf.end(), [&](auto& buf){ buf.data().reserve(max_max_uni_b_label_len + max_max_uni_b_sz); }); // Worst-case factor to accommodate new lines.
 
     const auto collate_max_unitig_bucket =
     [&](const std::size_t b)
     {
         const auto w_id = parlay::worker_id();
-        auto const U = U_vec[w_id].data();
-        auto const L = L_vec[w_id].data();
-        auto& op_str = op_buf[w_id].data();
+        auto const U = U_vec[w_id].data();  // Coordinate info of the unitigs.
+        auto const L = L_vec[w_id].data();  // Dump-strings of the unitig labels.
+        auto& output = output_buf[w_id].data(); // Output buffer for the maximal unitigs.
 
         const auto b_sz = max_unitig_bucket[b].load_coords(U);
         const auto len = max_unitig_bucket[b].load_labels(L);
@@ -197,9 +208,6 @@ void Unitig_Collator<k>::reduce()
 
 
         std::string max_unitig, max_u_rc;
-        op_str.clear();
-
-        std::size_t op_len = 0;
         std::size_t i, j;
         for(i = 0; i < b_sz; i = j)
         {
@@ -239,25 +247,16 @@ void Unitig_Collator<k>::reduce()
             if(max_unitig > max_u_rc)
                 max_unitig = max_u_rc;
 
-            op_str += max_unitig;
-            op_str.push_back('\n');
-            op_len += max_unitig.size() + 1;
+            // TODO: decide record-ID choice.
+            output += FASTA_Record(0, max_unitig);
 
             j = e;
         }
-
-        op_lock.lock();
-        output << op_str;
-        max_str_l = std::max(max_str_l, op_str.capacity());
-        op_lock.unlock();
     };
 
     std::cerr << "Peak-RAM before collation: " << process_peak_memory() / (1024.0 * 1024.0 * 1024.0) << "\n";
     parlay::parallel_for(0, max_unitig_bucket_count, collate_max_unitig_bucket, 1);
     std::cerr << "Peak-RAM after collation:  " << process_peak_memory() / (1024.0 * 1024.0 * 1024.0) << "\n";
-
-    output.close();
-    std::cerr << "Maximum output-string's length: " << max_str_l << "\n";
 
     parlay::parallel_for(0, parlay::num_workers(),
         [&](const std::size_t w_id)

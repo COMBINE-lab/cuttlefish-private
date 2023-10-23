@@ -7,6 +7,8 @@
 #include "Ext_Mem_Bucket.hpp"
 #include "Path_Info.hpp"
 #include "Unitig_Coord_Bucket.hpp"
+#include "Output_Sink.hpp"
+#include "Async_Logger_Wrapper.hpp"
 #include "globals.hpp"
 
 #include <cstdint>
@@ -43,6 +45,9 @@ private:
 
     // TODO: remove?  This is for the naive-collator.
     unitig_path_info_t* p_e_buf;    // Buffer to read-in path-information of edges.
+
+    typedef Async_Logger_Wrapper sink_t;
+    Output_Sink<sink_t> output_sink;    // Sink for the output maximal unitigs.
 
 
     // Maps each locally-maximal unitig to its maximal unitig's corresponding
