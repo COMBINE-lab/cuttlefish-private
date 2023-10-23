@@ -1,4 +1,6 @@
 
+// TODO: Remove
+
 #ifndef MINIMIZER_INSTANCE_HPP
 #define MINIMIZER_INSTANCE_HPP
 

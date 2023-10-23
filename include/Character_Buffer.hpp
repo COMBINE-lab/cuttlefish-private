@@ -25,6 +25,7 @@ class Character_Buffer
 {
 private:
 
+    // TODO: replace with a custom-container.
     std::vector<char> buffer;   // The character buffer.
     T_sink_& sink;  // Reference to the sink to flush the buffer content to.
 
@@ -180,7 +181,7 @@ inline void Character_Buffer<CAPACITY, T_sink_>::ensure_space(const std::size_t 
             //                 "Output string length: " << str.size() << ", string-buffer capacity: " << CAPACITY << ".\n"
             //                 "Please consider increasing the buffer capacity parameter in build for future use.\n";
             
-            buffer.reserve(append_size);
+            buffer.reserve(append_size);    // TODO: fix it—thrashing possible with adversarial `append_size` sequence.
         }
     }
 }

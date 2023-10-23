@@ -32,6 +32,7 @@ private:
     const std::size_t max_write_buf_bytes;  // Maximum size of the in-memory write-buffer in bytes.
     const std::size_t max_write_buf_elems;  // Maximum size of the in-memory write-buffer in elements.
 
+    // TODO: replace vector with custom container.
     std::vector<T_> buf;    // In-memory buffer of the bucket-elements.
     std::size_t size_;  // Number of elements added to the bucket.
 
@@ -60,9 +61,13 @@ public:
     // Adds the element `elem` to the bucket.
     void add(const T_& elem);
 
+    // Adds `sz` elements from `buf` into the bucket.
+    void add(const T_* buf, std::size_t sz);
+
+    // TODO
     // Adds `sz` elements from `buf` into the bucket. The order of the elements
     // per their addition to the bucket may not be preserved.
-    void add(const T_* buf, std::size_t sz);
+    void add_unordered(const T_* buf, std::size_t sz);
 
     // Emplaces an element, with its constructor-arguments being `args`, into
     // the bucket.
