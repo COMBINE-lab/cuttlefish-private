@@ -7,6 +7,7 @@
 #include "Edge_Matrix.hpp"
 #include "Path_Info.hpp"
 #include "Ext_Mem_Bucket.hpp"
+#include "globals.hpp"
 
 #include <cstdint>
 #include <cstddef>
@@ -22,8 +23,6 @@ namespace cuttlefish
 template <uint16_t k>
 class dBG_Contractor
 {
-    typedef uint32_t uni_idx_t; // Type of the index of a unitig in a bucket.
-
 private:
 
     // TODO: wrap the following primitive fields in `Build_Params`.

@@ -20,8 +20,6 @@ namespace cuttlefish
 template <uint16_t k>
 class Discontinuity_Edge
 {
-    typedef uint32_t uni_idx_t;
-
 private:
 
     // TODO: try packing booleans and sides.

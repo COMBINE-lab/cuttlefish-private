@@ -119,6 +119,9 @@ void Read_CdBG_Extractor<k>::process_vertices(Kmer_SPMC_Iterator<k>* const verte
                 {
                     seq_len = maximal_unitig.size() + k - 1;
                     unitig_seq = output_buffer.suffix(seq_len + 1); // The +1 length is to account for the ending line-break.
+                    // Note: depositing a sequence extracted from the output buffer is not UB—the design choice with the
+                    // buffer is to (optionally) flush *beforehand* of adding a sequence to it, not afterwards.
+
                     kmer_idx->deposit(*token, unitig_seq, seq_len);
                 }
             }

@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <cstdlib>
 
 // TODO: wrap everything here in some namespaces.
 
@@ -66,6 +67,20 @@ template <typename T_container_>
 void force_free(T_container_& container)
 {
     T_container_().swap(container);
+}
+
+// Returns pointer to a memory-allocation for `size` elements of type `T_`.
+template <typename T_>
+static T_* allocate(std::size_t size)
+{
+    return static_cast<T_*>(std::malloc(size * sizeof(T_)));
+}
+
+// Deallocates the pointer `ptr`, allocated with `allocate`.
+template <typename T_>
+void deallocate(T_* const ptr)
+{
+    std::free(ptr);
 }
 
 // TODO: Add thread-joiner wrapper.

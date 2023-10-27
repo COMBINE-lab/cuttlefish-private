@@ -24,6 +24,9 @@ namespace DNA
     enum class Extended_Base: uint8_t;
 }
 
+// Forward declaration of the k-mer type.
+template <uint16_t k> class Kmer;
+
 
 namespace cuttlefish
 {
@@ -68,8 +71,21 @@ namespace cuttlefish
     // Minimizers can be represented using 64-bit integers.
     typedef uint64_t minimizer_t;
 
+
+    // YACC-specifics:
+
     // Type of weights of edges in the discontinuity-graph.
     typedef uint16_t weight_t;
+
+    // Type of the ID of a maximal unitig.
+    template <uint16_t k> using max_unitig_id_t = Kmer<k>;
+
+    // Type of the index of a unitig in a bucket.
+    typedef uint32_t uni_idx_t;
+
+    // TODO: use `u16` after testing done with `u32`.
+    // typedef uint16_t uni_len_t; // Type of the length of a unitig in a bucket.
+    typedef uint32_t uni_len_t; // Type of the length of a unitig in a bucket.
 }
 
 
