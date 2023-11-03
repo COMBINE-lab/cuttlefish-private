@@ -243,6 +243,7 @@ inline void Kmer<k>::left_shift()
 
 
 template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
 inline void Kmer<k>::right_shift()
 {
     constexpr uint64_t mask_LSN = 0b11;
@@ -256,6 +257,7 @@ inline void Kmer<k>::right_shift()
 
 template <uint16_t k>
 template <uint16_t B>
+__attribute__((optimize("unroll-loops")))
 inline void Kmer<k>::left_shift()
 {
     static_assert(B < 32, "invalid bit-shift amount");
@@ -368,6 +370,7 @@ inline void Kmer<k>::from_CKmerAPI(const CKmerAPI& kmer_api)
 
 
 template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
 inline void Kmer<k>::from_KMC_data(const uint64_t* const kmc_data)
 {
     // The endianness of the k-mer data array in the KMC database is in the opposite
@@ -445,6 +448,7 @@ inline Kmer<k> Kmer<k>::reverse_complement() const
 
 
 template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
 inline void Kmer<k>::as_reverse_complement(const Kmer<k>& other)
 {
     // Working with bytes instead of 64-bit words at a time.
@@ -476,6 +480,7 @@ inline void Kmer<k>::as_reverse_complement(const Kmer<k>& other)
 
 
 template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
 inline bool Kmer<k>::operator<(const Kmer<k>& rhs) const
 {
     for(int16_t idx = NUM_INTS - 1; idx >= 0; --idx)
@@ -487,6 +492,7 @@ inline bool Kmer<k>::operator<(const Kmer<k>& rhs) const
 
 
 template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
 inline bool Kmer<k>::operator>(const Kmer<k>& rhs) const
 {
     for(int16_t idx = NUM_INTS - 1; idx >= 0; --idx)
@@ -643,6 +649,7 @@ inline const Kmer<k>* Kmer<k>::canonical(const Kmer<k>& kmer, const Kmer<k>& rev
 
 
 template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
 inline std::string Kmer<k>::string_label() const
 {
     Kmer<k> kmer(*this);
@@ -689,6 +696,7 @@ inline std::string Kmer<k>::string_label() const
 
 template <uint16_t k>
 template <typename T_container_>
+__attribute__((optimize("unroll-loops")))
 inline void Kmer<k>::get_label(T_container_& label) const
 {
     label.resize(k);
