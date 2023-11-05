@@ -168,6 +168,22 @@ if(NOT JEMALLOC_FOUND)
 endif()
 
 
+# Prepare the `zstd` library. It provides fast lossless compression, targeting real-time
+# compression scenarios at zlib-level and better compression ratios.
+set(ZSTD_LIB "")
+find_package(ZSTD)
+if(ZSTD_FOUND)
+    message("Found zstd in the system.")
+    set(ZSTD_LIB ${ZSTD_LIBRARY})
+else()
+    message(FATAL_ERROR "zstd not found.")
+    # TODO: do we need to handle this? `zstd` is in the Linux kernel.
+endif()
+
+add_library(zstd STATIC IMPORTED)
+set_target_properties(zstd PROPERTIES IMPORTED_LOCATION ${ZSTD_LIB})
+
+
 # Prepare the `kmc` library — required by the Cuttlefish algorithm implementation.
 message("Build system will fetch and install KMC3")
 ExternalProject_Add(prj_kmc
