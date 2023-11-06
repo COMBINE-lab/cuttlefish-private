@@ -26,8 +26,12 @@ private:
     const Kmer<k>* kmer_hat_ptr;    // Pointer to the canonical form of the k-mer associated to the vertex.
     uint64_t h; // Hash value of the vertex, i.e. hash of the canonical k-mer.
 
-    // Initialize the data of the class once the observed k-mer `kmer_` is set.
+    // Initializes the data of the class once the observed k-mer `kmer_` is set. Hash-
+    // table `hash` is used to hash the vertex.
     void init(const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash);
+
+    // Initializes the data of the class once the observed k-mer `kmer_` is set.
+    void init();
 
 
 public:
@@ -60,6 +64,10 @@ public:
     // Configures the vertex with the sink (i.e. suffix) k-mer of the edge (k + 1)-mer `e`;
     // and uses the hash table `hash` to get the hash value of the vertex.
     void from_suffix(const Kmer<k + 1>& e, const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash);
+
+    // Configures the vertex with the first k-mer from a KMC super k-mer's
+    // binary representation `super_kmer` that has `word_count` words.
+    void from_KMC_super_kmer(const uint64_t* super_kmer, std::size_t word_count);
 
     // Returns the observed k-mer for the vertex.
     const Kmer<k>& kmer() const;
@@ -98,10 +106,17 @@ public:
 template <uint16_t k>
 inline void Directed_Vertex<k>::init(const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash)
 {
-    kmer_bar_.as_reverse_complement(kmer_);
-    kmer_hat_ptr = Kmer<k>::canonical(kmer_, kmer_bar_);
+    init();
 
     h = hash(*kmer_hat_ptr);
+}
+
+
+template <uint16_t k>
+inline void Directed_Vertex<k>::init()
+{
+    kmer_bar_.as_reverse_complement(kmer_);
+    kmer_hat_ptr = Kmer<k>::canonical(kmer_, kmer_bar_);
 }
 
 
@@ -162,6 +177,14 @@ inline void Directed_Vertex<k>::from_suffix(const Kmer<k + 1>& e, const Kmer_Has
 {
     kmer_.from_suffix(e);
     init(hash);
+}
+
+
+template <uint16_t k>
+inline void Directed_Vertex<k>::from_KMC_super_kmer(const uint64_t* const super_kmer, const std::size_t word_count)
+{
+    kmer_.from_KMC_super_kmer(super_kmer, word_count);
+    init();
 }
 
 
