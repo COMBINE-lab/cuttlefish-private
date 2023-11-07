@@ -4,6 +4,8 @@
 
 
 
+#include "Directed_Vertex.hpp"
+
 #include <cstdint>
 #include <cstddef>
 #include <string>
@@ -28,6 +30,9 @@ public:
     // Constructs a subgraph object for the `bin_id`'th bin in the graph bin
     // directory `bin_dir_path`.
     Subgraph(const std::string& bin_dir_path, std::size_t bin_id);
+
+    Subgraph(const Subgraph&) = delete;
+    Subgraph(Subgraph&&) = delete;
 
     // Loads the subgraph into an internal navigable and membership data
     // structure.

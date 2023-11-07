@@ -83,6 +83,11 @@ public:
 
     // Transforms this vertex to another by chopping off the first base from the associated
     // observed k-mer, and appending the nucleobase `b` to the end, i.e. effecitively
+    // rolling the associated k-mer by one base "forward".
+    void roll_forward(cuttlefish::base_t b);
+
+    // Transforms this vertex to another by chopping off the first base from the associated
+    // observed k-mer, and appending the nucleobase `b` to the end, i.e. effecitively
     // rolling the associated k-mer by one base "forward". The hash table `hash` is used
     // to get the hash value of the new vertex.
     void roll_forward(cuttlefish::base_t b, const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash);
@@ -217,10 +222,17 @@ inline uint64_t Directed_Vertex<k>::hash() const
 
 
 template <uint16_t k>
-inline void Directed_Vertex<k>::roll_forward(const cuttlefish::base_t b, const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash)
+inline void Directed_Vertex<k>::roll_forward(const cuttlefish::base_t b)
 {
     kmer_.roll_to_next_kmer(b, kmer_bar_);
     kmer_hat_ptr = Kmer<k>::canonical(kmer_, kmer_bar_);
+}
+
+
+template <uint16_t k>
+inline void Directed_Vertex<k>::roll_forward(const cuttlefish::base_t b, const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash)
+{
+    roll_forward(b);
 
     h = hash(*kmer_hat_ptr);
 }
