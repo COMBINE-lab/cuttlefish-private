@@ -43,6 +43,10 @@ public:
     // Constructs a character buffer object that would flush its content to `sink`.
     Character_Buffer(T_sink_& sink);
 
+    Character_Buffer(const Character_Buffer& rhs) = default;
+
+    Character_Buffer(Character_Buffer&& rhs) = default;
+
     // Appends the content of `str` to the buffer. Flushes are possible.
     template <typename T_container_>
     void operator+=(const T_container_& str);

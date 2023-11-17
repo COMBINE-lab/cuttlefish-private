@@ -71,6 +71,7 @@ struct IIterateSuperKmersDispatch {
 template<typename CALLBACK_T>
 struct IIterateSuperKmersDispatch<CALLBACK_T, 0> {
 	static std::unique_ptr<IIterateSuperKmers<CALLBACK_T>> Get(uint32_t k) {
+		(void)k;
 		std::cerr << "Error: This should never happen\n";
 		exit(1);
 	}

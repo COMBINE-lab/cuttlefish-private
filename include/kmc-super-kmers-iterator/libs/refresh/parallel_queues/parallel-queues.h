@@ -347,7 +347,7 @@ namespace refresh {
 		}
 
 		//non-blocking, mkokot_TODO: is this safe?
-		const size_t size() const {
+		size_t size() const {
 			return q.size();
 		}
 

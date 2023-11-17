@@ -21,10 +21,12 @@ dBG_Contractor<k>::dBG_Contractor(const std::size_t part_count, const std::size_
     , E(part_count, temp_path + std::string("E_"), true)
     , n_disc_v(E.size() - E.row_size(0) / 2)    // Each separate chain has exactly two ϕ-adjacent edges.
 {
+    P_v.reserve(part_count + 1);
     P_v.emplace_back();
     for(std::size_t j = 1; j <= part_count; ++j)
         P_v.emplace_back(work_path + std::string("P_v_") + std::to_string(j));
 
+    P_e.reserve(part_count + 1);
     P_e.emplace_back();
     for(std::size_t b = 1; b <= unitig_bucket_count; ++b)
         P_e.emplace_back(work_path + std::string("P_e_") + std::to_string(b));
