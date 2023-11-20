@@ -3,8 +3,7 @@
 // #include "Kmer_Container.hpp"
 // #include "Kmer_SPMC_Iterator.hpp"
 // #include "BBHash/BooPHF.h"
-#include "Kmer_Hasher.hpp"
-#include "Kmer.hpp"
+// #include "Kmer_Hasher.hpp"
 // #include "Validator.hpp"
 // #include "Character_Buffer.hpp"
 // #include "Kmer_SPMC_Iterator.hpp"
@@ -14,7 +13,11 @@
 // #include "Minimizer_Iterator.hpp"
 // #include "Multiway_Merger.hpp"
 // #include "Kmer_Index.hpp"
+// #include "Index_Validator.hpp"
+// #include "Minimizer_Iterator.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
+#include "dBG_Contractor.hpp"
+#include "Unitig_File.hpp"
 #include "Concurrent_Hash_Table.hpp"
 // #include "kseq/kseq.h"
 // #include "spdlog/spdlog.h"
@@ -855,7 +858,196 @@ void cross_check_index_kmers(const std::string& op_pref)
     std::sort(from_fa.begin(), from_fa.end());
     std::cout << "All k-mers " << (from_idx == from_fa ? "matched" : " doesn't match") << "\n";
 }
-*/
+
+
+template <uint16_t k, uint16_t l>
+uint64_t compute_breakpoints(const std::string& file_path)
+{
+    std::ifstream input(file_path);
+
+    uint64_t br = 0;
+    uint64_t min_inst = 0;
+    uint64_t unitig_c = 0;
+    std::string unitig;
+    while(input >> unitig)
+    {
+        if(unitig.front() == '>')
+            continue;
+
+        // Minimizer_Iterator min_it(unitig.c_str(), unitig.length(), k - 1, l);
+        Minimizer_Iterator<const char*, true> min_it(unitig.c_str(), unitig.length(), k - 1, l);
+        cuttlefish::minimizer_t last_min, min, last_idx, idx;
+
+        min_it.value_at(last_min, last_idx);
+        min_inst++;
+        while(++min_it)
+        {
+            min_it.value_at(min, idx);
+            if(min != last_min)
+                br++, min_inst++, last_min = min, last_idx = idx;
+            else if(idx != last_idx)
+                min_inst++, last_idx = idx;
+        }
+
+        unitig_c++;
+        if(unitig_c % 1000000 == 0)
+            std::cerr <<    "\rProcessed " << unitig_c << " unitigs. "
+                            "#minimizer-instances: " << min_inst << ", #breakpoints: " << br << ".";
+    }
+
+
+    std::cout << "\n#minimizer-instances: " << min_inst << ", #breakpoints: " << br << ".\n";
+
+    return br;
+}
+
+
+template <uint16_t k, uint16_t l>
+bool validate_canonical_minimizer(const std::string& file_path)
+{
+    Ref_Parser parser(file_path);
+    uint64_t matched = 0;
+    std::size_t parsed_len = 0;
+
+    while(parser.read_next_seq())
+    {
+        const char* p = parser.seq();
+
+        Minimizer_Iterator<decltype(p), true> min_it(p, parser.seq_len(), k, l);
+        cuttlefish::minimizer_t min;
+        std::size_t min_idx;
+        cuttlefish::minimizer_t min_manual;
+
+        do
+        {
+            min_it.value_at(min, min_idx);
+            min_manual = Minimizer_Utility::canonical_minimizer(Kmer<k>(p), l);
+
+            if(min != min_manual)
+            {
+                std::cerr << "mismatched at k-mer " << matched << "\n";
+                std::cerr << "Iterator-hash: " << Minimizer_Utility::hash(min) << ", Manual-hash: " << Minimizer_Utility::hash(min_manual) << "\n";
+                return false;
+            }
+
+            matched++;
+            p++;
+        }
+        while(++min_it);
+
+        parsed_len += parser.seq_len();
+        std::cerr << "\rParsed length: " << parsed_len;
+    }
+
+    return true;
+}
+
+
+template <uint16_t k, uint16_t l>
+void get_discontinuity_edges(const std::string& file_path)
+{
+    Ref_Parser parser(file_path);
+    std::vector<cuttlefish::Discontinuity_Edge<k>> E;
+    uint64_t disc_count = 0;
+    uint64_t trivial_unitig_count = 0;
+    std::size_t max_trivial_len = 0;
+
+    while(parser.read_next_seq())
+    {
+        const auto seq = parser.seq();
+        Minimizer_Iterator<decltype(seq), true> min_it(seq, parser.seq_len(), k - 1, l);
+        cuttlefish::minimizer_t last_min, last_idx, min, idx;
+
+        std::size_t kmer_idx = 0;
+        Kmer<k> last_disc_kmer, curr_disc_kmer;
+        bool on_chain = false;
+
+        min_it.value_at(last_min, last_idx);
+        while(++min_it)
+        {
+            min_it.value_at(min, idx);
+            if(idx != last_idx)
+            {
+                disc_count++;
+
+                curr_disc_kmer = Kmer<k>(seq, kmer_idx);
+                if(on_chain)
+                {
+                    const Kmer<k>& x = last_disc_kmer;
+                    const Kmer<k>& y = curr_disc_kmer;
+                    cuttlefish::side_t s_x = (x == x.canonical() ? cuttlefish::side_t::back : cuttlefish::side_t::front);
+                    cuttlefish::side_t s_y = (y == y.canonical() ? cuttlefish::side_t::front : cuttlefish::side_t::back);
+
+                    E.emplace_back(x, s_x, y, s_y, 1, 0);
+                }
+
+                last_disc_kmer = curr_disc_kmer;
+                on_chain = true;
+            }
+
+            last_min = min, last_idx = idx;
+            kmer_idx++;
+        }
+
+
+        if(!on_chain)
+            trivial_unitig_count++,
+            max_trivial_len = std::max(max_trivial_len, parser.seq_len());
+    }
+
+    std::cerr << "#discontinuity-k-mers: " << disc_count << "\n";
+    std::cerr << "#discontinuity-edge:   " << E.size() << "\n";
+    std::cerr << "#trivial-unitigs: " << trivial_unitig_count << "\n";
+    std::cerr << "#max-trivial-op-len: " << max_trivial_len << "\n";
+}
+
+
+void test_unitig_file(const std::string cdbg_path, const std::string& op_path)
+{
+    Ref_Parser parser(cdbg_path);
+
+    std::vector<std::string> U;
+    std::size_t deposited_chars = 0;
+
+    cuttlefish::Unitig_File_Writer uni_writer(op_path + ".written");
+
+    while(parser.read_next_seq())
+    {
+        const auto seq = parser.seq();
+        const auto seq_len = parser.seq_len();
+        U.emplace_back(seq);
+        deposited_chars += seq_len;
+        uni_writer.add(seq, seq + seq_len);
+    }
+
+    uni_writer.close();
+
+
+    cuttlefish::Unitig_File_Reader uni_reader(op_path + ".written");
+    std::string unitig;
+    std::ofstream output(op_path + ".read");
+
+    std::size_t idx = 0;
+    while(uni_reader.read_next_unitig(unitig))
+    {
+        if(U[idx] != unitig)
+        {
+            std::cerr << "Mismatch at unitig-index " << idx << "\n";
+            std::cerr << "expected length: " << U[idx].length() << "; parsed length: " << unitig.length() << "\n";
+            // std::cerr << "Expected " << U[idx] << ";\nParsed " << unitig << "\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        output << unitig << "\n";
+        idx++;
+    }
+
+    output.close();
+
+    std::cerr << "All unitigs matched\n";
+
+    // std::cerr << "Deposited " << deposited_chars << "; written " << uni_writer.size() << " chars.\n";
+}
 
 
 template <uint16_t k>
@@ -891,7 +1083,7 @@ void benchmark_hash_table(std::size_t elem_count, double load_factor = 0.8)
 
     auto t_st = now();
     for(std::size_t i = 0; i < elem_count; ++i)
-        ht.insert(kmers[i], vals[i]);
+        ht.template insert<false>(kmers[i], vals[i]);
     auto t_en = now();
 
     std::cerr << "Inserted " << elem_count << " elements into custom hash-table in time " << duration(t_en - t_st) << " seconds.\n";
@@ -962,6 +1154,7 @@ void benchmark_hash_table(std::size_t elem_count, double load_factor = 0.8)
     std::cerr << "Searched " << elem_count << " true-negative elements into std::unordered_map in time " << duration(t_en - t_st) << " seconds.\n";
 
 }
+*/
 
 
 int main(int argc, char** argv)
@@ -994,12 +1187,8 @@ int main(int argc, char** argv)
 
     // count_kmers_in_unitigs(argv[1], atoi(argv[2]));
 
-    static constexpr uint16_t k = 31;
+    // static constexpr uint16_t k = 31;
     // static constexpr uint16_t l = 11;
-
-    const std::size_t elem_count = std::atoi(argv[1]);
-    const double lf = 0.75;
-    benchmark_hash_table<k>(elem_count, lf);
 
     // const std::size_t parts = 64;
     // const std::size_t unitig_buckets = 1024;
@@ -1007,7 +1196,21 @@ int main(int argc, char** argv)
     // const std::string output_path(argv[2]);
     // const std::string temp_path(argv[3]);
 
-    // bootstrap_discontinuity_graph<k>(l, cdbg_path, output_path, parts, unitig_buckets);
+    // bootstrap_discontinuity_graph<k>(l, cdbg_path, temp_path, parts, unitig_buckets);
+
+    // cuttlefish::dBG_Contractor<k> dbg_contractor(parts, unitig_buckets, output_path, temp_path);
+    // dbg_contractor.contract(l, cdbg_path);
+    // const std::size_t elem_count = std::atoi(argv[1]);
+    // const double lf = 0.75;
+    // benchmark_hash_table<k>(elem_count, lf);
+
+    // test_unitig_file(argv[1], argv[2]);
+
+    // const uint64_t br = compute_breakpoints<k, l>(argv[1]);
+    // std::cout << "#breakpoints: " << br << "\n";
+    // std::cout << (validate_canonical_minimizer<k, l>(argv[1]) ? "Canonical minimizers correctly computed.\n" : "Canonical minimizers found wrong.\n");
+    // minimizer_iterator_test<k, l>(argv[1]);
+    // std::cout << (Index_Validator<k, l>::validate(argv[1], argv[2]) ? "Index cross-checking successful.\n" : "Index is incorrect.\n");
 
     return 0;
 }
