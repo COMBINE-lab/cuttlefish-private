@@ -2,6 +2,7 @@
 #include "Subgraph.hpp"
 #include "DNA.hpp"
 #include "globals.hpp"
+#include "parlay/parallel.h"
 #include "kmc-super-kmers-iterator/iterate_super_kmers.h"
 
 #include "fstream"
@@ -34,7 +35,7 @@ void Subgraph<k>::load()
             return DNA::Base((super_kmer[word_count - 1 - (idx >> 5)] >> ((31 - (idx & 31)) << 1)) & uint64_t(0b11));
         };
 
-    std::ofstream output("kmers", std::ios::app);
+    std::ofstream output(graph_bin_dir_path + "kmers." + std::to_string(parlay::worker_id()), std::ios::app);
     Directed_Vertex<k> v;
     super_kmer_it.AddConsumer(
         [&](const super_kmer_data_t* const super_kmer, const std::size_t len)

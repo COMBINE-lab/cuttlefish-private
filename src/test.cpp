@@ -16,9 +16,11 @@
 // #include "Index_Validator.hpp"
 // #include "Minimizer_Iterator.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
+#include "Subgraph.hpp"
 #include "dBG_Contractor.hpp"
 #include "Unitig_File.hpp"
 #include "Concurrent_Hash_Table.hpp"
+#include "parlay/parallel.h"
 // #include "kseq/kseq.h"
 // #include "spdlog/spdlog.h"
 // #include "spdlog/async.h"
@@ -1157,6 +1159,25 @@ void benchmark_hash_table(std::size_t elem_count, double load_factor = 0.8)
 */
 
 
+template <uint16_t k>
+void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
+{
+    std::cerr << bin_dir << "; " << bin_c << "\n";
+    std::atomic_uint64_t solved = 0;
+    parlay::parallel_for(0, bin_c,
+        [&](const std::size_t bin_id)
+        {
+            cuttlefish::Subgraph<k> G(bin_dir, bin_id);
+            G.load();
+
+            if(++solved % 8 == 0)
+                std::cerr << "\rProcessed " << solved << " subgraphs.";
+        }
+    , 1);
+    std::cerr << "\n";
+}
+
+
 int main(int argc, char** argv)
 {
     (void)argc;
@@ -1187,7 +1208,7 @@ int main(int argc, char** argv)
 
     // count_kmers_in_unitigs(argv[1], atoi(argv[2]));
 
-    // static constexpr uint16_t k = 31;
+    static constexpr uint16_t k = 31;
     // static constexpr uint16_t l = 11;
 
     // const std::size_t parts = 64;
@@ -1211,6 +1232,11 @@ int main(int argc, char** argv)
     // std::cout << (validate_canonical_minimizer<k, l>(argv[1]) ? "Canonical minimizers correctly computed.\n" : "Canonical minimizers found wrong.\n");
     // minimizer_iterator_test<k, l>(argv[1]);
     // std::cout << (Index_Validator<k, l>::validate(argv[1], argv[2]) ? "Index cross-checking successful.\n" : "Index is incorrect.\n");
+
+
+    const std::string bin_dir(argv[1]);
+    const std::size_t bin_c(std::atoi(argv[2]));
+    iterate_subgraphs<k>(bin_dir, bin_c);
 
     return 0;
 }
