@@ -49,13 +49,18 @@ void Subgraph<k>::load()
                 assert(kmer_idx + k - 1 < len);
                 output << ">" << kmer_idx << "\n" << v.kmer() << "\n";
 
-                // const auto is_canonical = v.in_canonical_form();
-                // const auto pred_base = (kmer_idx == 0 ? DNA::Base::N : get_base(kmc_data, kmer_idx - 1));
+                const auto is_canonical = v.in_canonical_form();
+                const auto pred_base = (kmer_idx == 0 ? DNA::Base::N : get_base(kmc_data, kmer_idx - 1));
                 const auto succ_base = (kmer_idx + k == len ? DNA::Base::N : get_base(kmc_data, kmer_idx + k));
-                // const auto front = (is_canonical ? pred_base : succ_base);
-                // const auto back  = (is_canonical ? succ_base : pred_base);
+                const auto front = (is_canonical ? pred_base : succ_base);
+                const auto back  = (is_canonical ? succ_base : pred_base);
 
                 // Update hash table with the neighborhood info.
+                auto const it = M.find(v.canonical());
+                if(it == M.end())
+                    M.emplace(v.canonical(), Vertex_Info());
+
+                M[v.canonical()].add_neighbor(front, back);
 
                 if(kmer_idx + k == len)
                     break;
