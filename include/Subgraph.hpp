@@ -45,9 +45,12 @@ public:
     Subgraph(const Subgraph&) = delete;
     Subgraph(Subgraph&&) = delete;
 
-    // Loads the subgraph into an internal navigable and membership data
-    // structure.
-    void load();
+    // Constructs the subgraph from the KMC bin into an internal navigable and
+    // membership data structure.
+    void construct();
+
+    // Builds the compacted graph from the original graph.
+    void compact();
 
     // Returns the size of the graph.
     std::size_t size() const;
@@ -68,6 +71,9 @@ private:
     uint8_t status;             // Some status information of the vertex, bit-packed:
                                     // whether it is a discontinuity vertex, whether it's been visited.
 
+    static constexpr uint8_t discontinuity  = 0b0000'0001;  // Flag to denote a vertex as a discontinuity one.
+    static constexpr uint8_t visited        = 0b0000'0010;  // Flag to denote a vertex as visited.
+
 
 public:
 
@@ -77,6 +83,12 @@ public:
     // Adds the neighbor-encodings `front` and `back` to the associated sides of
     // of the corresponding vertex.
     void add_neighbor(DNA::Base front, DNA::Base back);
+
+    // Returns whether the associated vertex is a discontinuity.
+    bool is_discontinuity() const { return status & discontinuity; }
+
+    // Returns whether the associated vertex is visited.
+    bool is_visited() const { return status & visited; }
 };
 
 

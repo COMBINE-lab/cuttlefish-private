@@ -15,11 +15,12 @@ template <uint16_t k>
 Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id):
       graph_bin_dir_path(bin_dir_path)
     , bin_id(bin_id)
+    , edge_c(0)
 {}
 
 
 template <uint16_t k>
-void Subgraph<k>::load()
+void Subgraph<k>::construct()
 {
     const std::size_t q_sz = 1; // Number of internal queues for the iterator; set to the count of workers using the iterator.
     IterateSuperKmers super_kmer_it(graph_bin_dir_path, bin_id, q_sz);  // The iterator over the super k-mers in this graph-bin.
@@ -79,6 +80,22 @@ void Subgraph<k>::load()
     super_kmer_it.WaitForAll();
 
     // output.close();
+}
+
+
+template <uint16_t k>
+void Subgraph<k>::compact()
+{
+    std::string max_unitig; // Constructed maximal unitigs from each candidate vertex.
+    for(const auto& p : M)
+    {
+        const auto& v_inf = p.second;
+        if(!v_inf.is_visited())
+        {
+            const auto& v = p.first;
+            // TODO: extract maximal unitig containing `v`.
+        }
+    }
 }
 
 
