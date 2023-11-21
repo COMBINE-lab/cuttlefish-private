@@ -5,6 +5,7 @@
 
 
 #include "DNA.hpp"
+#include "globals.hpp"
 
 #include <cstdint>
 #include <climits>
@@ -37,7 +38,7 @@ public:
 
     // Adds the neighbor-encodings `front` and `back` to the associated sides of
     // of a corresponding vertex.
-    void add_neighbor(DNA::Base front, DNA::Base back);
+    void add_neighbor(base_t front, base_t back);
 
     // Returns whether the associated vertex is a discontinuity.
     bool is_discontinuity() const { return status & discontinuity; }
@@ -55,17 +56,19 @@ inline State_Config::State_Config():
 {}
 
 
-inline void State_Config::add_neighbor(const DNA::Base front, const DNA::Base back)
+inline void State_Config::add_neighbor(const base_t front, const base_t back)
 {
     constexpr uint8_t max_f = (1lu << CHAR_BIT) - 1;    // Maximum supported frequency of a (k + 1)-mer.
     constexpr std::size_t back_off = 4;
+    constexpr auto N = base_t::N;
+    constexpr auto T = base_t::T;
 
-    if(front != DNA::Base::N && neighbor_freq[front] < max_f)
-        assert(front <= DNA::Base::T),
+    if(front != N && neighbor_freq[front] < max_f)
+        assert(front <= T),
         neighbor_freq[front]++;
 
-    if(back != DNA::Base::N && neighbor_freq[back_off + back] < max_f)
-        assert(back <= DNA::Base::T),
+    if(back != N && neighbor_freq[back_off + back] < max_f)
+        assert(back <= T),
         neighbor_freq[back_off + back]++;
 }
 
