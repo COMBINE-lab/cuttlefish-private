@@ -35,7 +35,7 @@ void Subgraph<k>::load()
             return DNA::Base((super_kmer[word_count - 1 - (idx >> 5)] >> ((31 - (idx & 31)) << 1)) & uint64_t(0b11));
         };
 
-    std::ofstream output(graph_bin_dir_path + "kmers." + std::to_string(parlay::worker_id()), std::ios::app);
+    // std::ofstream output(graph_bin_dir_path + "kmers." + std::to_string(parlay::worker_id()), std::ios::app);
     Directed_Vertex<k> v;
 
     // Extracts and processes each k-mer (vertex) from a given super k-mer
@@ -50,13 +50,15 @@ void Subgraph<k>::load()
             while(true)
             {
                 assert(kmer_idx + k - 1 < len);
-                output << ">" << kmer_idx << "\n" << v.kmer() << "\n";
+                // output << ">" << kmer_idx << "\n" << v.kmer() << "\n";
 
                 const auto is_canonical = v.in_canonical_form();
                 const auto pred_base = (kmer_idx == 0 ? DNA::Base::N : get_base(kmc_data, kmer_idx - 1));
                 const auto succ_base = (kmer_idx + k == len ? DNA::Base::N : get_base(kmc_data, kmer_idx + k));
                 const auto front = (is_canonical ? pred_base : succ_base);
                 const auto back  = (is_canonical ? succ_base : pred_base);
+
+                edge_c += (front != DNA::Base::N) + (back != DNA::Base::N);
 
                 // Update hash table with the neighborhood info.
                 const auto it = M.find(v.canonical());
@@ -76,7 +78,21 @@ void Subgraph<k>::load()
     super_kmer_it.AddConsumer(extract_kmers);
     super_kmer_it.WaitForAll();
 
-    output.close();
+    // output.close();
+}
+
+
+template <uint16_t k>
+std::size_t Subgraph<k>::size() const
+{
+    return M.size();
+}
+
+
+template <uint16_t k>
+std::size_t Subgraph<k>::edge_count() const
+{
+    return edge_c;
 }
 
 }

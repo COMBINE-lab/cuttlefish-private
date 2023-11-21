@@ -33,6 +33,8 @@ private:
     typedef std::unordered_map<Kmer<k>, Vertex_Info, Kmer_Hasher<k>> map_t;
     map_t M;
 
+    uint64_t edge_c;    // Number of edges in the graph.
+
 
 public:
 
@@ -46,6 +48,12 @@ public:
     // Loads the subgraph into an internal navigable and membership data
     // structure.
     void load();
+
+    // Returns the size of the graph.
+    std::size_t size() const;
+
+    // Returns the number of (multi-)edges in the graph.
+    std::size_t edge_count() const;
 };
 
 

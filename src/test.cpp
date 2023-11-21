@@ -37,8 +37,6 @@
 // #include <cstring>
 // #include <set>
 // #include <map>
-#include <unordered_map>
-#include <random>
 
 
 /*
@@ -1164,17 +1162,30 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
 {
     std::cerr << bin_dir << "; " << bin_c << "\n";
     std::atomic_uint64_t solved = 0;
+    std::atomic_uint64_t max_graph_sz = 0;
     parlay::parallel_for(0, bin_c,
         [&](const std::size_t bin_id)
         {
             cuttlefish::Subgraph<k> G(bin_dir, bin_id);
             G.load();
 
+            while(true)
+            {
+                uint64_t max_sz = max_graph_sz;
+                if(max_sz >= G.size())
+                    break;
+
+                if(max_graph_sz.compare_exchange_strong(max_sz, G.size()))
+                    break;
+            }
+
             if(++solved % 8 == 0)
                 std::cerr << "\rProcessed " << solved << " subgraphs.";
         }
     , 1);
     std::cerr << "\n";
+
+    std::cerr << "Maximum subgraph-size: " << max_graph_sz << ".\n";
 }
 
 
