@@ -22,7 +22,7 @@ template <uint16_t k>
 void Subgraph<k>::load()
 {
     const std::size_t q_sz = 1; // Number of internal queues for the iterator; set to the count of workers using the iterator.
-    IterateSuperKmers super_kmer_it(graph_bin_dir_path, bin_id, q_sz);  // The iterator.
+    IterateSuperKmers super_kmer_it(graph_bin_dir_path, bin_id, q_sz);  // The iterator over the super k-mers in this graph-bin.
 
     typedef unsigned long long super_kmer_data_t;   // KMC's super k-mer's representation type.
     const auto word_count = super_kmer_it.GetSuperKmerDataLen();    // Fixed number of words in KMC super k-mer.
@@ -37,7 +37,10 @@ void Subgraph<k>::load()
 
     std::ofstream output(graph_bin_dir_path + "kmers." + std::to_string(parlay::worker_id()), std::ios::app);
     Directed_Vertex<k> v;
-    super_kmer_it.AddConsumer(
+
+    // Extracts and processes each k-mer (vertex) from a given super k-mer
+    // `super_kmer` of length `len`.
+    const auto extract_kmers =
         [&](const super_kmer_data_t* const super_kmer, const std::size_t len)
         {
             auto const kmc_data = reinterpret_cast<const uint64_t*>(super_kmer);
@@ -56,7 +59,7 @@ void Subgraph<k>::load()
                 const auto back  = (is_canonical ? succ_base : pred_base);
 
                 // Update hash table with the neighborhood info.
-                auto const it = M.find(v.canonical());
+                const auto it = M.find(v.canonical());
                 if(it == M.end())
                     M.emplace(v.canonical(), Vertex_Info());
 
@@ -68,9 +71,9 @@ void Subgraph<k>::load()
                 v.roll_forward(succ_base);
                 kmer_idx++;
             }
-        }
-    );
+        };
 
+    super_kmer_it.AddConsumer(extract_kmers);
     super_kmer_it.WaitForAll();
 
     output.close();
