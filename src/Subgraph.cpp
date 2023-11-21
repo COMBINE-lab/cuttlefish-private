@@ -64,7 +64,7 @@ void Subgraph<k>::construct()
                 // Update hash table with the neighborhood info.
                 const auto it = M.find(v.canonical());
                 if(it == M.end())
-                    M.emplace(v.canonical(), Vertex_Info());
+                    M.emplace(v.canonical(), State_Config());
 
                 M[v.canonical()].add_neighbor(front, back);
 
