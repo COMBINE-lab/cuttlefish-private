@@ -58,24 +58,13 @@ public:
 template <template<uint16_t> typename T_App>
 class Application<1, T_App>
 {
-private:
-
-    T_App<1>* const app;
-
-    Validator<1>* const validator;
-
-
 public:
 
-    Application(const Build_Params& params);
+    Application(const Build_Params&) {}
+    Application(const Validation_Params&) {}
 
-    Application(const Validation_Params& params);
-
-    ~Application();
-
-    void execute() const;
-
-    bool validate() const;
+    void execute() const {}
+    bool validate() const { return false; }
 };
 
 

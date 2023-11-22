@@ -105,8 +105,7 @@ namespace cuttlefish
 #ifndef FIXED_K
     #define ENUMERATE(count, instantiator, class_name) BOOST_PP_REPEAT(count, instantiator, class_name)
 #else
-    #define ENUMERATE(count, instantiator, class_name)  instantiator(0, (count - 1), class_name)\
-                                                        instantiator(0, 0, class_name)
+    #define ENUMERATE(count, instantiator, class_name)  instantiator(0, (count - 1), class_name)
 #endif
 
 // Given some `x`, explicitly instantiates two instances of the class `class_name`, with the template parameters
