@@ -64,6 +64,10 @@ if(INSTANCE_COUNT)
     add_compile_definitions(INSTANCE_COUNT=${INSTANCE_COUNT})
 endif()
 
+if(FIXED_K)
+    add_compile_definitions(FIXED_K=${FIXED_K})
+endif()
+
 if(CF_VALIDATION_MODE)
     add_compile_definitions(CF_VALIDATION_MODE)
 endif()
