@@ -8,17 +8,25 @@
 
 template <uint16_t k, template <uint16_t> typename T_App>
 Application<k, T_App>::Application(const Build_Params& params):
-    app_next_level(new Application<k - 2, T_App>(params)),
-    app(params.k() == k ? new T_App<k>(params) : nullptr),
-    validator(nullptr)
+#ifndef FIXED_K
+    app_next_level(new Application<k - 2, T_App>(params))
+#else
+    app_next_level(new Application<1, T_App>(params))
+#endif
+    , app(params.k() == k ? new T_App<k>(params) : nullptr)
+    , validator(nullptr)
 {}
 
 
 template <uint16_t k, template <uint16_t> typename T_App>
 Application<k, T_App>::Application(const Validation_Params& params):
-    app_next_level(new Application<k - 2, T_App>(params)),
-    app(nullptr),
-    validator(params.k() == k ? new Validator<k>(params): nullptr)
+#ifndef FIXED_K
+    app_next_level(new Application<k - 2, T_App>(params))
+#else
+    app_next_level(new Application<1, T_App>(params))
+#endif
+    , app(nullptr)
+    , validator(params.k() == k ? new Validator<k>(params): nullptr)
 {}
 
 
