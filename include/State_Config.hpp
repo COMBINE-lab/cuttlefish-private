@@ -22,6 +22,8 @@ class State_Config
 {
 private:
 
+    static constexpr uint8_t f_th = 1;  // Edge-frequency threshold. TODO: update.
+
     // uint64_t color_hash;        // Hash of the vertex's color-set.
     uint8_t edge_freq[8];   // Frequency of the vertex's neighbors.
     // uint32_t last_color_ID;     // Last color-ID added to the color-hash; to encounter multi-set hashing problem for color-sets.
@@ -45,6 +47,22 @@ public:
 
     // Returns whether the associated vertex is visited.
     bool is_visited() const { return status & visited; }
+
+    // Marks the associated vertex as visited.
+    void mark_visited() { status |= visited; }
+
+    // Returns the `Base`-encoding of the edge(s) incident to the side `s` of a
+    // vertex having this state: the unique encoding of the edge if there is
+    // exactly one, otherwise `N`.
+    base_t edge_at(side_t s) const;
+
+    // Returns `true` iff some vertex having this state is branching (i.e. has
+    // multiple incident edges) at its side `s`.
+    bool is_branching_side(side_t s) const;
+
+    // Returns `true` iff some vertex having this state is empty (i.e. no
+    // incident edges) at its side `s`.
+    bool is_empty_side(side_t s) const;
 };
 
 
@@ -70,6 +88,41 @@ inline void State_Config::update_edges(const base_t front, const base_t back)
     assert(back == N || back <= T);
     if(back != N && edge_freq[back_off + back] < max_f)
         edge_freq[back_off + back]++;
+}
+
+
+inline base_t State_Config::edge_at(const side_t s) const
+{
+    const std::size_t off = (s == side_t::back) * 4;    // Offset to the encoding of edge frequencies at side `s`.
+    const auto edge_c = (edge_freq[off + 0] >= f_th) + (edge_freq[off + 1] >= f_th) +
+                        (edge_freq[off + 2] >= f_th) + (edge_freq[off + 3] >= f_th);
+
+    constexpr auto N = base_t::N;
+    return edge_c != 1 ?    N :
+                            static_cast<base_t>(((edge_freq[off + 0] >= f_th) * base_t::A) +
+                                                ((edge_freq[off + 1] >= f_th) * base_t::C) +
+                                                ((edge_freq[off + 2] >= f_th) * base_t::G) +
+                                                ((edge_freq[off + 3] >= f_th) * base_t::T));
+}
+
+
+inline bool State_Config::is_branching_side(const side_t s) const
+{
+    const std::size_t off = (s == side_t::back) * 4;    // Offset to the encoding of edge frequencies at side `s`.
+    const auto edge_c = (edge_freq[off + 0] >= f_th) + (edge_freq[off + 1] >= f_th) +
+                        (edge_freq[off + 2] >= f_th) + (edge_freq[off + 3] >= f_th);
+
+    return edge_c > 1;
+}
+
+
+inline bool State_Config::is_empty_side(const side_t s) const
+{
+    const std::size_t off = (s == side_t::back) * 4;    // Offset to the encoding of edge frequencies at side `s`.
+    const auto edge_c = (edge_freq[off + 0] >= f_th) + (edge_freq[off + 1] >= f_th) +
+                        (edge_freq[off + 2] >= f_th) + (edge_freq[off + 3] >= f_th);
+
+    return edge_c == 0;
 }
 
 }
