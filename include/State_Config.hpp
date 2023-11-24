@@ -23,7 +23,7 @@ class State_Config
 private:
 
     // uint64_t color_hash;        // Hash of the vertex's color-set.
-    uint8_t neighbor_freq[8];   // Frequency of the vertex's neighbors.
+    uint8_t edge_freq[8];   // Frequency of the vertex's neighbors.
     // uint32_t last_color_ID;     // Last color-ID added to the color-hash; to encounter multi-set hashing problem for color-sets.
     uint8_t status;             // Some status information of the vertex, bit-packed:
                                     // whether it is a discontinuity vertex, whether it's been visited.
@@ -36,9 +36,9 @@ public:
     // Constructs an empty state.
     State_Config();
 
-    // Adds the neighbor-encodings `front` and `back` to the associated sides of
-    // of a corresponding vertex.
-    void add_neighbor(base_t front, base_t back);
+    // Adds the edge-encodings `front` and `back` to the associated sides of a
+    // corresponding vertex.
+    void update_edges(base_t front, base_t back);
 
     // Returns whether the associated vertex is a discontinuity.
     bool is_discontinuity() const { return status & discontinuity; }
@@ -50,26 +50,26 @@ public:
 
 inline State_Config::State_Config():
     //   color_hash(0)
-      neighbor_freq()
+      edge_freq()
     // , last_color_ID(0)
     , status(0)
 {}
 
 
-inline void State_Config::add_neighbor(const base_t front, const base_t back)
+inline void State_Config::update_edges(const base_t front, const base_t back)
 {
     constexpr uint8_t max_f = (1lu << CHAR_BIT) - 1;    // Maximum supported frequency of a (k + 1)-mer.
     constexpr std::size_t back_off = 4;
     constexpr auto N = base_t::N;
     constexpr auto T = base_t::T;
 
-    if(front != N && neighbor_freq[front] < max_f)
-        assert(front <= T),
-        neighbor_freq[front]++;
+    assert(front == N || front <= T);
+    if(front != N && edge_freq[front] < max_f)
+        edge_freq[front]++;
 
-    if(back != N && neighbor_freq[back_off + back] < max_f)
-        assert(back <= T),
-        neighbor_freq[back_off + back]++;
+    assert(back == N || back <= T);
+    if(back != N && edge_freq[back_off + back] < max_f)
+        edge_freq[back_off + back]++;
 }
 
 }

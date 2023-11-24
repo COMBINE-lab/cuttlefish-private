@@ -66,7 +66,7 @@ void Subgraph<k>::construct()
                 if(it == M.end())
                     M.emplace(v.canonical(), State_Config());
 
-                M[v.canonical()].add_neighbor(front, back);
+                M[v.canonical()].update_edges(front, back);
 
                 if(kmer_idx + k == len)
                     break;
