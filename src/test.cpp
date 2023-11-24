@@ -1162,12 +1162,16 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
 {
     std::cerr << bin_dir << "; " << bin_c << "\n";
     std::atomic_uint64_t solved = 0;
+    std::atomic_uint64_t v_c = 0;
+    std::atomic_uint64_t e_c = 0;
     std::atomic_uint64_t max_graph_sz = 0;
     parlay::parallel_for(0, bin_c,
         [&](const std::size_t bin_id)
         {
             cuttlefish::Subgraph<k> G(bin_dir, bin_id);
-            G.load();
+            G.construct();
+            v_c += G.size();
+            e_c += G.edge_count();
 
             while(true)
             {
@@ -1185,6 +1189,8 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
     , 1);
     std::cerr << "\n";
 
+    std::cerr << "Total vertex count: " << v_c << "\n";
+    std::cerr << "Total edge count:   " << e_c << "\n";
     std::cerr << "Maximum subgraph-size: " << max_graph_sz << ".\n";
 }
 

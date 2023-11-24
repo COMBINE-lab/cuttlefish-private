@@ -59,7 +59,7 @@ void Subgraph<k>::construct()
                 const auto front = (is_canonical ? pred_base : DNA_Utility::complement(succ_base));
                 const auto back  = (is_canonical ? succ_base : DNA_Utility::complement(pred_base));
 
-                edge_c += (front != DNA::Base::N) + (back != DNA::Base::N);
+                edge_c += (succ_base != DNA::Base::N);
 
                 // Update hash table with the neighborhood info.
                 const auto it = M.find(v.canonical());
