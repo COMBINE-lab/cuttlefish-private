@@ -1183,6 +1183,9 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
                     break;
             }
 
+
+            G.compact();
+
             if(++solved % 8 == 0)
                 std::cerr << "\rProcessed " << solved << " subgraphs.";
         }

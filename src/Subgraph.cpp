@@ -86,16 +86,18 @@ void Subgraph<k>::construct()
 template <uint16_t k>
 void Subgraph<k>::compact()
 {
-    std::string max_unitig; // Constructed maximal unitigs from each candidate vertex.
+    Maximal_Unitig_Scratch<k> maximal_unitig;   // Scratch space to be used to construct maximal unitigs.
+    uint64_t vertex_count = 0;  // Number of vertices processed.
+
     for(const auto& p : M)
     {
-        const auto& v_inf = p.second;
-        if(!v_inf.is_visited())
-        {
-            const auto& v = p.first;
-            // TODO: extract maximal unitig containing `v`.
-        }
+        const auto& v = p.first;
+        // TODO: extract maximal unitig containing `v`.
+        if(extract_maximal_unitig(v, maximal_unitig))
+            vertex_count += maximal_unitig.size();
     }
+
+    assert(vertex_count == M.size());
 }
 
 
