@@ -40,6 +40,9 @@ public:
     Directed_Vertex()
     {}
 
+    // Constructs a vertex observed for the k-mer `kmer`.
+    Directed_Vertex(const Kmer<k>& kmer);
+
     // Constructs a vertex observed for the k-mer `kmer`. Gets the hash value of the vertex using
     // the hash table `hash`.
     Directed_Vertex(const Kmer<k>& kmer, const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash);
@@ -122,6 +125,14 @@ inline void Directed_Vertex<k>::init()
 {
     kmer_bar_.as_reverse_complement(kmer_);
     kmer_hat_ptr = Kmer<k>::canonical(kmer_, kmer_bar_);
+}
+
+
+template <uint16_t k>
+inline Directed_Vertex<k>::Directed_Vertex(const Kmer<k>& kmer):
+    kmer_(kmer)
+{
+    init();
 }
 
 
