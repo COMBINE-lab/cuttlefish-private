@@ -90,6 +90,10 @@ public:
 
     // Adds a corresponding FASTA record for the maximal unitig into `buffer`.
     template <std::size_t CAPACITY, typename T_sink_> void add_fasta_rec_to_buffer(Character_Buffer<CAPACITY, T_sink_>& buffer) const;
+
+    // Gets the literal label of the maximal unitig (in canonical form) into
+    // `label`.
+    void get_label(std::string& label) const;
 };
 
 
@@ -210,6 +214,33 @@ inline void Maximal_Unitig_Scratch<k>::add_fasta_rec_to_buffer(Character_Buffer<
         buffer += fasta_rec();
     else
         buffer.template rotate_append_cycle<k>(FASTA_Record<std::vector<char>>(id(), cycle->label()), cycle->min_vertex_idx());
+}
+
+
+template <uint16_t k>
+inline void Maximal_Unitig_Scratch<k>::get_label(std::string& label) const
+{
+    label.clear();
+
+    if(is_linear())
+    {
+        const auto& u_f = unitig_front.label();
+        const auto& u_b = unitig_back.label();
+
+        if(is_canonical())
+            label.insert(label.end(), u_f.cbegin(), u_f.cend()),
+            label.insert(label.end(), u_b.cbegin() + k, u_b.cend());
+        else
+            label.insert(label.end(), u_b.cbegin(), u_b.cend()),
+            label.insert(label.end(), u_f.cbegin() + k, u_f.cend());
+    }
+    else
+    {
+        const auto& u = cycle->label();
+        const auto pivot = cycle->min_vertex_idx();
+        label.insert(label.end(), u.cbegin() + pivot, u.cend()),
+        label.insert(label.end(), u.cbegin() + k - 1, u.cbegin() + k - 1 + pivot);
+    }
 }
 
 
