@@ -17,7 +17,7 @@
 // A class to keep scratch data for building maximal unitigs from two of its
 // constituent unitigs that cover it and overlap at a meeting-point vertex.
 // That is, the maximal unitig is split into two unitigs `u_b` and `u_f`, at
-// some vertex `v`—`u_b` and `u_f` are connected to the front and to the back
+// some vertex `v`—`u_b` and `u_f` are connected to the back and to the front
 // of `v`, respectively. The unitigs are built such that the paths start from
 // `v`. Thus, the maximal unitig in literal form is `\bar(u_f) \glue_k u_b`
 // (or its reverse complement).

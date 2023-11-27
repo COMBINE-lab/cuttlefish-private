@@ -23,6 +23,7 @@ private:
 
     Kmer<k> kmer_;  // The observed k-mer for the vertex.
     Kmer<k> kmer_bar_;  // Reverse complement of the k-mer observed for the vertex.
+    // TODO: replace ptr-to-canonical with boolean-based design (and replace the two k-mers with an array).
     const Kmer<k>* kmer_hat_ptr;    // Pointer to the canonical form of the k-mer associated to the vertex.
     uint64_t h; // Hash value of the vertex, i.e. hash of the canonical k-mer.
 
