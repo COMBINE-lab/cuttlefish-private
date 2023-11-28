@@ -43,8 +43,9 @@ void Subgraph<k>::construct()
     // Extracts and processes each k-mer (vertex) from a given super k-mer
     // `super_kmer` of length `len`.
     const auto extract_kmers =
-        [&](const super_kmer_data_t* const super_kmer, const std::size_t len)
+        [&](const super_kmer_data_t* const super_kmer, const std::size_t len, bool disc_l, bool disc_r)
         {
+            (void)disc_l, (void)disc_r;
             auto const kmc_data = reinterpret_cast<const uint64_t*>(super_kmer);
             v.from_KMC_super_kmer(kmc_data, word_count);
             std::size_t kmer_idx = 0;

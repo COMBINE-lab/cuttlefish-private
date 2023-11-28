@@ -14,10 +14,11 @@ mkdir -p out_dir
 ./kmc -k27 -t8 input.fq out_dir/out bins
 ```
 The content of `out_dir` may be ignored.
-The content of `bins` dir is important. There are `2 * n_bins + 1` files inside. `n_bins` is a number of bins that may be controlled with `-n` parameter.
+The content of `bins` dir is important. There are `2 * n_bins + 2` files inside. `n_bins` is a number of bins that may be controlled with `-n` parameter.
 All these files are in binary format and understanding them is not very important to use the API (the API just wants a path to this directory).
 Below I describe them just for documentation purposes:
  - `bins.global` - some global configuration, contains length of k-mers, number of bins and flag if bins are zstd compressed
+ - `stbm.bin` - a binary file containing a mapping of signatures values to bin_id, not used now, but may be needed in the future to determine the id of bin on a linking character end
  - `kmc_<bin_id>.bin` - this is the binary data containing k-mers - this is exactly the same file as the unmodified version of KMC produces
  - `kmc_<bin_id>.bin.meta` - this is the binary that contains additional metadata required to decode bin (in unmodified KMC this metadata is kept in RAM
 
@@ -35,11 +36,14 @@ The whole API is enclosed in a single class: `IterateSuperKmers` (file `iterate_
 Here is a simple example of how to call it.
 ```
 IterateSuperKmers iterate("bins", 0, 4);
-iterate.AddConsumer([](const unsigned long long* super_kmer, size_t super_kmer_len_symbols) {
+iterate.AddConsumer([](const unsigned long long* super_kmer, size_t super_kmer_len_symbols, bool left_flag, bool right_flag) {
  //this part of the code will be called for super-k-mers
  //super_kmer is binary encoded and the format will be described below
  //super_kmer_len_symbols is length of the super-k-mer in symbols
  // the size of const unsigned long long* super_kmer is always iterate.GetSuperKmerDataLen()
+ //left_flag is `true` if the left-most symbol of super-k-mer is a linking character (i.e. left-most k-mer exists also in a different bin)
+ //right_flag is `true` if the right-most symbol of super-k-mer is a linking character (i.e. right-most k-mer exists also in a different bin)
+ //if it happens that super-k-mer was broken into two parts but both are stored in the same bin these flags are not set although the character was appended to one of the two super-k-mers (it must be appended because in the opposite case we would lose a k-mer, and it must be appended only to a one of the two because in the opposite case, it would be overrepresented in a bin)
 });
 ```
  - `void WaitForAll()` - this is a barrier, it must be called before the destruction of the object it joins threads
@@ -52,7 +56,7 @@ If needed we may redesign the internals of the API a little to exploit paralleli
 
 # Just generate super-k-mers in text format
 This repo contains also a prebuild version of KMC (`kmc_text_dump`) that does all the above but also dumps super-k-mers in FASTA format for each bin. It results in additional files `kmers_<bin_id>.fa`.
-It makes the computation much longer but may be used for some verifications (I have been using it to verify the API - keep in mind that the order of super-k-mers may be different in these files and in the API, which is a result of multithreading - if one thread is used in kmc in API the order should be the same).
+It makes the computation much longer but may be used for some verifications (I have been using it to verify the API - keep in mind that the order of super-k-mers may be different in these files and in the API, which is a result of multithreading - if one thread is used in kmc and in API the order should be the same).
 # ZSTD bins
 It is possible to apply zstd compression to bins which may be very profitable for some datasets (like Salmonella from ggcat paper). To do this use `--bin-storage-modezstd` as a KMC flag.
 The decompression may be done in parallel (and this is how its done in KMC), but the API in this repo currently does it single-threaded.

@@ -129,5 +129,9 @@ public:
 
 		}
 	}
+	uint64_t LoadMetadata(refresh::bit_memory_reader<refresh::memory_chunk>& in, size_t n_bits)
+	{
+		return in.read_bits(n_bits);
+	}
 };
 

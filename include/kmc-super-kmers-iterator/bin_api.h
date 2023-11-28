@@ -7,17 +7,20 @@ struct BinsGlobalConfig {
 	size_t k{};
 	bool is_zstd_compr{};
 	size_t n_bins{};
+	bool super_kmers_with_overlaps{};
 public:
 	void Serialize(std::ofstream& out) const {
 		refresh::serialize_little_endian(k, out);
 		refresh::serialize_little_endian(is_zstd_compr, out);
 		refresh::serialize_little_endian(n_bins, out);
+		refresh::serialize_little_endian(super_kmers_with_overlaps, out);
 	}
 
 	void Load(std::ifstream& in) {
 		refresh::load_little_endian(k, in);
 		refresh::load_little_endian(is_zstd_compr, in);
 		refresh::load_little_endian(n_bins, in);
+		refresh::load_little_endian(super_kmers_with_overlaps, in);
 	}
 };
 

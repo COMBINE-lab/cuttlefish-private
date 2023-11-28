@@ -11,7 +11,7 @@
 template<typename CALLBACK_T>
 class IIterateSuperKmers {
 public:
-	virtual void Run(CALLBACK_T&& callback, uint32_t k, super_kmers_packs_maker_super_kmer_iterator_queue_t& in_queue, SuperKmerLoader* super_kmer_serializer) = 0;
+	virtual void Run(CALLBACK_T&& callback, uint32_t k, super_kmers_packs_maker_super_kmer_iterator_queue_t& in_queue, SuperKmerLoader* super_kmer_serializer, bool super_kmers_with_overlaps) = 0;
 	~IIterateSuperKmers() = default;
 };
 
@@ -19,7 +19,7 @@ template<typename CALLBACK_T, unsigned KMER_SIZE>
 class IterateSuperKmersImpl : public IIterateSuperKmers<CALLBACK_T>
 {
 public:
-	void Run(CALLBACK_T&& callback, uint32_t k, super_kmers_packs_maker_super_kmer_iterator_queue_t& in_queue, SuperKmerLoader* super_kmer_serializer) override {
+	void Run(CALLBACK_T&& callback, uint32_t k, super_kmers_packs_maker_super_kmer_iterator_queue_t& in_queue, SuperKmerLoader* super_kmer_serializer, bool super_kmers_with_overlaps) override {
 		while (in_queue.pop_and_consume([&](super_kmers_packer_data_t&& data) {
 			//std::cerr << "pop\n";
 			uint32_t additional_symbols;
@@ -47,7 +47,15 @@ public:
 				for (size_t j = 0; j < pack_super_kmers; ++j)
 				{
 					super_kmer_serializer->LoadSuperKmer(in, super_kmer, sample_id, additional_symbols);
-					callback(super_kmer.raw_data(), k + additional_symbols);
+
+					bool left_flag = false;
+					bool right_flag = false;
+					if (super_kmers_with_overlaps)
+					{
+						left_flag = super_kmer_serializer->LoadMetadata(in, 1);
+						right_flag = super_kmer_serializer->LoadMetadata(in, 1);
+					}
+					callback(super_kmer.raw_data(), k + additional_symbols, left_flag, right_flag);
 				}
 			}
 		}));
@@ -153,7 +161,7 @@ public:
 	void AddConsumer(SUPER_KMER_CALLBACK_T&& super_kmer_callback) {
 		threads.emplace_back([this] (SUPER_KMER_CALLBACK_T&& super_kmer_callback) {
 			auto impl = IIterateSuperKmersDispatch<SUPER_KMER_CALLBACK_T, MAX_KMER_SIZE>::Get(bins_global_config.k);
-			impl->Run(std::move(super_kmer_callback), bins_global_config.k, super_kmers_packs_maker_super_kmer_iterator_queue, super_kmers_serializer.get());
+			impl->Run(std::move(super_kmer_callback), bins_global_config.k, super_kmers_packs_maker_super_kmer_iterator_queue, super_kmers_serializer.get(), bins_global_config.super_kmers_with_overlaps);
 		}, std::move(super_kmer_callback));
 	}
 	void WaitForAll() {

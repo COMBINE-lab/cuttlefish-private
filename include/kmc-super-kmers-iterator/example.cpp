@@ -56,18 +56,24 @@ int main(int argc, char**argv) {
 	size_t size_when_flush = 1000;
 
 	for (size_t tid = 0 ; tid < n_threads ;++tid) {
-		iterate.AddConsumer([&data_len, &my_to_flush = to_flush[tid], size_when_flush, &mtx](const unsigned long long* ptr, size_t super_kmer_len_symbols) {
+		iterate.AddConsumer([&data_len, &my_to_flush = to_flush[tid], size_when_flush, &mtx](const unsigned long long* ptr, size_t super_kmer_len_symbols, bool left_flag, bool right_flag) {
 
 			my_to_flush.emplace_back();
 			std::string& super_kmer = my_to_flush.back();
 			super_kmer.reserve(super_kmer_len_symbols);
 
 			super_kmer_decoder decoder(ptr, super_kmer_len_symbols, data_len);
-			
+
 			decoder.iterate_symbols([&super_kmer](char symb) {
 				super_kmer.push_back(symb);
-			});
-			
+				});
+
+			if (left_flag)
+				super_kmer.push_back('l');
+
+			if (right_flag)
+				super_kmer.push_back('r');
+
 			if (my_to_flush.size() >= size_when_flush) {
 				std::lock_guard<std::mutex> lck(mtx);
 				for (const auto& x : my_to_flush)
