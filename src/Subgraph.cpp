@@ -94,6 +94,8 @@ void Subgraph<k>::compact()
     uint64_t isolated = 0;      // Count of isolated vertices—not part of any edges.
     uint64_t non_isolated = 0;  // Count of non-isolated vertices.
 
+    std::ofstream output(std::string("op." + std::to_string(bin_id) + std::string(".cf3")));
+
     std::string label;
     std::size_t max_label_sz = 0;
     for(const auto& p : M)
@@ -119,9 +121,13 @@ void Subgraph<k>::compact()
 
             label_sz += label.size();
             max_label_sz = std::max(max_label_sz, label.size());
+
+            label += '\n';
+            output.write(label.c_str(), label.size());
         }
     }
 
+    output.close();
 
     assert(vertex_count + isolated == M.size());
 }
