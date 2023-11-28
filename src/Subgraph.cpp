@@ -16,6 +16,7 @@ Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id)
       graph_bin_dir_path(bin_dir_path)
     , bin_id(bin_id)
     , edge_c(0)
+    , label_sz(0)
 {}
 
 
@@ -87,17 +88,42 @@ template <uint16_t k>
 void Subgraph<k>::compact()
 {
     Maximal_Unitig_Scratch<k> maximal_unitig;   // Scratch space to be used to construct maximal unitigs.
-    uint64_t vertex_count = 0;  // Number of vertices processed.
+    uint64_t vertex_count = 0;  // Count of vertices processed.
+    uint64_t unitig_count = 0;  // Count of maximal unitigs.
+    uint64_t max_sz = 0;        // Maximum maximal unitig size.
+    uint64_t isolated = 0;      // Count of isolated vertices—not part of any edges.
+    uint64_t non_isolated = 0;  // Count of non-isolated vertices.
 
+    std::string label;
+    std::size_t max_label_sz = 0;
     for(const auto& p : M)
     {
         const auto& v = p.first;
-        // TODO: extract maximal unitig containing `v`.
+        const auto& v_st = p.second;
+
+        if(v_st.is_isolated())
+        {
+            isolated++;
+            continue;
+        }
+
+        non_isolated++;
+
+
         if(extract_maximal_unitig(v, maximal_unitig))
+        {
             vertex_count += maximal_unitig.size();
+            unitig_count++;
+            max_sz = std::max(max_sz, maximal_unitig.size()),
+            maximal_unitig.get_label(label);
+
+            label_sz += label.size();
+            max_label_sz = std::max(max_label_sz, label.size());
+        }
     }
 
-    assert(vertex_count == M.size());
+
+    assert(vertex_count + isolated == M.size());
 }
 
 
@@ -112,6 +138,13 @@ template <uint16_t k>
 std::size_t Subgraph<k>::edge_count() const
 {
     return edge_c;
+}
+
+
+template <uint16_t k>
+std::size_t Subgraph<k>::label_size() const
+{
+    return label_sz;
 }
 
 }

@@ -267,7 +267,9 @@ inline cuttlefish::side_t Directed_Vertex<k>::entrance_side() const
 template <uint16_t k>
 inline bool Directed_Vertex<k>::is_same_vertex(const Directed_Vertex<k>& v) const
 {
-    return hash() == v.hash();
+    // TODO: revert back w/ correct design.
+    // return hash() == v.hash();
+    return canonical() == v.canonical();
 }
 
 

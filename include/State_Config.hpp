@@ -63,6 +63,10 @@ public:
     // Returns `true` iff some vertex having this state is empty (i.e. no
     // incident edges) at its side `s`.
     bool is_empty_side(side_t s) const;
+
+    // Returns `true` iff some vertex having this state is isolated off the rest
+    // of the underlying graph.
+    bool is_isolated() const;
 };
 
 
@@ -123,6 +127,12 @@ inline bool State_Config::is_empty_side(const side_t s) const
                         (edge_freq[off + 2] >= f_th) + (edge_freq[off + 3] >= f_th);
 
     return edge_c == 0;
+}
+
+
+inline bool State_Config::is_isolated() const
+{
+    return is_empty_side(side_t::back) && is_empty_side(side_t::front);
 }
 
 }

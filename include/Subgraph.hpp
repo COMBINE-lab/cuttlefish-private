@@ -37,6 +37,7 @@ private:
     map_t M;
 
     uint64_t edge_c;    // Number of edges in the graph.
+    uint64_t label_sz;  // Total number of characters in the literal representations of all the maximal unitigs.
 
 
     // Extracts the maximal unitig containing the vertex `v_hat`, and
@@ -72,7 +73,11 @@ public:
     std::size_t size() const;
 
     // Returns the number of (multi-)edges in the graph.
-    std::size_t edge_count() const;
+    uint64_t edge_count() const;
+
+    // Returns the total number of characters in the literal representations of
+    // all the maximal unitigs.
+    uint64_t label_size() const;
 };
 
 
@@ -81,6 +86,8 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
 {
     constexpr auto back = side_t::back;
     constexpr auto front = side_t::front;
+
+    assert(M.find(v_hat) != M.end());
 
     const auto& state = M[v_hat];
     if(state.is_visited())  // The containing maximal unitig has already been outputted.
@@ -112,7 +119,7 @@ inline void Subgraph<k>::walk_unitig(const Kmer<k>& v_hat, const State_Config& s
 
     while(true)
     {
-        M[v_hat].mark_visited();
+        M[v.canonical()].mark_visited();
 
         b_ext = state.edge_at(s_v);
         if(b_ext == base_t::N)  // Reached an endpoint.
@@ -122,11 +129,13 @@ inline void Subgraph<k>::walk_unitig(const Kmer<k>& v_hat, const State_Config& s
             b_ext = DNA_Utility::complement(b_ext);
 
         v.roll_forward(b_ext);  // Walk to the next vertex.
-
         assert(M.find(v.canonical()) != M.end());
         state = M[v.canonical()];
-        s_v = v.entrance_side();
 
+        if(state.is_visited())  // Hit a looping edge—visiting the immediate predecessor vertex.
+            break;
+
+        s_v = v.entrance_side();
         assert(!state.is_empty_side(s_v));
         if(state.is_branching_side(s_v))    // Crossed an endpoint and reached a different unitig.
             break;
