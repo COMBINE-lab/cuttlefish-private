@@ -45,7 +45,7 @@ public:
 
     // Returns the unitig scratch `u_b` or `u_f`, based on `s` (see note above
     // class body).
-    Unitig_Scratch<k>& unitig(const cuttlefish::side_t s);
+    constexpr Unitig_Scratch<k>& unitig(const cuttlefish::side_t s);
 
     // Returns the unique ID of the maximal unitig.
     uint64_t id() const;
@@ -55,7 +55,7 @@ public:
     bool is_linear() const;
 
     // Returns the hashes of the vertices of the unitig at side `s`.
-    const std::vector<uint64_t>& unitig_hash(cuttlefish::side_t s) const;
+    constexpr const std::vector<uint64_t>& unitig_hash(cuttlefish::side_t s) const;
 
     // Returns the hashes of the vertices in the maximal unitig in case it's
     // a DCC.
@@ -69,11 +69,11 @@ public:
     const Directed_Vertex<k>& sign_vertex() const;
 
     // Marks the maximal unitig as linear, i.e not a DCC.
-    void mark_linear();
+    constexpr void mark_linear();
 
     // Marks the maximal unitig as a DCC, and signals that the cycle has been
     // extracted in the unitig scratch at side `s`.
-    void mark_cycle(cuttlefish::side_t s);
+    constexpr void mark_cycle(cuttlefish::side_t s);
 
     // Signals the scratch that the unitig pieces `u_b` and `u_f` are in their
     // final forms and will not be modified anymore. So it restructures the
@@ -98,7 +98,7 @@ public:
 
 
 template <uint16_t k>
-inline Unitig_Scratch<k>& Maximal_Unitig_Scratch<k>::unitig(const cuttlefish::side_t s)
+inline constexpr Unitig_Scratch<k>& Maximal_Unitig_Scratch<k>::unitig(const cuttlefish::side_t s)
 {
     return s == cuttlefish::side_t::back ? unitig_back : unitig_front;
 }
@@ -126,14 +126,14 @@ inline uint64_t Maximal_Unitig_Scratch<k>::id() const
 
 
 template <uint16_t k>
-inline void Maximal_Unitig_Scratch<k>::mark_linear()
+inline constexpr void Maximal_Unitig_Scratch<k>::mark_linear()
 {
     cycle = nullptr;
 }
 
 
 template <uint16_t k>
-inline const std::vector<uint64_t>& Maximal_Unitig_Scratch<k>::unitig_hash(const cuttlefish::side_t s) const
+inline constexpr const std::vector<uint64_t>& Maximal_Unitig_Scratch<k>::unitig_hash(const cuttlefish::side_t s) const
 {
     return (s == cuttlefish::side_t::back ? unitig_back.hash() : unitig_front.hash());
 }
@@ -163,7 +163,7 @@ inline const Directed_Vertex<k>& Maximal_Unitig_Scratch<k>::sign_vertex() const
 
 
 template <uint16_t k>
-inline void Maximal_Unitig_Scratch<k>::mark_cycle(const cuttlefish::side_t s)
+inline constexpr void Maximal_Unitig_Scratch<k>::mark_cycle(const cuttlefish::side_t s)
 {
     cycle = &(s == cuttlefish::side_t::back ? unitig_back : unitig_front);
 }
