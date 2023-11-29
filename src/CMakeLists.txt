@@ -53,6 +53,7 @@ set(PROJECT_SRC
         dBG_Contractor.cpp
         Subgraph.cpp
         Unitig_File.cpp
+        Discontinuity_Edge.cpp
         Edge_Matrix.cpp
         Discontinuity_Graph_Contractor.cpp
         Contracted_Graph_Expander.cpp
