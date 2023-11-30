@@ -41,11 +41,11 @@ void Subgraph<k>::construct()
     Directed_Vertex<k> v;
 
     // Extracts and processes each k-mer (vertex) from a given super k-mer
-    // `super_kmer` of length `len`.
+    // `super_kmer` of length `len` bases. `disc_l` and `disc_r` denote whether
+    // the left- and the right-end k-mers are discontinuity vertices or not.
     const auto extract_kmers =
-        [&](const super_kmer_data_t* const super_kmer, const std::size_t len, bool disc_l, bool disc_r)
+        [&](const super_kmer_data_t* const super_kmer, const std::size_t len, const bool disc_l, const bool disc_r)
         {
-            (void)disc_l, (void)disc_r;
             auto const kmc_data = reinterpret_cast<const uint64_t*>(super_kmer);
             v.from_KMC_super_kmer(kmc_data, word_count);
             std::size_t kmer_idx = 0;
@@ -67,11 +67,24 @@ void Subgraph<k>::construct()
                 const auto it = M.find(v.canonical());
                 if(it == M.end())
                     M.emplace(v.canonical(), State_Config());
+                auto& st = M[v.canonical()];
 
-                M[v.canonical()].update_edges(front, back);
+                st.update_edges(front, back);
+                if(kmer_idx == 0 && disc_l)
+                    st.mark_discontinuity();
 
                 if(kmer_idx + k == len)
+                {
+                    if(disc_r)
+                        st.mark_discontinuity();
+
                     break;
+                }
+
+
+                if((kmer_idx > 0 || !disc_l) && (kmer_idx + k < len || !disc_r))
+                    assert(!st.is_discontinuity());
+
 
                 v.roll_forward(succ_base);
                 kmer_idx++;
@@ -124,6 +137,7 @@ void Subgraph<k>::compact()
             max_label_sz = std::max(max_label_sz, label.size());
 
             label += '\n';
+            output.write(">\n", 2);
             output.write(label.c_str(), label.size());
         }
     }
