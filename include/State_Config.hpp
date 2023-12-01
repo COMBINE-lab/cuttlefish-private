@@ -48,6 +48,9 @@ public:
     // Returns whether the associated vertex is visited.
     bool is_visited() const { return status & visited; }
 
+    // Marks the associated vertex as a discontinuity one.
+    void mark_discontinuity() { status |= discontinuity; }
+
     // Marks the associated vertex as visited.
     void mark_visited() { status |= visited; }
 
