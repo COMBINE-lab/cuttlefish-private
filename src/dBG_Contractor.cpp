@@ -1,6 +1,7 @@
 
 #include "dBG_Contractor.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
+#include "Subgraph.hpp"
 #include "Discontinuity_Graph_Contractor.hpp"
 #include "Contracted_Graph_Expander.hpp"
 #include "Unitig_Collator.hpp"
@@ -18,16 +19,15 @@ dBG_Contractor<k>::dBG_Contractor(const std::size_t part_count, const std::size_
     , unitig_bucket_count(unitig_bucket_count)
     , output_path(output_path)
     , work_path(temp_path)
-    , E(part_count, temp_path + std::string("E_"), true)
-    , n_disc_v(E.size() - E.row_size(0) / 2)    // Each separate chain has exactly two ϕ-adjacent edges.
+    , E(part_count, work_path + std::string("E_"), false)
 {
     P_v.reserve(part_count + 1);
-    P_v.emplace_back();
+    P_v.emplace_back(); // No vertex other than the ϕ-vertex belongs to partition 0.
     for(std::size_t j = 1; j <= part_count; ++j)
         P_v.emplace_back(work_path + std::string("P_v_") + std::to_string(j));
 
     P_e.reserve(part_count + 1);
-    P_e.emplace_back();
+    P_e.emplace_back(); // Using edge-partition 0 with edges that do not have any associated lm-tig (i.e. has weight > 1).
     for(std::size_t b = 1; b <= unitig_bucket_count; ++b)
         P_e.emplace_back(work_path + std::string("P_e_") + std::to_string(b));
 }
@@ -44,6 +44,9 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     (void)l, (void)cdbg_path;
     // Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E, work_path, unitig_bucket_count);
     // dgb.generate();
+
+    assert(E.row_size(0) % 2 == 0);
+    n_disc_v = E.size() - E.row_size(0) / 2;    // Each separate chain has exactly two ϕ-adjacent edges.
 
     Discontinuity_Graph_Contractor<k> contractor(E, n_disc_v, P_v, work_path);
     contractor.contract();
