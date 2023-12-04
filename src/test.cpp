@@ -16,6 +16,7 @@
 // #include "Index_Validator.hpp"
 // #include "Minimizer_Iterator.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
+#include "Edge_Matrix.hpp"
 #include "Subgraph.hpp"
 #include "dBG_Contractor.hpp"
 #include "Unitig_File.hpp"
@@ -1161,6 +1162,7 @@ template <uint16_t k>
 void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
 {
     std::cerr << bin_dir << "; " << bin_c << "\n";
+    cuttlefish::Edge_Matrix<k> E(64, ".");
     std::atomic_uint64_t solved = 0;
     std::atomic_uint64_t v_c = 0;
     std::atomic_uint64_t e_c = 0;
@@ -1169,7 +1171,7 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
     parlay::parallel_for(0, bin_c,
         [&](const std::size_t bin_id)
         {
-            cuttlefish::Subgraph<k> G(bin_dir, bin_id);
+            cuttlefish::Subgraph<k> G(bin_dir, bin_id, E);
             G.construct();
             v_c += G.size();
             e_c += G.edge_count();
@@ -1185,7 +1187,7 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
             }
 
 
-            G.compact();
+            G.contract();
             label_sz += G.label_size();
 
             if(++solved % 8 == 0)

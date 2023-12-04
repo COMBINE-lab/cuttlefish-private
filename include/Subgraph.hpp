@@ -11,6 +11,7 @@
 #include "DNA_Utility.hpp"
 #include "Unitig_Scratch.hpp"
 #include "Maximal_Unitig_Scratch.hpp"
+#include "Edge_Matrix.hpp"
 #include "dBG_Utilities.hpp"
 #include "globals.hpp"
 
@@ -39,6 +40,8 @@ private:
     uint64_t edge_c;    // Number of edges in the graph.
     uint64_t label_sz;  // Total number of characters in the literal representations of all the maximal unitigs.
 
+    Edge_Matrix<k>& E;  // Edge-matrix of the discontinuity graph.
+
 
     // Extracts the maximal unitig containing the vertex `v_hat`, and
     // `maximal_unitig` is used as the working scratch for the extraction, i.e.
@@ -56,8 +59,9 @@ private:
 public:
 
     // Constructs a subgraph object for the `bin_id`'th bin in the graph bin
-    // directory `bin_dir_path`.
-    Subgraph(const std::string& bin_dir_path, std::size_t bin_id);
+    // directory `bin_dir_path`. Updates the edge-matrix `E` of the
+    // discontinuity graph with its edges observed from this subgraph.
+    Subgraph(const std::string& bin_dir_path, std::size_t bin_id, Edge_Matrix<k>& E);
 
     Subgraph(const Subgraph&) = delete;
     Subgraph(Subgraph&&) = delete;
@@ -67,7 +71,7 @@ public:
     void construct();
 
     // Builds the compacted graph from the original graph.
-    void compact();
+    void contract();
 
     // Returns the size of the graph.
     std::size_t size() const;

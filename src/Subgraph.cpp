@@ -12,11 +12,12 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id):
+Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id, Edge_Matrix<k>& E):
       graph_bin_dir_path(bin_dir_path)
     , bin_id(bin_id)
     , edge_c(0)
     , label_sz(0)
+    , E(E)
 {}
 
 
@@ -99,7 +100,7 @@ void Subgraph<k>::construct()
 
 
 template <uint16_t k>
-void Subgraph<k>::compact()
+void Subgraph<k>::contract()
 {
     Maximal_Unitig_Scratch<k> maximal_unitig;   // Scratch space to be used to construct maximal unitigs.
     uint64_t vertex_count = 0;  // Count of vertices processed.
