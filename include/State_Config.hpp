@@ -55,8 +55,7 @@ public:
     void mark_visited() { status |= visited; }
 
     // Returns the `Base`-encoding of the edge(s) incident to the side `s` of a
-    // vertex having this state: the unique encoding of the edge if there is
-    // exactly one, otherwise `N`.
+    // vertex having this state.
     base_t edge_at(side_t s) const;
 
     // Returns `true` iff some vertex having this state is branching (i.e. has
@@ -87,6 +86,7 @@ inline void State_Config::update_edges(const base_t front, const base_t back)
     constexpr std::size_t back_off = 4;
     constexpr auto N = base_t::N;
     constexpr auto T = base_t::T;
+    (void)T;
 
     assert(front == N || front <= T);
     if(front != N && edge_freq[front] < max_f)
@@ -104,12 +104,20 @@ inline base_t State_Config::edge_at(const side_t s) const
     const auto edge_c = (edge_freq[off + 0] >= f_th) + (edge_freq[off + 1] >= f_th) +
                         (edge_freq[off + 2] >= f_th) + (edge_freq[off + 3] >= f_th);
 
-    constexpr auto N = base_t::N;
-    return edge_c != 1 ?    N :
-                            static_cast<base_t>(((edge_freq[off + 0] >= f_th) * base_t::A) +
-                                                ((edge_freq[off + 1] >= f_th) * base_t::C) +
-                                                ((edge_freq[off + 2] >= f_th) * base_t::G) +
-                                                ((edge_freq[off + 3] >= f_th) * base_t::T));
+    switch(edge_c)
+    {
+        case 0:
+            return base_t::E;
+
+        case 1:
+            return static_cast<base_t>( ((edge_freq[off + 0] >= f_th) * base_t::A) +
+                                        ((edge_freq[off + 1] >= f_th) * base_t::C) +
+                                        ((edge_freq[off + 2] >= f_th) * base_t::G) +
+                                        ((edge_freq[off + 3] >= f_th) * base_t::T));
+
+        default:
+            return base_t::N;
+    }
 }
 
 
