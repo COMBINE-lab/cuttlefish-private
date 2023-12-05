@@ -491,6 +491,9 @@ inline void Kmer<k>::as_reverse_complement(const Kmer<k>& other)
     rev_compl[packed_byte_count] = 0;
     left_shift<rem_base_count>();
 
+    // TODO: Optimize the following by direct lookups of complements—`rem_base_count` can only be
+    // 1—3 (and may not even be 2 if we never reverse-complement edges).
+
     for(int i = 0; i < rem_base_count; ++i)
         rev_compl[0] |= (DNA_Utility::complement(DNA::Base((data[packed_byte_count] & (0b11 << (2 * i))) >> (2 * i)))
                                         << (2 * (rem_base_count - 1 - i)));
@@ -720,6 +723,8 @@ inline void Kmer<k>::get_label(T_container_& label) const
     label.resize(k);
 
     constexpr uint16_t packed_word_count = k / 32;
+
+    // TODO: optimize away the base-wise iteration—can be quite costly. Consider per-byte `memcpy` from pre-built labels.
 
     // Get the fully packed words' representations.
     for(uint16_t data_idx = 0; data_idx < packed_word_count; ++data_idx)
