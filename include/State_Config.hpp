@@ -30,8 +30,9 @@ private:
     uint8_t status;             // Some status information of the vertex, bit-packed:
                                     // whether it is a discontinuity vertex, whether it's been visited.
 
-    static constexpr uint8_t discontinuity  = 0b0000'0001;  // Flag to denote a vertex as a discontinuity one.
-    static constexpr uint8_t visited        = 0b0000'0010;  // Flag to denote a vertex as visited.
+    static constexpr uint8_t visited = 0b0000'0001; // Flag to denote a vertex as visited.
+    static constexpr uint8_t discontinuity[2] = {0b0000'0010, 0b0000'0100}; // Flags to denote a vertex's sides as discontinuous.
+
 
 public:
 
@@ -42,17 +43,20 @@ public:
     // corresponding vertex.
     void update_edges(base_t front, base_t back);
 
-    // Returns whether the associated vertex is a discontinuity.
-    bool is_discontinuity() const { return status & discontinuity; }
+    // Marks the associated vertex as visited.
+    void mark_visited() { status |= visited; }
+
+    // Marks the side `s` of the associated vertex as discontinuous.
+    void mark_discontinuous(side_t s);
 
     // Returns whether the associated vertex is visited.
     bool is_visited() const { return status & visited; }
 
-    // Marks the associated vertex as a discontinuity one.
-    void mark_discontinuity() { status |= discontinuity; }
+    // Returns whether the side `s` of the associated vertex is discontinuous.
+    bool is_discontinuous(const side_t s) const;
 
-    // Marks the associated vertex as visited.
-    void mark_visited() { status |= visited; }
+    // Returns whether the associated vertex has any discontinuous side.
+    bool is_discontinuity() const { return is_discontinuous(side_t::front) | is_discontinuous(side_t::back); }
 
     // Returns the `Base`-encoding of the edge(s) incident to the side `s` of a
     // vertex having this state.
@@ -95,6 +99,20 @@ inline void State_Config::update_edges(const base_t front, const base_t back)
     assert(back == N || back <= T);
     if(back != N && edge_freq[back_off + back] < max_f)
         edge_freq[back_off + back]++;
+}
+
+
+inline void State_Config::mark_discontinuous(const side_t s)
+{
+    assert(static_cast<std::size_t>(s) < 2);
+    status |= discontinuity[static_cast<std::size_t>(s)];
+}
+
+
+inline bool State_Config::is_discontinuous(const side_t s) const
+{
+    assert(static_cast<std::size_t>(s) < 2);
+    return status & discontinuity[static_cast<std::size_t>(s)];
 }
 
 

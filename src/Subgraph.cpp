@@ -57,12 +57,12 @@ void Subgraph<k>::construct()
                 // output << ">" << kmer_idx << "\n" << v.kmer() << "\n";
 
                 const auto is_canonical = v.in_canonical_form();
-                const auto pred_base = (kmer_idx == 0 ? DNA::Base::N : get_base(kmc_data, kmer_idx - 1));
-                const auto succ_base = (kmer_idx + k == len ? DNA::Base::N : get_base(kmc_data, kmer_idx + k));
+                const auto pred_base = (kmer_idx == 0 ? base_t::N : get_base(kmc_data, kmer_idx - 1));
+                const auto succ_base = (kmer_idx + k == len ? base_t::N : get_base(kmc_data, kmer_idx + k));
                 const auto front = (is_canonical ? pred_base : DNA_Utility::complement(succ_base));
                 const auto back  = (is_canonical ? succ_base : DNA_Utility::complement(pred_base));
 
-                edge_c += (succ_base != DNA::Base::N);
+                edge_c += (succ_base != base_t::N);
 
                 // Update hash table with the neighborhood info.
                 const auto it = M.find(v.canonical());
@@ -72,12 +72,12 @@ void Subgraph<k>::construct()
 
                 st.update_edges(front, back);
                 if(kmer_idx == 0 && disc_l)
-                    st.mark_discontinuity();
+                    st.mark_discontinuous(v.entrance_side());
 
                 if(kmer_idx + k == len)
                 {
                     if(disc_r)
-                        st.mark_discontinuity();
+                        st.mark_discontinuous(v.exit_side());
 
                     break;
                 }
