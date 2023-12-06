@@ -39,6 +39,7 @@ private:
 
     uint64_t edge_c;    // Number of edges in the graph.
     uint64_t label_sz;  // Total number of characters in the literal representations of all the maximal unitigs.
+    uint64_t isolated;  // Count of isolated vertices—not part of any edge.
 
     Edge_Matrix<k>& E;  // Edge-matrix of the discontinuity graph.
 
@@ -75,6 +76,9 @@ public:
 
     // Returns the size of the graph.
     std::size_t size() const;
+
+    // Returns the count of isolated vertices—not part of any edge.
+    uint64_t isolated_vertex_count() const;
 
     // Returns the number of (multi-)edges in the graph.
     uint64_t edge_count() const;

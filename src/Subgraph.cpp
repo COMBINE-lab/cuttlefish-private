@@ -17,6 +17,7 @@ Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id,
     , bin_id(bin_id)
     , edge_c(0)
     , label_sz(0)
+    , isolated(0)
     , E(E)
 {}
 
@@ -106,7 +107,6 @@ void Subgraph<k>::contract()
     uint64_t vertex_count = 0;  // Count of vertices processed.
     uint64_t unitig_count = 0;  // Count of maximal unitigs.
     uint64_t max_sz = 0;        // Maximum maximal unitig size.
-    uint64_t isolated = 0;      // Count of isolated vertices—not part of any edges.
     uint64_t non_isolated = 0;  // Count of non-isolated vertices.
 
     std::ofstream output(std::string("op." + std::to_string(bin_id) + std::string(".cf3")));
@@ -157,16 +157,23 @@ std::size_t Subgraph<k>::size() const
 
 
 template <uint16_t k>
-std::size_t Subgraph<k>::edge_count() const
+uint64_t Subgraph<k>::edge_count() const
 {
     return edge_c;
 }
 
 
 template <uint16_t k>
-std::size_t Subgraph<k>::label_size() const
+uint64_t Subgraph<k>::label_size() const
 {
     return label_sz;
+}
+
+
+template <uint16_t k>
+uint64_t Subgraph<k>::isolated_vertex_count() const
+{
+    return isolated;
 }
 
 }

@@ -1165,6 +1165,7 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
     cuttlefish::Edge_Matrix<k> E(64, ".");
     std::atomic_uint64_t solved = 0;
     std::atomic_uint64_t v_c = 0;
+    std::atomic_uint64_t isolated = 0;
     std::atomic_uint64_t e_c = 0;
     std::atomic_uint64_t max_graph_sz = 0;
     std::atomic_uint64_t label_sz = 0;
@@ -1188,6 +1189,7 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
 
 
             G.contract();
+            isolated += G.isolated_vertex_count();
             label_sz += G.label_size();
 
             if(++solved % 8 == 0)
