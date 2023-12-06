@@ -17,6 +17,7 @@ Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id,
     , bin_id(bin_id)
     , edge_c(0)
     , label_sz(0)
+    , disc_edge_c(0)
     , isolated(0)
     , E(E)
 {}
@@ -160,6 +161,13 @@ template <uint16_t k>
 uint64_t Subgraph<k>::edge_count() const
 {
     return edge_c;
+}
+
+
+template <uint16_t k>
+uint64_t Subgraph<k>::discontinuity_edge_count() const
+{
+    return disc_edge_c;
 }
 
 

@@ -46,13 +46,13 @@ public:
     // Marks the associated vertex as visited.
     void mark_visited() { status |= visited; }
 
-    // Marks the side `s` of the associated vertex as discontinuous.
+    // Marks the associated vertex as discontinuous at side `s`.
     void mark_discontinuous(side_t s);
 
     // Returns whether the associated vertex is visited.
     bool is_visited() const { return status & visited; }
 
-    // Returns whether the side `s` of the associated vertex is discontinuous.
+    // Returns whether the associated vertex is discontinuous at side `s`.
     bool is_discontinuous(const side_t s) const;
 
     // Returns whether the associated vertex has any discontinuous side.
