@@ -88,16 +88,16 @@ inline void State_Config::update_edges(const base_t front, const base_t back)
 {
     constexpr uint8_t max_f = (1lu << CHAR_BIT) - 1;    // Maximum supported frequency of a (k + 1)-mer.
     constexpr std::size_t back_off = 4;
-    constexpr auto N = base_t::N;
+    constexpr auto E = base_t::E;
     constexpr auto T = base_t::T;
     (void)T;
 
-    assert(front == N || front <= T);
-    if(front != N && edge_freq[front] < max_f)
+    assert(front == E || front <= T);
+    if(front != E && edge_freq[front] < max_f)
         edge_freq[front]++;
 
-    assert(back == N || back <= T);
-    if(back != N && edge_freq[back_off + back] < max_f)
+    assert(back == E || back <= T);
+    if(back != E && edge_freq[back_off + back] < max_f)
         edge_freq[back_off + back]++;
 }
 
