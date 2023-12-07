@@ -19,8 +19,9 @@
 // capacity of `CAPACITY` (although it is non-binding when a string with length 
 // larger than that is added), and it flushes to a sink of type `T_sink_` when it
 // overflows or is destructed. Writing to the provided sink (in the constructor)
-// is thread-safe.
-template <std::size_t CAPACITY, typename T_sink_>
+// is thread-safe. By default, `CAPACITY = 100 KB` (soft limit) worth of characters
+// can be retained in memory, at most, before flushing.
+template <typename T_sink_, std::size_t CAPACITY = 100 * 1024ULL>
 class Character_Buffer
 {
 private:
@@ -90,7 +91,7 @@ class Character_Buffer_Flusher
 template <>
 class Character_Buffer_Flusher<std::ofstream>
 {
-    template <std::size_t, typename> friend class Character_Buffer;
+    template <typename, std::size_t> friend class Character_Buffer;
 
 private:
 
@@ -108,7 +109,7 @@ private:
 template <>
 class Character_Buffer_Flusher<Async_Logger_Wrapper>
 {
-    template <std::size_t, typename> friend class Character_Buffer;
+    template <typename, std::size_t> friend class Character_Buffer;
 
 private:
 
@@ -120,17 +121,17 @@ private:
 };
 
 
-template <std::size_t CAPACITY, typename T_sink_>
-inline Character_Buffer<CAPACITY, T_sink_>::Character_Buffer(T_sink_& sink):
+template <typename T_sink_, std::size_t CAPACITY>
+inline Character_Buffer<T_sink_, CAPACITY>::Character_Buffer(T_sink_& sink):
     sink(sink)
 {
     buffer.reserve(CAPACITY);
 }
 
 
-template <std::size_t CAPACITY, typename T_sink_>
+template <typename T_sink_, std::size_t CAPACITY>
 template <typename T_container_>
-inline void Character_Buffer<CAPACITY, T_sink_>::operator+=(const T_container_& str)
+inline void Character_Buffer<T_sink_, CAPACITY>::operator+=(const T_container_& str)
 {
     ensure_space(str.size());
 
@@ -139,9 +140,9 @@ inline void Character_Buffer<CAPACITY, T_sink_>::operator+=(const T_container_& 
 }
 
 
-template <std::size_t CAPACITY, typename T_sink_>
+template <typename T_sink_, std::size_t CAPACITY>
 template <typename T_container_>
-inline void Character_Buffer<CAPACITY, T_sink_>::operator+=(const FASTA_Record<T_container_>& fasta_rec)
+inline void Character_Buffer<T_sink_, CAPACITY>::operator+=(const FASTA_Record<T_container_>& fasta_rec)
 {
     ensure_space(fasta_rec.header_size() + 1 + fasta_rec.seq_size() + 1);   // Two extra bytes for the line-breaks.
 
@@ -152,9 +153,9 @@ inline void Character_Buffer<CAPACITY, T_sink_>::operator+=(const FASTA_Record<T
 }
 
 
-template <std::size_t CAPACITY, typename T_sink_>
+template <typename T_sink_, std::size_t CAPACITY>
 template <uint16_t k, typename T_container_>
-inline void Character_Buffer<CAPACITY, T_sink_>::rotate_append_cycle(const FASTA_Record<T_container_>& fasta_rec, const std::size_t pivot)
+inline void Character_Buffer<T_sink_, CAPACITY>::rotate_append_cycle(const FASTA_Record<T_container_>& fasta_rec, const std::size_t pivot)
 {
     ensure_space(fasta_rec.header_size() + 1 + fasta_rec.seq_size() + 1);   // Two extra bytes for two line-breaks.
 
@@ -165,15 +166,15 @@ inline void Character_Buffer<CAPACITY, T_sink_>::rotate_append_cycle(const FASTA
 }
 
 
-template <std::size_t CAPACITY, typename T_sink_>
-inline const char* Character_Buffer<CAPACITY, T_sink_>::suffix(const std::size_t len) const
+template <typename T_sink_, std::size_t CAPACITY>
+inline const char* Character_Buffer<T_sink_, CAPACITY>::suffix(const std::size_t len) const
 {
     return buffer.data() + (buffer.size() - len);
 }
 
 
-template <std::size_t CAPACITY, typename T_sink_>
-inline void Character_Buffer<CAPACITY, T_sink_>::ensure_space(const std::size_t append_size)
+template <typename T_sink_, std::size_t CAPACITY>
+inline void Character_Buffer<T_sink_, CAPACITY>::ensure_space(const std::size_t append_size)
 {
     if(buffer.size() + append_size >= CAPACITY) // Using `>=` since for async logging, a `\0` is inserted at the end of `buffer`.
     {
@@ -191,8 +192,8 @@ inline void Character_Buffer<CAPACITY, T_sink_>::ensure_space(const std::size_t 
 }
 
 
-template <std::size_t CAPACITY, typename T_sink_>
-inline void Character_Buffer<CAPACITY, T_sink_>::flush()
+template <typename T_sink_, std::size_t CAPACITY>
+inline void Character_Buffer<T_sink_, CAPACITY>::flush()
 {
     Character_Buffer_Flusher<T_sink_>::write(buffer, sink);
 
@@ -200,8 +201,8 @@ inline void Character_Buffer<CAPACITY, T_sink_>::flush()
 }
 
 
-template <std::size_t CAPACITY, typename T_sink_>
-inline Character_Buffer<CAPACITY, T_sink_>::~Character_Buffer()
+template <typename T_sink_, std::size_t CAPACITY>
+inline Character_Buffer<T_sink_, CAPACITY>::~Character_Buffer()
 {
     if(!buffer.empty())
         flush();

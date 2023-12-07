@@ -91,7 +91,7 @@ void Read_CdBG_Extractor<k>::process_vertices(Kmer_SPMC_Iterator<k>* const verte
     Unipaths_Meta_info<k> extracted_unipaths_info;  // Meta-information over the maximal unitigs extracted by this thread.
     uint64_t progress = 0;  // Number of vertices scanned by the thread; is reset at reaching 1% of its approximate workload.
 
-    Character_Buffer<BUFF_SZ, sink_t> output_buffer(output_sink.sink());  // The output buffer for maximal unitigs.
+    Character_Buffer<sink_t> output_buffer(output_sink.sink());  // The output buffer for maximal unitigs.
 
     const char* unitig_seq; // Location of maximal unitigs within the output buffer.
     std::size_t seq_len;    // Length of the literal sequences of the maximal unitigs.
