@@ -45,7 +45,7 @@ private:
     Output_Sink<sink_t> output_sink;    // Sink for the output maximal unitigs.
 
     // TODO: give these limits more thoughts, especially their exact impact on the memory usage.
-    static constexpr std::size_t BUFF_SZ = 100 * 1024ULL;   // 100 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory, at most, before flushing.
+    // static constexpr std::size_t BUFF_SZ = 100 * 1024ULL;   // 100 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory, at most, before flushing.
 
     mutable uint64_t vertices_scanned = 0;    // Total number of vertices scanned from the database.
     mutable Spin_Lock lock; // Mutual exclusion lock to access various unique resources by threads spawned off this class' methods.

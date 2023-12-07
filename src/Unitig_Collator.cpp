@@ -187,8 +187,7 @@ void Unitig_Collator<k>::reduce()
     // TODO: add per-worker progress tracker.
 
     // 100 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory per worker, at most, before flushes.
-    constexpr std::size_t BUFF_SZ = 100 * 1024ULL;
-    typedef Character_Buffer<BUFF_SZ, sink_t> op_buf_t;
+    typedef Character_Buffer<sink_t> op_buf_t;
     std::vector<Padded_Data<op_buf_t>> output_buf(parlay::num_workers(), Padded_Data(op_buf_t(output_sink.sink())));    // Worker-specific output buffers.
 
 
