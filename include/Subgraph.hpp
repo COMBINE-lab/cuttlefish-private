@@ -13,6 +13,8 @@
 #include "Maximal_Unitig_Scratch.hpp"
 #include "Edge_Matrix.hpp"
 #include "dBG_Utilities.hpp"
+#include "Character_Buffer.hpp"
+#include "Async_Logger_Wrapper.hpp"
 #include "globals.hpp"
 
 #include <cstdint>
@@ -45,6 +47,13 @@ private:
     Edge_Matrix<k>& E;  // Edge-matrix of the discontinuity graph.
 
 
+    // TODO: move the following out to a central location.
+
+    typedef Async_Logger_Wrapper sink_t;
+    typedef Character_Buffer<sink_t> op_buf_t;
+    op_buf_t& op_buf;   // Output buffer for trivially maximal unitigs of the underlying dBG.
+
+
     // Extracts the maximal unitig containing the vertex `v_hat`, and
     // `maximal_unitig` is used as the working scratch for the extraction, i.e.
     // to build and store two unitigs connecting to the two sides of `v_hat`.
@@ -64,8 +73,9 @@ public:
 
     // Constructs a subgraph object for the `bin_id`'th bin in the graph bin
     // directory `bin_dir_path`. Updates the edge-matrix `E` of the
-    // discontinuity graph with its edges observed from this subgraph.
-    Subgraph(const std::string& bin_dir_path, std::size_t bin_id, Edge_Matrix<k>& E);
+    // discontinuity graph with its edges observed from this subgraph, and
+    // writes trivially maximal unitigs to `op_buf`.
+    Subgraph(const std::string& bin_dir_path, std::size_t bin_id, Edge_Matrix<k>& E, op_buf_t& op_buf);
 
     Subgraph(const Subgraph&) = delete;
     Subgraph(Subgraph&&) = delete;

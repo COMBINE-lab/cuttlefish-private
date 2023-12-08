@@ -69,6 +69,9 @@ public:
     // Returns the `len`-length suffix of the buffer.
     const char* suffix(std::size_t len) const;
 
+    // Flushes the buffer if not empty.
+    void close();
+
     // Destructs the buffer object, flushing it if content are present.
     ~Character_Buffer();
 };
@@ -202,10 +205,17 @@ inline void Character_Buffer<T_sink_, CAPACITY>::flush()
 
 
 template <typename T_sink_, std::size_t CAPACITY>
-inline Character_Buffer<T_sink_, CAPACITY>::~Character_Buffer()
+inline void Character_Buffer<T_sink_, CAPACITY>::close()
 {
     if(!buffer.empty())
         flush();
+}
+
+
+template <typename T_sink_, std::size_t CAPACITY>
+inline Character_Buffer<T_sink_, CAPACITY>::~Character_Buffer()
+{
+    close();
 }
 
 

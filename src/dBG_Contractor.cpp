@@ -6,6 +6,8 @@
 #include "Contracted_Graph_Expander.hpp"
 #include "Unitig_Collator.hpp"
 #include "globals.hpp"
+#include "utility.hpp"
+#include "parlay/parallel.h"
 
 #include <chrono>
 
@@ -20,6 +22,7 @@ dBG_Contractor<k>::dBG_Contractor(const std::size_t part_count, const std::size_
     , output_path(output_path)
     , work_path(temp_path)
     , E(part_count, work_path + std::string("E_"), false)
+    , op_buf(parlay::num_workers(), op_buf_t(output_sink.sink()))
 {
     P_v.reserve(part_count + 1);
     P_v.emplace_back(); // No vertex other than the ϕ-vertex belongs to partition 0.
@@ -40,6 +43,12 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     constexpr auto now = std::chrono::high_resolution_clock::now;
     constexpr auto duration = [](const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
     const auto t_s = now();
+
+
+    // Clear the output file and initialize the output sink.
+    clear_file(output_path);
+    output_sink.init_sink(output_path);
+
 
     (void)l, (void)cdbg_path;
     // Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E, work_path, unitig_bucket_count);
@@ -62,6 +71,11 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
 
     Unitig_Collator<k> collator(P_e, output_path, work_path);
     collator.collate();
+
+    // Flush data and close the output sink.
+    parlay::parallel_for(0, parlay::num_workers(),
+                        [&](const std::size_t idx){ op_buf[idx].data().close(); }, 1);
+    output_sink.close_sink();
 
     const auto t_uc = now();
     std::cerr << "Unitigs-collation completed. Time taken: " << duration(t_uc - t_e) << " seconds.\n";

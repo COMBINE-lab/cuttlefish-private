@@ -1161,6 +1161,14 @@ void benchmark_hash_table(std::size_t elem_count, double load_factor = 0.8)
 template <uint16_t k>
 void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
 {
+    typedef Async_Logger_Wrapper sink_t;
+    Output_Sink<sink_t> output_sink;
+    output_sink.init_sink("output.cf3");
+
+    // 100 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory per worker, at most, before flushes.
+    typedef Character_Buffer<sink_t> op_buf_t;
+    std::vector<Padded_Data<op_buf_t>> output_buf(parlay::num_workers(), op_buf_t(output_sink.sink())); // Worker-specific output buffers.
+
     std::cerr << bin_dir << "; " << bin_c << "\n";
     cuttlefish::Edge_Matrix<k> E(64, "E_");
     std::atomic_uint64_t solved = 0;
@@ -1173,7 +1181,7 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
     parlay::parallel_for(0, bin_c,
         [&](const std::size_t bin_id)
         {
-            cuttlefish::Subgraph<k> G(bin_dir, bin_id, E);
+            cuttlefish::Subgraph<k> G(bin_dir, bin_id, E, output_buf[parlay::worker_id()].data());
             G.construct();
             v_c += G.size();
             e_c += G.edge_count();
@@ -1201,6 +1209,11 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
     std::cerr << "\n";
 
     E.serialize();
+
+    parlay::parallel_for(0, parlay::num_workers(),
+                        [&](const std::size_t idx){ output_buf[idx].data().close(); }, 1);
+
+    output_sink.close_sink();
 
 
     std::cerr << "Total vertex count: " << v_c << "\n";

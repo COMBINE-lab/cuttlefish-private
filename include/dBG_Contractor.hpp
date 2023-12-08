@@ -7,6 +7,10 @@
 #include "Edge_Matrix.hpp"
 #include "Path_Info.hpp"
 #include "Ext_Mem_Bucket.hpp"
+#include "Async_Logger_Wrapper.hpp"
+#include "Output_Sink.hpp"
+#include "Character_Buffer.hpp"
+#include "utility.hpp"
 #include "globals.hpp"
 
 #include <cstdint>
@@ -38,6 +42,14 @@ private:
 
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>> P_v;    // `P_v[j]` contains path-info for vertices in partition `j`.
     std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>> P_e;  // `P_e[b]` contains path-info for edges induced by unitigs in bucket `b`.
+
+    typedef Async_Logger_Wrapper sink_t;
+    Output_Sink<sink_t> output_sink;    // Sink for the output maximal unitigs.
+
+    // 100 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory per worker, at most, before flushes.
+    typedef Character_Buffer<sink_t> op_buf_t;
+    typedef std::vector<Padded_Data<op_buf_t>> op_buf_list_t;
+    op_buf_list_t op_buf;   // Worker-specific output buffers.
 
 
 public:
