@@ -21,12 +21,12 @@ template <uint16_t k>
 void Subgraphs_Processor<k>::process()
 {
     const auto process_subgraph =
-      [&](const std::size_t bin_id)
-      {
-          Subgraph<k> G(bin_path_pref, bin_id, E, op_buf[parlay::worker_id()].data());
-          G.construct();
-          G.contract();
-      };
+        [&](const std::size_t bin_id)
+        {
+            Subgraph<k> G(bin_path_pref, bin_id, E, op_buf[parlay::worker_id()].data());
+            G.construct();
+            G.contract();
+        };
 
     parlay::parallel_for(0, bin_count, process_subgraph);
 }

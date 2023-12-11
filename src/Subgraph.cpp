@@ -41,7 +41,6 @@ void Subgraph<k>::construct()
             return DNA::Base((super_kmer[word_count - 1 - (idx >> 5)] >> ((31 - (idx & 31)) << 1)) & uint64_t(0b11));
         };
 
-    // std::ofstream output(graph_bin_dir_path + "kmers." + std::to_string(parlay::worker_id()), std::ios::app);
     Directed_Vertex<k> v;
 
     // Extracts and processes each k-mer (vertex) from a given super k-mer
@@ -57,7 +56,6 @@ void Subgraph<k>::construct()
             while(true)
             {
                 assert(kmer_idx + k - 1 < len);
-                // output << ">" << kmer_idx << "\n" << v.kmer() << "\n";
 
                 const auto is_canonical = v.in_canonical_form();
                 const auto pred_base = (kmer_idx == 0 ? base_t::E : get_base(kmc_data, kmer_idx - 1));
@@ -111,7 +109,7 @@ void Subgraph<k>::contract()
     uint64_t max_sz = 0;        // Maximum maximal unitig size.
     uint64_t non_isolated = 0;  // Count of non-isolated vertices.
 
-    std::ofstream output(std::string("op." + std::to_string(bin_id) + std::string(".cf3")));
+    // std::ofstream output(std::string("op." + std::to_string(bin_id) + std::string(".cf3")));
 
     std::string label;
     std::size_t max_label_sz = 0;
@@ -134,18 +132,18 @@ void Subgraph<k>::contract()
             vertex_count += maximal_unitig.size();
             unitig_count++;
             max_sz = std::max(max_sz, maximal_unitig.size()),
-            maximal_unitig.get_label(label);
+            maximal_unitig.get_label(label);    // TODO: remove after testing's done.
 
             label_sz += label.size();
             max_label_sz = std::max(max_label_sz, label.size());
 
-            label += '\n';
-            output.write(">\n", 2);
-            output.write(label.c_str(), label.size());
+            // label += '\n';
+            // output.write(">\n", 2);
+            // output.write(label.c_str(), label.size());
         }
     }
 
-    output.close();
+    // output.close();
 
     assert(vertex_count + isolated == M.size());
 }
