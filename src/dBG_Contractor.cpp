@@ -1,7 +1,7 @@
 
 #include "dBG_Contractor.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
-#include "Subgraph.hpp"
+#include "Subgraphs_Processor.hpp"
 #include "Discontinuity_Graph_Contractor.hpp"
 #include "Contracted_Graph_Expander.hpp"
 #include "Unitig_Collator.hpp"
@@ -16,8 +16,9 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-dBG_Contractor<k>::dBG_Contractor(const std::size_t part_count, const std::size_t unitig_bucket_count, const std::string& output_path, const std::string& temp_path):
-      part_count(part_count)
+dBG_Contractor<k>::dBG_Contractor(const std::size_t subgraph_count, const std::size_t part_count, const std::size_t unitig_bucket_count, const std::string& output_path, const std::string& temp_path):
+      subgraph_count(subgraph_count)
+    , part_count(part_count)
     , unitig_bucket_count(unitig_bucket_count)
     , output_path(output_path)
     , work_path(temp_path)
@@ -53,6 +54,9 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     (void)l, (void)cdbg_path;
     // Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E, work_path, unitig_bucket_count);
     // dgb.generate();
+
+    Subgraphs_Processor<k> subgraphs(work_path, subgraph_count, E, op_buf);
+    subgraphs.process();
 
     assert(E.row_size(0) % 2 == 0);
     n_disc_v = E.size() - E.row_size(0) / 2;    // Each separate chain has exactly two ϕ-adjacent edges.
