@@ -81,6 +81,13 @@ public:
     // unique ID.
     void finalize();
 
+    // Signals the scratch that the unitig pieces `u_b` and `u_f` are in their
+    // final forms and will not be modified anymore. Restructures the unitig
+    // pieces such that the label `\bar(u_f) \glue_k u_b` of the maximal
+    // unitig can be obtained (may or may not be canonical), and sets its unique
+    // ID.
+    void finalize_weak();
+
     // Returns `true` iff the maximal unitig has been marked as a cycle.
     bool is_cycle() const;
 
@@ -187,6 +194,17 @@ inline void Maximal_Unitig_Scratch<k>::finalize()
         if(!cycle->min_vertex().in_canonical_form())
             cycle->reverse_complement();
     }
+}
+
+
+template <uint16_t k>
+inline void Maximal_Unitig_Scratch<k>::finalize_weak()
+{
+    if(is_linear())
+        id_ = unitig_front.endpoint().hash(),
+        unitig_front.reverse_complement();
+    else
+        id_ = cycle->min_vertex().hash();
 }
 
 

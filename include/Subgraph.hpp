@@ -132,16 +132,21 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
     else
         exit_l = walk_unitig(v_hat, state, front, maximal_unitig.unitig(front), v_l);
 
-    maximal_unitig.finalize();  // TODO: skip possible reverse-complementing here; rather output verbatim.
-
-    if(exit_l || exit_r)
+    if(exit_l || exit_r)    // The maximal unitig containing `v_hat` spans multiple subgraphs.
     {
+        maximal_unitig.finalize_weak();
+
         E.add(  exit_l ? v_l.canonical() : Discontinuity_Edge<k>::phi(), exit_l ? v_l.entrance_side() : side_t::back,
                 exit_r ? v_r.canonical() : Discontinuity_Edge<k>::phi(), exit_r ? v_r.entrance_side() : side_t::back,
                 1, 0, 0,    // TODO: set unitig bucket and index.
                 !exit_l, !exit_r);
 
         disc_edge_c++;
+    }
+    else    // Extracted a trivially maximal unitig.
+    {
+        maximal_unitig.finalize();
+        maximal_unitig.add_fasta_rec_to_buffer(op_buf);
     }
 
     return true;
