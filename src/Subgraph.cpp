@@ -12,7 +12,7 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id, Edge_Matrix<k>& E, op_buf_t& op_buf):
+Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id, Edge_Matrix<k>& E, Unitig_Write_Distributor& lmtigs, op_buf_t& op_buf):
       graph_bin_dir_path(bin_dir_path)
     , bin_id(bin_id)
     , edge_c(0)
@@ -20,6 +20,7 @@ Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id,
     , disc_edge_c(0)
     , isolated(0)
     , E(E)
+    , lmtigs(lmtigs)
     , op_buf(op_buf)
 {}
 

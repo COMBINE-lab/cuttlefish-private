@@ -55,7 +55,7 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     // Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E, work_path, unitig_bucket_count);
     // dgb.generate();
 
-    Subgraphs_Processor<k> subgraphs(work_path, subgraph_count, E, op_buf);
+    Subgraphs_Processor<k> subgraphs(work_path, subgraph_count, 1024, E, op_buf);
     subgraphs.process();
 
     assert(E.row_size(0) % 2 == 0);

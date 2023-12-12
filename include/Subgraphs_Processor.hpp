@@ -26,8 +26,12 @@ class Subgraphs_Processor
 {
 private:
 
-    const std::string& bin_path_pref;   // Path-prefix to the KMC bins.
+    const std::string bin_path_pref;    // Path-prefix to the KMC bins.
     const std::size_t bin_count;    // Numer of KMC bins, each one induces a subgraph.
+
+    const std::size_t unitig_bucket_count;  // Number of buckets for unitigs.
+
+    const std::string work_path;    // Path to the working space.
 
     Edge_Matrix<k>& E;  // Edge-matrix of the discontinuity graph.
 
@@ -41,9 +45,10 @@ public:
 
     // Constructs a processor for the subgraphs induced by the `bin_count` KMC
     // bins at path-prefix `bin_path_pref`. Edge-matrix of the discontinuity-
-    // graph is produced at `E`, and worker-specific trivially maximal unitigs
-    // are written to the buffers in `op_buf`.
-    Subgraphs_Processor(const std::string& bin_path_pref, std::size_t bin_count, Edge_Matrix<k>& E, op_buf_list_t& op_buf);
+    // graph is produced at `E`, locally-maximal unitigs are distributed to
+    // `unitig_bucket_count` buckets, and worker-specific trivially maximal
+    // unitigs are written to the buffers in `op_buf`.
+    Subgraphs_Processor(const std::string& bin_path_pref, std::size_t bin_count, std::size_t unitig_bucket_count, Edge_Matrix<k>& E, op_buf_list_t& op_buf);
 
     // Constructs and contracts each subgraph.
     void process();

@@ -13,9 +13,11 @@
 #include "Maximal_Unitig_Scratch.hpp"
 #include "Edge_Matrix.hpp"
 #include "dBG_Utilities.hpp"
+#include "Unitig_File.hpp"
 #include "Character_Buffer.hpp"
 #include "Async_Logger_Wrapper.hpp"
 #include "globals.hpp"
+#include "parlay/parallel.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -46,6 +48,8 @@ private:
 
     Edge_Matrix<k>& E;  // Edge-matrix of the discontinuity graph.
 
+    Unitig_Write_Distributor& lmtigs;   // Distributor for the locally-maximal unitigs to unitig buckets.
+
 
     // TODO: move the following out to a central location.
 
@@ -73,9 +77,10 @@ public:
 
     // Constructs a subgraph object for the `bin_id`'th bin in the graph bin
     // directory `bin_dir_path`. Updates the edge-matrix `E` of the
-    // discontinuity graph with its edges observed from this subgraph, and
-    // writes trivially maximal unitigs to `op_buf`.
-    Subgraph(const std::string& bin_dir_path, std::size_t bin_id, Edge_Matrix<k>& E, op_buf_t& op_buf);
+    // discontinuity graph with its edges observed from this subgraph, writes
+    // the locally-maximal unitigs to unitig buckets using `lmtigs`, and writes
+    // the trivially maximal unitigs to `op_buf`.
+    Subgraph(const std::string& bin_dir_path, std::size_t bin_id, Edge_Matrix<k>& E, Unitig_Write_Distributor& lmtigs, op_buf_t& op_buf);
 
     Subgraph(const Subgraph&) = delete;
     Subgraph(Subgraph&&) = delete;
@@ -136,11 +141,13 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
     {
         maximal_unitig.finalize_weak();
 
+        const auto b_id = lmtigs.file_idx(parlay::worker_id());
         E.add(  exit_l ? v_l.canonical() : Discontinuity_Edge<k>::phi(), exit_l ? v_l.entrance_side() : side_t::back,
                 exit_r ? v_r.canonical() : Discontinuity_Edge<k>::phi(), exit_r ? v_r.entrance_side() : side_t::back,
-                1, 0, 0,    // TODO: set unitig bucket and index.
+                1, b_id, lmtigs.unitig_count(b_id),
                 !exit_l, !exit_r);
 
+        lmtigs.add(parlay::worker_id(), maximal_unitig);
         disc_edge_c++;
     }
     else    // Extracted a trivially maximal unitig.

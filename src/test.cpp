@@ -1161,8 +1161,11 @@ void benchmark_hash_table(std::size_t elem_count, double load_factor = 0.8)
 template <uint16_t k>
 void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
 {
+    cuttlefish::Unitig_Write_Distributor lmtigs(bin_dir + "lmtigs", 1024, parlay::num_workers());
+
     typedef Async_Logger_Wrapper sink_t;
     Output_Sink<sink_t> output_sink;
+    clear_file("output.cf3");
     output_sink.init_sink("output.cf3");
 
     // 100 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory per worker, at most, before flushes.
@@ -1178,10 +1181,12 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
     std::atomic_uint64_t max_graph_sz = 0;
     std::atomic_uint64_t label_sz = 0;
     std::atomic_uint64_t disc_edge_c = 0;
+
+    // cuttlefish::Subgraphs_Processor<k> subgraphs(bin_dir, bin_c, E, output_buf);
     parlay::parallel_for(0, bin_c,
         [&](const std::size_t bin_id)
         {
-            cuttlefish::Subgraph<k> G(bin_dir, bin_id, E, output_buf[parlay::worker_id()].data());
+            cuttlefish::Subgraph<k> G(bin_dir, bin_id, E, lmtigs, output_buf[parlay::worker_id()].data());
             G.construct();
             v_c += G.size();
             e_c += G.edge_count();
@@ -1214,6 +1219,8 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
                         [&](const std::size_t idx){ output_buf[idx].data().close(); }, 1);
 
     output_sink.close_sink();
+
+    lmtigs.close();
 
 
     std::cerr << "Total vertex count: " << v_c << "\n";

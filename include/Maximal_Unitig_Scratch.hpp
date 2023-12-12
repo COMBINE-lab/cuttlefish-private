@@ -45,7 +45,11 @@ public:
 
     // Returns the unitig scratch `u_b` or `u_f`, based on `s` (see note above
     // class body).
-    constexpr Unitig_Scratch<k>& unitig(const cuttlefish::side_t s);
+    constexpr Unitig_Scratch<k>& unitig(cuttlefish::side_t s);
+
+    // Returns the label of the unitig scratch `u_b` or `u_f`, based on `s` (see
+    // note above class body).
+    const std::vector<char>& unitig_label(cuttlefish::side_t s) const;
 
     // Returns the unique ID of the maximal unitig.
     uint64_t id() const;
@@ -108,6 +112,13 @@ template <uint16_t k>
 inline constexpr Unitig_Scratch<k>& Maximal_Unitig_Scratch<k>::unitig(const cuttlefish::side_t s)
 {
     return s == cuttlefish::side_t::back ? unitig_back : unitig_front;
+}
+
+
+template <uint16_t k>
+inline const std::vector<char>& Maximal_Unitig_Scratch<k>::unitig_label(const cuttlefish::side_t s) const
+{
+    return s == cuttlefish::side_t::back ? unitig_back.label() : unitig_front.label();
 }
 
 
