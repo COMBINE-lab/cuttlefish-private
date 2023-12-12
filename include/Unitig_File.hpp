@@ -263,7 +263,7 @@ inline void Unitig_Write_Distributor::add(std::size_t w_id, const Maximal_Unitig
 
     const auto& u_f = maximal_unitig.unitig_label(side_t::front);
     const auto& u_b = maximal_unitig.unitig_label(side_t::back);
-    writer[writer_id].data().add(u_f.cbegin(), u_f.cend(), u_b.cbegin(), u_b.cend());
+    writer[writer_id].data().add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
 }
 
 
