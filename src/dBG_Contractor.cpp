@@ -30,7 +30,7 @@ dBG_Contractor<k>::dBG_Contractor(const std::size_t subgraph_count, const std::s
     for(std::size_t j = 1; j <= part_count; ++j)
         P_v.emplace_back(work_path + std::string("P_v_") + std::to_string(j));
 
-    P_e.reserve(part_count + 1);
+    P_e.reserve(unitig_bucket_count + 1);
     P_e.emplace_back(); // Using edge-partition 0 with edges that do not have any associated lm-tig (i.e. has weight > 1).
     for(std::size_t b = 1; b <= unitig_bucket_count; ++b)
         P_e.emplace_back(work_path + std::string("P_e_") + std::to_string(b));
