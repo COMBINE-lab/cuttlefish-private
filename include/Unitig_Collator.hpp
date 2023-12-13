@@ -76,7 +76,7 @@ public:
     Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& output_path, const std::string& temp_path);
 
     // Collates the locally-maximal unitigs into global ones.
-    void collate();
+    // void collate();
 
     // Collates the locally-maximal unitigs into global ones.
     void par_collate();

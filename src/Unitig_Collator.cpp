@@ -266,6 +266,7 @@ void Unitig_Collator<k>::reduce()
 }
 
 
+/*
 template <uint16_t k>
 void Unitig_Collator<k>::collate()
 {
@@ -403,6 +404,7 @@ void Unitig_Collator<k>::collate()
     std::cerr << "Maximum maximal-unitig size: " << max_sz << "\n";
     std::cerr << "Maximum locally-maximal unitig size: " << max_lmtig_sz << "\n";
 }
+*/
 
 
 template <uint16_t k>

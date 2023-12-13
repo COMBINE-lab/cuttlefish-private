@@ -74,7 +74,7 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     std::cerr << "Expansion of contracted graph completed. Time taken: " << duration(t_e - t_c) << " seconds.\n";
 
     Unitig_Collator<k> collator(P_e, output_path, work_path);
-    collator.collate();
+    collator.par_collate();
 
     // Flush data and close the output sink.
     parlay::parallel_for(0, parlay::num_workers(),
