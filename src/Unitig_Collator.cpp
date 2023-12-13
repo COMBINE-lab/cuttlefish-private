@@ -49,6 +49,7 @@ void Unitig_Collator<k>::par_collate()
 /*
     std::string max_unitig, max_u_rc;
     std::size_t mu_tig = 0;
+    auto& op = op_buf[parlay::worker_id()].data();
     Unitig_File_Reader mu_tig_reader(work_path + std::string("mutig"));
     while(mu_tig_reader.read_next_unitig(max_unitig))
     {
@@ -57,15 +58,11 @@ void Unitig_Collator<k>::par_collate()
         if(max_unitig > max_u_rc)
             max_unitig = max_u_rc;
 
-        // TODO: do better writing.
-        output_sink.sink().write(">0\n");
-        output_sink.sink().write(max_unitig.data());
-        output_sink.sink().write("\n");
+        op += FASTA_Record(0, max_unitig);
 
         mu_tig++;
     }
 
-    output_sink.close_sink();
 */
     // TODO: print meta-information over the maximal unitigs'.
 }
