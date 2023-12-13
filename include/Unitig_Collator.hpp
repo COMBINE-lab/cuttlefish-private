@@ -9,6 +9,7 @@
 #include "Unitig_Coord_Bucket.hpp"
 #include "Output_Sink.hpp"
 #include "Async_Logger_Wrapper.hpp"
+#include "Character_Buffer.hpp"
 #include "globals.hpp"
 
 #include <cstdint>
@@ -32,7 +33,6 @@ private:
 
     const std::vector<Ext_Mem_Bucket<unitig_path_info_t>>& P_e; // `P_e[b]` contains path-info for edges in bucket `b`.
 
-    const std::string output_path;  // Path-prefix to output paths.
     const std::string work_path;    // Path-prefix to temporary working files.
 
     std::size_t max_bucket_sz;  // Maximum size of the locally-maximal unitigs' buckets.
@@ -46,8 +46,12 @@ private:
     // TODO: remove?  This is for the naive-collator.
     unitig_path_info_t* p_e_buf;    // Buffer to read-in path-information of edges.
 
+    // TODO: move the following to some CF3-centralized location.
+
     typedef Async_Logger_Wrapper sink_t;
-    Output_Sink<sink_t> output_sink;    // Sink for the output maximal unitigs.
+    typedef Character_Buffer<sink_t> op_buf_t;
+    typedef std::vector<Padded_Data<op_buf_t>> op_buf_list_t;
+    op_buf_list_t& op_buf;  // Worker-specific output buffers.
 
 
     // Maps each locally-maximal unitig to its maximal unitig's corresponding
@@ -71,9 +75,10 @@ public:
 
     // Constructs a unitig-collator for unitigs with their associated path-info
     // at `P_e`, i.e. `P_e[b]` contains path-information of the unitigs'
-    // corresponding edges at bucket `b`. Output files and temporary files are
-    // stored at path-prefixes `output_path` and`temp_path`, respectively.
-    Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& output_path, const std::string& temp_path);
+    // corresponding edges at bucket `b`. Temporary files are stored at path-
+    // prefix `temp_path`, and worker-specific maximally unitigs are written to
+    // the buffers in `op_buf`.
+    Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path, op_buf_list_t& op_buf);
 
     // Collates the locally-maximal unitigs into global ones.
     // void collate();

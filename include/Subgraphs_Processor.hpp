@@ -35,6 +35,8 @@ private:
 
     Edge_Matrix<k>& E;  // Edge-matrix of the discontinuity graph.
 
+    // TODO: move out the following to some CF3-centralized location.
+
     typedef Async_Logger_Wrapper sink_t;
     typedef Character_Buffer<sink_t> op_buf_t;
     typedef std::vector<Padded_Data<op_buf_t>> op_buf_list_t;

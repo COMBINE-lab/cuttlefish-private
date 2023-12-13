@@ -23,12 +23,12 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& output_path, const std::string& temp_path):
+Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path, op_buf_list_t& op_buf):
       P_e(P_e)
-    , output_path(output_path)
     , work_path(temp_path)
     , M(nullptr)
     , p_e_buf(nullptr)
+    , op_buf(op_buf)
 {
     assert((max_unitig_bucket_count & (max_unitig_bucket_count - 1)) == 0);
 
@@ -36,10 +36,6 @@ Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_In
     std::for_each(P_e.cbegin(), P_e.cend(), [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.size()); });
 
     std::cerr << "Maximum edge-bucket size: " << max_bucket_sz << "\n";
-
-    // Prepare output-logger.
-    remove_file(output_path);
-    output_sink.init_sink(output_path);
 }
 
 
@@ -50,6 +46,7 @@ void Unitig_Collator<k>::par_collate()
 
     reduce();
 
+/*
     std::string max_unitig, max_u_rc;
     std::size_t mu_tig = 0;
     Unitig_File_Reader mu_tig_reader(work_path + std::string("mutig"));
@@ -69,7 +66,7 @@ void Unitig_Collator<k>::par_collate()
     }
 
     output_sink.close_sink();
-
+*/
     // TODO: print meta-information over the maximal unitigs'.
 }
 
@@ -186,18 +183,13 @@ void Unitig_Collator<k>::reduce()
 
     // TODO: add per-worker progress tracker.
 
-    // 100 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory per worker, at most, before flushes.
-    typedef Character_Buffer<sink_t> op_buf_t;
-    std::vector<Padded_Data<op_buf_t>> output_buf(parlay::num_workers(), Padded_Data(op_buf_t(output_sink.sink())));    // Worker-specific output buffers.
-
-
     const auto collate_max_unitig_bucket =
     [&](const std::size_t b)
     {
         const auto w_id = parlay::worker_id();
         auto const U = U_vec[w_id].data();  // Coordinate info of the unitigs.
         auto const L = L_vec[w_id].data();  // Dump-strings of the unitig labels.
-        auto& output = output_buf[w_id].data(); // Output buffer for the maximal unitigs.
+        auto& output = op_buf[w_id].data(); // Output buffer for the maximal unitigs.
 
         const auto b_sz = max_unitig_bucket[b].load_coords(U);
         const auto len = max_unitig_bucket[b].load_labels(L);
