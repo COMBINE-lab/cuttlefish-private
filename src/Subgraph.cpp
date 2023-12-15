@@ -119,7 +119,8 @@ void Subgraph<k>::contract()
         const auto& v = p.first;
         const auto& v_st = p.second;
 
-        if(v_st.is_isolated())
+
+        if(v_st.is_isolated() && !v_st.is_discontinuity())
         {
             isolated++;
             continue;
