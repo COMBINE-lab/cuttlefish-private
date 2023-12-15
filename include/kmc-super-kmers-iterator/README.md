@@ -25,6 +25,9 @@ Below I describe them just for documentation purposes:
 # overlaps of super-k-mers like in ggcat
 To generate super-k-mers with overlaps like in ggact one should add a flag `--super-kmers-with-overlaps` to kmc run.
 
+# overlaps inside the same bin
+If it happens that two consecutive super-k-mers are from the same bin, the overlap will be of (k-1) symbols. This way we avoid overrepresentation of k-mers, but as a consequence not all (k+1)-mers from the original input are represented in super-k-mers.
+To have all (k+1)-mers one may use an additional flag `--inter-bin-k-overlap`. This will of course cause the overrepresentation of some k-mers.
 
 # The API
 The whole API is enclosed in a single class: `IterateSuperKmers` (file `iterate_super_kmers.h`) with the following methods:
