@@ -175,6 +175,7 @@ inline bool Subgraph<k>::walk_unitig(const Kmer<k>& v_hat, const State_Config& s
         M[v.canonical()].mark_visited();
 
         b_ext = state.edge_at(s_v);
+        assert(!state.is_discontinuous(s_v) || b_ext == base_t::E); // If a side is discontinuous, it must be empty.
         if(b_ext == base_t::N)  // Reached a branching endpoint.
             break;
 
