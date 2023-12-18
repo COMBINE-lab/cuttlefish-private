@@ -1265,6 +1265,7 @@ int main(int argc, char** argv)
     static constexpr uint16_t k = 31;
     // static constexpr uint16_t l = 11;
 
+    // const std::size_t subgraph_count = 2000;
     // const std::size_t parts = 64;
     // const std::size_t unitig_buckets = 1024;
     // const std::string cdbg_path(argv[1]);
@@ -1273,7 +1274,7 @@ int main(int argc, char** argv)
 
     // bootstrap_discontinuity_graph<k>(l, cdbg_path, temp_path, parts, unitig_buckets);
 
-    // cuttlefish::dBG_Contractor<k> dbg_contractor(parts, unitig_buckets, output_path, temp_path);
+    // cuttlefish::dBG_Contractor<k> dbg_contractor(subgraph_count, parts, unitig_buckets, output_path, temp_path);
     // dbg_contractor.contract(l, cdbg_path);
     // const std::size_t elem_count = std::atoi(argv[1]);
     // const double lf = 0.75;
