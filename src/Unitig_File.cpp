@@ -39,4 +39,22 @@ Unitig_File_Reader::Unitig_File_Reader(const std::string& file_path):
     , total_sz(0)
 {}
 
+
+Unitig_Write_Distributor::Unitig_Write_Distributor(const std::string& path_pref, const std::size_t writer_count, const std::size_t worker_count):
+      writer_count(writer_count)
+    , worker_count(worker_count)
+    , writer_per_worker((writer_count + worker_count - 1) / worker_count)
+    , next_writer(worker_count, 0)
+{
+    for(std::size_t b = 0; b <= writer_count; ++b)
+        writer.emplace_back(path_pref + "_" + std::to_string(b));
+}
+
+
+void Unitig_Write_Distributor::close()
+{
+    for(auto& w : writer)
+        w.data().close();
+}
+
 }

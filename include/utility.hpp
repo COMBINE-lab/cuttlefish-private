@@ -71,7 +71,7 @@ void force_free(T_container_& container)
 
 // Returns pointer to a memory-allocation for `size` elements of type `T_`.
 template <typename T_>
-static T_* allocate(std::size_t size)
+T_* allocate(std::size_t size)
 {
     return static_cast<T_*>(std::malloc(size * sizeof(T_)));
 }

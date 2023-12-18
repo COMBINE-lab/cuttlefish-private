@@ -23,11 +23,16 @@ private:
 
     Kmer<k> kmer_;  // The observed k-mer for the vertex.
     Kmer<k> kmer_bar_;  // Reverse complement of the k-mer observed for the vertex.
+    // TODO: replace ptr-to-canonical with boolean-based design (and replace the two k-mers with an array).
     const Kmer<k>* kmer_hat_ptr;    // Pointer to the canonical form of the k-mer associated to the vertex.
     uint64_t h; // Hash value of the vertex, i.e. hash of the canonical k-mer.
 
-    // Initialize the data of the class once the observed k-mer `kmer_` is set.
+    // Initializes the data of the class once the observed k-mer `kmer_` is set. Hash-
+    // table `hash` is used to hash the vertex.
     void init(const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash);
+
+    // Initializes the data of the class once the observed k-mer `kmer_` is set.
+    void init();
 
 
 public:
@@ -35,6 +40,9 @@ public:
     // Constructs an empty vertex.
     Directed_Vertex()
     {}
+
+    // Constructs a vertex observed for the k-mer `kmer`.
+    Directed_Vertex(const Kmer<k>& kmer);
 
     // Constructs a vertex observed for the k-mer `kmer`. Gets the hash value of the vertex using
     // the hash table `hash`.
@@ -61,6 +69,10 @@ public:
     // and uses the hash table `hash` to get the hash value of the vertex.
     void from_suffix(const Kmer<k + 1>& e, const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash);
 
+    // Configures the vertex with the first k-mer from a KMC super k-mer's
+    // binary representation `super_kmer` that has `word_count` words.
+    void from_KMC_super_kmer(const uint64_t* super_kmer, std::size_t word_count);
+
     // Returns the observed k-mer for the vertex.
     const Kmer<k>& kmer() const;
 
@@ -72,6 +84,11 @@ public:
 
     // Returns the hash value of the vertex.
     uint64_t hash() const;
+
+    // Transforms this vertex to another by chopping off the first base from the associated
+    // observed k-mer, and appending the nucleobase `b` to the end, i.e. effecitively
+    // rolling the associated k-mer by one base "forward".
+    void roll_forward(cuttlefish::base_t b);
 
     // Transforms this vertex to another by chopping off the first base from the associated
     // observed k-mer, and appending the nucleobase `b` to the end, i.e. effecitively
@@ -98,10 +115,25 @@ public:
 template <uint16_t k>
 inline void Directed_Vertex<k>::init(const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash)
 {
-    kmer_bar_.as_reverse_complement(kmer_);
-    kmer_hat_ptr = Kmer<k>::canonical(kmer_, kmer_bar_);
+    init();
 
     h = hash(*kmer_hat_ptr);
+}
+
+
+template <uint16_t k>
+inline void Directed_Vertex<k>::init()
+{
+    kmer_bar_.as_reverse_complement(kmer_);
+    kmer_hat_ptr = Kmer<k>::canonical(kmer_, kmer_bar_);
+}
+
+
+template <uint16_t k>
+inline Directed_Vertex<k>::Directed_Vertex(const Kmer<k>& kmer):
+    kmer_(kmer)
+{
+    init();
 }
 
 
@@ -166,6 +198,14 @@ inline void Directed_Vertex<k>::from_suffix(const Kmer<k + 1>& e, const Kmer_Has
 
 
 template <uint16_t k>
+inline void Directed_Vertex<k>::from_KMC_super_kmer(const uint64_t* const super_kmer, const std::size_t word_count)
+{
+    kmer_.from_KMC_super_kmer(super_kmer, word_count);
+    init();
+}
+
+
+template <uint16_t k>
 inline const Kmer<k>& Directed_Vertex<k>::kmer() const
 {
     return kmer_;
@@ -194,10 +234,17 @@ inline uint64_t Directed_Vertex<k>::hash() const
 
 
 template <uint16_t k>
-inline void Directed_Vertex<k>::roll_forward(const cuttlefish::base_t b, const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash)
+inline void Directed_Vertex<k>::roll_forward(const cuttlefish::base_t b)
 {
     kmer_.roll_to_next_kmer(b, kmer_bar_);
     kmer_hat_ptr = Kmer<k>::canonical(kmer_, kmer_bar_);
+}
+
+
+template <uint16_t k>
+inline void Directed_Vertex<k>::roll_forward(const cuttlefish::base_t b, const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash)
+{
+    roll_forward(b);
 
     h = hash(*kmer_hat_ptr);
 }
@@ -220,7 +267,9 @@ inline cuttlefish::side_t Directed_Vertex<k>::entrance_side() const
 template <uint16_t k>
 inline bool Directed_Vertex<k>::is_same_vertex(const Directed_Vertex<k>& v) const
 {
-    return hash() == v.hash();
+    // TODO: revert back w/ correct design.
+    // return hash() == v.hash();
+    return canonical() == v.canonical();
 }
 
 

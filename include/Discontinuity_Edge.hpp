@@ -33,7 +33,14 @@ private:
     weight_t weight;    // Weight of the edge.
     uint16_t bucket_id; // ID of the bucket of the unitig corresponding to the edge.
     uni_idx_t b_idx_;   // Index of the corresponding unitig within its bucket.
-    side_t o_;  // Orientation of the corresponding literal unitig wrt the `(u, v)` orientation of the edge.
+    side_t o_;  // Exit-orientation of the corresponding literal unitig wrt the `(u, v)` orientation of the edge.
+
+    // k-mer (super-)label of the ϕ-vertex in the discontinuity graph.  // TODO: revisit; almost sure we don't need this.
+    static constexpr const char phi_label[] =   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+                                                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+                                                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+                                                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
+    static const Kmer<k> phi_;  // ϕ k-mer connected to each chain-end in the discontinuity graph.
 
 
 public:
@@ -45,7 +52,7 @@ public:
     // `v` that connects there sides `s_u` and `s_v` resp. It has weight `w`.
     // The locally-maximal unitig corresponding to this edge is stored in the
     // `b`'th bucket, at index `b_idx`. `u_is_phi` and `v_is_phi` denote whether
-    // `u` and `v` are ϕ, respectively. `o` is the orientation of the
+    // `u` and `v` are ϕ, respectively. `o` is the exit-orientation of the
     // corresponding literal unitig (if any) wrt to the `(u, v)` orientation.
     Discontinuity_Edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, weight_t w, uint16_t b, std::size_t b_idx, bool u_is_phi, bool v_is_phi, side_t o);
 
@@ -94,9 +101,13 @@ public:
     // Returns whether `v` is the ϕ vertex.
     bool y_is_phi() const { return v_is_phi(); }
 
-    // Returns orientation of the corresponding literal unitig wrt the `(u, v)`
-    // orientation of the edge.
+    // Returns exit-orientation of the corresponding literal unitig wrt the
+    // `(u, v)` orientation of the edge.
     side_t o() const { return o_; }
+
+    // Returns the ϕ k-mer connected to each chain-end in the discontinuity
+    // graph.
+    static const Kmer<k>& phi() { return phi_; }
 };
 
 

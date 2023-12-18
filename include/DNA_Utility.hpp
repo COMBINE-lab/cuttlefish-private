@@ -19,6 +19,7 @@ private:
     static constexpr DNA::Base G = DNA::G;
     static constexpr DNA::Base T = DNA::T;
     static constexpr DNA::Base N = DNA::N;
+    static constexpr DNA::Base E = DNA::E;
 
     // Mapped `DNA::Base` for the ASCII characters in the range [0, 127].
     static constexpr DNA::Base MAPPED_BASE[128] =
@@ -39,9 +40,9 @@ private:
     };
 
     // Mapped complement `DNA::Base` for the ASCII characters in the range [0, 127].
-    static constexpr DNA::Base COMPLEMENTED_BASE[5] =
+    static constexpr DNA::Base COMPLEMENTED_BASE[6] =
     {
-        T, G, C, A, N
+        T, G, C, A, N, E
     };
 
     // Mapped ASCII characters for the `DNA::Base` notations.

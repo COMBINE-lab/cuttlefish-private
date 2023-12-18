@@ -108,6 +108,10 @@ public:
     // Gets the k-mer from its KMC raw-binary representation.
     void from_KMC_data(const uint64_t* kmc_data);
 
+    // Gets the first k-mer from a KMC super k-mer's binary representation
+    // `super_kmer` that has `word_count` words.
+    void from_KMC_super_kmer(const uint64_t* super_kmer, std::size_t word_count);
+
     // Gets the k-mer that is a prefix of the provided
     // (k + 1)-mer `k_plus_1_mer`.
     void from_prefix(const Kmer<k + 1>& k_plus_1_mer);
@@ -243,6 +247,7 @@ inline void Kmer<k>::left_shift()
 
 
 template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
 inline void Kmer<k>::right_shift()
 {
     constexpr uint64_t mask_LSN = 0b11;
@@ -256,6 +261,7 @@ inline void Kmer<k>::right_shift()
 
 template <uint16_t k>
 template <uint16_t B>
+__attribute__((optimize("unroll-loops")))
 inline void Kmer<k>::left_shift()
 {
     static_assert(B < 32, "invalid bit-shift amount");
@@ -297,6 +303,8 @@ template <uint16_t k>
 __attribute__((optimize("unroll-loops")))
 inline Kmer<k>::Kmer(const char* const label)
 {
+    assert(std::strlen(label) >= k);
+
     constexpr uint16_t packed_word_count = k / 32;
 
     // Get the fully packed words' binary representations.
@@ -368,6 +376,7 @@ inline void Kmer<k>::from_CKmerAPI(const CKmerAPI& kmer_api)
 
 
 template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
 inline void Kmer<k>::from_KMC_data(const uint64_t* const kmc_data)
 {
     // The endianness of the k-mer data array in the KMC database is in the opposite
@@ -398,6 +407,20 @@ inline void Kmer<k>::from_KMC_data(const uint64_t* const kmc_data)
         for (int32 i = NUM_INTS - 1; i >= 0; --i)
             kmer_data[NUM_INTS - 1 - i] = kmc_data[i];
             
+}
+
+
+template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
+inline void Kmer<k>::from_KMC_super_kmer(const uint64_t* const super_kmer, const std::size_t word_count)
+{
+    constexpr uint16_t t = 32 - (k & 31);   // Trailing (little-endian) empty characters in KMC representation.
+
+    auto const kmc_data = super_kmer + (word_count - NUM_INTS);
+    for(std::size_t i = 0; i < NUM_INTS - 1; ++i)
+        kmer_data[i] = (kmc_data[i] >> (2 * t)) | (kmc_data[i + 1] << (2 * (32 - t)));
+
+    kmer_data[NUM_INTS - 1] = kmc_data[NUM_INTS - 1] >> (2 * t);
 }
 
 
@@ -445,6 +468,7 @@ inline Kmer<k> Kmer<k>::reverse_complement() const
 
 
 template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
 inline void Kmer<k>::as_reverse_complement(const Kmer<k>& other)
 {
     // Working with bytes instead of 64-bit words at a time.
@@ -469,6 +493,9 @@ inline void Kmer<k>::as_reverse_complement(const Kmer<k>& other)
     rev_compl[packed_byte_count] = 0;
     left_shift<rem_base_count>();
 
+    // TODO: Optimize the following by direct lookups of complements—`rem_base_count` can only be
+    // 1—3 (and may not even be 2 if we never reverse-complement edges).
+
     for(int i = 0; i < rem_base_count; ++i)
         rev_compl[0] |= (DNA_Utility::complement(DNA::Base((data[packed_byte_count] & (0b11 << (2 * i))) >> (2 * i)))
                                         << (2 * (rem_base_count - 1 - i)));
@@ -476,6 +503,7 @@ inline void Kmer<k>::as_reverse_complement(const Kmer<k>& other)
 
 
 template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
 inline bool Kmer<k>::operator<(const Kmer<k>& rhs) const
 {
     for(int16_t idx = NUM_INTS - 1; idx >= 0; --idx)
@@ -487,6 +515,7 @@ inline bool Kmer<k>::operator<(const Kmer<k>& rhs) const
 
 
 template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
 inline bool Kmer<k>::operator>(const Kmer<k>& rhs) const
 {
     for(int16_t idx = NUM_INTS - 1; idx >= 0; --idx)
@@ -643,6 +672,7 @@ inline const Kmer<k>* Kmer<k>::canonical(const Kmer<k>& kmer, const Kmer<k>& rev
 
 
 template <uint16_t k>
+__attribute__((optimize("unroll-loops")))
 inline std::string Kmer<k>::string_label() const
 {
     Kmer<k> kmer(*this);
@@ -689,11 +719,14 @@ inline std::string Kmer<k>::string_label() const
 
 template <uint16_t k>
 template <typename T_container_>
+__attribute__((optimize("unroll-loops")))
 inline void Kmer<k>::get_label(T_container_& label) const
 {
     label.resize(k);
 
     constexpr uint16_t packed_word_count = k / 32;
+
+    // TODO: optimize away the base-wise iteration—can be quite costly. Consider per-byte `memcpy` from pre-built labels.
 
     // Get the fully packed words' representations.
     for(uint16_t data_idx = 0; data_idx < packed_word_count; ++data_idx)

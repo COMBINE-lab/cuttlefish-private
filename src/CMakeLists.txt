@@ -51,7 +51,10 @@ set(PROJECT_SRC
         Multiway_Merger.cpp
         Discontinuity_Graph_Bootstrap.cpp
         dBG_Contractor.cpp
+        Subgraphs_Processor.cpp
+        Subgraph.cpp
         Unitig_File.cpp
+        Discontinuity_Edge.cpp
         Edge_Matrix.cpp
         Discontinuity_Graph_Contractor.cpp
         Contracted_Graph_Expander.cpp
@@ -106,6 +109,9 @@ target_link_libraries(cfcore_static PRIVATE ZLIB::ZLIB)
 
 # Link the cfcore_static library ti the `bzip2` library.
 target_link_libraries(cfcore_static PRIVATE BZip2::BZip2)
+
+# Link the cfcore_static library to the `zstd` library.
+target_link_libraries(cfcore_static PRIVATE zstd)
 
 # Link the cfcore_static library to the threads package in the platform.
 target_link_libraries(cfcore_static PRIVATE ${CMAKE_THREAD_LIBS_INIT})

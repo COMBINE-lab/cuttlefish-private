@@ -71,8 +71,8 @@ bool Build_Params::is_valid() const
 
 
     // Even `k` values are not consistent with the theory.
-    // Also, `k` needs to be in the range `[1, MAX_K]`.
-    if((k_ & static_cast<uint16_t>(1)) == 0 || (k_ > cuttlefish::MAX_K))
+    // Also, `k` needs to be in the range `(1, MAX_K]`.
+    if((k_ % 2) == 0 || k_ == 1 || k_ > cuttlefish::MAX_K)
     {
         std::cout << "The k-mer length (k) needs to be odd and within " << cuttlefish::MAX_K << ".\n";
         valid = false;
