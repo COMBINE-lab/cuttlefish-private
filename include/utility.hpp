@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <type_traits>
 #include <cstdlib>
 
 // TODO: wrap everything here in some namespaces.
@@ -81,6 +82,14 @@ template <typename T_>
 void deallocate(T_* const ptr)
 {
     std::free(ptr);
+}
+
+// Returns the corresponding integer value for an enum-value `enum_val`.
+template <typename T_>
+constexpr int as_int(const T_ enum_val)
+{
+    static_assert(std::is_enum_v<T_>);
+    return static_cast<uint8_t>(enum_val);
 }
 
 // TODO: Add thread-joiner wrapper.
