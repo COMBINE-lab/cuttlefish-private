@@ -50,6 +50,8 @@ private:
 
     Unitig_Write_Distributor& lmtigs;   // Distributor for the locally-maximal unitigs to unitig buckets.
 
+    uint64_t trivial_mtig_c;    // Number of trivial maximal unitigs in the graph (i.e. also maximal unitigs in the supergraph).
+
 
     // TODO: move the following out to a central location.
 
@@ -105,6 +107,10 @@ public:
     // subgraph.
     uint64_t discontinuity_edge_count() const;
 
+    // Returns the number of trivial maximal unitigs in the graph (i.e. also
+    // maximal unitigs in the supergraph).
+    uint64_t trivial_mtig_count() const;
+
     // Returns the total number of characters in the literal representations of
     // all the maximal unitigs.
     uint64_t label_size() const;
@@ -150,8 +156,9 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
         lmtigs.add(parlay::worker_id(), maximal_unitig);
         disc_edge_c++;
     }
-    else    // Extracted a trivially maximal unitig.
+    else    // Extracted a trivial maximal unitig.
     {
+        trivial_mtig_c++;
         maximal_unitig.finalize();
         maximal_unitig.add_fasta_rec_to_buffer(op_buf);
     }

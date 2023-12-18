@@ -23,6 +23,7 @@ Subgraphs_Processor<k>::Subgraphs_Processor(const std::string& bin_path_pref, co
 template <uint16_t k>
 void Subgraphs_Processor<k>::process()
 {
+    std::atomic_uint64_t trivial_mtigs = 0;
     Unitig_Write_Distributor lmtigs(work_path + "lmutig", unitig_bucket_count, parlay::num_workers());
 
     const auto process_subgraph =
@@ -31,11 +32,15 @@ void Subgraphs_Processor<k>::process()
             Subgraph<k> G(bin_path_pref, bin_id, E, lmtigs, op_buf[parlay::worker_id()].data());
             G.construct();
             G.contract();
+
+            trivial_mtigs += G.trivial_mtig_count();
         };
 
     parlay::parallel_for(0, bin_count, process_subgraph);
 
     lmtigs.close();
+
+    std::cerr << "Trivial maximal unitig count: " << trivial_mtigs << "\n";
 }
 
 }

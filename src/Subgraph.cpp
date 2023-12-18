@@ -21,6 +21,7 @@ Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id,
     , isolated(0)
     , E(E)
     , lmtigs(lmtigs)
+    , trivial_mtig_c(0)
     , op_buf(op_buf)
 {}
 
@@ -169,6 +170,13 @@ template <uint16_t k>
 uint64_t Subgraph<k>::discontinuity_edge_count() const
 {
     return disc_edge_c;
+}
+
+
+template <uint16_t k>
+uint64_t Subgraph<k>::trivial_mtig_count() const
+{
+    return trivial_mtig_c;
 }
 
 
