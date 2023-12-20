@@ -60,7 +60,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
             assert(E.partition(e.y()) == j);
             assert(e.x_is_phi() || E.partition(e.x()) < j);
 
-            if(M.insert(e.y(), Other_End(e.x(), e.s_x(), e.x_is_phi(), e.w(), false), p_z))
+            if(M.insert(e.y(), Other_End(e.x(), e.s_x(), e.s_y(), e.x_is_phi(), e.w(), false), p_z))
             {
                 assert(M.find(e.y()));
                 return;
@@ -82,7 +82,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
                 if(e.y() < z.v())
                     D_c[parlay::worker_id()].data().emplace_back(e.y(), inv_side(e.s_y()), z.v(), z.s_v(), z.w(), 0, 0, false, false, side_t::unspecified);
 
-                z = Other_End(e.x(), e.s_x(), e.x_is_phi(), e.w(), false);
+                z = Other_End(e.x(), e.s_x(), e.s_y(), e.x_is_phi(), e.w(), false);
                 return;
             }
 
@@ -175,8 +175,8 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
         assert(E.partition(v) == j);
         assert(u != v);
 
-        M.insert_overwrite(u, Other_End(v, s_v, false, w, true));
-        M.insert_overwrite(v, Other_End(u, s_u, false, w, true));
+        M.insert_overwrite(u, Other_End(v, s_v, s_u, false, w, true));
+        M.insert_overwrite(v, Other_End(u, s_u, s_v, false, w, true));
 
         assert(M.find(u)); assert(M.find(e.x()));
         assert(M.find(v)); assert(M.find(e.y()));

@@ -83,14 +83,16 @@ public:
 };
 
 
-// Other endpoint associated to a vertex through an edge.
+// =============================================================================
+// Other endpoint `v` associated to a current vertex `u` through an edge.
 template <uint16_t k>
 class Discontinuity_Graph_Contractor<k>::Other_End
 {
 private:
 
-    Kmer<k> v_; // The endpoint vertex.
-    side_t s_v_;    // Side of the endpoint to which the associated edge is incident to.
+    Kmer<k> v_; // The other endpoint vertex `v`.
+    side_t s_v_;    // Side of the endpoint `v` to which the associated edge is incident to.
+    side_t s_u_;    // Side of the current vertex `u` to which the associated edge is incident to.
     bool is_phi_;   // Whether the endpoint is a ϕ vertex.
     weight_t w_;    // Weight of the associated edge.
     bool in_same_part_; // Whether the endpoints belong to the same partition.
@@ -103,12 +105,14 @@ public:
     {}
 
     // Constructs an endpoint with the vertex `v`, connected through its side
-    // `s_v` to the corresponding edge. `is_phi` should be `true` iff `v` is the
-    // ϕ vertex. The connecting edge has weight `w`, and `in_same_part` should
-    // be `true` iff the endpoints of the edge belong to the same partition.
-    Other_End(const Kmer<k>& v, const side_t s_v, const bool is_phi, const weight_t w, const std::size_t in_same_part):
+    // `s_v` to the current vertex's side `s_u`. `is_phi` should be `true` iff
+    // `v` is the ϕ vertex. The connecting edge has weight `w`, and
+    // `in_same_part` should be `true` iff the endpoints of the edge belong to
+    // the same partition.
+    Other_End(const Kmer<k>& v, const side_t s_v, const side_t s_u, const bool is_phi, const weight_t w, const std::size_t in_same_part):
           v_(v)
         , s_v_(s_v)
+        , s_u_(s_u)
         , is_phi_(is_phi)
         , w_(w)
         , in_same_part_(in_same_part)
@@ -120,6 +124,10 @@ public:
     // Returns the side of the endpoint to which the associated edge is incident
     // to.
     auto s_v() const { return s_v_; }
+
+    // Returns the side of the current vertex `u` to which the associated edge
+    // is incident to.
+    auto s_u() const { return s_u_; }
 
     // Returns whether the endpoint is a ϕ vertex.
     auto is_phi() const { return is_phi_; }
