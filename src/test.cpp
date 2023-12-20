@@ -1263,19 +1263,20 @@ int main(int argc, char** argv)
     // count_kmers_in_unitigs(argv[1], atoi(argv[2]));
 
     static constexpr uint16_t k = 31;
-    // static constexpr uint16_t l = 11;
+    static constexpr uint16_t l = 11;
 
-    // const std::size_t subgraph_count = 2000;
-    // const std::size_t parts = 64;
-    // const std::size_t unitig_buckets = 1024;
-    // const std::string cdbg_path(argv[1]);
-    // const std::string output_path(argv[2]);
-    // const std::string temp_path(argv[3]);
+    const std::size_t subgraph_count = 2000;
+    const std::size_t parts = 64;
+    const std::size_t unitig_buckets = 1024;
+    const std::string cdbg_path(argv[1]);
+    const std::string output_path(argv[2]);
+    const std::string temp_path(argv[3]);
 
     // bootstrap_discontinuity_graph<k>(l, cdbg_path, temp_path, parts, unitig_buckets);
 
-    // cuttlefish::dBG_Contractor<k> dbg_contractor(subgraph_count, parts, unitig_buckets, output_path, temp_path);
-    // dbg_contractor.contract(l, cdbg_path);
+    cuttlefish::dBG_Contractor<k> dbg_contractor(subgraph_count, parts, unitig_buckets, output_path, temp_path);
+    dbg_contractor.contract(l, cdbg_path);
+    // std::cerr << "sizeof(disc-edge<31>): " << sizeof(cuttlefish::Discontinuity_Edge<k>) << "\n";
     // const std::size_t elem_count = std::atoi(argv[1]);
     // const double lf = 0.75;
     // benchmark_hash_table<k>(elem_count, lf);
@@ -1289,9 +1290,9 @@ int main(int argc, char** argv)
     // std::cout << (Index_Validator<k, l>::validate(argv[1], argv[2]) ? "Index cross-checking successful.\n" : "Index is incorrect.\n");
 
 
-    const std::string bin_dir(argv[1]);
-    const std::size_t bin_c(std::atoi(argv[2]));
-    iterate_subgraphs<k>(bin_dir, bin_c);
+    // const std::string bin_dir(argv[1]);
+    // const std::size_t bin_c(std::atoi(argv[2]));
+    // iterate_subgraphs<k>(bin_dir, bin_c);
 
     return 0;
 }
