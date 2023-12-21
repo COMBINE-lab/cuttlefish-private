@@ -33,8 +33,10 @@ Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_In
     assert((max_unitig_bucket_count & (max_unitig_bucket_count - 1)) == 0);
 
     max_bucket_sz = 0;
-    std::for_each(P_e.cbegin(), P_e.cend(), [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.size()); });
+    std::size_t sum_bucket_sz = 0;
+    std::for_each(P_e.cbegin(), P_e.cend(), [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.size()); sum_bucket_sz += bucket.size(); });
 
+    std::cerr << "Sum edge-bucket size: " << sum_bucket_sz << "\n";
     std::cerr << "Maximum edge-bucket size: " << max_bucket_sz << "\n";
 }
 
