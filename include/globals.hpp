@@ -85,6 +85,7 @@ namespace cuttlefish
     // Type of the ID of a maximal unitig.
     template <uint16_t k> using max_unitig_id_t = Kmer<k>;
 
+    // TODO: use `u16` and add assertion checks for limits in places.
     // Type of the index of a unitig in a bucket.
     typedef uint32_t uni_idx_t;
 

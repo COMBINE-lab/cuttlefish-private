@@ -61,7 +61,8 @@ public:
     // `b_idx` is the index of the corresponding unitig in its bucket.
     // `u_is_phi` and `v_is_phi` denote whether the `u` and the `v` endpoints
     // are ϕ, respectively.
-    void add(Kmer<k> u, side_t s_u, Kmer<k> v, side_t s_v, uint16_t w, uint16_t b, std::size_t b_idx, bool u_is_phi, bool v_is_phi);
+    // TODO: why not using refs here for the k-mers? Check.
+    void add(Kmer<k> u, side_t s_u, Kmer<k> v, side_t s_v, weight_t w, uint16_t b, std::size_t b_idx, bool u_is_phi, bool v_is_phi);
 
     // Serializes the matrix to external-memory. Edges should not be added
     // anymore once this has been invoked. This method is required only if the
@@ -104,7 +105,7 @@ inline std::size_t Edge_Matrix<k>::partition(const Kmer<k>& kmer) const
 
 
 template <uint16_t k>
-inline void Edge_Matrix<k>::add(const Kmer<k> u, const side_t s_u, const Kmer<k> v, const side_t s_v, const uint16_t w, const uint16_t b, const std::size_t b_idx, const bool u_is_phi, const bool v_is_phi)
+inline void Edge_Matrix<k>::add(const Kmer<k> u, const side_t s_u, const Kmer<k> v, const side_t s_v, const weight_t w, const uint16_t b, const std::size_t b_idx, const bool u_is_phi, const bool v_is_phi)
 {
     // TODO: add batched insertion per worker instead of locking a cell at every insertion.
 

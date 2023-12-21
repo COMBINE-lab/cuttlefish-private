@@ -11,9 +11,8 @@
 #include "DNA_Utility.hpp"
 #include "Unitig_Scratch.hpp"
 #include "Maximal_Unitig_Scratch.hpp"
-#include "Edge_Matrix.hpp"
+#include "Discontinuity_Graph.hpp"
 #include "dBG_Utilities.hpp"
-#include "Unitig_File.hpp"
 #include "Character_Buffer.hpp"
 #include "Async_Logger_Wrapper.hpp"
 #include "globals.hpp"
@@ -49,9 +48,7 @@ private:
     uint64_t disc_edge_c;   // Number of edges of the discontinuity graph induced from this subgraph.
     uint64_t isolated;  // Count of isolated vertices—not part of any edge.
 
-    Edge_Matrix<k>& E;  // Edge-matrix of the discontinuity graph.
-
-    Unitig_Write_Distributor& lmtigs;   // Distributor for the locally-maximal unitigs to unitig buckets.
+    Discontinuity_Graph<k>& G;  // The discontinuity graph.
 
     uint64_t trivial_mtig_c;    // Number of trivial maximal unitigs in the graph (i.e. also maximal unitigs in the supergraph).
 
@@ -81,11 +78,10 @@ private:
 public:
 
     // Constructs a subgraph object for the `bin_id`'th bin in the graph bin
-    // directory `bin_dir_path`. Updates the edge-matrix `E` of the
-    // discontinuity graph with its edges observed from this subgraph, writes
-    // the locally-maximal unitigs to unitig buckets using `lmtigs`, and writes
-    // the trivially maximal unitigs to `op_buf`.
-    Subgraph(const std::string& bin_dir_path, std::size_t bin_id, Edge_Matrix<k>& E, Unitig_Write_Distributor& lmtigs, op_buf_t& op_buf);
+    // directory `bin_dir_path`. Updates the discontinuity graph `G` with its
+    // edges observed from this subgraph and writes the trivially maximal
+    // unitigs to `op_buf`.
+    Subgraph(const std::string& bin_dir_path, std::size_t bin_id, Discontinuity_Graph<k>& d_graph, op_buf_t& op_buf);
 
     Subgraph(const Subgraph&) = delete;
     Subgraph(Subgraph&&) = delete;
@@ -162,14 +158,9 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
     if(walk_end_l == exitted || walk_end_r == exitted)  // The maximal unitig containing `v_hat` spans multiple subgraphs.
     {
         maximal_unitig.finalize_weak();
-
-        const auto b_id = lmtigs.file_idx(parlay::worker_id());
-        E.add(  walk_end_l == exitted ? v_l.canonical() : Discontinuity_Edge<k>::phi(), walk_end_l == exitted ? v_l.entrance_side() : side_t::back,
-                walk_end_r == exitted ? v_r.canonical() : Discontinuity_Edge<k>::phi(), walk_end_r == exitted ? v_r.entrance_side() : side_t::back,
-                1, b_id, lmtigs.unitig_count(b_id),
-                walk_end_l != exitted, walk_end_r != exitted);
-
-        lmtigs.add(parlay::worker_id(), maximal_unitig);
+        G.add_edge( walk_end_l == exitted ? v_l.canonical() : Discontinuity_Edge<k>::phi(), walk_end_l == exitted ? v_l.entrance_side() : side_t::back,
+                    walk_end_r == exitted ? v_r.canonical() : Discontinuity_Edge<k>::phi(), walk_end_r == exitted ? v_r.entrance_side() : side_t::back,
+                    walk_end_l != exitted, walk_end_r != exitted, maximal_unitig);
         disc_edge_c++;
     }
     else    // Extracted a trivial maximal unitig.

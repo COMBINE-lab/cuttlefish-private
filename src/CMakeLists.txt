@@ -51,11 +51,12 @@ set(PROJECT_SRC
         Multiway_Merger.cpp
         Discontinuity_Graph_Bootstrap.cpp
         dBG_Contractor.cpp
-        Subgraphs_Processor.cpp
-        Subgraph.cpp
-        Unitig_File.cpp
+        Discontinuity_Graph.cpp
         Discontinuity_Edge.cpp
         Edge_Matrix.cpp
+        Unitig_File.cpp
+        Subgraphs_Processor.cpp
+        Subgraph.cpp
         Discontinuity_Graph_Contractor.cpp
         Contracted_Graph_Expander.cpp
         Unitig_Collator.cpp

@@ -11,13 +11,13 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, const std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path):
-      E(E)
+Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, const std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path):
+      G(G)
     , n_(n)
     , P_v(P_v)
     , P_v_local(parlay::num_workers())
     , work_path(temp_path)
-    , M(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.1))
+    , M(static_cast<std::size_t>((n_ / G.E().vertex_part_count()) * 1.1))
     , D_c(parlay::num_workers())
 {}
 
@@ -34,8 +34,8 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
     // TODO: document the phases.
 
-    buf.resize(E.max_block_size());
-    for(auto j = E.vertex_part_count(); j >= 1; --j)
+    buf.resize(G.E().max_block_size());
+    for(auto j = G.E().vertex_part_count(); j >= 1; --j)
     {
         std::cerr << "\rPart: " << j;
 
@@ -57,8 +57,8 @@ void Discontinuity_Graph_Contractor<k>::contract()
             const auto& e = buf[idx];
             Other_End* p_z;
 
-            assert(E.partition(e.y()) == j);
-            assert(e.x_is_phi() || E.partition(e.x()) < j);
+            assert(G.E().partition(e.y()) == j);
+            assert(e.x_is_phi() || G.E().partition(e.x()) < j);
 
             if(M.insert(e.y(), Other_End(e.x(), e.s_x(), e.s_y(), e.x_is_phi(), e.w(), false), p_z))
             {
@@ -74,11 +74,11 @@ void Discontinuity_Graph_Contractor<k>::contract()
                 return;
             }
 
-            if(z.in_same_part())
+            if(z.in_same_part())    // Corresponds to a compressed diagonal chain.
             {
                 assert(!z.is_phi());
                 assert(M.find(z.v()));
-                assert(E.partition(z.v()) == j);
+                assert(G.E().partition(z.v()) == j);
                 if(e.y() < z.v())
                     D_c[parlay::worker_id()].data().emplace_back(e.y(), inv_side(e.s_y()), z.v(), z.s_v(), z.w(), 0, 0, false, false, side_t::unspecified);
 
@@ -87,13 +87,13 @@ void Discontinuity_Graph_Contractor<k>::contract()
             }
 
             // TODO: add edges in a lock-free manner, accumulating new edges in thread-local buffers and copying to the global repo afterwards.
-            E.add(e.x(), e.s_x(), z.v(), z.s_v(), e.w() + z.w(), 0, 0, e.x_is_phi(), z.is_phi());
+            G.add_edge(e.x(), e.s_x(), z.v(), z.s_v(), e.w() + z.w(), e.x_is_phi(), z.is_phi());
         };
 
         while(true)
         {
             t_s = now();
-            if(!E.read_column_buffered(j, buf)) // TODO: run a background buffered reader, that'll have the next buffer ready in time.
+            if(!G.E().read_column_buffered(j, buf)) // TODO: run a background buffered reader, that'll have the next buffer ready in time.
                 break;
             t_e = now();
             edge_read_time += duration(t_e - t_s);
@@ -119,7 +119,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
                 if(m_x.is_phi() && m_y.is_phi())
                     form_meta_vertex(e.x(), j, inv_side(e.s_x()), m_x.w(), w_xy + m_y.w());
                 else
-                    E.add(m_x.v(), m_x.s_v(), m_y.v(), m_y.s_v(), m_x.w() + w_xy + m_y.w(), 0, 0, m_x.is_phi(), m_y.is_phi());
+                    G.add_edge(m_x.v(), m_x.s_v(), m_y.v(), m_y.s_v(), m_x.w() + w_xy + m_y.w(), m_x.is_phi(), m_y.is_phi());
             }
 
         t_e = now();
@@ -154,7 +154,7 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
 {
     D_j.clear();
     const auto t_s = now();
-    E.read_diagonal_block(j, buf);
+    G.E().read_diagonal_block(j, buf);
     const auto t_e = now();
     edge_read_time += duration(t_e - t_s);
 
@@ -171,8 +171,8 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
         const auto w_v = (end_y ? end_y->w() : 0);
         const auto w   = w_u + e.w() + w_v;
 
-        assert(E.partition(u) == j);
-        assert(E.partition(v) == j);
+        assert(G.E().partition(u) == j);
+        assert(G.E().partition(v) == j);
         assert(u != v);
 
         M.insert_overwrite(u, Other_End(v, s_v, s_u, false, w, true));

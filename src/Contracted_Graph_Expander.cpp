@@ -13,15 +13,15 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Edge_Matrix<k>& E, const std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path):
-      E(E)
+Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, const std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path):
+      G(G)
     , n_(n)
     , P_v(P_v)
     , P_e(P_e)
     , P_v_w(parlay::num_workers())
     , P_e_w(parlay::num_workers())
     , work_path(temp_path)
-    , M(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.25))
+    , M(static_cast<std::size_t>((n_ / G.E().vertex_part_count()) * 1.25))
 #ifndef NDEBUG
     , H_p_e_w(parlay::num_workers(), 0)
 #endif
@@ -46,9 +46,9 @@ void Contracted_Graph_Expander<k>::expand()
 
     std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
 
-    buf.resize(E.max_block_size());
-    p_v_buf.reserve(static_cast<std::size_t>((n_ / E.vertex_part_count()) * 1.25)); // TODO: check the maximum size empirically, as repetitions are possible in the info-buckets.
-    for(std::size_t i = 1; i <= E.vertex_part_count(); ++i)
+    buf.resize(G.E().max_block_size());
+    p_v_buf.reserve(static_cast<std::size_t>((n_ / G.E().vertex_part_count()) * 1.25)); // TODO: check the maximum size empirically, as repetitions are possible in the info-buckets.
+    for(std::size_t i = 1; i <= G.E().vertex_part_count(); ++i)
     {
         std::cerr << "\rPart: " << i;
 
@@ -72,7 +72,7 @@ void Contracted_Graph_Expander<k>::expand()
             const auto x_inf = *M.find(e.x());  // Path-information of the endpoint of the edge that is in the current partition, `i`.
             const auto y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
 
-            const auto j = E.partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
+            const auto j = G.E().partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
             assert(j > i);
             P_v_w[parlay::worker_id()].data()[j].emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o());
 
@@ -83,7 +83,7 @@ void Contracted_Graph_Expander<k>::expand()
         while(true)
         {
             t_s = now();
-            if(!E.read_row_buffered(i, buf))    // TODO: run a background buffered reader, that'll have the next buffer ready in time.
+            if(!G.E().read_row_buffered(i, buf))    // TODO: run a background buffered reader, that'll have the next buffer ready in time.
                 break;
             t_e = now();
             edge_read_time += duration(t_e - t_s);
@@ -98,7 +98,7 @@ void Contracted_Graph_Expander<k>::expand()
         // TODO: consider making the following two blocks more efficient.
 
         t_s = now();
-        E.read_diagonal_block(i, buf);
+        G.E().read_diagonal_block(i, buf);
         t_e = now();
         edge_read_time += duration(t_e - t_s);
 
@@ -118,7 +118,7 @@ void Contracted_Graph_Expander<k>::expand()
         spec_case_time += duration(t_e - t_s);
 
         t_s = now();
-        E.read_block(0, i, buf);
+        G.E().read_block(0, i, buf);
         t_e = now();
         edge_read_time += duration(t_e - t_s);
 

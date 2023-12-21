@@ -7,7 +7,7 @@
 #include "Kmer.hpp"
 #include "Kmer_Hasher.hpp"
 #include "Discontinuity_Edge.hpp"
-#include "Edge_Matrix.hpp"
+#include "Discontinuity_Graph.hpp"
 #include "Path_Info.hpp"
 #include "Ext_Mem_Bucket.hpp"
 #include "Spin_Lock.hpp"
@@ -33,7 +33,7 @@ class Discontinuity_Graph_Contractor
 {
 private:
 
-    Edge_Matrix<k>& E;  // Edge matrix of the discontinuity-graph.
+    Discontinuity_Graph<k>& G;  // The discontinuity-graph.
     const std::size_t n_;   // Number of discontinuity-vertices.
 
     typedef Obj_Path_Info_Pair<Kmer<k>, k> kmer_path_info_t;
@@ -73,10 +73,11 @@ private:
 
 public:
 
-    // Constructs a contractor for the discontinuity-graph with edge-matrix `E`
-    // and `n` vertices. `P_v[j]` is to contain path-information for vertices at
-    // partition `j`. Temporary files are stored at path-prefix `temp_path`.
-    Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path);
+    // Constructs a contractor for the discontinuity-graph `G`. `P_v[j]` is to
+    // contain path-information for vertices at partition `j`. Temporary files
+    // are stored at path-prefix `temp_path`.
+    // TODO: infer / approximate `n` by the class itself.
+    Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path);
 
     // Contracts the discontinuity-graph.
     void contract();

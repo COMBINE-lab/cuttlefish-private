@@ -117,7 +117,7 @@ void Unitig_Collator<k>::map()
 #endif
 
 
-        Unitig_File_Reader unitig_reader(work_path + "lmutig_" + std::to_string(b));    // TODO: centralize file-location.
+        Unitig_File_Reader unitig_reader(work_path + "lmtig_" + std::to_string(b)); // TODO: centralize file-location.
         std::string unitig; // Read-off unitig. TODO: use better-suited container.
         uni_idx_t idx = 0;  // The unitig's sequential ID in the bucket.
         std::size_t uni_len;    // The unitig's length in bases.

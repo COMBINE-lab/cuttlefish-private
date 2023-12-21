@@ -4,7 +4,7 @@
 
 
 
-#include "Edge_Matrix.hpp"
+#include "Discontinuity_Graph.hpp"
 #include "Discontinuity_Edge.hpp"
 #include "Path_Info.hpp"
 #include "Ext_Mem_Bucket.hpp"
@@ -34,7 +34,7 @@ class Contracted_Graph_Expander
 {
 private:
 
-    const Edge_Matrix<k>& E;    // Edge matrix of the (augmented) discontinuity graph.
+    const Discontinuity_Graph<k>& G;    // The (augmented) discontinuity graph.
     const std::size_t n_;   // Number of discontinuity-vertices.
 
     // TODO: consider using padding.
@@ -99,12 +99,12 @@ private:
 
 public:
 
-    // Constructs an expander for the contracted discontinuity-graph with edge-
-    // matrix `E` and `n` vertices. `P_v[i]` is to contain path-information for
-    // vertices at partition `i`, and `P_e[b]` is to contain path-information
-    // for edges at bucket `b`. Temporary files are stored at path-prefix
-    // `temp_path`.
-    Contracted_Graph_Expander(const Edge_Matrix<k>& E, std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path);
+    // Constructs an expander for the contracted discontinuity-graph `G` with
+    // `n` vertices. `P_v[i]` is to contain path-information for vertices at
+    // partition `i`, and `P_e[b]` is to contain path-information for edges at
+    // bucket `b`. Temporary files are stored at path-prefix `temp_path`.
+    // TODO: infer / approximate `n` by the class itself.
+    Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path);
 
     // Expands the contracted discontinuity-graph.
     void expand();

@@ -12,15 +12,14 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id, Edge_Matrix<k>& E, Unitig_Write_Distributor& lmtigs, op_buf_t& op_buf):
+Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id, Discontinuity_Graph<k>& G, op_buf_t& op_buf):
       graph_bin_dir_path(bin_dir_path)
     , bin_id(bin_id)
     , edge_c(0)
     , label_sz(0)
     , disc_edge_c(0)
     , isolated(0)
-    , E(E)
-    , lmtigs(lmtigs)
+    , G(G)
     , trivial_mtig_c(0)
     , op_buf(op_buf)
 {}
@@ -120,6 +119,7 @@ void Subgraph<k>::contract()
         const auto& v = p.first;
         const auto& v_st = p.second;
 
+        assert(!v_st.is_discontinuous(side_t::front) || !v_st.is_discontinuous(side_t::back));
 
         if(v_st.is_isolated() && !v_st.is_discontinuity())
         {
