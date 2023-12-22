@@ -14,6 +14,7 @@
 #include <cstring>
 #include <numeric>
 #include <cstdlib>
+#include <algorithm>
 #include <cmath>
 
 namespace cuttlefish
@@ -23,6 +24,9 @@ namespace cuttlefish
 template <typename T_key_, typename T_val_, typename T_hasher_>
 class Concurrent_Hash_Table
 {
+    class Iterator;
+    friend class Iterator;
+
 private:
 
     struct Key_Val_Pair
@@ -112,11 +116,45 @@ public:
     // otherwise.
     bool find(T_key_ key, T_val_& val) const;
 
+    // Returns an iterator for the key-value pairs in the table.
+    Iterator iterator() { return Iterator(*this, 1, 0); }
+
+    // Returns an iterator for the key-value pairs in the table that belongs to
+    // a group of `it_count` iterators and has an ID `it_id` in the group.
+    Iterator iterator(const std::size_t it_count, const std::size_t it_id) { return Iterator(*this, it_count, it_id); }
+
     // Returns a 64-bit signature of the key-set of the hash table.
     uint64_t signature() const { return signature<true>(); };
 
     // Returns a 64-bit signature of the values in the hash table.
     uint64_t signature_vals() const { return signature<false>(); };
+};
+
+
+// =============================================================================
+template <typename T_key_, typename T_val_, typename T_hasher_>
+class Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Iterator
+{
+    friend class Concurrent_Hash_Table;
+
+private:
+
+    Concurrent_Hash_Table& M;   // The hash table to iterate on.
+    std::size_t idx;    // Current slot-index the iterator is in.
+    std::size_t end;    // End-index of the slot-range for the iterator.
+
+
+    // Constructs an iterator for the hash table `M`, that would belong to a
+    // group of `it_count` iterators and has an ID `it_id` in the group.
+    Iterator(Concurrent_Hash_Table& M, std::size_t it_count, std::size_t it_id);
+
+
+public:
+
+    // Moves the iterator to the next key in the table. Iff some key is found
+    // within its remaining range, the key and the associated value are put at
+    // `key` and `val` respectively, and returns true.
+    bool next(T_key_& key, T_val_& val);
 };
 
 
@@ -340,6 +378,30 @@ inline uint64_t Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::signature() co
     return std::accumulate(sign.cbegin(), sign.cend(), 0lu, [](const uint64_t r, const Padded_Data<uint64_t>& p_data){ return r ^ p_data.data(); });
 }
 
+
+template <typename T_key_, typename T_val_, typename T_hasher_>
+inline Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Iterator::Iterator(Concurrent_Hash_Table& M, std::size_t it_count, std::size_t it_id):
+      M(M)
+{
+    const auto range_sz = M.capacity_ / it_count;
+    idx = it_id * range_sz;
+    end = std::min((it_id + 1) * range_sz, M.capacity_);
+}
+
+
+template <typename T_key_, typename T_val_, typename T_hasher_>
+inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Iterator::next(T_key_& key, T_val_& val)
+{
+    for(; idx < end; idx++)
+        if(M.T[idx].key != M.empty_key_)
+        {
+            key = M.T[idx].key, val = M.T[idx].val;
+            idx++;
+            return true;
+        }
+
+    return false;
+}
 
 }
 
