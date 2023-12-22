@@ -106,19 +106,54 @@ void Discontinuity_Graph_Contractor<k>::contract()
             {
                 assert(M.find(e.x()));
                 assert(M.find(e.y()));
+                assert(!e.x_is_phi() && !e.y_is_phi());
 
                 const auto w_xy = e.w();
-                const auto& m_x = *M.find(e.x());
-                const auto& m_y = *M.find(e.y());
+                auto& m_x = *M.find(e.x());
+                auto& m_y = *M.find(e.y());
+
+                if(m_x.v() == e.y())    // `e.x()` has a false-phantom edge.
+                    G.add_edge(e.x(), inv_side(e.s_x())),
+                    m_x = Other_End(Discontinuity_Graph<k>::phi(), side_t::back, inv_side(e.s_x()), true, 1, false);
+                if(m_y.v() == e.x())    // `e.y()` has a false-phantom edge.
+                    G.add_edge(e.y(), inv_side(e.s_y())),
+                    m_y = Other_End(Discontinuity_Graph<k>::phi(), side_t::back, inv_side(e.s_y()), true, 1, false);
 
                 if(m_x.is_phi() && m_y.is_phi())
                     form_meta_vertex(e.x(), j, inv_side(e.s_x()), m_x.w(), w_xy + m_y.w());
                 else
                     G.add_edge(m_x.v(), m_x.s_v(), m_y.v(), m_y.s_v(), m_x.w() + w_xy + m_y.w(), m_x.is_phi(), m_y.is_phi());
+
+                m_x.process(), m_y.process();
             }
 
         t_e = now();
         diag_elim_time += duration(t_e - t_s);
+
+
+        const auto add_false_phantom_edges =
+            [&](const std::size_t w_id)
+            {
+                auto it = M.iterator(parlay::num_workers(), w_id);
+                Kmer<k> u;  // Vertex in the hash table.
+                Other_End end;  // Other endpoint of `u` in the table.
+                while(it.next(u, end))
+                    if(!end.processed())    // `u` has a false-phantom edge.
+                    {
+                        G.add_edge(u, inv_side(end.s_u()));
+
+                        if(end.is_phi())
+                            form_meta_vertex(u, j, end.s_u(), end.w(), 1);
+                        else
+                        {
+                            assert(G.E().partition(end.v()) < j);
+                            G.add_edge(Discontinuity_Graph<k>::phi(), side_t::back, end.v(), end.s_v(), 1 + end.w(), true, false);
+                        }
+                    }
+            };
+
+        parlay::parallel_for(0, parlay::num_workers(), add_false_phantom_edges, 1);
+
 
         t_s = now();
         for(const auto& v : P_v_local)
@@ -170,8 +205,8 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
         assert(G.E().partition(v) == j);
         assert(u != v);
 
-        M.insert_overwrite(u, Other_End(v, s_v, s_u, false, w, true));
-        M.insert_overwrite(v, Other_End(u, s_u, s_v, false, w, true));
+        M.insert_overwrite(u, Other_End(v, s_v, s_u, false, w, true, true));
+        M.insert_overwrite(v, Other_End(u, s_u, s_v, false, w, true, true));
 
         assert(M.find(u)); assert(M.find(e.x()));
         assert(M.find(v)); assert(M.find(e.y()));

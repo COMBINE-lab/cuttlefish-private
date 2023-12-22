@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <atomic>
 
 
 namespace cuttlefish
@@ -35,6 +36,8 @@ private:
 
     Unitig_Write_Distributor lmtigs;    // Distribution-manager for the writes of locally maximal unitigs' labels.
 
+    std::atomic_uint64_t phantom_edge_count_;   // Number of potential phantom edges identified.
+
 
 public:
 
@@ -51,16 +54,26 @@ public:
     // Returns the edge-matrix of the graph.
     const Edge_Matrix<k>& E() const { return E_; }
 
+    // Returns the number of potential phantom edges identified.
+    uint64_t phantom_edge_count() const;
+
     // Adds the edge `({(u, s_u), (v, s_v)}, 1)` to the graph. `u_is_phi` and
     // `v_is_phi` denote whether `u` and `v` are `ϕ` respectively. The locally-
     // maximal unitig corresponding to the edge is `mtig`. The edge should be an
     // original edge of the graph.
     void add_edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, bool u_is_phi, bool v_is_phi, const Maximal_Unitig_Scratch<k>& mtig);
 
+    // Adds the edge `({ϕ, (v, s_v)}, 1)` to the graph. The edge should be an
+    // original edge of the graph.
+    void add_edge(const Kmer<k>& v, side_t s_v);
+
     // Adds the edge `({(u, s_u), (v, s_v)}, w)` to the graph. `u_is_phi` and
     // `v_is_phi` denote whether `u` and `v` are `ϕ` respectively. The edge
     // should be a contracted edge and not an original one.
     void add_edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, weight_t w, bool u_is_phi, bool v_is_phi);
+
+    // Increment the potential phantom edge count.
+    void inc_phantom_edge() { phantom_edge_count_++; }
 
     // Closes the lm-tig writer streams.
     void close_lmtig_stream();
@@ -76,6 +89,18 @@ inline void Discontinuity_Graph<k>::add_edge(const Kmer<k>& u, const side_t s_u,
     lmtigs.add(w_id, mtig);
 
     E_.add(u, s_u, v, s_v, 1, b, b_idx, u_is_phi, v_is_phi);
+}
+
+
+template <uint16_t k>
+inline void Discontinuity_Graph<k>::add_edge(const Kmer<k>& v, const side_t s_v)
+{
+    const auto w_id = parlay::worker_id();
+    const auto b = lmtigs.file_idx(w_id);
+    std::size_t b_idx = lmtigs.unitig_count(b);
+    lmtigs.add(w_id, s_v == side_t::front ? v : v.reverse_complement());
+
+    E_.add(phi_, side_t::back, v, s_v, 1, b, b_idx, true, false);
 }
 
 

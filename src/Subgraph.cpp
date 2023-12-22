@@ -118,11 +118,13 @@ void Subgraph<k>::contract()
     {
         const auto& v = p.first;
         const auto& v_st = p.second;
-
         assert(!v_st.is_discontinuous(side_t::front) || !v_st.is_discontinuous(side_t::back));
 
-        if(v_st.is_isolated() && !v_st.is_discontinuity())
+        if(v_st.is_isolated())
         {
+            if(v_st.is_discontinuity()) // A potential phantom-edge for the discontinuity graph is incident to `v`.
+                G.inc_phantom_edge();
+
             isolated++;
             continue;
         }

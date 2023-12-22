@@ -144,6 +144,9 @@ public:
     // the `w_id`'th worker.
     template <uint16_t k> void add(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig);
 
+    // Adds the k-mer content in `kmer` to the writer for the `w_id`'th worker.
+    template <uint16_t k> void add(std::size_t w_id, const Kmer<k>& kmer);
+
     // Returns the ID of the next unitig-file to write to for worker `w_id`.
     std::size_t file_idx(std::size_t w_id) const;
 
@@ -266,6 +269,26 @@ inline void Unitig_Write_Distributor::add(std::size_t w_id, const Maximal_Unitig
     const auto& u_b = maximal_unitig.unitig_label(side_t::back);
     assert(writer_id < writer.size());
     writer[writer_id].data().add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
+}
+
+
+template <uint16_t k>
+inline void Unitig_Write_Distributor::add(std::size_t w_id, const Kmer<k>& kmer)
+{
+    auto& next = next_writer[w_id].data();
+    const auto writer_id = w_id * writer_per_worker + next + 1; // +1 as edge-partition 0 conceptually contains edges without any associated lm-tig (i.e. with weight > 1)
+    const auto range_size = (w_id < worker_count - 1 ? writer_per_worker : writer_count - (w_id * writer_per_worker));
+    assert(range_size > 0);
+    assert(next < range_size);
+
+    if(++next == range_size)
+        next = 0;
+
+    // TODO: more efficient? Reuse the string?
+    std::string label;
+    kmer.get_label(label);
+    assert(writer_id < writer.size());
+    writer[writer_id].data().add(label.cbegin(), label.cend());
 }
 
 

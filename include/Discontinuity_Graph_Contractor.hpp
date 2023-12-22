@@ -111,14 +111,14 @@ public:
     // `v` is the ϕ vertex. The connecting edge has weight `w`, and
     // `in_same_part` should be `true` iff the endpoints of the edge belong to
     // the same partition.
-    Other_End(const Kmer<k>& v, const side_t s_v, const side_t s_u, const bool is_phi, const weight_t w, const std::size_t in_same_part):
+    Other_End(const Kmer<k>& v, const side_t s_v, const side_t s_u, const bool is_phi, const weight_t w, const std::size_t in_same_part, const bool processed = false):
           v_(v)
         , s_v_(s_v)
         , s_u_(s_u)
         , is_phi_(is_phi)
         , w_(w)
         , in_same_part_(in_same_part)
-        , processed_(false)
+        , processed_(processed)
     {}
 
     // Mark the endpoint as processed, defined by the context.
