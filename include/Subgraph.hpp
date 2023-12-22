@@ -158,8 +158,8 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
     if(walk_end_l == exitted || walk_end_r == exitted)  // The maximal unitig containing `v_hat` spans multiple subgraphs.
     {
         maximal_unitig.finalize_weak();
-        G.add_edge( walk_end_l == exitted ? v_l.canonical() : Discontinuity_Edge<k>::phi(), walk_end_l == exitted ? v_l.entrance_side() : side_t::back,
-                    walk_end_r == exitted ? v_r.canonical() : Discontinuity_Edge<k>::phi(), walk_end_r == exitted ? v_r.entrance_side() : side_t::back,
+        G.add_edge( walk_end_l == exitted ? v_l.canonical() : Discontinuity_Graph<k>::phi(), walk_end_l == exitted ? v_l.entrance_side() : side_t::back,
+                    walk_end_r == exitted ? v_r.canonical() : Discontinuity_Graph<k>::phi(), walk_end_r == exitted ? v_r.entrance_side() : side_t::back,
                     walk_end_l != exitted, walk_end_r != exitted, maximal_unitig);
         disc_edge_c++;
     }

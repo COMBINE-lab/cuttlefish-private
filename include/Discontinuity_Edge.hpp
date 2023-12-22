@@ -41,13 +41,6 @@ private:
     static constexpr uint8_t phi_v[2]  = {0b0000'0000, 0b0000'1000};    // Flags to denote whether `v` is ϕ.
     static constexpr uint8_t unitig_o[2]  = {0b0000'0000, 0b0100'0000}; // Flags to denote the exit-orientation of the corresponding literal unitig wrt to the `(u, v)` orientation of the edge (`front: 0, back: 1`).
 
-    // k-mer (super-)label of the ϕ-vertex in the discontinuity graph.  // TODO: revisit; almost sure we don't need this.
-    static constexpr const char phi_label[] =   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
-                                                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
-                                                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
-                                                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
-    static const Kmer<k> phi_;  // ϕ k-mer connected to each chain-end in the discontinuity graph.
-
 
 public:
 
@@ -110,10 +103,6 @@ public:
     // Returns exit-orientation of the corresponding literal unitig wrt the
     // `(u, v)` orientation of the edge.
     side_t o() const { return side_t(bool(mask & unitig_o[1])); }
-
-    // Returns the ϕ k-mer connected to each chain-end in the discontinuity
-    // graph.
-    static const Kmer<k>& phi() { return phi_; }
 };
 
 

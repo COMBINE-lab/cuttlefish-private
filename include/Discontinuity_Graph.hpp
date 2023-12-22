@@ -24,6 +24,13 @@ class Discontinuity_Graph
 {
 private:
 
+    // k-mer (super-)label of the ϕ-vertex in the discontinuity graph.  // TODO: revisit; almost sure we don't need this.
+    static constexpr const char phi_label[] =   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+                                                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+                                                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+                                                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
+    static const Kmer<k> phi_;  // ϕ k-mer connected to each chain-end in the discontinuity graph.
+
     Edge_Matrix<k> E_;  // Edge-matrix of the discontinuity graph.
 
     Unitig_Write_Distributor lmtigs;    // Distribution-manager for the writes of locally maximal unitigs' labels.
@@ -36,6 +43,13 @@ public:
     // edges are stored in `lmtig_bucket_count` buckets. Temporary working
     // files are stored at path-prefix `work_path`.
     Discontinuity_Graph(std::size_t part_count, std::size_t lmtig_bucket_count, const std::string& work_path);
+
+    // Returns the ϕ k-mer connected to each chain-end in the discontinuity
+    // graph.
+    static const Kmer<k>& phi() { return phi_; }
+
+    // Returns the edge-matrix of the graph.
+    const Edge_Matrix<k>& E() const { return E_; }
 
     // Adds the edge `({(u, s_u), (v, s_v)}, 1)` to the graph. `u_is_phi` and
     // `v_is_phi` denote whether `u` and `v` are `ϕ` respectively. The locally-
@@ -50,9 +64,6 @@ public:
 
     // Closes the lm-tig writer streams.
     void close_lmtig_stream();
-
-    // Returns the edge-matrix of the graph.
-    const Edge_Matrix<k>& E() const { return E_; }
 };
 
 

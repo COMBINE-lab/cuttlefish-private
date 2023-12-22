@@ -52,7 +52,6 @@ set(PROJECT_SRC
         Discontinuity_Graph_Bootstrap.cpp
         dBG_Contractor.cpp
         Discontinuity_Graph.cpp
-        Discontinuity_Edge.cpp
         Edge_Matrix.cpp
         Unitig_File.cpp
         Subgraphs_Processor.cpp
