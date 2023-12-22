@@ -97,6 +97,7 @@ private:
     bool is_phi_;   // Whether the endpoint is a ϕ vertex.
     weight_t w_;    // Weight of the associated edge.
     bool in_same_part_; // Whether the endpoints belong to the same partition.
+    bool processed_; // Whether the endpoint has been processed, defined by the context.
 
 
 public:
@@ -117,7 +118,11 @@ public:
         , is_phi_(is_phi)
         , w_(w)
         , in_same_part_(in_same_part)
+        , processed_(false)
     {}
+
+    // Mark the endpoint as processed, defined by the context.
+    void process() { processed_ = true; }
 
     // Returns the endpoint vertex.
     auto v() const { return v_; }
@@ -138,6 +143,9 @@ public:
 
     // Returns whether the endpoints belong to the same partition.
     auto in_same_part() const { return in_same_part_; }
+
+    // Returns whether the endpoint has been processed, defined by the context.
+    auto processed() const { return processed_; }
 };
 
 

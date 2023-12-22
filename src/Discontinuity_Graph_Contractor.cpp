@@ -69,12 +69,8 @@ void Discontinuity_Graph_Contractor<k>::contract()
             assert(M.find(e.y()));
             auto& z = *p_z;
             if(z.is_phi() && e.x_is_phi())
-            {
                 form_meta_vertex(e.y(), j, e.s_y(), e.w(), z.w());
-                return;
-            }
-
-            if(z.in_same_part())    // Corresponds to a compressed diagonal chain.
+            else if(z.in_same_part())    // Corresponds to a compressed diagonal chain.
             {
                 assert(!z.is_phi());
                 assert(M.find(z.v()));
@@ -83,11 +79,12 @@ void Discontinuity_Graph_Contractor<k>::contract()
                     D_c[parlay::worker_id()].data().emplace_back(e.y(), inv_side(e.s_y()), z.v(), z.s_v(), z.w(), 0, 0, false, false, side_t::unspecified);
 
                 z = Other_End(e.x(), e.s_x(), e.s_y(), e.x_is_phi(), e.w(), false);
-                return;
             }
+            else
+                // TODO: add edges in a lock-free manner, accumulating new edges in thread-local buffers and copying to the global repo afterwards.
+                G.add_edge(e.x(), e.s_x(), z.v(), z.s_v(), e.w() + z.w(), e.x_is_phi(), z.is_phi());
 
-            // TODO: add edges in a lock-free manner, accumulating new edges in thread-local buffers and copying to the global repo afterwards.
-            G.add_edge(e.x(), e.s_x(), z.v(), z.s_v(), e.w() + z.w(), e.x_is_phi(), z.is_phi());
+            z.process();
         };
 
         while(true)
