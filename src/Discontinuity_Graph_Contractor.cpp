@@ -75,8 +75,6 @@ void Discontinuity_Graph_Contractor<k>::contract()
                 assert(!z.is_phi());
                 assert(M.find(z.v()));
                 assert(G.E().partition(z.v()) == j);
-                if(e.y() < z.v())
-                    D_c[parlay::worker_id()].data().emplace_back(e.y(), inv_side(e.s_y()), z.v(), z.s_v(), z.w(), 0, 0, false, false, side_t::unspecified);
 
                 z = Other_End(e.x(), e.s_x(), e.s_y(), e.x_is_phi(), e.w(), false);
             }
@@ -185,6 +183,23 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
     std::ofstream output(work_path + std::string("D_") + std::to_string(j));
     output.write(reinterpret_cast<const char*>(D_j.data()), D_j.size() * sizeof(Discontinuity_Edge<k>));
     output.close();
+
+
+    const auto collect_compressed_diagonal_chains =
+        [&](const std::size_t w_id)
+        {
+            auto it = M.iterator(parlay::num_workers(), w_id);
+            Kmer<k> u;  // Vertex in the hash table.
+            Other_End end;  // Other endpoint of `u` in the table.
+            while(it.next(u, end))
+            {
+                assert(M.find(end.v()));
+                if(u < end.v() && M.find(end.v())->v() == u)
+                    D_c[w_id].data().emplace_back(u, end.s_u(), end.v(), end.s_v(), end.w(), 0, 0, false, false, side_t::unspecified);
+            }
+        };
+
+    parlay::parallel_for(0, parlay::num_workers(), collect_compressed_diagonal_chains, 1);
 }
 
 
