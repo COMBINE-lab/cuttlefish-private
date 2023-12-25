@@ -9,8 +9,11 @@
 #include <vector>
 #include <type_traits>
 #include <cstdlib>
+#include <algorithm>
+#include <cassert>
 
 // TODO: wrap everything here in some namespaces.
+// =============================================================================
 
 // Returns a random string of length `len`, using characters from `alphabet`.
 std::string get_random_string(size_t len, const char* alphabet =    "0123456789"
@@ -82,6 +85,21 @@ template <typename T_>
 void deallocate(T_* const ptr)
 {
     std::free(ptr);
+}
+
+// Resizes the type-`T_` container `container` geometrically with the growth
+// factor `gf` such that it has a size of at least `sz`.
+template <typename T_>
+void resize_geometric(T_& container, const std::size_t sz, const double gf = 2.0)
+{
+    assert(gf > 1.0);
+
+    std::size_t curr_sz = std::max(container.size(), 1lu);
+    while(curr_sz < sz)
+        curr_sz *= gf;
+
+    if(container.size() < curr_sz)
+        container.resize(curr_sz);
 }
 
 // Returns the corresponding integer value for an enum-value `enum_val`.
