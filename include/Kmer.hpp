@@ -297,7 +297,7 @@ template <uint16_t k>
 __attribute__((optimize("unroll-loops")))
 inline Kmer<k>::Kmer(const char* const label)
 {
-    assert(std::strlen(label) == k);
+    assert(std::strlen(label) >= k);
 
     constexpr uint16_t packed_word_count = k / 32;
 
@@ -306,7 +306,7 @@ inline Kmer<k>::Kmer(const char* const label)
         kmer_data[data_idx] = Kmer_Utility::encode<32>((label + k) - (data_idx << 5) - 32);
 
     // Get the partially packed (highest index) word's binary representation.
-    if constexpr(k & 31)
+    if constexpr((k & 31) > 0)
         kmer_data[NUM_INTS - 1] = Kmer_Utility::encode<k & 31>(label);
 }
 
