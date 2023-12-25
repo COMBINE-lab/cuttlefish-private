@@ -34,7 +34,6 @@ class Discontinuity_Graph_Contractor
 private:
 
     Discontinuity_Graph<k>& G;  // The discontinuity-graph.
-    const std::size_t n_;   // Number of discontinuity-vertices.
 
     typedef Obj_Path_Info_Pair<Kmer<k>, k> kmer_path_info_t;
     std::vector<Ext_Mem_Bucket<kmer_path_info_t>>& P_v; // `P_v[j]` contains path-info for vertices in partition `j`—specifically, the meta-vertices.
@@ -76,8 +75,7 @@ public:
     // Constructs a contractor for the discontinuity-graph `G`. `P_v[j]` is to
     // contain path-information for vertices at partition `j`. Temporary files
     // are stored at path-prefix `temp_path`.
-    // TODO: infer / approximate `n` by the class itself.
-    Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path);
+    Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path);
 
     // Contracts the discontinuity-graph.
     void contract();

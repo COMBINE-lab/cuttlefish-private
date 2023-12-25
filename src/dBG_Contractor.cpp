@@ -64,7 +64,7 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     std::cerr << "Expecting at most " << ((G.E().row_size(0) + G.phantom_edge_count()) / 2) << " more non-DCC maximal unitigs\n";
     n_disc_v = G.E().size() - G.E().row_size(0) / 2;    // Each separate chain has exactly two ϕ-adjacent edges.
 
-    Discontinuity_Graph_Contractor<k> contractor(G, n_disc_v, P_v, work_path);
+    Discontinuity_Graph_Contractor<k> contractor(G, P_v, work_path);
     contractor.contract();
 
     G.close_lmtig_stream();
@@ -72,7 +72,7 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     const auto t_c = now();
     std::cerr << "Discontinuity-graph contraction completed. Time taken: " << duration(t_c - t_s) << " seconds.\n";
 
-    Contracted_Graph_Expander<k> expander(G, n_disc_v, P_v, P_e, work_path);
+    Contracted_Graph_Expander<k> expander(G, P_v, P_e, work_path);
     expander.expand();
 
     const auto t_e = now();

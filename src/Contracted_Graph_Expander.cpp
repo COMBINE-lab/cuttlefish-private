@@ -1,6 +1,7 @@
 
 #include "Contracted_Graph_Expander.hpp"
 #include "globals.hpp"
+#include "utility.hpp"
 #include "parlay/parallel.h"
 
 #include <fstream>
@@ -13,21 +14,22 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, const std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path):
+Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path):
       G(G)
-    , n_(n)
     , P_v(P_v)
     , P_e(P_e)
     , P_v_w(parlay::num_workers())
     , P_e_w(parlay::num_workers())
     , work_path(temp_path)
-    , M(static_cast<std::size_t>((n_ / G.E().vertex_part_count()) * 1.25))
+    , M(G.vertex_part_size_upper_bound())
 #ifndef NDEBUG
     , H_p_e_w(parlay::num_workers(), 0)
 #endif
 {
     std::for_each(P_v_w.begin(), P_v_w.end(), [&](auto& v){ v.data().resize(P_v.size()); });
     std::for_each(P_e_w.begin(), P_e_w.end(), [&](auto& v){ v.data().resize(P_e.size()); });
+
+    std::cerr << "Hash table capacity during expansion: " << M.capacity() << ".\n";
 }
 
 
@@ -47,7 +49,6 @@ void Contracted_Graph_Expander<k>::expand()
     std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
 
     buf.resize(G.E().max_block_size());
-    p_v_buf.reserve(static_cast<std::size_t>((n_ / G.E().vertex_part_count()) * 1.25)); // TODO: check the maximum size empirically, as repetitions are possible in the info-buckets.
     for(std::size_t i = 1; i <= G.E().vertex_part_count(); ++i)
     {
         std::cerr << "\rPart: " << i;
@@ -178,6 +179,8 @@ template <uint16_t k>
 void Contracted_Graph_Expander<k>::load_path_info(const std::size_t i)
 {
     auto t_s = now();
+    resize_geometric(p_v_buf, P_v[i].size());
+    assert(p_v_buf.size() >= P_v[i].size());
     P_v[i].load(p_v_buf);
     auto t_e = now();
     p_v_load_time += duration(t_e - t_s);

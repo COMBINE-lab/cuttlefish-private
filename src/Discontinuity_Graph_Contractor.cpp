@@ -11,15 +11,16 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, const std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path):
+Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path):
       G(G)
-    , n_(n)
     , P_v(P_v)
     , P_v_local(parlay::num_workers())
     , work_path(temp_path)
-    , M(static_cast<std::size_t>((n_ / G.E().vertex_part_count()) * 1.1))
+    , M(G.vertex_part_size_upper_bound())
     , D_c(parlay::num_workers())
-{}
+{
+    std::cerr << "Hash table capacity during contraction: " << M.capacity() << ".\n";
+}
 
 
 template <uint16_t k>
