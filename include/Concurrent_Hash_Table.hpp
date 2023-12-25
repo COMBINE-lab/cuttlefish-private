@@ -81,6 +81,9 @@ public:
 
     // T_key_ empty_key() const { return empty_key_; }
 
+    // Returns the capacity of the hash table.
+    std::size_t capacity() const { return capacity_; }
+
     // Clears the hash table.
     // TODO: consider whether a generic empty-key might be required in our particular use-cases ever or not.
     void clear();
@@ -208,10 +211,16 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key_ key, const T_val_ val)
 {
+#ifndef NDEBUG
+    std::size_t tried_slots = 0;
+#endif
+
     bool success = false;
 
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
     {
+        assert(++tried_slots <= capacity_);
+
         if(T[i].key == empty_key_)  // TODO: check atomic-read / partial-read guarantees.
         {
             if constexpr(mt_)   lock[i].lock();
@@ -236,10 +245,16 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key_ key, const T_val_ val, T_val_*& val_add)
 {
+#ifndef NDEBUG
+    std::size_t tried_slots = 0;
+#endif
+
     bool success = false;
 
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
     {
+        assert(++tried_slots <= capacity_);
+
         if(T[i].key == empty_key_)  // TODO: check atomic-read / partial-read guarantees.
         {
             if constexpr(mt_)   lock[i].lock();
@@ -270,10 +285,16 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_overwrite(const T_key_ key, const T_val_ val)
 {
+#ifndef NDEBUG
+    std::size_t tried_slots = 0;
+#endif
+
     bool success = false;
 
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
     {
+        assert(++tried_slots <= capacity_);
+
         if(T[i].key == empty_key_)  // TODO: check atomic-read / partial-read guarantees.
         {
             if constexpr(mt_)   lock[i].lock();
@@ -304,6 +325,10 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 template <bool mt_>
 inline T_val_* Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(const T_key_ key)
 {
+#ifndef NDEBUG
+    std::size_t tried_slots = 0;
+#endif
+
     T_val_* val_add = nullptr;
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
         if(T[i].key == key) // TODO: check atomic-read / partial-read guarantees.
@@ -315,6 +340,8 @@ inline T_val_* Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(const T_ke
         }
         else if(T[i].key == empty_key_) // TODO: check atomic-read / partial-read guarantees.
             break;
+        else
+            assert(++tried_slots <= capacity_);
 
     return val_add;
 }
