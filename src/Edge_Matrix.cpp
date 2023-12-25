@@ -120,6 +120,26 @@ std::size_t Edge_Matrix<k>::row_size(const std::size_t i) const
 
 
 template <uint16_t k>
+std::size_t Edge_Matrix<k>::col_size(const std::size_t j) const
+{
+    assert(j <= vertex_part_count_);
+
+    std::size_t sz = 0;
+    for(std::size_t i = 0; i <= j; ++i)
+        sz += edge_matrix[i][j].size();
+
+    return sz;
+}
+
+
+template <uint16_t k>
+std::size_t Edge_Matrix<k>::block_size(const std::size_t i, const std::size_t j) const
+{
+    return edge_matrix[i][j].size();
+}
+
+
+template <uint16_t k>
 std::size_t Edge_Matrix<k>::size() const
 {
     std::size_t sz = 0;

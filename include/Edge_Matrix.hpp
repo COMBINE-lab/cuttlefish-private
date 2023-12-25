@@ -89,6 +89,12 @@ public:
     // Returns the number of edges stored in row `i`.
     std::size_t row_size(std::size_t i) const;
 
+    // Returns the number of edges stored in column `j`.
+    std::size_t col_size(std::size_t j) const;
+
+    // Returns the number of edges in the `[i, j]`'th block.
+    std::size_t block_size(std::size_t i, std::size_t j) const;
+
     // Returns the number of edges stores in the matrix.
     std::size_t size() const;
 

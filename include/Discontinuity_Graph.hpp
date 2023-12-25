@@ -77,6 +77,10 @@ public:
 
     // Closes the lm-tig writer streams.
     void close_lmtig_stream();
+
+    // Returns a tight upper bound of the maximum number of vertices in a
+    // partition.
+    std::size_t vertex_part_size_upper_bound() const;
 };
 
 

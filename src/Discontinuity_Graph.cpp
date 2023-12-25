@@ -31,6 +31,20 @@ void Discontinuity_Graph<k>::close_lmtig_stream()
     lmtigs.close();
 }
 
+
+template <uint16_t k>
+std::size_t Discontinuity_Graph<k>::vertex_part_size_upper_bound() const
+{
+    std::size_t bound = 0;
+    for(std::size_t j = 1; j <= E_.vertex_part_count(); ++j)
+        // Each *original* edge from the non-diagonal blocks of column `j` corresponds to a
+        // unique vertex of partition `j`, and in the worst-case, each original edge from the
+        // diagonal block corresponds to two unique vertices.
+        bound = std::max(bound, E_.col_size(j) + E_.block_size(j, j));
+
+    return bound;
+}
+
 }
 
 
