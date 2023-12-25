@@ -4,6 +4,8 @@
 #include "globals.hpp"
 #include "parlay/parallel.h"
 
+#include <atomic>
+
 
 namespace cuttlefish
 {
@@ -21,6 +23,7 @@ Subgraphs_Processor<k>::Subgraphs_Processor(const std::string& bin_path_pref, co
 template <uint16_t k>
 void Subgraphs_Processor<k>::process()
 {
+    std::atomic_uint64_t solved = 0;
     std::atomic_uint64_t trivial_mtig_count = 0;
 
     const auto process_subgraph =
@@ -31,9 +34,13 @@ void Subgraphs_Processor<k>::process()
             sub_dBG.contract();
 
             trivial_mtig_count += sub_dBG.trivial_mtig_count();
+
+            if(++solved % 8 == 0)
+                std::cerr << "\rSolved " << solved << " subgraphs.";
         };
 
-    parlay::parallel_for(0, bin_count, process_subgraph);
+    parlay::parallel_for(0, bin_count, process_subgraph, 1);
+    std::cerr << "\n";
 
     std::cerr << "Trivial maximal unitig count: " << trivial_mtig_count << "\n";
 }
