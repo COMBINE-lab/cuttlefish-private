@@ -204,10 +204,32 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
 
         assert(G.E().partition(u) == j);
         assert(G.E().partition(v) == j);
-        assert(u != v);
 
-        M.insert_overwrite(u, Other_End(v, s_v, s_u, false, w, true, true));
-        M.insert_overwrite(v, Other_End(u, s_u, s_v, false, w, true, true));
+        // Adding an `{u, v}` edge. If an `{u, v}` edge already exists or `u = v`, then it's an ICC.
+
+        if(u == e.y() && v == e.x())    // An Isolated Cordless Cycle (ICC).
+        {
+            // Introduce an artificial branch at the `front` of `e.x()` in the underlying dBG—so the
+            // cycle then becomes a linear maximal unitig, incident to the `back` of `e.x()` and going
+            // up-to some vertex `z` (which is not necessarily `e.y()`, and `e.y()` can be the same as
+            // `e.x()`). Then conceptually we have also introduced two `ϕ` edges to the discontinuity
+            // graph, one at the `front` of `e.x()` and the other at the side `\bar{s_z}` of `z` (`z`
+            // connects to the unitig through side `s_z`). Hence, a meta-vertex for the maximal unitig
+            // can be formed immediately with `e.x()` having rank `1`, w/o explicitly adding the `ϕ`'s.
+            // In light of the branching at the front of `e.x()`, it should not have a lm-tig incident
+            // to the front in the dBG and nor have any edge incident there in the discontinuity graph
+            // (except for the `ϕ`-edge). But we do not know at this moment what edge / lm-tig is that,
+            // nor do we support deletion from the graph. Special consideration has to be done when
+            // propagating path-information through the front side of `e.x()`—any rank propagated
+            // through there would be `<= 0` and should be dealt with.
+            M.insert_overwrite(e.x(), Other_End(Discontinuity_Graph<k>::phi(), side_t::back, side_t::front, true, 1, false, true));
+            form_meta_vertex(e.x(), j, side_t::front, 1, w);
+        }
+        else
+        {
+            M.insert_overwrite(u, Other_End(v, s_v, s_u, false, w, true, true));
+            M.insert_overwrite(v, Other_End(u, s_u, s_v, false, w, true, true));
+        }
 
         assert(M.find(u)); assert(M.find(e.x()));
         assert(M.find(v)); assert(M.find(e.y()));
@@ -228,11 +250,12 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
             Kmer<k> u;  // Vertex in the hash table.
             Other_End end;  // Other endpoint of `u` in the table.
             while(it.next(u, end))
-            {
-                assert(M.find(end.v()));
-                if(u < end.v() && M.find(end.v())->v() == u)
-                    D_c[w_id].data().emplace_back(u, end.s_u(), end.v(), end.s_v(), end.w(), 0, 0, false, false, side_t::unspecified);
-            }
+                if(!end.is_phi())   // Not an ICC.
+                {
+                    assert(M.find(end.v()));
+                    if(u < end.v() && M.find(end.v())->v() == u)
+                        D_c[w_id].data().emplace_back(u, end.s_u(), end.v(), end.s_v(), end.w(), 0, 0, false, false, side_t::unspecified);
+                }
         };
 
     parlay::parallel_for(0, parlay::num_workers(), collect_compressed_diagonal_chains, 1);
