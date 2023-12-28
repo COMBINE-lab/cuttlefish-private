@@ -60,8 +60,7 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     subgraphs.process();
 
     // TODO: fix the following assertion and `n_disc_v` in light of false-phantom edges' absence from edge matrix.
-    assert((G.E().row_size(0) + G.phantom_edge_count()) % 2 == 0);
-    std::cerr << "Expecting at most " << ((G.E().row_size(0) + G.phantom_edge_count()) / 2) << " more non-DCC maximal unitigs\n";
+    std::cerr << "Expecting at most " << ((G.E().row_size(0) + G.phantom_edge_upper_bound()) / 2) << " more non-DCC maximal unitigs\n";
     n_disc_v = G.E().size() - G.E().row_size(0) / 2;    // Each separate chain has exactly two ϕ-adjacent edges.
 
     Discontinuity_Graph_Contractor<k> contractor(G, P_v, work_path);
