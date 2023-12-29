@@ -113,8 +113,10 @@ template <uint16_t k>
 inline Path_Info<k> Contracted_Graph_Expander<k>::infer(const Path_Info<k> u_inf, const side_t s_u, const side_t s_v, const weight_t w)
 {
     // const auto p_v = u_inf.p(); // Path-ID.
-    const weight_t r_v = (s_u == u_inf.o() ? u_inf.r() + w : u_inf.r() - w);    // Rank.
-    const side_t o_v = (s_u == u_inf.o() ? inv_side(s_v) : s_v);    // Orientation.
+    const auto r_v = (s_u == u_inf.o() ? u_inf.r() + w :    // Rank.
+                                        (u_inf.r() > w ? u_inf.r() - w : 0));   // Trying to expand crossing a deleted edge from an ICC.
+                                                                                // This works as no vertex can have a rank `0` in the model.
+    const auto o_v = (s_u == u_inf.o() ? inv_side(s_v) : s_v);  // Orientation.
 
     return Path_Info(u_inf.p(), r_v, o_v);
 }
@@ -128,7 +130,8 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     assert(u_inf.p() == v_inf.p());
 
     const auto r = std::min(u_inf.r(), v_inf.r());
-    const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));  // Whether the ranking of the vertices in the unitig goes from u to v.
+    const auto o = (r > 0 ? (r == u_inf.r() ? e.o() : inv_side(e.o())) :    // Whether the ranking of the vertices in the unitig goes from `u` to `v`.
+                            side_t::unspecified);   // This is a deleted edge from an ICC.
 
     assert(e.b() > 0 && e.b() < P_e.size());
     P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), u_inf.p(), r, o);

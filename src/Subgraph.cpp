@@ -123,7 +123,7 @@ void Subgraph<k>::contract()
         if(v_st.is_isolated())
         {
             if(v_st.is_discontinuity()) // A potential phantom-edge for the discontinuity graph is incident to `v`.
-                G.inc_phantom_edge();
+                G.inc_potential_phantom_edge();
 
             isolated++;
             continue;

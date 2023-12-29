@@ -19,6 +19,9 @@
 #include <cassert>
 
 
+// TODO: use more efficient data structures throughout the collator.
+
+
 namespace cuttlefish
 {
 
@@ -121,7 +124,7 @@ void Unitig_Collator<k>::map()
         std::string unitig; // Read-off unitig. TODO: use better-suited container.
         uni_idx_t idx = 0;  // The unitig's sequential ID in the bucket.
         std::size_t uni_len;    // The unitig's length in bases.
-        while((uni_len = unitig_reader.read_next_unitig(unitig)) > 0)
+        for(; (uni_len = unitig_reader.read_next_unitig(unitig)) > 0; idx++)
         {
             assert(idx < b_sz);
             const auto p = M[idx].p();  // Path-ID of this unitig.
@@ -130,8 +133,6 @@ void Unitig_Collator<k>::map()
             lock[mapped_b_id].lock();
             max_unitig_bucket[mapped_b_id].add(M[idx], unitig.data(), uni_len);
             lock[mapped_b_id].unlock();
-
-            idx++;
         }
 
         assert(idx == b_sz);
@@ -203,12 +204,21 @@ void Unitig_Collator<k>::reduce()
         {
             max_unitig.clear();
 
-            const std::size_t s = i;
-            std::size_t e;
-            for(e = s + 1; e < b_sz && U[e].p() == U[s].p(); ++e);  // Find the current maximal unitig's stretch in the bucket.
+            const bool is_cycle = (U[i].o() == side_t::unspecified);
+            const std::size_t s = (i + is_cycle);   // If constructing an ICC, skip its deleted lm-tig.
+            std::size_t e = s + 1;
+
+            // Find the current maximal unitig's stretch in the bucket.
+            while(e < b_sz && U[e].p() == U[s].p())
+            {
+                assert(U[e].o() != side_t::unspecified);
+                e++;
+            }
 
             if(e - s == 2)  // Special case for handling orientation of path-traversals in the discontinuity graph.
             {
+                assert(U[s].r() == 0); assert(U[s + 1].r() == 0);
+
                 std::string u0(L + U[s].label_idx(), U[s].label_len());
                 std::string u1(L + U[s + 1].label_idx(), U[s + 1].label_len());
 
@@ -234,7 +244,17 @@ void Unitig_Collator<k>::reduce()
 
             max_u_rc = max_unitig;
             reverse_complement(max_u_rc);
-            if(max_unitig > max_u_rc)
+            if(is_cycle)
+            {
+                Kmer<k> min_f, min_r;
+                const auto min_idx_f = min_kmer(max_unitig, min_f);
+                const auto min_idx_r = min_kmer(max_u_rc, min_r);
+                if(min_f < min_r)
+                    max_unitig = std::string(max_unitig.cbegin() + min_idx_f, max_unitig.cend()) + std::string(max_unitig.cbegin() + k - 1, max_unitig.cbegin() + min_idx_f + k - 1);
+                else
+                    max_unitig = std::string(max_u_rc.cbegin() + min_idx_r, max_u_rc.cend()) + std::string(max_u_rc.cbegin() + k - 1, max_u_rc.cbegin() + min_idx_r + k - 1);
+            }
+            else if(max_unitig > max_u_rc)
                 max_unitig = max_u_rc;
 
             // TODO: decide record-ID choice.
@@ -420,6 +440,28 @@ template <uint16_t k>
 std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b)
 {
     return load_path_info(b, M, p_e_buf);
+}
+
+
+
+template <uint16_t k>
+std::size_t Unitig_Collator<k>::min_kmer(const std::string& s, Kmer<k>& min)
+{
+    Kmer<k> kmer(s), dummy;
+    std::size_t min_idx = 0;
+    min = kmer;
+
+    std::size_t curr_idx = 1;
+    while(curr_idx + k <= s.length())
+    {
+        kmer.roll_to_next_kmer(s[curr_idx + k - 1], dummy);
+        if(min > kmer)
+            min = kmer, min_idx = curr_idx;
+
+        curr_idx++;
+    }
+
+    return min_idx;
 }
 
 }

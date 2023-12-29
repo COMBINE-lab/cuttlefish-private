@@ -55,7 +55,7 @@ public:
     const Edge_Matrix<k>& E() const { return E_; }
 
     // Returns the number of potential phantom edges identified.
-    uint64_t phantom_edge_count() const;
+    uint64_t phantom_edge_upper_bound() const;
 
     // Adds the edge `({(u, s_u), (v, s_v)}, 1)` to the graph. `u_is_phi` and
     // `v_is_phi` denote whether `u` and `v` are `ϕ` respectively. The locally-
@@ -72,8 +72,8 @@ public:
     // should be a contracted edge and not an original one.
     void add_edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, weight_t w, bool u_is_phi, bool v_is_phi);
 
-    // Increment the potential phantom edge count.
-    void inc_phantom_edge() { phantom_edge_count_++; }
+    // Increments the potential phantom edge count.
+    void inc_potential_phantom_edge() { phantom_edge_count_++; }
 
     // Closes the lm-tig writer streams.
     void close_lmtig_stream();

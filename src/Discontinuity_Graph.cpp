@@ -19,7 +19,7 @@ Discontinuity_Graph<k>::Discontinuity_Graph(const std::size_t part_count, const 
 
 
 template <uint16_t k>
-uint64_t Discontinuity_Graph<k>::phantom_edge_count() const
+uint64_t Discontinuity_Graph<k>::phantom_edge_upper_bound() const
 {
     return phantom_edge_count_;
 }
