@@ -70,6 +70,10 @@ private:
     // information from the bucket to the table.
     std::size_t load_path_info(std::size_t b, Path_Info<k>* M, unitig_path_info_t* buf);
 
+    // Returns the index of the lexicographically minimum k-mer in the `s`, and
+    // puts the k-mer in `min`.
+    static std::size_t min_kmer(const std::string& s, Kmer<k>& min);
+
 
 public:
 

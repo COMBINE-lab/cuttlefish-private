@@ -51,14 +51,14 @@ public:
 
 
     // Returns the path-ID.
-    const path_id_t p() const { return p_; }
+    auto p() const { return p_; }
 
     // Returns the rank.
-    weight_t r() const { return r_; }
+    auto r() const { return r_; }
 
     // Returns the orientation `o` of the object in its specified rank—the
     // path traversal exits the object through the side `o`.
-    side_t o() const { return o_; }
+    auto o() const { return o_; }
 
     // Returns `true` iff this information is the same as in `rhs`.
     bool operator==(const Path_Info& rhs) const { return p_ == rhs.p_ && r_ == rhs.r_ && o_ == rhs.o_; }

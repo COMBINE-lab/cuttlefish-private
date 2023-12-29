@@ -60,6 +60,11 @@ private:
     // incident to the other side.
     void form_meta_vertex(Kmer<k> v, std::size_t part, side_t s_1, weight_t w_1, weight_t w_2);
 
+    // Forms a meta-vertex in the contracted graph with the vertex `v` belonging
+    // to the vertex-partition `part`. In the contracted graph, `v` has a `w`-
+    // weighted edge incident to its side `s`.
+    void form_meta_vertex(Kmer<k> v, std::size_t part, side_t s, weight_t w);
+
     // Debug
     std::size_t meta_v_c = 0;
     double edge_read_time = 0;  // Time taken to read the edges.
@@ -150,10 +155,18 @@ public:
 template <uint16_t k>
 inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s_1, const weight_t w_1, const weight_t w_2)
 {
+
+    form_meta_vertex(v, part, side_t::front, s_1 == side_t::front ? w_1 : w_2);
+}
+
+
+template <uint16_t k>
+inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s, const weight_t w)
+{
     assert(part < P_v.size());
 
     (void)part;
-    P_v_local[parlay::worker_id()].data().emplace_back(v, v, (s_1 == side_t::back ? w_2 : w_1), side_t::back);  // The path-traversal exits `v` through its back.
+    P_v_local[parlay::worker_id()].data().emplace_back(v, v, w, inv_side(s));   // The path-traversal enters `v` through its the side `s`.
 }
 
 }

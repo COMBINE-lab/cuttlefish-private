@@ -72,10 +72,12 @@ void Contracted_Graph_Expander<k>::expand()
             assert(M.find(e.x()));
             const auto x_inf = *M.find(e.x());  // Path-information of the endpoint of the edge that is in the current partition, `i`.
             const auto y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
-
-            const auto j = G.E().partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
-            assert(j > i);
-            P_v_w[parlay::worker_id()].data()[j].emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o());
+            if(y_inf.r() > 0)   // Not in an ICC, or in the correctly oriented traversal in an ICC.
+            {
+                const auto j = G.E().partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
+                assert(j > i);
+                P_v_w[parlay::worker_id()].data()[j].emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o());
+            }
 
             if(e.w() == 1)
                 add_edge_path_info(e, x_inf, y_inf);
@@ -215,9 +217,8 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
     const auto t_e = now();
     edge_read_time += duration(t_e - t_s);
 
-    Path_Info<k> y_inf;
-    // In reverse order of the newly introduced diagonal-edges to always ensure one endpoint having path-info ready.
-    for(auto d_it = D_i.rbegin(); d_it != D_i.rend(); ++d_it)
+    Path_Info<k> x_inf, y_inf;
+    for(auto d_it = D_i.rbegin(); d_it != D_i.rend(); ++d_it)   // In reverse order of the newly introduced diagonal-edges to always ensure one endpoint having path-info ready.
     {
         const auto& e = *d_it;
         assert(M.find(e.x()) || M.find(e.y()));
@@ -225,12 +226,17 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
         if(!M.find(e.y(), y_inf))
         {
             assert(M.find(e.x()));
-            M.insert(e.y(), infer(*M.find(e.x()), e.s_x(), e.s_y(), e.w()));
+            M.find(e.x(), x_inf);
+            y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
+            if(y_inf.r() > 0)
+                M.insert(e.y(), y_inf);
         }
         else
         {
             assert(M.find(e.y()));
-            M.insert(e.x(), infer(y_inf, e.s_y(), e.s_x(), e.w()));
+            x_inf = infer(y_inf, e.s_y(), e.s_x(), e.w());
+            if(x_inf.r() > 0)
+                M.insert(e.x(), x_inf);
         }
     }
 }
