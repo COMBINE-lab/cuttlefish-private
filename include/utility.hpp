@@ -102,12 +102,13 @@ void resize_geometric(T_& container, const std::size_t sz, const double gf = 2.0
         container.resize(curr_sz);
 }
 
-// Returns the corresponding integer value for an enum-value `enum_val`.
-template <typename T_>
-constexpr int as_int(const T_ enum_val)
+// Returns the corresponding integer value of type `T_to_` for a type-`T_`
+// enum-value `enum_val`.
+template <typename T_, typename T_to_ = std::size_t>
+constexpr T_to_ as_int(const T_ enum_val)
 {
     static_assert(std::is_enum_v<T_>);
-    return static_cast<uint8_t>(enum_val);
+    return static_cast<T_to_>(enum_val);
 }
 
 // TODO: Add thread-joiner wrapper.

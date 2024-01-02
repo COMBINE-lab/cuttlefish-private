@@ -6,6 +6,7 @@
 
 #include "DNA.hpp"
 #include "globals.hpp"
+#include "utility.hpp"
 
 #include <cstdint>
 #include <climits>
@@ -104,15 +105,15 @@ inline void State_Config::update_edges(const base_t front, const base_t back)
 
 inline void State_Config::mark_discontinuous(const side_t s)
 {
-    assert(static_cast<std::size_t>(s) < 2);
-    status |= discontinuity[static_cast<std::size_t>(s)];
+    assert(as_int(s) < 2);
+    status |= discontinuity[as_int(s)];
 }
 
 
 inline bool State_Config::is_discontinuous(const side_t s) const
 {
-    assert(static_cast<std::size_t>(s) < 2);
-    return status & discontinuity[static_cast<std::size_t>(s)];
+    assert(as_int(s) < 2);
+    return status & discontinuity[as_int(s)];
 }
 
 

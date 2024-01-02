@@ -153,7 +153,10 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
         maximal_unitig.mark_cycle(back);
     }
     else
+    {
         walk_end_l = walk_unitig(v_hat, state, front, maximal_unitig.unitig(front), v_l);
+        assert(!maximal_unitig.unitig(front).is_cycle());
+    }
 
     if(walk_end_l == exitted || walk_end_r == exitted)  // The maximal unitig containing `v_hat` spans multiple subgraphs.
     {

@@ -7,6 +7,7 @@
 #include "boost/preprocessor/repetition/repeat.hpp"
 
 #include <cstdint>
+#include <cassert>
 
 
 // The macro `INSTANCE_COUNT` must be set exactly to `(MAX_K + 1) / 2` for a required maximum k-value.
@@ -65,7 +66,9 @@ namespace cuttlefish
         unspecified = 2
     } side_t;
 
-    constexpr auto inv_side = [](const side_t s) { return s == side_t::back ?   side_t::front :
+    // TODO: move this out to somewhere more suitable.
+    constexpr auto inv_side = [](const side_t s) { assert(s != side_t::unspecified);
+                                                    return s == side_t::back ?   side_t::front :
                                                                                 (s == side_t::front ? side_t::back : side_t::unspecified); };
 
 
