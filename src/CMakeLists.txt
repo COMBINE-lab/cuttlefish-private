@@ -56,6 +56,7 @@ set(PROJECT_SRC
         Unitig_File.cpp
         Subgraphs_Processor.cpp
         Subgraph.cpp
+        State_Config.cpp
         Discontinuity_Graph_Contractor.cpp
         Contracted_Graph_Expander.cpp
         Unitig_Collator.cpp

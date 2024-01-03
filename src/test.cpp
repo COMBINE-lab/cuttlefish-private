@@ -1265,12 +1265,15 @@ int main(int argc, char** argv)
     static constexpr uint16_t k = 31;
     static constexpr uint16_t l = 11;
 
+    const uint8_t f_th = 1;
     const std::size_t subgraph_count = 2000;
     const std::size_t parts = 64;
     const std::size_t unitig_buckets = 1024;
     const std::string cdbg_path(argv[1]);
     const std::string output_path(argv[2]);
     const std::string temp_path(argv[3]);
+
+    cuttlefish::State_Config::set_edge_threshold(f_th);
 
     // bootstrap_discontinuity_graph<k>(l, cdbg_path, temp_path, parts, unitig_buckets);
 

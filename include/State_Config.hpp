@@ -23,7 +23,7 @@ class State_Config
 {
 private:
 
-    static constexpr uint8_t f_th = 1;  // Edge-frequency threshold. TODO: update.
+    static uint8_t f_th;    // Edge-frequency threshold.
 
     // uint64_t color_hash;        // Hash of the vertex's color-set.
     uint8_t edge_freq[8];   // Frequency of the vertex's neighbors.
@@ -39,6 +39,9 @@ public:
 
     // Constructs an empty state.
     State_Config();
+
+    // Sets the edge-frequency threshold to `f_th`.
+    static void set_edge_threshold(uint8_t f_th);
 
     // Adds the edge-encodings `front` and `back` to the associated sides of a
     // corresponding vertex.
