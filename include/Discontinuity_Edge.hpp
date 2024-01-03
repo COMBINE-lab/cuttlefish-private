@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <algorithm>
+#include <iostream>
 
 
 namespace cuttlefish
@@ -103,6 +104,15 @@ public:
     // Returns exit-orientation of the corresponding literal unitig wrt the
     // `(u, v)` orientation of the edge.
     side_t o() const { return side_t(bool(mask & unitig_o[1])); }
+
+    // Pretty-prints the edge `e` to the stream `os`.
+    friend std::ostream& operator<<(std::ostream& os, const Discontinuity_Edge<k>& e)
+    {
+        return os   << "{"
+                    << "(" << e.u() << ", " << (e.s_u() == side_t::front ? 'f' : 'b') << "), "
+                    << "(" << e.v() << ", " << (e.s_v() == side_t::front ? 'f' : 'b') << ")"
+                    << "}: " << e.w();
+    }
 };
 
 
