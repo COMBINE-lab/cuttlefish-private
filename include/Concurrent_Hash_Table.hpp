@@ -423,7 +423,7 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 inline Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Iterator::Iterator(Concurrent_Hash_Table& M, std::size_t it_count, std::size_t it_id):
       M(M)
 {
-    const auto range_sz = M.capacity_ / it_count;
+    const auto range_sz = (M.capacity_ + it_count - 1) / it_count;
     idx = it_id * range_sz;
     end = std::min((it_id + 1) * range_sz, M.capacity_);
 }
