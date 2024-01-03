@@ -157,7 +157,7 @@ public:
 template <uint16_t k>
 inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s_1, const weight_t w_1, const weight_t w_2)
 {
-
+    assert(w_1 > 0); assert(w_2 > 0);
     form_meta_vertex(v, part, side_t::front, s_1 == side_t::front ? w_1 : w_2);
 }
 
@@ -165,8 +165,8 @@ inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v,
 template <uint16_t k>
 inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s, const weight_t w)
 {
+    assert(w > 0);
     assert(part < P_v.size());
-
     (void)part;
     P_v_local[parlay::worker_id()].data().emplace_back(v, v, w, inv_side(s));   // The path-traversal enters `v` through its the side `s`.
 }

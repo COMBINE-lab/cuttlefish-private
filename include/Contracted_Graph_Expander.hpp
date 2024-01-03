@@ -112,6 +112,8 @@ public:
 template <uint16_t k>
 inline Path_Info<k> Contracted_Graph_Expander<k>::infer(const Path_Info<k> u_inf, const side_t s_u, const side_t s_v, const weight_t w)
 {
+    assert(u_inf.r() > 0);
+
     // const auto p_v = u_inf.p(); // Path-ID.
     const auto r_v = (s_u == u_inf.o() ? u_inf.r() + w :    // Rank.
                                         (u_inf.r() > w ? u_inf.r() - w : 0));   // Trying to expand crossing a deleted edge from an ICC.
