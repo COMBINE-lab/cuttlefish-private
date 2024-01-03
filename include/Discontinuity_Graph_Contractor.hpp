@@ -19,7 +19,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
-#include <tuple>
+#include <atomic>
 #include <cassert>
 
 
@@ -49,6 +49,8 @@ private:
     // TODO: remove `D_j` by adopting a more parallelization-amenable algorithm for diagonal contraction-expansion.
     std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block.
     std::vector<Padded_Data<std::vector<Discontinuity_Edge<k>>>> D_c;   // `D_c[t]` contains the edges corresponding to compressed diagonal chains by worker `t`.
+
+    std::atomic_uint64_t icc_count; // Number of ICCs.
 
 
     // Contracts the `[j, j]`'th edge-block.

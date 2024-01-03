@@ -18,6 +18,7 @@ Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Discontinuity_
     , work_path(temp_path)
     , M(G.vertex_part_size_upper_bound())
     , D_c(parlay::num_workers())
+    , icc_count(0)
 {
     std::cerr << "Hash table capacity during contraction: " << M.capacity() << ".\n";
 }
@@ -171,6 +172,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
 
     std::cerr << "Formed " << meta_v_c << " meta-vertices.\n";
+    std::cerr << "Found " << icc_count << " ICCs.\n";
     std::cerr << "Map clearing time: " << map_clr_time << ".\n";
     std::cerr << "Edges reading time: " << edge_read_time << ".\n";
     std::cerr << "Non-diagonal edges contraction time: " << edge_proc_time << ".\n";
@@ -236,6 +238,7 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
             assert(e.x() == e.y() && e.x() == u);
             M.insert_overwrite(u, Other_End(Discontinuity_Graph<k>::phi(), side_t::back, side_t::front, true, 1, false, true));
             form_meta_vertex(u, j, side_t::front, 1, w);
+            icc_count++;
         }
         else if(u == e.y() && v == e.x())   // The currently contracted form of the actual ICC resides in this diagonal block.
         {
@@ -243,6 +246,7 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
             M.insert_overwrite(u, Other_End(Discontinuity_Graph<k>::phi(), side_t::back, inv_side(s_u), true, 1, false, true));
             M.insert_overwrite(v, Other_End(Discontinuity_Graph<k>::phi(), side_t::back, inv_side(s_v), true, 1, false, true));
             form_meta_vertex(u, j, inv_side(s_u), 1);
+            icc_count++;
         }
         else
         {
