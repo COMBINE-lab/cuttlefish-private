@@ -180,6 +180,7 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
 template <uint16_t k>
 inline typename Subgraph<k>::termination_t Subgraph<k>::walk_unitig(const Kmer<k>& v_hat, const State_Config& st_v, const side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v)
 {
+    const auto s_icc_return = inv_side(s_v_hat);    // The side through which to return to `v_hat` if it's contained in an ICC.
     Directed_Vertex<k> v(s_v_hat == side_t::back ? v_hat : v_hat.reverse_complement()); // Current vertex being added to the unitig.
     side_t s_v = s_v_hat;   // The side of the current vertex `v_hat` through which to extend the unitig, i.e. to exit `v`.
     State_Config state = st_v;  // State of `v`.
@@ -214,17 +215,30 @@ inline typename Subgraph<k>::termination_t Subgraph<k>::walk_unitig(const Kmer<k
         assert(M.find(v.canonical()) != M.end());
         state = M[v.canonical()];
 
-        if(state.is_visited())  // Hit a looping edge—visiting the immediate predecessor vertex.
-            return termination_t::crossed;  // Special case: crossed to the same unitig from a different orientation.
-
         s_v = v.entrance_side();
         assert(!state.is_empty_side(s_v));
         if(state.is_branching_side(s_v))    // Crossed an endpoint and reached a different unitig.
             return termination_t::crossed;
 
+        if(state.is_visited())  // Hit the same unitig.
+        {
+            // The unitig is an ICC; crossed back to the same unitig.
+            if(v.canonical() == v_hat && s_v == s_icc_return)
+                unitig.mark_cycle();
+            else
+                // Otherwise, hit a looping edge—visiting the immediate predecessor vertex.
+                // A special case; crossed to the same unitig from a different orientation.
+                assert(std::as_const(v)
+                        .roll_backward(s_v == side_t::front ? state.edge_at(s_v) : DNA_Utility::complement(state.edge_at(s_v)))
+                        .is_same_vertex(v));
+
+            return termination_t::crossed;
+        }
+
+
         // Still within the unitig.
-        if(!unitig.extend(v, DNA_Utility::map_char(b_ext)))
-            return termination_t::crossed;  // The unitig is a DCC (Detached Chordless Cycle); crossed back to the same unitig.
+        const bool e = unitig.extend(v, DNA_Utility::map_char(b_ext));
+        assert(e); (void)e;
 
         s_v = opposite_side(s_v);
     }

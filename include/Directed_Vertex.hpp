@@ -90,6 +90,17 @@ public:
     // rolling the associated k-mer by one base "forward".
     void roll_forward(cuttlefish::base_t b);
 
+    // Transforms this vertex to another by chopping off the last base from the
+    // associated observed k-mer, and appending the nucleobase `b` to the
+    // beginning, i.e. effectively rolling the associated k-mer by one base
+    // "backward".
+    void roll_backward(cuttlefish::base_t b);
+
+    // Returns a vertex formed by chopping off the last base from the observed
+    // k-mer of this vertex, and appending the nucleobase `b` to the beginning,
+    // i.e. effectively rolling the associated k-mer by one base "backward".
+    const Directed_Vertex roll_backward(cuttlefish::base_t b) const;
+
     // Transforms this vertex to another by chopping off the first base from the associated
     // observed k-mer, and appending the nucleobase `b` to the end, i.e. effecitively
     // rolling the associated k-mer by one base "forward". The hash table `hash` is used
@@ -238,6 +249,24 @@ inline void Directed_Vertex<k>::roll_forward(const cuttlefish::base_t b)
 {
     kmer_.roll_to_next_kmer(b, kmer_bar_);
     kmer_hat_ptr = Kmer<k>::canonical(kmer_, kmer_bar_);
+}
+
+
+template <uint16_t k>
+inline void Directed_Vertex<k>::roll_backward(const cuttlefish::base_t b)
+{
+    kmer_.roll_to_prev_kmer(b, kmer_bar_);
+    kmer_hat_ptr = Kmer<k>::canonical(kmer_, kmer_bar_);
+}
+
+
+template <uint16_t k>
+inline const Directed_Vertex<k> Directed_Vertex<k>::roll_backward(const cuttlefish::base_t b) const
+{
+    Directed_Vertex temp(*this);
+
+    temp.roll_backward(b);
+    return temp;
 }
 
 
