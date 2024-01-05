@@ -44,12 +44,13 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     // TODO: move these utility functionalities out.
     constexpr auto now = std::chrono::high_resolution_clock::now;
     constexpr auto duration = [](const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
-    const auto t_s = now();
 
 
     // Clear the output file and initialize the output sink.
     clear_file(output_path);
     output_sink.init_sink(output_path);
+
+    const auto t_0 = now();
 
 
     (void)l, (void)cdbg_path;
@@ -58,6 +59,9 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
 
     Subgraphs_Processor<k> subgraphs(work_path, subgraph_count, G, op_buf);
     subgraphs.process();
+
+    const auto t_s = now();
+    std::cerr << "Subgraphs contraction completed. Time taken: " << duration(t_s - t_0) << " seconds.\n";
 
     std::cerr << "Edge-matrix size: " << G.E().size() << "\n";
     std::cerr << "Expecting at most " << ((G.E().row_size(0) + G.phantom_edge_upper_bound()) / 2) << " more non-DCC maximal unitigs\n";
