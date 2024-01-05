@@ -71,7 +71,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
             assert(M.find(e.y()));
             auto& z = *p_z;
             if(z.is_phi() && e.x_is_phi())
-                form_meta_vertex(e.y(), j, e.s_y(), e.w(), z.w());
+                form_meta_vertex(e.y(), j, e.s_y(), e.w(), z.w(), false);
             else if(z.in_same_part())    // Corresponds to a compressed diagonal chain.
             {
                 assert(!z.is_phi());
@@ -122,7 +122,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
                     m_y = Other_End(Discontinuity_Graph<k>::phi(), side_t::back, inv_side(e.s_y()), true, 1, false);
 
                 if(m_x.is_phi() && m_y.is_phi())
-                    form_meta_vertex(e.x(), j, inv_side(e.s_x()), m_x.w(), w_xy + m_y.w());
+                    form_meta_vertex(e.x(), j, inv_side(e.s_x()), m_x.w(), w_xy + m_y.w(), false);
                 else
                     G.add_edge(m_x.v(), m_x.s_v(), m_y.v(), m_y.s_v(), m_x.w() + w_xy + m_y.w(), m_x.is_phi(), m_y.is_phi());
 
@@ -145,7 +145,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
                         G.add_edge(u, inv_side(end.s_u()));
 
                         if(end.is_phi())
-                            form_meta_vertex(u, j, end.s_u(), end.w(), 1);
+                            form_meta_vertex(u, j, end.s_u(), end.w(), 1, false);
                         else
                         {
                             assert(G.E().partition(end.v()) < j);
@@ -212,40 +212,27 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
         // then the current contracted form of the ICC resides entirely in this
         // diagonal block. Otherwise, the ICC has already been contracted down
         // to a single vertex that has a self-loop right now.
-        // In the latter case, introduce an artificial branch at the `front` of
-        // `u` in the underlying dBG—so the cycle then becomes a linear maximal
-        // unitig, incident to the `back` of `u` and going up-to some vertex
-        // `z`. Then conceptually we have also introduced two `ϕ` edges to the
-        // discontinuity graph, one at the `front` of `u` and the other at the
-        // side `\bar{s_z}` of `z` (`z` connects to the unitig through the side
-        // `s_z`). Hence, a meta-vertex for the maximal unitig can be formed
-        // immediately with `u` having rank `1`, w/o explicitly adding the `ϕ`
-        // 's. In the first case, introduce artificial branches at the other
-        // sides of `u` and `v` through which they're connected, and form a
-        // meta-vertex with `u` of rank `1`.
-        // In light of the added branchings at `u` and `v` (in the first case),
-        // or `u` and `z` (in the latter case), the vertices should neither
-        // share a lm-tig incident to the branching sides in the dBG, and nor
-        // share an edge through these sides in the discontinuity graph. But we
-        // do not know at this moment what lm-tig (in both cases) and edge (in
-        // the first case) are those, nor do we support deletion from the graph.
-        // Special consideration has to be done when propagating path-
-        // information through the branching side of `u`—any rank propagated
-        // through there would be `<= 0` and should be dealt with.
+        // In both cases, form a meta-vertex with `u` having rank `1`.
+        // In both cases, information-propagation through the side of `u`
+        // "facing outward" of the linearized cycle needs to be discarded, but
+        // the single lm-tig there has to be included in the maximal unitig
+        // label. This forms a tricky and cumbersome special case.
 
         if(u == v)  // The ICC has already been contracted to a single vertex.
         {
-            assert(e.x() == e.y() && e.x() == u);
+            assert(e.x() == e.y() && e.x() == u); assert(e.w() > 1);
             M.insert_overwrite(u, Other_End(Discontinuity_Graph<k>::phi(), side_t::back, side_t::front, true, 1, false, true));
-            form_meta_vertex(u, j, side_t::front, 1, w);
+            form_meta_vertex(u, j, side_t::front, 1, w, true);
             icc_count++;
         }
         else if(u == e.y() && v == e.x())   // The currently contracted form of the actual ICC resides in this diagonal block.
         {
             assert(e.x() != e.y());
+            assert(inv_side(s_u) == e.s_y()); assert(inv_side(s_v) == e.s_x());
+
             M.insert_overwrite(u, Other_End(Discontinuity_Graph<k>::phi(), side_t::back, inv_side(s_u), true, 1, false, true));
             M.insert_overwrite(v, Other_End(Discontinuity_Graph<k>::phi(), side_t::back, inv_side(s_v), true, 1, false, true));
-            form_meta_vertex(u, j, inv_side(s_u), 1);
+            form_meta_vertex(u, j, inv_side(s_u), 1, true); // Propagation needs to go through `s_u`, since `u` has already been connected to the other cycle members through that side.
             icc_count++;
         }
         else
