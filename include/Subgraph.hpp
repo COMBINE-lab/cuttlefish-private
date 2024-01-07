@@ -90,6 +90,11 @@ public:
     // membership data structure.
     void construct();
 
+    // Constructs the subgraph from the KMC bin into an internal navigable and
+    // membership data structure. Addresses "exact" loop-filtering opposed to
+    // `construct`.
+    void construct_loop_filtered();
+
     // Builds the compacted graph from the original graph.
     void contract();
 

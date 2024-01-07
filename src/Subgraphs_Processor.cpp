@@ -31,6 +31,7 @@ void Subgraphs_Processor<k>::process()
         {
             Subgraph<k> sub_dBG(bin_path_pref, bin_id, G, op_buf[parlay::worker_id()].data());
             sub_dBG.construct();
+            // sub_dBG.construct_loop_filtered();
             sub_dBG.contract();
 
             trivial_mtig_count += sub_dBG.trivial_mtig_count();
