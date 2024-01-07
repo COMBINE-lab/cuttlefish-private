@@ -21,6 +21,7 @@ Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id,
     , isolated(0)
     , G(G)
     , trivial_mtig_c(0)
+    , icc_count_(0)
     , op_buf(op_buf)
 {}
 
@@ -264,6 +265,13 @@ uint64_t Subgraph<k>::trivial_mtig_count() const
 
 
 template <uint16_t k>
+uint64_t Subgraph<k>::icc_count() const
+{
+    return icc_count_;
+}
+
+
+template <uint16_t k>
 uint64_t Subgraph<k>::label_size() const
 {
     return label_sz;
@@ -277,6 +285,22 @@ uint64_t Subgraph<k>::isolated_vertex_count() const
 }
 
 }
+
+/*
+```
+for b in B:    // B: collection of buckets
+    for s in b:    // s: super k-mer
+        i = 0
+        for x in s:    // x: k-mer
+            is_can = x.is_canonical()
+            pn = pred_nuc(x) // or, pn = s[i - 1]
+            sn = succ_nuc(x) // or, sn = s[i + k]
+            front = (is_can ? pn : bar(sn))
+            back  = (is_can ? sn : bar(pn))
+            update HT for x.canonical() with front and back
+            i = i + 1
+```
+*/
 
 
 

@@ -62,8 +62,11 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
 
     const auto t_s = now();
     std::cerr << "Subgraphs contraction completed. Time taken: " << duration(t_s - t_0) << " seconds.\n";
+    std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";
+    std::cerr << "Trivial ICC count: " << subgraphs.icc_count() << ".\n";
 
     std::cerr << "Edge-matrix size: " << G.E().size() << "\n";
+    std::cerr << "Phantom edge upper-bound: " << G.phantom_edge_upper_bound() << "\n";
     std::cerr << "Expecting at most " << ((G.E().row_size(0) + G.phantom_edge_upper_bound()) / 2) << " more non-DCC maximal unitigs\n";
 
     Discontinuity_Graph_Contractor<k> contractor(G, P_v, work_path);
