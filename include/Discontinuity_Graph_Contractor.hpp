@@ -50,6 +50,7 @@ private:
     std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block.
     std::vector<Padded_Data<std::vector<Discontinuity_Edge<k>>>> D_c;   // `D_c[t]` contains the edges corresponding to compressed diagonal chains by worker `t`.
 
+    std::atomic_uint64_t phantom_count_;    // Number of phantom edges.
     std::atomic_uint64_t icc_count; // Number of ICCs.
 
 

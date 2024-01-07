@@ -18,6 +18,7 @@ Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Discontinuity_
     , work_path(temp_path)
     , M(G.vertex_part_size_upper_bound())
     , D_c(parlay::num_workers())
+    , phantom_count_(0)
     , icc_count(0)
 {
     std::cerr << "Hash table capacity during contraction: " << M.capacity() << ".\n";
@@ -142,6 +143,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
                 while(it.next(u, end))
                     if(!end.processed())    // `u` has a false-phantom edge.
                     {
+                        phantom_count_++;
                         G.add_edge(u, inv_side(end.s_u()));
 
                         if(end.is_phi())
@@ -173,6 +175,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
     std::cerr << "Formed " << meta_v_c << " meta-vertices.\n";
     std::cerr << "Found " << icc_count << " ICCs.\n";
+    std::cerr << "Found " << phantom_count_ << " phantoms.\n";
     std::cerr << "Map clearing time: " << map_clr_time << ".\n";
     std::cerr << "Edges reading time: " << edge_read_time << ".\n";
     std::cerr << "Non-diagonal edges contraction time: " << edge_proc_time << ".\n";
