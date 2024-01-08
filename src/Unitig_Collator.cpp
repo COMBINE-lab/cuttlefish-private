@@ -204,18 +204,18 @@ void Unitig_Collator<k>::reduce()
         {
             max_unitig.clear();
 
-            const bool is_cycle = (U[i].o() == side_t::unspecified);
-            const std::size_t s = (i + is_cycle);   // If constructing an ICC, skip its deleted lm-tig.
+            const bool is_cycle = U[i].is_cycle();
+            const std::size_t s = i;
             std::size_t e = s + 1;
 
             // Find the current maximal unitig's stretch in the bucket.
             while(e < b_sz && U[e].p() == U[s].p())
             {
-                assert(U[e].o() != side_t::unspecified);
+                assert(U[e].o() != side_t::unspecified); assert(U[e].is_cycle() == is_cycle);
                 e++;
             }
 
-            if(e - s == 2)  // Special case for handling orientation of path-traversals in the discontinuity graph.
+            if(e - s == 2 && !is_cycle) // Special case for handling orientation of path-traversals in the discontinuity graph.
             {
                 assert(U[s].r() == 0); assert(U[s + 1].r() == 0);
 
@@ -240,6 +240,10 @@ void Unitig_Collator<k>::reduce()
 
                     max_unitig += (max_unitig.empty() ? u_label : std::string(u_label.begin() + k, u_label.end()));
                 }
+
+
+            if(is_cycle)
+                max_unitig.pop_back();  // Cyclic maximal unitig traversals start and end at the same vertex, so one copy needs to be removed.
 
 
             max_u_rc = max_unitig;

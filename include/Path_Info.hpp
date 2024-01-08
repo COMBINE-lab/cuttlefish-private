@@ -16,8 +16,8 @@ namespace cuttlefish
 
 // =============================================================================
 // Path-information of an object in a discontinuity graph: its path-ID, rank in
-// a fixed traversal of the path, and orientation in that traversal. Path-IDs
-// are k-mers.
+// a fixed traversal of the path, orientation in that traversal, and whether it
+// actually forms a cycle (abusing notation). Path-IDs are k-mers.
 template <uint16_t k>
 class Path_Info
 {
@@ -31,6 +31,7 @@ private:
     path_id_t p_;   // The path-ID.
     weight_t r_;    // The rank.
     side_t o_;  // The orientation of the object in its specified rank—the path traversal exits it through the side `o`.
+    bool is_cycle_; // Whether the path is a cycle (abusing notation).
 
 
 public:
@@ -42,11 +43,12 @@ public:
     // Constructs a path-info object for an object such that its path-ID is `p`
     // and rank in the path is `r` when the path is traversed in the
     // orientation such that the traversal exits the object through its side
-    // `o`.
-    Path_Info(const path_id_t p, const weight_t r, const side_t o):
+    // `o`. `is_cycle` denotes whether the path is a cycle (abusing notation).
+    Path_Info(const path_id_t p, const weight_t r, const side_t o, const bool is_cycle):
           p_(p)
         , r_(r)
         , o_(o)
+        , is_cycle_(is_cycle)
     {}
 
 
@@ -55,6 +57,9 @@ public:
 
     // Returns the rank.
     auto r() const { return r_; }
+
+    // Returns whether the path is a cycle (abusing notation).
+    auto is_cycle() const { return is_cycle_; }
 
     // Returns the orientation `o` of the object in its specified rank—the
     // path traversal exits the object through the side `o`.
@@ -92,10 +97,11 @@ public:
     // For an object `obj`, constructs a pairing of it with its path-info
     // specified with its path-ID `p` and rank in the path `r` when the path is
     // traversed in the orientation such that the traversal exits the object
-    // through its side `o`.
-    Obj_Path_Info_Pair(const T_ obj, const path_id_t p, const weight_t r, const side_t o):
+    // through its side `o`. `is_cycle` denotes whether the path is a cycle
+    // (abusing notation).
+    Obj_Path_Info_Pair(const T_ obj, const path_id_t p, const weight_t r, const side_t o, const bool is_cycle):
           obj_(obj)
-        , path_info_(p, r, o)
+        , path_info_(p, r, o, is_cycle)
     {}
 
     // For an object `obj`, constructs a pairing of it with its path-info

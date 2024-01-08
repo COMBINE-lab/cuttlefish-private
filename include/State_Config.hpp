@@ -47,6 +47,9 @@ public:
     // corresponding vertex.
     void update_edges(base_t front, base_t back);
 
+    // Adds the edge-encoding `b` to the side `s` of a corresponding vertex.
+    void update_edge(side_t s, base_t b);
+
     // Marks the associated vertex as visited.
     void mark_visited() { status |= visited; }
 
@@ -103,6 +106,20 @@ inline void State_Config::update_edges(const base_t front, const base_t back)
     assert(back == E || back <= T);
     if(back != E && edge_freq[back_off + back] < max_f)
         edge_freq[back_off + back]++;
+}
+
+
+inline void State_Config::update_edge(const side_t s, const base_t b)
+{
+    constexpr uint8_t max_f = (1lu << CHAR_BIT) - 1;    // Maximum supported frequency of a (k + 1)-mer.
+    constexpr auto E = base_t::E;
+    constexpr auto T = base_t::T;
+    (void)T;
+
+    assert(b == E || b <= T);
+    const std::size_t off = (s == side_t::back) * 4;
+    if(b != E && edge_freq[off + b] < max_f)
+        edge_freq[off + b]++;
 }
 
 

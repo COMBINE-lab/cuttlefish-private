@@ -51,6 +51,7 @@ private:
     Discontinuity_Graph<k>& G;  // The discontinuity graph.
 
     uint64_t trivial_mtig_c;    // Number of trivial maximal unitigs in the graph (i.e. also maximal unitigs in the supergraph).
+    uint64_t icc_count_;    // Number of trivial maximal unitigs in the graph that are ICCs.
 
 
     // TODO: move the following out to a central location.
@@ -90,6 +91,11 @@ public:
     // membership data structure.
     void construct();
 
+    // Constructs the subgraph from the KMC bin into an internal navigable and
+    // membership data structure. Addresses "exact" loop-filtering opposed to
+    // `construct`.
+    void construct_loop_filtered();
+
     // Builds the compacted graph from the original graph.
     void contract();
 
@@ -109,6 +115,9 @@ public:
     // Returns the number of trivial maximal unitigs in the graph (i.e. also
     // maximal unitigs in the supergraph).
     uint64_t trivial_mtig_count() const;
+
+    // Returns the number of trivial maximal unitigs in the graph that are ICCs.
+    uint64_t icc_count() const;
 
     // Returns the total number of characters in the literal representations of
     // all the maximal unitigs.
@@ -169,6 +178,9 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
     else    // Extracted a trivial maximal unitig.
     {
         trivial_mtig_c++;
+        if(maximal_unitig.is_cycle())
+            icc_count_++;
+
         maximal_unitig.finalize();
         maximal_unitig.add_fasta_rec_to_buffer(op_buf);
     }

@@ -33,6 +33,9 @@ private:
 
     Discontinuity_Graph<k>& G;  // The discontinuity graph.
 
+    uint64_t trivial_mtig_count_;   // Number of trivial maximal unitigs in the subgraphs (i.e. also maximal unitigs in the supergraph).
+    uint64_t icc_count_;    // Number of trivial maximal unitigs in the subgraphs that are ICCs.
+
     // TODO: move out the following to some CF3-centralized location.
 
     typedef Async_Logger_Wrapper sink_t;
@@ -51,6 +54,14 @@ public:
 
     // Constructs and contracts each subgraph.
     void process();
+
+    // Returns the number of trivial maximal unitigs in the subgraphs (i.e. also
+    // maximal unitigs in the supergraph).
+    uint64_t trivial_mtig_count() const;
+
+    // Returns the number of trivial maximal unitigs in the subgraphs that are
+    // ICCs.
+    uint64_t icc_count() const;
 };
 
 }

@@ -72,11 +72,11 @@ void Contracted_Graph_Expander<k>::expand()
             assert(M.find(e.x()));
             const auto x_inf = *M.find(e.x());  // Path-information of the endpoint of the edge that is in the current partition, `i`.
             const auto y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
-            if(y_inf.r() > 0)   // Not in an ICC, or in the correctly oriented traversal in an ICC.
+            if(y_inf.r() > 0)   // `e` is not the back-edge to the rank-1 vertex in an ICC.
             {
                 const auto j = G.E().partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
                 assert(j > i);
-                P_v_w[parlay::worker_id()].data()[j].emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o());
+                P_v_w[parlay::worker_id()].data()[j].emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
             }
 
             if(e.w() == 1)
@@ -113,7 +113,7 @@ void Contracted_Graph_Expander<k>::expand()
                 if(e.w() == 1)
                 {
                     assert(M.find(e.x()) && M.find(e.y()));
-                    add_edge_path_info(e, *M.find(e.x()), *M.find(e.y()));
+                    add_diagonal_edge_path_info(e, *M.find(e.x()));
                 }
             }, 1);
 

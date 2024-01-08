@@ -71,6 +71,10 @@ private:
     // `u_inf` and `v_inf`, and adds the info to `e`'s path-info bucket.
     void add_edge_path_info(const Discontinuity_Edge<k>& e, Path_Info<k> u_inf, Path_Info<k> v_inf);
 
+    // Computes the path-info of the diagonal edge `e` from its first endpoint
+    // `u`'s path-info `u_inf`, and adds the info to `e`'s path-info bucket.
+    void add_diagonal_edge_path_info(const Discontinuity_Edge<k>& e, Path_Info<k> u_inf);
+
     // Computes the path-info of the edge `e` of form `(ϕ, v)` from `v`'s path-
     // info, `v_inf`, and adds the info to `e`'s path-info bucket.
     void add_edge_path_info(const Discontinuity_Edge<k>& e, Path_Info<k> v_inf);
@@ -119,24 +123,25 @@ inline Path_Info<k> Contracted_Graph_Expander<k>::infer(const Path_Info<k> u_inf
                                         (u_inf.r() > w ? u_inf.r() - w : 0));   // Trying to expand crossing a deleted edge from an ICC.
                                                                                 // This works as no vertex can have a rank `0` in the model.
     const auto o_v = (s_u == u_inf.o() ? inv_side(s_v) : s_v);  // Orientation.
+    // const auto is_cycle = u_inf.is_cycle();
 
-    return Path_Info(u_inf.p(), r_v, o_v);
+    return Path_Info(u_inf.p(), r_v, o_v, u_inf.is_cycle());
 }
 
 
 template <uint16_t k>
 inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> u_inf, const Path_Info<k> v_inf)
 {
-    // const auto p = u_inf.p();
+    assert(e.w() == 1);
     assert(!e.x_is_phi() && !e.y_is_phi());
     assert(u_inf.p() == v_inf.p());
 
+    // const auto p = u_inf.p();
     const auto r = std::min(u_inf.r(), v_inf.r());
-    const auto o = (r > 0 ? (r == u_inf.r() ? e.o() : inv_side(e.o())) :    // Whether the ranking of the vertices in the unitig goes from `u` to `v`.
-                            side_t::unspecified);   // This is a deleted edge from an ICC.
+    const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));
 
     assert(e.b() > 0 && e.b() < P_e.size());
-    P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), u_inf.p(), r, o);
+    P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), u_inf.p(), r, o, u_inf.is_cycle());
 
 #ifndef NDEBUG
     H_p_e_w[parlay::worker_id()].data() ^= P_e_w[parlay::worker_id()].data()[e.b()].back().path_info().hash();
@@ -147,18 +152,43 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
 template <uint16_t k>
 inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> v_inf)
 {
-    // const auto p = v_inf.p();
+    assert(e.w() == 1);
     assert(e.x_is_phi() && !e.y_is_phi());
 
+    // const auto p = v_inf.p();
     const auto r = (v_inf.r() == 1 ? 0 : v_inf.r());
     const auto o = (r == 0 ? e.o() : inv_side(e.o()));
 
     assert(e.b() > 0 && e.b() < P_e.size());
-    P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), v_inf.p(), r, o);
+    P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), v_inf.p(), r, o, v_inf.is_cycle());
 
 #ifndef NDEBUG
     H_p_e_w[parlay::worker_id()].data() ^= P_e_w[parlay::worker_id()].data()[e.b()].back().path_info().hash();
 #endif
+}
+
+
+template <uint16_t k>
+inline void Contracted_Graph_Expander<k>::add_diagonal_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> u_inf)
+{
+    assert(e.w() == 1);
+    assert(!e.x_is_phi() && !e.y_is_phi());
+
+    // Edges in cycles belonging to diagonal blocks form a special case.
+    // When the rank-1 vertex `v_1` in cycle `v_1, ..., v_p` propagates info
+    // to `v_p` through their shared edge (the propagation cannot go the other
+    // way due to the meta-vertex formation process for cycles), if `P(v_1) ≠
+    // P(v_p)`, then `v_p` gets a "relative"-rank 0 from `v_1` (although
+    // discarded), and their shared edge as a result gets ranked 0. Whereas for
+    // the other case, i.e. when they are in the same partition, the rank of
+    // the diagonal edges are computed in a different manner: the correct ranks
+    // of `v_1` and `v_p` are already computed when the edge's rank is getting
+    // computed. So the relative ranking capturing successive-ness disappears,
+    // and needs to be introduced again.
+    // Note that `(v_1, v_p)` need not necessarily be `(u, v)` in `e`. Hence,
+    // `e` may get a rank `0` or `p + 1`, which does not matter in a cycle.
+    const auto t = infer(u_inf, e.s_u(), e.s_v(), e.w());
+    add_edge_path_info(e, u_inf, t);
 }
 
 }

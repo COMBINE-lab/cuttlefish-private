@@ -16,6 +16,8 @@ Subgraphs_Processor<k>::Subgraphs_Processor(const std::string& bin_path_pref, co
     , bin_count(bin_count)
     , work_path(bin_path_pref)
     , G(G)
+    , trivial_mtig_count_(0)
+    , icc_count_(0)
     , op_buf(op_buf)
 {}
 
@@ -31,9 +33,11 @@ void Subgraphs_Processor<k>::process()
         {
             Subgraph<k> sub_dBG(bin_path_pref, bin_id, G, op_buf[parlay::worker_id()].data());
             sub_dBG.construct();
+            // sub_dBG.construct_loop_filtered();
             sub_dBG.contract();
 
             trivial_mtig_count += sub_dBG.trivial_mtig_count();
+            icc_count_ += sub_dBG.icc_count();
 
             if(++solved % 8 == 0)
                 std::cerr << "\rSolved " << solved << " subgraphs.";
@@ -41,8 +45,20 @@ void Subgraphs_Processor<k>::process()
 
     parlay::parallel_for(0, bin_count, process_subgraph, 1);
     std::cerr << "\n";
+}
 
-    std::cerr << "Trivial maximal unitig count: " << trivial_mtig_count << "\n";
+
+template <uint16_t k>
+uint64_t Subgraphs_Processor<k>::trivial_mtig_count() const
+{
+    return trivial_mtig_count_;
+}
+
+
+template <uint16_t k>
+uint64_t Subgraphs_Processor<k>::icc_count() const
+{
+    return icc_count_;
 }
 
 }
