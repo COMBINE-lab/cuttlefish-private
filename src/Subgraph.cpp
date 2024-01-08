@@ -11,10 +11,14 @@
 namespace cuttlefish
 {
 
+template<uint16_t k> std::vector<Padded_Data<typename Subgraph<k>::map_t>> Subgraph<k>::map;
+
+
 template <uint16_t k>
 Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id, Discontinuity_Graph<k>& G, op_buf_t& op_buf):
       graph_bin_dir_path(bin_dir_path)
     , bin_id(bin_id)
+    , M(map[parlay::worker_id()].data())
     , edge_c(0)
     , label_sz(0)
     , disc_edge_c(0)
@@ -23,7 +27,27 @@ Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id,
     , trivial_mtig_c(0)
     , icc_count_(0)
     , op_buf(op_buf)
-{}
+{
+    M.clear();
+}
+
+
+template <uint16_t k>
+void Subgraph<k>::init_maps()
+{
+    map.resize(parlay::num_workers());
+}
+
+
+template <uint16_t k>
+void Subgraph<k>::free_maps()
+{
+    for(auto& M : map)
+        force_free(M.data());
+
+    map.clear();
+    map.shrink_to_fit();
+}
 
 
 template <uint16_t k>

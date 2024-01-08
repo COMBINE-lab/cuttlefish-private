@@ -25,8 +25,9 @@ Subgraphs_Processor<k>::Subgraphs_Processor(const std::string& bin_path_pref, co
 template <uint16_t k>
 void Subgraphs_Processor<k>::process()
 {
+    Subgraph<k>::init_maps();
+
     std::atomic_uint64_t solved = 0;
-    std::atomic_uint64_t trivial_mtig_count = 0;
 
     const auto process_subgraph =
         [&](const std::size_t bin_id)
@@ -36,7 +37,7 @@ void Subgraphs_Processor<k>::process()
             // sub_dBG.construct_loop_filtered();
             sub_dBG.contract();
 
-            trivial_mtig_count += sub_dBG.trivial_mtig_count();
+            trivial_mtig_count_ += sub_dBG.trivial_mtig_count();
             icc_count_ += sub_dBG.icc_count();
 
             if(++solved % 8 == 0)
@@ -45,6 +46,8 @@ void Subgraphs_Processor<k>::process()
 
     parlay::parallel_for(0, bin_count, process_subgraph, 1);
     std::cerr << "\n";
+
+    Subgraph<k>::free_maps();
 }
 
 

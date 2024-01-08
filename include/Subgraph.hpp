@@ -15,11 +15,13 @@
 #include "dBG_Utilities.hpp"
 #include "Character_Buffer.hpp"
 #include "Async_Logger_Wrapper.hpp"
+#include "utility.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
 
 #include <cstdint>
 #include <cstddef>
+#include <vector>
 #include <string>
 #include <unordered_map>
 
@@ -41,7 +43,9 @@ private:
     const std::size_t bin_id; // ID of the graph KMC-bin.
 
     typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
-    map_t M;
+    static std::vector<Padded_Data<map_t>> map; // Map collection for different workers.
+
+    map_t& M;   // Map to be used for this subgraph.
 
     uint64_t edge_c;    // Number of edges in the graph.
     uint64_t label_sz;  // Total number of characters in the literal representations of all the maximal unitigs.
@@ -86,6 +90,12 @@ public:
 
     Subgraph(const Subgraph&) = delete;
     Subgraph(Subgraph&&) = delete;
+
+    // Initialize the map collection of different workers.
+    static void init_maps();
+
+    // Free the map collection from memory of different workers.
+    static void free_maps();
 
     // Constructs the subgraph from the KMC bin into an internal navigable and
     // membership data structure.
