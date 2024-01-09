@@ -26,7 +26,6 @@ template <uint16_t k>
 void Subgraphs_Processor<k>::process()
 {
     std::atomic_uint64_t solved = 0;
-    std::atomic_uint64_t trivial_mtig_count = 0;
 
     const auto process_subgraph =
         [&](const std::size_t bin_id)
@@ -36,7 +35,7 @@ void Subgraphs_Processor<k>::process()
             // sub_dBG.construct_loop_filtered();
             sub_dBG.contract();
 
-            trivial_mtig_count += sub_dBG.trivial_mtig_count();
+            trivial_mtig_count_ += sub_dBG.trivial_mtig_count();
             icc_count_ += sub_dBG.icc_count();
 
             if(++solved % 8 == 0)
