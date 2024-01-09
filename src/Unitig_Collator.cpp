@@ -131,7 +131,7 @@ void Unitig_Collator<k>::map()
             const auto mapped_b_id = XXH3_64bits(&p, sizeof(p)) & (max_unitig_bucket_count - 1); // Hashed maximal unitig bucket.
 
             lock[mapped_b_id].lock();
-            max_unitig_bucket[mapped_b_id].add(M[idx], unitig.data(), uni_len);
+            max_unitig_bucket[mapped_b_id].data().add(M[idx], unitig.data(), uni_len);
             lock[mapped_b_id].unlock();
         }
 
@@ -161,8 +161,8 @@ void Unitig_Collator<k>::reduce()
     std::size_t max_max_uni_b_sz = 0;   // Maximum unitig-count in some maximal unitig bucket.
     std::size_t max_max_uni_b_label_len = 0;    // Maximum dump-string length in some maximal unitig bucket.
     for(std::size_t i = 0; i < max_unitig_bucket_count; ++i)
-        max_max_uni_b_sz = std::max(max_max_uni_b_sz, max_unitig_bucket[i].size()),
-        max_max_uni_b_label_len = std::max(max_max_uni_b_label_len, max_unitig_bucket[i].label_len());
+        max_max_uni_b_sz = std::max(max_max_uni_b_sz, max_unitig_bucket[i].data().size()),
+        max_max_uni_b_label_len = std::max(max_max_uni_b_label_len, max_unitig_bucket[i].data().label_len());
 
     std::cerr << "Maximum maximal unitig bucket size:  " << max_max_uni_b_sz << "\n";
     std::cerr << "Maximum maximal unitig label length: " << max_max_uni_b_label_len << "\n";
@@ -191,8 +191,8 @@ void Unitig_Collator<k>::reduce()
         auto const L = L_vec[w_id].data();  // Dump-strings of the unitig labels.
         auto& output = op_buf[w_id].data(); // Output buffer for the maximal unitigs.
 
-        const auto b_sz = max_unitig_bucket[b].load_coords(U);
-        const auto len = max_unitig_bucket[b].load_labels(L);
+        const auto b_sz = max_unitig_bucket[b].data().load_coords(U);
+        const auto len = max_unitig_bucket[b].data().load_labels(L);
         (void)len;
 
         std::sort(U, U + b_sz);

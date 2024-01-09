@@ -10,6 +10,7 @@
 #include "Output_Sink.hpp"
 #include "Async_Logger_Wrapper.hpp"
 #include "Character_Buffer.hpp"
+#include "utility"
 #include "globals.hpp"
 
 #include <cstdint>
@@ -38,7 +39,7 @@ private:
     std::size_t max_bucket_sz;  // Maximum size of the locally-maximal unitigs' buckets.
 
     static constexpr std::size_t max_unitig_bucket_count = 1024;    // Must be a power-of-2.
-    std::vector<Unitig_Coord_Bucket<k>> max_unitig_bucket;  // Key-value collation buckets for lm-unitigs.
+    std::vector<Padded_Data<Unitig_Coord_Bucket<k>>> max_unitig_bucket; // Key-value collation buckets for lm-unitigs.
 
     // TODO: remove? This is for the naive-collator.
     Path_Info<k>* M;    // `M[idx]` is the path-info for the `idx`'th edge in some bucket.
