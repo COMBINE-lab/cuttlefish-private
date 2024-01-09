@@ -10,6 +10,7 @@
 #include "Async_Logger_Wrapper.hpp"
 #include "Output_Sink.hpp"
 #include "Character_Buffer.hpp"
+#include "Build_Params.hpp"
 #include "utility.hpp"
 #include "globals.hpp"
 
@@ -28,6 +29,8 @@ template <uint16_t k>
 class dBG_Contractor
 {
 private:
+
+    // const Build_Params params;  // Required parameters (wrapped inside).
 
     // TODO: wrap the following primitive fields in `Build_Params`.
     const std::size_t subgraph_count;   // Number of subgraphs the original de Bruijn graph is broken into.
@@ -58,6 +61,10 @@ public:
     dBG_Contractor(const dBG_Contractor&) = delete;
     dBG_Contractor& operator=(const dBG_Contractor&) = delete;
 
+    // Constructs a compacted de Bruijn graph constructor with the parameters
+    // required for the construction wrapped in `params`.
+    dBG_Contractor(const Build_Params& params);
+
     // Constructs a compacted de Bruijn graph constructor that operates with
     // `subgraph_count` subgraphs of the underlying de Bruijn graph,
     // `part_count` vertex-partitions in its discontinuity graph, and stores the
@@ -69,8 +76,7 @@ public:
     // Contracts the bootstrapped discontinuity graph generated from the
     // compacted dBG at path `cdbg_path`. `l`-minimizers are used in generating
     // the discontinuity graph.
-    // TODO: parameters were there for bootstrapping purposes. Useless now.
-    void contract(uint16_t l, const std::string& cdbg_path);
+    void construct();
 };
 
 }

@@ -1262,7 +1262,7 @@ int main(int argc, char** argv)
 
     // count_kmers_in_unitigs(argv[1], atoi(argv[2]));
 
-    static constexpr uint16_t k = 31;
+    static constexpr uint16_t k = 27;
     static constexpr uint16_t l = 11;
 
     const uint8_t f_th = 1;
@@ -1278,7 +1278,7 @@ int main(int argc, char** argv)
     // bootstrap_discontinuity_graph<k>(l, cdbg_path, temp_path, parts, unitig_buckets);
 
     cuttlefish::dBG_Contractor<k> dbg_contractor(subgraph_count, parts, unitig_buckets, output_path, temp_path);
-    dbg_contractor.contract(l, cdbg_path);
+    dbg_contractor.construct();
     // std::cerr << "sizeof(disc-edge<31>): " << sizeof(cuttlefish::Discontinuity_Edge<k>) << "\n";
     // const std::size_t elem_count = std::atoi(argv[1]);
     // const double lf = 0.75;

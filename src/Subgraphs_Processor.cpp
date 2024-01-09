@@ -14,7 +14,6 @@ template <uint16_t k>
 Subgraphs_Processor<k>::Subgraphs_Processor(const std::string& bin_path_pref, const std::size_t bin_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf):
       bin_path_pref(bin_path_pref)
     , bin_count(bin_count)
-    , work_path(bin_path_pref)
     , G(G)
     , trivial_mtig_count_(0)
     , icc_count_(0)

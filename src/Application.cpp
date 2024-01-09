@@ -3,6 +3,7 @@
 #include "globals.hpp"
 #include "CdBG.hpp"
 #include "Read_CdBG.hpp"
+#include "dBG_Contractor.hpp"
 #include "Kmer_Index.hpp"
 
 
@@ -68,3 +69,4 @@ bool Application<k, T_App>::validate() const
 template class Application<cuttlefish::MAX_K, CdBG>;
 template class Application<cuttlefish::MAX_K, Read_CdBG>;
 template class Application<cuttlefish::MAX_K, Kmer_Index>;
+template class Application<cuttlefish::MAX_K, cuttlefish::dBG_Contractor>;

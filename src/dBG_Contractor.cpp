@@ -1,6 +1,7 @@
 
 #include "dBG_Contractor.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
+#include "State_Config.hpp"
 #include "Subgraphs_Processor.hpp"
 #include "Discontinuity_Graph_Contractor.hpp"
 #include "Contracted_Graph_Expander.hpp"
@@ -14,6 +15,32 @@
 
 namespace cuttlefish
 {
+
+template <uint16_t k>
+dBG_Contractor<k>::dBG_Contractor(const Build_Params& params):
+      subgraph_count(params.subgraph_count())
+    , vertex_part_count(params.vertex_part_count())
+    , lmtig_bucket_count(params.lmtig_bucket_count())
+    , output_path(params.output_file_path())
+    , work_path(params.working_dir_path())
+    , G(vertex_part_count, lmtig_bucket_count, work_path)
+    , op_buf(parlay::num_workers(), op_buf_t(output_sink.sink()))
+{
+    cuttlefish::State_Config::set_edge_threshold(params.cutoff());
+    std::cerr << "Edge frequency cutoff: " << params.cutoff() << ".\n";
+
+    // TODO: centralize all the file-naming schemes.
+    P_v.reserve(vertex_part_count + 1);
+    P_v.emplace_back(); // No vertex other than the ϕ-vertex belongs to partition 0.
+    for(std::size_t j = 1; j <= vertex_part_count; ++j)
+        P_v.emplace_back(work_path + std::string("P_v_") + std::to_string(j));
+
+    P_e.reserve(lmtig_bucket_count + 1);
+    P_e.emplace_back(); // Using edge-partition 0 with edges that do not have any associated lm-tig (i.e. has weight > 1).
+    for(std::size_t b = 1; b <= lmtig_bucket_count; ++b)
+        P_e.emplace_back(work_path + std::string("P_e_") + std::to_string(b));
+}
+
 
 template <uint16_t k>
 dBG_Contractor<k>::dBG_Contractor(const std::size_t subgraph_count, const std::size_t part_count, const std::size_t lmtig_bucket_count, const std::string& output_path, const std::string& temp_path):
@@ -39,7 +66,7 @@ dBG_Contractor<k>::dBG_Contractor(const std::size_t subgraph_count, const std::s
 
 
 template <uint16_t k>
-void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
+void dBG_Contractor<k>::construct()
 {
     // TODO: move these utility functionalities out.
     constexpr auto now = std::chrono::high_resolution_clock::now;
@@ -53,17 +80,16 @@ void dBG_Contractor<k>::contract(const uint16_t l, const std::string& cdbg_path)
     const auto t_0 = now();
 
 
-    (void)l, (void)cdbg_path;
     // Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E, work_path, unitig_bucket_count);
     // dgb.generate();
 
     Subgraphs_Processor<k> subgraphs(work_path, subgraph_count, G, op_buf);
     subgraphs.process();
 
-    const auto t_s = now();
-    std::cerr << "Subgraphs contraction completed. Time taken: " << duration(t_s - t_0) << " seconds.\n";
     std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";
     std::cerr << "Trivial ICC count: " << subgraphs.icc_count() << ".\n";
+    const auto t_s = now();
+    std::cerr << "Subgraphs contraction completed. Time taken: " << duration(t_s - t_0) << " seconds.\n";
 
     std::cerr << "Edge-matrix size: " << G.E().size() << "\n";
     std::cerr << "Phantom edge upper-bound: " << G.phantom_edge_upper_bound() << "\n";

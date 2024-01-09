@@ -29,8 +29,6 @@ private:
     const std::string bin_path_pref;    // Path-prefix to the KMC bins.
     const std::size_t bin_count;    // Numer of KMC bins, each one induces a subgraph.
 
-    const std::string work_path;    // Path to the working space.
-
     Discontinuity_Graph<k>& G;  // The discontinuity graph.
 
     uint64_t trivial_mtig_count_;   // Number of trivial maximal unitigs in the subgraphs (i.e. also maximal unitigs in the supergraph).

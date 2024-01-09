@@ -26,6 +26,9 @@ private:
     const Seq_Input seq_input_; // Collection of the input sequences.
     const uint16_t k_;   // The k parameter for the edge-centric de Bruijn graph to be compacted.
     const std::optional<uint32_t> cutoff_;  // Frequency cutoff for the (k + 1)-mers.
+    const std::size_t subgraph_count_;  // Number of subgraphs the original de Bruijn graph is broken into.
+    const std::size_t vertex_part_count_;   // Number of vertex-partitions in the discontinuity graph; needs to be a power of 2.
+    const std::size_t lmtig_bucket_count_;  // Number of buckets storing literal locally-maximal unitigs.
     const std::string vertex_db_path_;  // Path to the KMC database containing the vertices (canonical k-mers).
     const std::string edge_db_path_;    // Path to the KMC database containing the edges (canonical (k + 1)-mers).
     const uint16_t thread_count_;    // Number of threads to work with.
@@ -82,6 +85,9 @@ public:
                     const std::optional<std::vector<std::string>>& dir_paths,
                     uint16_t k,
                     std::optional<uint32_t> cutoff,
+                    std::size_t subgraph_count,
+                    std::size_t vertex_part_count,
+                    std::size_t lmtig_bucket_count,
                     const std::string& vertex_db_path,
                     const std::string& edge_db_path,
                     uint16_t thread_count,
@@ -137,6 +143,14 @@ public:
         return cutoff_.value_or(is_read_graph() ? cuttlefish::_default::CUTOFF_FREQ_READS : cuttlefish::_default::CUTOFF_FREQ_REFS);
     }
 
+    // Returns the number of subgraphs the original de Bruijn graph is broken into.
+    auto subgraph_count() const { return subgraph_count_; }
+
+    // Returns the number of vertex-partitions in the discontinuity graph.
+    auto vertex_part_count() const { return vertex_part_count_; }
+
+    // Returns the number of buckets storing literal locally-maximal unitigs.
+    auto lmtig_bucket_count() const { return lmtig_bucket_count_; }
 
     // Returns the path to the vertex database.
     const std::string& vertex_db_path() const
