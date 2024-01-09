@@ -18,50 +18,23 @@ namespace cuttlefish
 
 template <uint16_t k>
 dBG_Contractor<k>::dBG_Contractor(const Build_Params& params):
-      subgraph_count(params.subgraph_count())
-    , vertex_part_count(params.vertex_part_count())
-    , lmtig_bucket_count(params.lmtig_bucket_count())
-    , output_path(params.output_file_path())
-    , work_path(params.working_dir_path())
-    , G(vertex_part_count, lmtig_bucket_count, work_path)
+      params(params)
+    , G(params.vertex_part_count(), params.lmtig_bucket_count(), params.working_dir_path())
     , op_buf(parlay::num_workers(), op_buf_t(output_sink.sink()))
 {
     cuttlefish::State_Config::set_edge_threshold(params.cutoff());
     std::cerr << "Edge frequency cutoff: " << params.cutoff() << ".\n";
 
     // TODO: centralize all the file-naming schemes.
-    P_v.reserve(vertex_part_count + 1);
+    P_v.reserve(params.vertex_part_count() + 1);
     P_v.emplace_back(); // No vertex other than the ϕ-vertex belongs to partition 0.
-    for(std::size_t j = 1; j <= vertex_part_count; ++j)
-        P_v.emplace_back(work_path + std::string("P_v_") + std::to_string(j));
+    for(std::size_t j = 1; j <= params.vertex_part_count(); ++j)
+        P_v.emplace_back(params.working_dir_path() + std::string("P_v_") + std::to_string(j));
 
-    P_e.reserve(lmtig_bucket_count + 1);
+    P_e.reserve(params.lmtig_bucket_count() + 1);
     P_e.emplace_back(); // Using edge-partition 0 with edges that do not have any associated lm-tig (i.e. has weight > 1).
-    for(std::size_t b = 1; b <= lmtig_bucket_count; ++b)
-        P_e.emplace_back(work_path + std::string("P_e_") + std::to_string(b));
-}
-
-
-template <uint16_t k>
-dBG_Contractor<k>::dBG_Contractor(const std::size_t subgraph_count, const std::size_t part_count, const std::size_t lmtig_bucket_count, const std::string& output_path, const std::string& temp_path):
-      subgraph_count(subgraph_count)
-    , vertex_part_count(part_count)
-    , lmtig_bucket_count(lmtig_bucket_count)
-    , output_path(output_path)
-    , work_path(temp_path)
-    , G(vertex_part_count, lmtig_bucket_count, work_path)
-    , op_buf(parlay::num_workers(), op_buf_t(output_sink.sink()))
-{
-    // TODO: centralize all the file-naming schemes.
-    P_v.reserve(part_count + 1);
-    P_v.emplace_back(); // No vertex other than the ϕ-vertex belongs to partition 0.
-    for(std::size_t j = 1; j <= part_count; ++j)
-        P_v.emplace_back(work_path + std::string("P_v_") + std::to_string(j));
-
-    P_e.reserve(lmtig_bucket_count + 1);
-    P_e.emplace_back(); // Using edge-partition 0 with edges that do not have any associated lm-tig (i.e. has weight > 1).
-    for(std::size_t b = 1; b <= lmtig_bucket_count; ++b)
-        P_e.emplace_back(work_path + std::string("P_e_") + std::to_string(b));
+    for(std::size_t b = 1; b <= params.lmtig_bucket_count(); ++b)
+        P_e.emplace_back(params.working_dir_path() + std::string("P_e_") + std::to_string(b));
 }
 
 
@@ -74,16 +47,13 @@ void dBG_Contractor<k>::construct()
 
 
     // Clear the output file and initialize the output sink.
-    clear_file(output_path);
-    output_sink.init_sink(output_path);
+    clear_file(params.output_file_path());
+    output_sink.init_sink(params.output_file_path());
 
     const auto t_0 = now();
 
 
-    // Discontinuity_Graph_Bootstrap<k> dgb(cdbg_path, l, E, work_path, unitig_bucket_count);
-    // dgb.generate();
-
-    Subgraphs_Processor<k> subgraphs(work_path, subgraph_count, G, op_buf);
+    Subgraphs_Processor<k> subgraphs(params.working_dir_path(), params.subgraph_count(), G, op_buf);
     subgraphs.process();
 
     std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";
@@ -95,7 +65,7 @@ void dBG_Contractor<k>::construct()
     std::cerr << "Phantom edge upper-bound: " << G.phantom_edge_upper_bound() << "\n";
     std::cerr << "Expecting at most " << ((G.E().row_size(0) + G.phantom_edge_upper_bound()) / 2) << " more non-DCC maximal unitigs\n";
 
-    Discontinuity_Graph_Contractor<k> contractor(G, P_v, work_path);
+    Discontinuity_Graph_Contractor<k> contractor(G, P_v, params.working_dir_path());
     contractor.contract();
 
     G.close_lmtig_stream();
@@ -103,13 +73,13 @@ void dBG_Contractor<k>::construct()
     const auto t_c = now();
     std::cerr << "Discontinuity-graph contraction completed. Time taken: " << duration(t_c - t_s) << " seconds.\n";
 
-    Contracted_Graph_Expander<k> expander(G, P_v, P_e, work_path);
+    Contracted_Graph_Expander<k> expander(G, P_v, P_e, params.working_dir_path());
     expander.expand();
 
     const auto t_e = now();
     std::cerr << "Expansion of contracted graph completed. Time taken: " << duration(t_e - t_c) << " seconds.\n";
 
-    Unitig_Collator<k> collator(P_e, work_path, op_buf);
+    Unitig_Collator<k> collator(P_e, params.working_dir_path(), op_buf);
     collator.par_collate();
 
     // Flush data and close the output sink.

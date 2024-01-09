@@ -30,15 +30,7 @@ class dBG_Contractor
 {
 private:
 
-    // const Build_Params params;  // Required parameters (wrapped inside).
-
-    // TODO: wrap the following primitive fields in `Build_Params`.
-    const std::size_t subgraph_count;   // Number of subgraphs the original de Bruijn graph is broken into.
-    const std::size_t vertex_part_count;    // Number of vertex-partitions in the discontinuity graph; needs to be a power of 2.
-    const std::size_t lmtig_bucket_count;   // Number of buckets storing literal locally-maximal unitigs.
-
-    const std::string output_path;  // Path-prefix to output files.
-    const std::string work_path;    // Path-prefix for temporary working files.
+    const Build_Params params;  // Required parameters (wrapped inside).
 
     Discontinuity_Graph<k> G;   // The discontinuity graph.
 
@@ -64,14 +56,6 @@ public:
     // Constructs a compacted de Bruijn graph constructor with the parameters
     // required for the construction wrapped in `params`.
     dBG_Contractor(const Build_Params& params);
-
-    // Constructs a compacted de Bruijn graph constructor that operates with
-    // `subgraph_count` subgraphs of the underlying de Bruijn graph,
-    // `part_count` vertex-partitions in its discontinuity graph, and stores the
-    // locally-maximal unitigs from the partitioned subgraphs of the dBG into
-    // `lmtig_bucket_count` buckets. Output files are stored at the path-prefix
-    // `output_path`, and temporary working files at path-prefix `temp_path`.
-    dBG_Contractor(std::size_t subgraph_count, std::size_t part_count, std::size_t lmtig_bucket_count, const std::string& output_path, const std::string& temp_path);
 
     // Contracts the bootstrapped discontinuity graph generated from the
     // compacted dBG at path `cdbg_path`. `l`-minimizers are used in generating
