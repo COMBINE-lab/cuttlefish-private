@@ -1,6 +1,7 @@
 #include "Input_Defaults.hpp"
 #include "CdBG.hpp"
 #include "Read_CdBG.hpp"
+#include "dBG_Contractor.hpp"
 #include "Kmer_Index.hpp"
 #include "Validator.hpp"
 #include "Build_Params.hpp"
@@ -66,6 +67,15 @@ int cf_build(int argc, char** argv)
         ("path-cover", "extract a maximal path cover of the de Bruijn graph")
         ;
 
+    options.add_options("cuttlefish_3")
+        ("subgraph-count", "number of subgraphs the original de Bruijn graph is broken into",
+            cxxopts::value<std::size_t>()->default_value(std::to_string(cuttlefish::_default::SUBGRAPH_COUNT)))
+        ("vertex-part-count", "number of vertex-partitions in the discontinuity graph; needs to be a power of 2",
+            cxxopts::value<std::size_t>()->default_value(std::to_string(cuttlefish::_default::VERTEX_PART_COUNT)))
+        ("lmtig-bucket-count", "number of buckets storing literal locally-maximal unitigs",
+            cxxopts::value<std::size_t>()->default_value(std::to_string(cuttlefish::_default::LMTIG_BUCKET_COUNT)))
+        ;
+
     std::optional<uint16_t> format_code;
     options.add_options("cuttlefish_1")
         ("f,format", "output format (0: FASTA, 1: GFA 1.0, 2: GFA 2.0, 3: GFA-reduced)",
@@ -102,6 +112,9 @@ int cf_build(int argc, char** argv)
         const auto is_read_graph = result["read"].as<bool>();
         const auto is_ref_graph = result["ref"].as<bool>();
         const auto k = result["kmer-len"].as<uint16_t>();
+        const auto subgraph_count = result["subgraph-count"].as<std::size_t>();
+        const auto vertex_part_count = result["vertex-part-count"].as<std::size_t>();
+        const auto lmtig_bucket_count = result["lmtig-bucket-count"].as<std::size_t>();
         const auto vertex_db = result["vertex-set"].as<std::string>();
         const auto edge_db = result["edge-set"].as<std::string>();
         const auto thread_count = result["threads"].as<uint16_t>();
@@ -123,7 +136,9 @@ int cf_build(int argc, char** argv)
 
         const Build_Params params(  is_read_graph, is_ref_graph,
                                     seqs, lists, dirs,
-                                    k, cutoff, vertex_db, edge_db, thread_count, max_memory, strict_memory,
+                                    k, cutoff,
+                                    subgraph_count, vertex_part_count, lmtig_bucket_count,
+                                    vertex_db, edge_db, thread_count, max_memory, strict_memory,
                                     idx, min_len,
                                     output_file, format, track_short_seqs, working_dir,
                                     path_cover,
@@ -155,9 +170,10 @@ int cf_build(int argc, char** argv)
 
             std::cout << "\nConstructing the compacted " << dBg_type << " de Bruijn graph for k = " << k << ".\n";
 
-            (params.is_read_graph() || params.is_ref_graph()) ?
-                Application<cuttlefish::MAX_K, Read_CdBG>(params).execute() :
-                Application<cuttlefish::MAX_K, CdBG>(params).execute();
+            // (params.is_read_graph() || params.is_ref_graph()) ?
+            //     Application<cuttlefish::MAX_K, Read_CdBG>(params).execute() :
+            //     Application<cuttlefish::MAX_K, CdBG>(params).execute();
+            Application<cuttlefish::MAX_K, cuttlefish::dBG_Contractor>(params).execute();
 
             std::cout << "\nConstructed the " << dBg_type << " compacted de Bruijn graph at " << output_file << ".\n";
         }

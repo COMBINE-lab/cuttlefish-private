@@ -1,5 +1,6 @@
 
 #include "Contracted_Graph_Expander.hpp"
+#include "Data_Logistics.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 #include "parlay/parallel.h"
@@ -14,13 +15,13 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path):
+Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics):
       G(G)
     , P_v(P_v)
     , P_e(P_e)
     , P_v_w(parlay::num_workers())
     , P_e_w(parlay::num_workers())
-    , work_path(temp_path)
+    , compressed_diagonal_path(logistics.compressed_diagonal_path())
     , M(G.vertex_part_size_upper_bound())
 #ifndef NDEBUG
     , H_p_e_w(parlay::num_workers(), 0)
@@ -205,7 +206,7 @@ void Contracted_Graph_Expander<k>::load_path_info(const std::size_t i)
 template <uint16_t k>
 void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
 {
-    const std::string d_i_path(work_path + std::string("D_") + std::to_string(i));
+    const std::string d_i_path(compressed_diagonal_path + "_" + std::to_string(i));
     std::error_code ec;
     const auto file_sz = std::filesystem::file_size(d_i_path, ec);
     D_i.resize(file_sz / sizeof(Discontinuity_Edge<k>));

@@ -10,12 +10,16 @@
 #include "Output_Sink.hpp"
 #include "Async_Logger_Wrapper.hpp"
 #include "Character_Buffer.hpp"
+#include "utility"
 #include "globals.hpp"
 
 #include <cstdint>
 #include <vector>
 #include <string>
 #include <unordered_map>
+
+
+class Data_Logistics;
 
 
 namespace cuttlefish
@@ -33,12 +37,13 @@ private:
 
     const std::vector<Ext_Mem_Bucket<unitig_path_info_t>>& P_e; // `P_e[b]` contains path-info for edges in bucket `b`.
 
-    const std::string work_path;    // Path-prefix to temporary working files.
+    const std::string lmtig_buckets_path;   // Path-prefix to the lm-tig buckets.
+    const std::string unitig_coord_buckets_path;    // Path-prefix to the unitig-coordinate buckets produced in map-reduce.
 
     std::size_t max_bucket_sz;  // Maximum size of the locally-maximal unitigs' buckets.
 
     static constexpr std::size_t max_unitig_bucket_count = 1024;    // Must be a power-of-2.
-    std::vector<Unitig_Coord_Bucket<k>> max_unitig_bucket;  // Key-value collation buckets for lm-unitigs.
+    std::vector<Padded_Data<Unitig_Coord_Bucket<k>>> max_unitig_bucket; // Key-value collation buckets for lm-unitigs.
 
     // TODO: remove? This is for the naive-collator.
     Path_Info<k>* M;    // `M[idx]` is the path-info for the `idx`'th edge in some bucket.
@@ -79,10 +84,10 @@ public:
 
     // Constructs a unitig-collator for unitigs with their associated path-info
     // at `P_e`, i.e. `P_e[b]` contains path-information of the unitigs'
-    // corresponding edges at bucket `b`. Temporary files are stored at path-
-    // prefix `temp_path`, and worker-specific maximally unitigs are written to
-    // the buffers in `op_buf`.
-    Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path, op_buf_list_t& op_buf);
+    // corresponding edges at bucket `b`. `logistics` is the data logistics
+    // manager for the algorithm execution. Worker-specific maximal unitigs are
+    // written to the buffers in `op_buf`.
+    Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf);
 
     // Collates the locally-maximal unitigs into global ones.
     // void collate();

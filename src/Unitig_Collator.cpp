@@ -6,6 +6,7 @@
 #include "dBG_Utilities.hpp"
 #include "Character_Buffer.hpp"
 #include "FASTA_Record.hpp"
+#include "Data_Logistics.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 #include "parlay/parallel.h"
@@ -26,9 +27,10 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path, op_buf_list_t& op_buf):
+Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf):
       P_e(P_e)
-    , work_path(temp_path)
+    , lmtig_buckets_path(logistics.lmtig_buckets_path())
+    , unitig_coord_buckets_path(logistics.unitig_coord_buckets_path())
     , M(nullptr)
     , p_e_buf(nullptr)
     , op_buf(op_buf)
@@ -93,7 +95,7 @@ void Unitig_Collator<k>::map()
     std::vector<Spin_Lock> lock(max_unitig_bucket_count);   // Locks for maximal-unitig buckets.
     max_unitig_bucket.reserve(max_unitig_bucket_count);
     for(std::size_t i = 0; i < max_unitig_bucket_count; ++i)
-        max_unitig_bucket.emplace_back(work_path + "U_" + std::to_string(i));
+        max_unitig_bucket.emplace_back(unitig_coord_buckets_path + "_" + std::to_string(i));
 
     std::atomic_uint64_t edge_c = 0;    // Number of edges (i.e. unitigs) found.
 #ifndef NDEBUG
@@ -120,7 +122,8 @@ void Unitig_Collator<k>::map()
 #endif
 
 
-        Unitig_File_Reader unitig_reader(work_path + "lmtig_" + std::to_string(b)); // TODO: centralize file-location.
+        assert(file_exists(lmtig_buckets_path + "_" + std::to_string(b)));
+        Unitig_File_Reader unitig_reader(lmtig_buckets_path + "_" + std::to_string(b));
         std::string unitig; // Read-off unitig. TODO: use better-suited container.
         uni_idx_t idx = 0;  // The unitig's sequential ID in the bucket.
         std::size_t uni_len;    // The unitig's length in bases.
@@ -131,7 +134,7 @@ void Unitig_Collator<k>::map()
             const auto mapped_b_id = XXH3_64bits(&p, sizeof(p)) & (max_unitig_bucket_count - 1); // Hashed maximal unitig bucket.
 
             lock[mapped_b_id].lock();
-            max_unitig_bucket[mapped_b_id].add(M[idx], unitig.data(), uni_len);
+            max_unitig_bucket[mapped_b_id].data().add(M[idx], unitig.data(), uni_len);
             lock[mapped_b_id].unlock();
         }
 
@@ -161,8 +164,8 @@ void Unitig_Collator<k>::reduce()
     std::size_t max_max_uni_b_sz = 0;   // Maximum unitig-count in some maximal unitig bucket.
     std::size_t max_max_uni_b_label_len = 0;    // Maximum dump-string length in some maximal unitig bucket.
     for(std::size_t i = 0; i < max_unitig_bucket_count; ++i)
-        max_max_uni_b_sz = std::max(max_max_uni_b_sz, max_unitig_bucket[i].size()),
-        max_max_uni_b_label_len = std::max(max_max_uni_b_label_len, max_unitig_bucket[i].label_len());
+        max_max_uni_b_sz = std::max(max_max_uni_b_sz, max_unitig_bucket[i].data().size()),
+        max_max_uni_b_label_len = std::max(max_max_uni_b_label_len, max_unitig_bucket[i].data().label_len());
 
     std::cerr << "Maximum maximal unitig bucket size:  " << max_max_uni_b_sz << "\n";
     std::cerr << "Maximum maximal unitig label length: " << max_max_uni_b_label_len << "\n";
@@ -191,8 +194,8 @@ void Unitig_Collator<k>::reduce()
         auto const L = L_vec[w_id].data();  // Dump-strings of the unitig labels.
         auto& output = op_buf[w_id].data(); // Output buffer for the maximal unitigs.
 
-        const auto b_sz = max_unitig_bucket[b].load_coords(U);
-        const auto len = max_unitig_bucket[b].load_labels(L);
+        const auto b_sz = max_unitig_bucket[b].data().load_coords(U);
+        const auto len = max_unitig_bucket[b].data().load_labels(L);
         (void)len;
 
         std::sort(U, U + b_sz);

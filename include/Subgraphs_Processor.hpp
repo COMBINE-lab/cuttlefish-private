@@ -14,6 +14,9 @@
 #include <string>
 
 
+class Data_Logistics;
+
+
 namespace cuttlefish
 {
 
@@ -28,8 +31,6 @@ private:
 
     const std::string bin_path_pref;    // Path-prefix to the KMC bins.
     const std::size_t bin_count;    // Numer of KMC bins, each one induces a subgraph.
-
-    const std::string work_path;    // Path to the working space.
 
     Discontinuity_Graph<k>& G;  // The discontinuity graph.
 
@@ -47,10 +48,11 @@ private:
 public:
 
     // Constructs a processor for the subgraphs induced by the `bin_count` KMC
-    // bins at path-prefix `bin_path_pref`. The discontinuity-graph is produced
-    // at `G` without false-phantom edges. Worker-specific trivially maximal
-    // unitigs are written to the buffers in `op_buf`.
-    Subgraphs_Processor(const std::string& bin_path_pref, std::size_t bin_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf);
+    // bins. `logistics` is the data logistics manager for the algorithm
+    // execution. The discontinuity-graph is produced at `G` without false-
+    // phantom edges. Worker-specific trivially maximal unitigs are written to
+    // the buffers in `op_buf`.
+    Subgraphs_Processor(const Data_Logistics& logistics, std::size_t bin_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf);
 
     // Constructs and contracts each subgraph.
     void process();

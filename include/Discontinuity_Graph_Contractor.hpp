@@ -23,6 +23,9 @@
 #include <cassert>
 
 
+class Data_Logistics;
+
+
 namespace cuttlefish
 {
 
@@ -39,7 +42,7 @@ private:
     std::vector<Ext_Mem_Bucket<kmer_path_info_t>>& P_v; // `P_v[j]` contains path-info for vertices in partition `j`—specifically, the meta-vertices.
     std::vector<Padded_Data<std::vector<kmer_path_info_t>>> P_v_local;  // `P_v_local[t]` contains information of the meta-vertices formed by worker `t`.
 
-    const std::string work_path;    // Path-prefix to temporary working files.
+    const std::string compressed_diagonal_path; // Path-prefix to the edges introduced in contracting diagonal blocks.
 
     std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
 
@@ -47,7 +50,7 @@ private:
     Concurrent_Hash_Table<Kmer<k>, Other_End, Kmer_Hasher<k>> M;    // `M[v]` is the associated vertex to `v` at a given time.
 
     // TODO: remove `D_j` by adopting a more parallelization-amenable algorithm for diagonal contraction-expansion.
-    std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block.
+    std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block. TODO: remove `D_j` by adding these edges to the diagonal block.
     std::vector<Padded_Data<std::vector<Discontinuity_Edge<k>>>> D_c;   // `D_c[t]` contains the edges corresponding to compressed diagonal chains by worker `t`.
 
     std::atomic_uint64_t phantom_count_;    // Number of phantom edges.
@@ -83,9 +86,9 @@ private:
 public:
 
     // Constructs a contractor for the discontinuity-graph `G`. `P_v[j]` is to
-    // contain path-information for vertices at partition `j`. Temporary files
-    // are stored at path-prefix `temp_path`.
-    Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path);
+    // contain path-information for vertices at partition `j`. `logistics` is
+    // the data logistics manager for the algorithm execution.
+    Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const Data_Logistics& logistics);
 
     // Contracts the discontinuity-graph.
     void contract();

@@ -1,6 +1,7 @@
 
 #include "Subgraphs_Processor.hpp"
 #include "Subgraph.hpp"
+#include "Data_Logistics.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
 
@@ -11,10 +12,9 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Subgraphs_Processor<k>::Subgraphs_Processor(const std::string& bin_path_pref, const std::size_t bin_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf):
-      bin_path_pref(bin_path_pref)
+Subgraphs_Processor<k>::Subgraphs_Processor(const Data_Logistics& logistics, const std::size_t bin_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf):
+      bin_path_pref(logistics.subgraphs_path())
     , bin_count(bin_count)
-    , work_path(bin_path_pref)
     , G(G)
     , trivial_mtig_count_(0)
     , icc_count_(0)

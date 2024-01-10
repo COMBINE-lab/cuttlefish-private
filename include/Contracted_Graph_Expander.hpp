@@ -24,6 +24,9 @@
 #include <cassert>
 
 
+class Data_Logistics;
+
+
 namespace cuttlefish
 {
 
@@ -45,7 +48,7 @@ private:
     std::vector<Padded_Data<worker_local_P_v_t>> P_v_w; // `P_v_w[w][j]` contains path-info of vertices in partition `j` computed by worker `w`.
     std::vector<Padded_Data<worker_local_P_e_t>> P_e_w; // `P_e_w[w][b]` contains path-info of edges in bucket `b` computed by worker `w`.
 
-    const std::string work_path;    // Path-prefix to temporary working files.
+    const std::string compressed_diagonal_path; // Path-prefix to the edges introduced in contracting diagonal blocks.
 
     // TODO: remove `D_i` by adopting a more parallelization-amenable algorithm for diagonal contraction-expansion.
     std::vector<Discontinuity_Edge<k>> D_i; // New edges introduced in contracted diagonal blocks.
@@ -105,8 +108,8 @@ public:
     // Constructs an expander for the contracted discontinuity-graph `G`.
     // `P_v[i]` is to contain path-information for vertices at partition `i`,
     // and `P_e[b]` is to contain path-information for edges at bucket `b`.
-    // Temporary files are stored at path-prefix `temp_path`.
-    Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& temp_path);
+    // `logistics` is the data logistics manager for the algorithm execution.
+    Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics);
 
     // Expands the contracted discontinuity-graph.
     void expand();

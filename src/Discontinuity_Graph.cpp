@@ -1,5 +1,6 @@
 
 #include "Discontinuity_Graph.hpp"
+#include "Data_Logistics.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
 
@@ -11,9 +12,9 @@ template <uint16_t k> const Kmer<k> Discontinuity_Graph<k>::phi_(phi_label);
 
 
 template <uint16_t k>
-Discontinuity_Graph<k>::Discontinuity_Graph(const std::size_t part_count, const std::size_t lmtig_bucket_count, const std::string& work_path):
-      E_(part_count, work_path + "E_")
-    , lmtigs(work_path + "lmtig", lmtig_bucket_count, parlay::num_workers())
+Discontinuity_Graph<k>::Discontinuity_Graph(const std::size_t part_count, const std::size_t lmtig_bucket_count, const Data_Logistics& logistics):
+      E_(part_count, logistics.edge_matrix_path())
+    , lmtigs(logistics.lmtig_buckets_path(), lmtig_bucket_count, parlay::num_workers())
     , phantom_edge_count_(0)
 {}
 
