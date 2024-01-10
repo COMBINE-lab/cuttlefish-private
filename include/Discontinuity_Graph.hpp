@@ -15,6 +15,9 @@
 #include <atomic>
 
 
+class Data_Logistics;
+
+
 namespace cuttlefish
 {
 
@@ -43,9 +46,9 @@ public:
 
     // Constructs a discontinuity graph object that operates with `part_count`
     // vertex-partitions, and the locally-maximal unitigs corresponding to its
-    // edges are stored in `lmtig_bucket_count` buckets. Temporary working
-    // files are stored at path-prefix `work_path`.
-    Discontinuity_Graph(std::size_t part_count, std::size_t lmtig_bucket_count, const std::string& work_path);
+    // edges are stored in `lmtig_bucket_count` buckets. `logistics` is the data
+    // logistics manager for the algorithm execution.
+    Discontinuity_Graph(std::size_t part_count, std::size_t lmtig_bucket_count, const Data_Logistics& logistics);
 
     // Returns the ϕ k-mer connected to each chain-end in the discontinuity
     // graph.

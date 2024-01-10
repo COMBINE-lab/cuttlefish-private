@@ -1,5 +1,6 @@
 
 #include "Discontinuity_Graph_Contractor.hpp"
+#include "Data_Logistics.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
 
@@ -11,11 +12,11 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path):
+Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const Data_Logistics& logistics):
       G(G)
     , P_v(P_v)
     , P_v_local(parlay::num_workers())
-    , work_path(temp_path)
+    , compressed_diagonal_path(logistics.compressed_diagonal_path())
     , M(G.vertex_part_size_upper_bound())
     , D_c(parlay::num_workers())
     , phantom_count_(0)
@@ -250,7 +251,7 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
     }
 
 
-    std::ofstream output(work_path + std::string("D_") + std::to_string(j));
+    std::ofstream output(compressed_diagonal_path + "_" + std::to_string(j));
     output.write(reinterpret_cast<const char*>(D_j.data()), D_j.size() * sizeof(Discontinuity_Edge<k>));
     output.close();
 

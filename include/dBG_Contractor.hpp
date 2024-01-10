@@ -11,6 +11,7 @@
 #include "Output_Sink.hpp"
 #include "Character_Buffer.hpp"
 #include "Build_Params.hpp"
+#include "Data_Logistics.hpp"
 #include "utility.hpp"
 #include "globals.hpp"
 
@@ -31,6 +32,7 @@ class dBG_Contractor
 private:
 
     const Build_Params params;  // Required parameters (wrapped inside).
+    const Data_Logistics logistics; // Data logistics manager for the algorithm execution.
 
     Discontinuity_Graph<k> G;   // The discontinuity graph.
 
