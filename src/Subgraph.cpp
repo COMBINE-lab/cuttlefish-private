@@ -209,13 +209,8 @@ void Subgraph<k>::contract()
     Maximal_Unitig_Scratch<k> maximal_unitig;   // Scratch space to be used to construct maximal unitigs.
     uint64_t vertex_count = 0;  // Count of vertices processed.
     uint64_t unitig_count = 0;  // Count of maximal unitigs.
-    uint64_t max_sz = 0;        // Maximum maximal unitig size.
     uint64_t non_isolated = 0;  // Count of non-isolated vertices.
 
-    // std::ofstream output(std::string("op." + std::to_string(bin_id) + std::string(".cf3")));
-
-    std::string label;
-    std::size_t max_label_sz = 0;
     for(const auto& p : M)
     {
         const auto& v = p.first;
@@ -238,19 +233,9 @@ void Subgraph<k>::contract()
         {
             vertex_count += maximal_unitig.size();
             unitig_count++;
-            max_sz = std::max(max_sz, maximal_unitig.size()),
-            maximal_unitig.get_label(label);    // TODO: remove after testing's done.
-
-            label_sz += label.size();
-            max_label_sz = std::max(max_label_sz, label.size());
-
-            // label += '\n';
-            // output.write(">\n", 2);
-            // output.write(label.c_str(), label.size());
+            label_sz += maximal_unitig.size() + k - 1;
         }
     }
-
-    // output.close();
 
     assert(vertex_count + isolated == M.size());
 }
