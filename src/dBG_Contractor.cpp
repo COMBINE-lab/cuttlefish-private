@@ -61,6 +61,7 @@ void dBG_Contractor<k>::construct()
     std::cerr << "Edge-matrix size: " << G.E().size() << "\n";
     std::cerr << "Phantom edge upper-bound: " << G.phantom_edge_upper_bound() << "\n";
     std::cerr << "Expecting at most " << ((G.E().row_size(0) + G.phantom_edge_upper_bound()) / 2) << " more non-DCC maximal unitigs\n";
+    return; // Perf-diagnose
 
     Discontinuity_Graph_Contractor<k> contractor(G, P_v, logistics);
     contractor.contract();

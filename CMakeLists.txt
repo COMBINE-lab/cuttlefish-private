@@ -46,7 +46,7 @@ endif()
 # Disable unknown pragmas, b/c bbhash uses them extensively.
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
 set(WARNING_FLAGS -Wall -Wextra)
-set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas)
+set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas -ggdb)
 
 # Bundle the extra optimization flags (not associated with the `-O` levels)
 # that we want to pass on to the compiler.
