@@ -17,6 +17,8 @@
 #include "Async_Logger_Wrapper.hpp"
 #include "utility.hpp"
 #include "globals.hpp"
+#include "emhash/hash_table7.hpp"
+#include "unordered_dense/unordered_dense.h"
 #include "parlay/parallel.h"
 
 #include <cstdint>
@@ -42,7 +44,9 @@ private:
     const std::string graph_bin_dir_path;   // Path to the directory with all the graph KMC-bins.
     const std::size_t bin_id; // ID of the graph KMC-bin.
 
-    typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
+    // typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
+    typedef emhash7::HashMap<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
+    // typedef ankerl::unordered_dense::map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
     static std::vector<Padded_Data<map_t>> map; // Map collection for different workers.
 
     map_t& M;   // Map to be used for this subgraph.
