@@ -210,9 +210,11 @@ inline typename Subgraph<k>::termination_t Subgraph<k>::walk_unitig(const Kmer<k
 
     unitig.init(v);
 
+    auto it = M.find(v.canonical());
+    // auto it = M.find_positive(v.canonical());
     while(true)
     {
-        M[v.canonical()].mark_visited();
+        it->second.mark_visited();
 
         b_ext = state.edge_at(s_v);
         assert(!state.is_discontinuous(s_v) || b_ext == base_t::E); // If a side is discontinuous, it must be empty.
@@ -235,7 +237,9 @@ inline typename Subgraph<k>::termination_t Subgraph<k>::walk_unitig(const Kmer<k
 
         v.roll_forward(b_ext);  // Walk to the next vertex.
         assert(M.find(v.canonical()) != M.end());
-        state = M[v.canonical()];
+        it = M.find(v.canonical());
+        // it = M.find_positive(v.canonical());
+        state = it->second;
 
         s_v = v.entrance_side();
         assert(!state.is_empty_side(s_v));

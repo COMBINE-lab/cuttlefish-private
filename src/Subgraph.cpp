@@ -94,11 +94,7 @@ void Subgraph<k>::construct()
                 edge_c += (succ_base != base_t::E);
 
                 // Update hash table with the neighborhood info.
-                const auto it = M.find(v.canonical());
-                if(it == M.end())
-                    M.emplace(v.canonical(), State_Config());
                 auto& st = M[v.canonical()];
-
                 st.update_edges(front, back);
                 if(kmer_idx == 0 && disc_l)
                     st.mark_discontinuous(v.entrance_side());
