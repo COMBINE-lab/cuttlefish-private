@@ -77,11 +77,10 @@ private:
     bool extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Unitig_Scratch<k>& maximal_unitig);
 
     // Traverses a unitig starting from the vertex `v_hat`, exiting it through
-    // the side `s_v_hat`. `st_v` is the state of `s_v_hat`. `unitig` is used as
-    // the scratch space to build the unitig. Returns `true` iff the walk tried
-    // to exit the subgraph through a discontinuous side; in which case that
-    // vertex is stored in `exit_v`.
-    termination_t walk_unitig(const Kmer<k>& v_hat, const State_Config& v_inf, side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v);
+    // the side `s_v_hat`. `unitig` is used as the scratch space to build the
+    // unitig. Returns `true` iff the walk tried to exit the subgraph through a
+    // discontinuous side; in which case that vertex is stored in `exit_v`.
+    termination_t walk_unitig(const Kmer<k>& v_hat, side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v);
 
 
 public:
@@ -159,9 +158,6 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
     constexpr auto exitted = termination_t::exitted;
 
     assert(M.find(v_hat) != M.end());
-    const auto& state = M[v_hat];
-    if(state.is_visited())  // The containing maximal unitig has already been outputted.
-        return false;
 
 
     maximal_unitig.mark_linear();
@@ -169,7 +165,7 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
     Directed_Vertex<k> v_l, v_r;    // Possible discontinuity ends of the maximal unitig at the left and the right extensions.
     termination_t walk_end_l(termination_t::null), walk_end_r(termination_t::null); // Whether the maximal unitig tried to exit the subgraph through the left and the right extensions.
 
-    walk_end_r = walk_unitig(v_hat, state, back, maximal_unitig.unitig(back), v_r);
+    walk_end_r = walk_unitig(v_hat, back, maximal_unitig.unitig(back), v_r);
     if(maximal_unitig.unitig(back).is_cycle())
     {
         assert(walk_end_r == termination_t::crossed);
@@ -177,7 +173,7 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
     }
     else
     {
-        walk_end_l = walk_unitig(v_hat, state, front, maximal_unitig.unitig(front), v_l);
+        walk_end_l = walk_unitig(v_hat, front, maximal_unitig.unitig(front), v_l);
         assert(!maximal_unitig.unitig(front).is_cycle());
     }
 
@@ -204,18 +200,18 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
 
 
 template <uint16_t k>
-inline typename Subgraph<k>::termination_t Subgraph<k>::walk_unitig(const Kmer<k>& v_hat, const State_Config& st_v, const side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v)
+inline typename Subgraph<k>::termination_t Subgraph<k>::walk_unitig(const Kmer<k>& v_hat, const side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v)
 {
     const auto s_icc_return = inv_side(s_v_hat);    // The side through which to return to `v_hat` if it's contained in an ICC.
     Directed_Vertex<k> v(s_v_hat == side_t::back ? v_hat : v_hat.reverse_complement()); // Current vertex being added to the unitig.
     side_t s_v = s_v_hat;   // The side of the current vertex `v_hat` through which to extend the unitig, i.e. to exit `v`.
-    State_Config state = st_v;  // State of `v`.
     base_t b_ext;   // The nucleobase encoding the edge(s) incident to the side `s_v` of `v`.
 
     unitig.init(v);
 
     auto it = M.find(v.canonical());
     // auto it = M.find_positive(v.canonical());
+    State_Config state = it->second;    // State of `v`.
     while(true)
     {
         it->second.mark_visited();

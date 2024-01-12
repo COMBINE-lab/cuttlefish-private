@@ -217,6 +217,9 @@ void Subgraph<k>::contract()
         const auto& v_st = p.second;
         assert(!v_st.is_discontinuous(side_t::front) || !v_st.is_discontinuous(side_t::back));
 
+        if(v_st.is_visited())   // The containing maximal unitig has already been outputted.
+            continue;
+
         if(v_st.is_isolated())
         {
             if(v_st.is_discontinuity()) // A potential phantom-edge for the discontinuity graph is incident to `v`.
