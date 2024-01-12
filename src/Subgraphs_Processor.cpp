@@ -52,7 +52,7 @@ void Subgraphs_Processor<k>::process()
                 std::cerr << "\rSolved " << solved << " subgraphs.";
 
             t_construction[parlay::worker_id()].data() += timer::duration(t_1 - t_0);
-            t_contraction[parlay::worker_id()].data()  += timer::duration(t_2 - t_0);
+            t_contraction[parlay::worker_id()].data()  += timer::duration(t_2 - t_1);
         };
 
     parlay::parallel_for(0, bin_count, process_subgraph, 1);
