@@ -223,7 +223,7 @@ inline typename Subgraph<k>::termination_t Subgraph<k>::walk_unitig(const Kmer<k
 
         if(b_ext == base_t::E)
         {
-            if(!state.is_discontinuous(s_v))    // Reached a truly empty side.
+            if(CF_UNLIKELY(!state.is_discontinuous(s_v)))   // Reached a truly empty side.
                 return termination_t::dead_ended;
 
             // Trying to exit the subgraph through a discontinuity vertex.
@@ -246,7 +246,7 @@ inline typename Subgraph<k>::termination_t Subgraph<k>::walk_unitig(const Kmer<k
         if(state.is_branching_side(s_v))    // Crossed an endpoint and reached a different unitig.
             return termination_t::crossed;
 
-        if(state.is_visited())  // Hit the same unitig.
+        if(CF_UNLIKELY(state.is_visited())) // Hit the same unitig.
         {
             // The unitig is an ICC; crossed back to the same unitig.
             if(v.canonical() == v_hat && s_v == s_icc_return)
