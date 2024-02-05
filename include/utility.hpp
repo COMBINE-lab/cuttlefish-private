@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 
 // TODO: wrap everything here in some namespaces.
 // =============================================================================
@@ -142,6 +143,14 @@ public:
 
     const T_& data() const { return data_; }
 };
+
+
+namespace timer
+{
+    inline auto now() { return std::chrono::high_resolution_clock::now(); }
+
+    inline auto duration(const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
+}
 
 
 

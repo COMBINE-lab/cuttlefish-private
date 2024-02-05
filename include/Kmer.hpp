@@ -535,9 +535,8 @@ inline bool Kmer<k>::operator>(const Kmer<k>& rhs) const
 template <uint16_t k>
 inline bool Kmer<k>::operator==(const Kmer<k>& rhs) const
 {
-    // TODO: replace w/ the following.
-    // if constexpr(k <= 32)
-    //     return kmer_data[0] == rhs.kmer_data[0];
+    if constexpr(k <= 32)
+        return kmer_data[0] == rhs.kmer_data[0];
 
     // if constexpr(k <= 64)
     //     return kmer_data[0] == rhs.kmer_data[0] && kmer_data[1] == rhs.kmer_data[1];

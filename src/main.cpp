@@ -39,6 +39,10 @@ int main(int argc, char** argv)
     std::cout << "Warning: Executing in Develop Mode.\n";
 #endif
 
+#ifndef NDEBUG
+    std::cout << "Warning: Executing in Debug Mode.\n";
+#endif
+
     if(argc < 2)
         display_help_message();
     else

@@ -11,10 +11,14 @@
 namespace cuttlefish
 {
 
+template<uint16_t k> std::vector<Padded_Data<typename Subgraph<k>::map_t>> Subgraph<k>::map;
+
+
 template <uint16_t k>
 Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id, Discontinuity_Graph<k>& G, op_buf_t& op_buf):
       graph_bin_dir_path(bin_dir_path)
     , bin_id(bin_id)
+    , M(map[parlay::worker_id()].data())
     , edge_c(0)
     , label_sz(0)
     , disc_edge_c(0)
@@ -23,7 +27,27 @@ Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id,
     , trivial_mtig_c(0)
     , icc_count_(0)
     , op_buf(op_buf)
-{}
+{
+    M.clear();
+}
+
+
+template <uint16_t k>
+void Subgraph<k>::init_maps()
+{
+    map.resize(parlay::num_workers());
+}
+
+
+template <uint16_t k>
+void Subgraph<k>::free_maps()
+{
+    for(auto& M : map)
+        force_free(M.data());
+
+    map.clear();
+    map.shrink_to_fit();
+}
 
 
 template <uint16_t k>
@@ -70,11 +94,7 @@ void Subgraph<k>::construct()
                 edge_c += (succ_base != base_t::E);
 
                 // Update hash table with the neighborhood info.
-                const auto it = M.find(v.canonical());
-                if(it == M.end())
-                    M.emplace(v.canonical(), State_Config());
                 auto& st = M[v.canonical()];
-
                 st.update_edges(front, back);
                 if(kmer_idx == 0 && disc_l)
                     st.mark_discontinuous(v.entrance_side());
@@ -189,18 +209,16 @@ void Subgraph<k>::contract()
     Maximal_Unitig_Scratch<k> maximal_unitig;   // Scratch space to be used to construct maximal unitigs.
     uint64_t vertex_count = 0;  // Count of vertices processed.
     uint64_t unitig_count = 0;  // Count of maximal unitigs.
-    uint64_t max_sz = 0;        // Maximum maximal unitig size.
     uint64_t non_isolated = 0;  // Count of non-isolated vertices.
 
-    // std::ofstream output(std::string("op." + std::to_string(bin_id) + std::string(".cf3")));
-
-    std::string label;
-    std::size_t max_label_sz = 0;
     for(const auto& p : M)
     {
         const auto& v = p.first;
         const auto& v_st = p.second;
         assert(!v_st.is_discontinuous(side_t::front) || !v_st.is_discontinuous(side_t::back));
+
+        if(v_st.is_visited())   // The containing maximal unitig has already been outputted.
+            continue;
 
         if(v_st.is_isolated())
         {
@@ -218,19 +236,9 @@ void Subgraph<k>::contract()
         {
             vertex_count += maximal_unitig.size();
             unitig_count++;
-            max_sz = std::max(max_sz, maximal_unitig.size()),
-            maximal_unitig.get_label(label);    // TODO: remove after testing's done.
-
-            label_sz += label.size();
-            max_label_sz = std::max(max_label_sz, label.size());
-
-            // label += '\n';
-            // output.write(">\n", 2);
-            // output.write(label.c_str(), label.size());
+            label_sz += maximal_unitig.size() + k - 1;
         }
     }
-
-    // output.close();
 
     assert(vertex_count + isolated == M.size());
 }

@@ -22,6 +22,11 @@
 #endif
 
 
+// Likely/unlikely conditions.
+#define CF_LIKELY(condition)    __builtin_expect(condition, 1)
+#define CF_UNLIKELY(condition)  __builtin_expect(condition, 0)
+
+
 // Forward declarations of the DNA code types.
 namespace DNA
 {

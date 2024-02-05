@@ -10,8 +10,6 @@
 #include "utility.hpp"
 #include "parlay/parallel.h"
 
-#include <chrono>
-
 
 namespace cuttlefish
 {
@@ -43,17 +41,12 @@ dBG_Contractor<k>::dBG_Contractor(const Build_Params& params):
 template <uint16_t k>
 void dBG_Contractor<k>::construct()
 {
-    // TODO: move these utility functionalities out.
-    constexpr auto now = std::chrono::high_resolution_clock::now;
-    constexpr auto duration = [](const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
-
-
     // Clear the output file and initialize the output sink.
     const auto op_file_path = logistics.output_file_path();
     clear_file(op_file_path);
     output_sink.init_sink(op_file_path);
 
-    const auto t_0 = now();
+    const auto t_0 = timer::now();
 
 
     Subgraphs_Processor<k> subgraphs(logistics, params.subgraph_count(), G, op_buf);
@@ -61,26 +54,28 @@ void dBG_Contractor<k>::construct()
 
     std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";
     std::cerr << "Trivial ICC count: " << subgraphs.icc_count() << ".\n";
-    const auto t_s = now();
-    std::cerr << "Subgraphs contraction completed. Time taken: " << duration(t_s - t_0) << " seconds.\n";
+
+    const auto t_s = timer::now();
+    std::cerr << "Subgraphs contraction completed. Time taken: " << timer::duration(t_s - t_0) << " seconds.\n";
 
     std::cerr << "Edge-matrix size: " << G.E().size() << "\n";
     std::cerr << "Phantom edge upper-bound: " << G.phantom_edge_upper_bound() << "\n";
     std::cerr << "Expecting at most " << ((G.E().row_size(0) + G.phantom_edge_upper_bound()) / 2) << " more non-DCC maximal unitigs\n";
+    return; // Perf-diagnose
 
     Discontinuity_Graph_Contractor<k> contractor(G, P_v, logistics);
     contractor.contract();
 
     G.close_lmtig_stream();
 
-    const auto t_c = now();
-    std::cerr << "Discontinuity-graph contraction completed. Time taken: " << duration(t_c - t_s) << " seconds.\n";
+    const auto t_c = timer::now();
+    std::cerr << "Discontinuity-graph contraction completed. Time taken: " << timer::duration(t_c - t_s) << " seconds.\n";
 
     Contracted_Graph_Expander<k> expander(G, P_v, P_e, logistics);
     expander.expand();
 
-    const auto t_e = now();
-    std::cerr << "Expansion of contracted graph completed. Time taken: " << duration(t_e - t_c) << " seconds.\n";
+    const auto t_e = timer::now();
+    std::cerr << "Expansion of contracted graph completed. Time taken: " << timer::duration(t_e - t_c) << " seconds.\n";
 
     Unitig_Collator<k> collator(P_e, logistics, op_buf);
     collator.par_collate();
@@ -90,8 +85,8 @@ void dBG_Contractor<k>::construct()
                         [&](const std::size_t idx){ op_buf[idx].data().close(); }, 1);
     output_sink.close_sink();
 
-    const auto t_uc = now();
-    std::cerr << "Unitigs-collation completed. Time taken: " << duration(t_uc - t_e) << " seconds.\n";
+    const auto t_uc = timer::now();
+    std::cerr << "Unitigs-collation completed. Time taken: " << timer::duration(t_uc - t_e) << " seconds.\n";
 }
 
 }
