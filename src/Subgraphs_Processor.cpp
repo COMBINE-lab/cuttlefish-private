@@ -32,6 +32,7 @@ void Subgraphs_Processor<k>::process()
 
     std::vector<Padded_Data<double>> t_construction(parlay::num_workers(), 0);  // Timer-per-worker for construction work.
     std::vector<Padded_Data<double>> t_contraction(parlay::num_workers(), 0);   // Timer-per-worker for contraction work.
+    std::vector<Padded_Data<std::size_t>> max_size(parlay::num_workers(), 0);   // Largest graph size processed per worker.
 
     const auto process_subgraph =
         [&](const std::size_t bin_id)
@@ -44,6 +45,9 @@ void Subgraphs_Processor<k>::process()
             const auto t_1 = timer::now();
             sub_dBG.contract();
             const auto t_2 = timer::now();
+
+            auto& max_sz = max_size[parlay::worker_id()].data();
+            max_sz = std::max(max_sz, sub_dBG.size());
 
             trivial_mtig_count_ += sub_dBG.trivial_mtig_count();
             icc_count_ += sub_dBG.icc_count();
@@ -64,6 +68,10 @@ void Subgraphs_Processor<k>::process()
         { double t = 0; std::for_each(T.cbegin(), T.cend(), [&t](const auto v){ t += v.data(); }); return t; };
     std::cerr << "Total work in graph construction: " << sum_time(t_construction) << " (s).\n";
     std::cerr << "Total work in graph contraction:  " << sum_time(t_contraction) << " (s).\n";
+    std::cerr << "Largest graph size: " <<
+        [&](){  std::size_t max_sz = 0;
+                std::for_each(max_size.cbegin(), max_size.cend(), [&](const auto& v){ max_sz = std::max(max_sz, v.data()); });
+                return max_sz; }() << ".\n";
 }
 
 
