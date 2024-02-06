@@ -15,6 +15,7 @@
 // #include "Kmer_Index.hpp"
 // #include "Index_Validator.hpp"
 // #include "Minimizer_Iterator.hpp"
+#include "Parser.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
 #include "Edge_Matrix.hpp"
 #include "Subgraph.hpp"
@@ -1296,6 +1297,7 @@ int main(int argc, char** argv)
     // const std::string bin_dir(argv[1]);
     // const std::size_t bin_c(std::atoi(argv[2]));
     // iterate_subgraphs<k>(bin_dir, bin_c);
+    cuttlefish::Parser(argv[1]).parse();
 
     return 0;
 }

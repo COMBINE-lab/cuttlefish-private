@@ -51,6 +51,7 @@ set(PROJECT_SRC
         Multiway_Merger.cpp
         Discontinuity_Graph_Bootstrap.cpp
         dBG_Contractor.cpp
+        Parser.cpp
         Discontinuity_Graph.cpp
         Edge_Matrix.cpp
         Unitig_File.cpp
