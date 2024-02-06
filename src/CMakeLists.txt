@@ -77,6 +77,11 @@ set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 target_include_directories(cfcore_static PUBLIC ${INCLUDE_DIR} ${EXT_INCLUDE})
 
 # Build the `RabbitFX` library.
+if(DEFINED IGZIP_PREFIX)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_IGZIP -lisal")
+	include_directories(${IGZIP_PREFIX}/include)
+	link_directories(${IGZIP_PREFIX}/lib)
+endif()
 aux_source_directory(${INCLUDE_DIR}/RabbitFX/io RABBITFX_SRC)
 add_library(rabbitfx STATIC ${RABBITFX_SRC})
 if(IGZIP_PREFIX)
