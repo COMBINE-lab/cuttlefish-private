@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <cstring>
+#include <cassert>
 #include "Reference.h"
 
 #if defined(USE_IGZIP)
@@ -74,7 +75,7 @@ namespace rabbit{
 				int ret =0;
 				ret = isal_read_gzip_header(&mStream, &mIgzipHeader);
 				if( ret != ISAL_DECOMP_OK ){
-					cerr << "error invalid gzip header found: " << fileName_ << endl;
+					std::cerr << "error invalid gzip header found: " << fileName_ << std::endl;
 					if(mFile != NULL){
 						fclose(mFile);
 					}
@@ -108,7 +109,7 @@ namespace rabbit{
 				mFile = fdopen(fd, "r");
 				if (mFile == NULL)
 				{
-					cerr << "Can not open file id to read: " + to_string(fd) << endl;
+					std::cerr << "Can not open file id to read: " + std::to_string(fd) << std::endl;
 				}
 				mIgInbuf = new unsigned char[IGZIP_IN_BUF_SIZE];
 				isal_gzip_header_init(&mIgzipHeader);
@@ -122,7 +123,7 @@ namespace rabbit{
 				ret = isal_read_gzip_header(&mStream, &mIgzipHeader);
 				if (ret != ISAL_DECOMP_OK)
 				{
-					cerr << "error! invalid gzip header found!" << endl;
+					std::cerr << "error! invalid gzip header found!" << std::endl;
 					if (mFile != NULL)
 					{
 						fclose(mFile);
@@ -159,7 +160,7 @@ namespace rabbit{
 				mStream.next_out = memory_ + offset;
 				mStream.avail_out = size_ - offset;
 				if(isal_inflate(&mStream) != ISAL_DECOMP_OK){
-					cerr << "decompress error" << endl;
+					std::cerr << "decompress error" << std::endl;
 					return -1;
 				}
 				offset = (mStream.next_out - memory_);
@@ -193,7 +194,7 @@ namespace rabbit{
 					}
 					ret = isal_read_gzip_header(&mStream, &mIgzipHeader);
 					if (ret != ISAL_DECOMP_OK) {
-						cerr << "igzip: invalid gzip header found: " << mStream.avail_in <<  " : " << mStream.avail_out << endl;
+						std::cerr << "igzip: invalid gzip header found: " << mStream.avail_in <<  " : " << mStream.avail_out << std::endl;
 						exit(-1);
 					}
 				}

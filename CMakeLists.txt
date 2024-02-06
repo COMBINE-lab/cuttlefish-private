@@ -76,6 +76,10 @@ if(CF_DEVELOP_MODE)
     add_compile_definitions(CF_DEVELOP_MODE)
 endif()
 
+if(IGZIP_PREFIX)
+    add_compile_definitions(USE_IGZIP)
+endif()
+
 
 # Here, we have some platform-specific considerations
 # of which we must take care.
@@ -112,7 +116,7 @@ find_package(Threads REQUIRED)  # The threads package is required for the BBHash
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)   # The BBHash library uses `pthread`.
 
 # Search and load setting for the `zlib` library. The library is required to seamlessly adapt
-# the `kseq` and the `kmc` libraries to gzip-compressed files.
+# the `kseq`, the `kmc`, and the `RabbitFX` libraries to gzip-compressed files.
 include(FindZLIB)
 if(NOT ZLIB_FOUND)
     message(FATAL_ERROR "zlib (https://zlib.net/) is required. Aborting.")
@@ -208,6 +212,9 @@ ExternalProject_Add(prj_kmc
 add_library(kmc STATIC IMPORTED)
 set_target_properties(kmc PROPERTIES IMPORTED_LOCATION ${EXT_LIB}/libkmc_core.a)
 add_dependencies(kmc prj_kmc)
+
+
+# Add / install ISA-L.
 
 
 # Prepare the `parlay` library—a parallel algorithms programming toolkit.

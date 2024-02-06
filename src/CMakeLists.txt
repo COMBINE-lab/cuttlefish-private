@@ -76,6 +76,14 @@ add_library(cfcore_static STATIC ${PROJECT_SRC})
 set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 target_include_directories(cfcore_static PUBLIC ${INCLUDE_DIR} ${EXT_INCLUDE})
 
+# Build the `RabbitFX` library.
+aux_source_directory(${INCLUDE_DIR}/RabbitFX/io RABBITFX_SRC)
+add_library(rabbitfx STATIC ${RABBITFX_SRC})
+if(IGZIP_PREFIX)
+    target_include_directories(rabbitfx PUBLIC ${IGZIP_PREFIX}/include)
+    target_link_directories(rabbitfx PUBLIC ${IGZIP_PREFIX}/lib)
+endif()
+
 
 # Specify the warnings and the extra optimization flags to the compiler for the target library.
 # As the flags are specified as `PRIVATE`, they will only be used when compiling this library.
@@ -113,6 +121,14 @@ target_link_libraries(cfcore_static PRIVATE BZip2::BZip2)
 
 # Link the cfcore_static library to the `zstd` library.
 target_link_libraries(cfcore_static PRIVATE zstd)
+
+# Approrpiately link the core library to `rabbitfx`.
+target_link_libraries(rabbitfx PRIVATE z)
+if(IGZIP_PREFIX)
+    target_link_libraries(rabbitfx PRIVATE isal)
+endif()
+
+target_link_libraries(cfcore_static PRIVATE rabbitfx)
 
 # Link the cfcore_static library to the threads package in the platform.
 target_link_libraries(cfcore_static PRIVATE ${CMAKE_THREAD_LIBS_INIT})
