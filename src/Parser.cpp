@@ -15,8 +15,9 @@ namespace cuttlefish
 {
 
 
-Parser::Parser(const std::string& file_path):
+Parser::Parser(const std::string& file_path, const std::size_t parser_count):
       file_path(file_path)
+    , consumer_count(parser_count)
 {}
 
 
@@ -27,7 +28,7 @@ void Parser::parse()
 
     std::thread producer(&Parser::produce, this, std::ref(fq_chunk_pool), std::ref(fq_chunk_q));
     std::vector<std::thread> consumer;
-    for(uint64_t t = 0; t < 15; ++t)
+    for(uint64_t t = 0; t < consumer_count; ++t)
         consumer.emplace_back(&Parser::consume, this, std::ref(fq_chunk_pool), std::ref(fq_chunk_q));
 
     producer.join();

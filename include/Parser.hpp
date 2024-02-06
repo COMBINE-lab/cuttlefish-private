@@ -36,8 +36,9 @@ private:
 
 public:
 
-    // Constructs a parser for the file at path `file_path`.
-    Parser(const std::string& file_path);
+    // Constructs a parser for the file at path `file_path` for `parser_count`
+    // parsers.
+    Parser(const std::string& file_path, std::size_t parser_count = 1);
 
     // Proof-of-concept parse method.
     void parse();

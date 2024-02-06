@@ -1297,7 +1297,7 @@ int main(int argc, char** argv)
     // const std::string bin_dir(argv[1]);
     // const std::size_t bin_c(std::atoi(argv[2]));
     // iterate_subgraphs<k>(bin_dir, bin_c);
-    cuttlefish::Parser(argv[1]).parse();
+    cuttlefish::Parser(argv[1], std::atoi(argv[2])).parse();
 
     return 0;
 }
