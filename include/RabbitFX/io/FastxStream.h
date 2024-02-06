@@ -82,14 +82,14 @@ namespace rabbit {
                  * @param halo size
                  */
                 FastaFileReader(const std::string &fileName_, FastaDataPool *pool_, bool isZippedNew = false, uint64 halo = 21)
-                    : swapBuffer(SwapBufferSize),
+                    : recordsPool(pool_),
+                    swapBuffer(SwapBufferSize),
                     bufferSize(0),
                     eof(false),
                     usesCrlf(false),
-                    totalSeqs(0),
-                    mHalo(halo),
                     isZipped(isZippedNew),
-                    recordsPool(pool_) {
+                    mHalo(halo),
+                    totalSeqs(0) {
                         // if(ends_with(fileName_,".gz"))
                         if (isZipped) {
                             mZipFile = gzopen(fileName_.c_str(), "r");
@@ -113,14 +113,14 @@ namespace rabbit {
                  * @param halo halo size
                  */
                 FastaFileReader(int fd, FastaDataPool *pool_, bool isZippedNew = false, uint64 halo = 21)
-                    : swapBuffer(SwapBufferSize),
+                    : recordsPool(pool_),
+                    swapBuffer(SwapBufferSize),
                     bufferSize(0),
                     eof(false),
                     usesCrlf(false),
-                    totalSeqs(0),
-                    mHalo(halo),
                     isZipped(isZippedNew),
-                    recordsPool(pool_) {
+                    mHalo(halo),
+                    totalSeqs(0) {
                         if (isZipped) {
                             mZipFile = gzdopen(fd, "r");
                             if (mZipFile == NULL) {
@@ -305,14 +305,14 @@ namespace rabbit {
                 FastqFileReader(const std::string &fileName_, FastqDataPool &pool_,
                       bool isZippedNew = false, std::string fileName2_ = "")
                     : swapBuffer(SwapBufferSize),
-                    swapBuffer2(SwapBufferSize),
                     bufferSize(0),
+                    swapBuffer2(SwapBufferSize),
                     bufferSize2(0),
                     eof(false),
                     usesCrlf(false),
                     isZipped(isZippedNew),
-                    numParts(0),
-                    recordsPool(pool_) {
+                    recordsPool(pool_),
+                    numParts(0) {
                         mFqReader = new FileReader(fileName_, isZipped);
                         if(fileName2_ != ""){
                             mFqReader2 = new FileReader(fileName2_, isZipped);
@@ -328,14 +328,14 @@ namespace rabbit {
                  */
                 FastqFileReader(int fd, FastqDataPool &pool_, bool isZippedNew = false, int fd2 = -1)
                     : swapBuffer(SwapBufferSize),
-                    swapBuffer2(SwapBufferSize),
                     bufferSize(0),
+                    swapBuffer2(SwapBufferSize),
                     bufferSize2(0),
                     eof(false),
                     usesCrlf(false),
                     isZipped(isZippedNew),
-                    numParts(0),
-                    recordsPool(pool_) {
+                    recordsPool(pool_),
+                    numParts(0) {
                         if (isZippedNew) {
                         } else {
                             mFile = FDOPEN(fd, "rb");

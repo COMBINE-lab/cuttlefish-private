@@ -64,7 +64,7 @@ namespace rabbit{
 					throw RioException(
 						("Can not open file to read: " + fileName_).c_str());  
 				}
-				mIgInbuf = new unsigned char[IGZIP_IN_BUF_SIZE];
+				mIgInbuf = new unsigned char[IGZIP_IN_BUF_SIZE];	// TODO: add some `init` / `reset` method to reuse this mem.
 				isal_gzip_header_init(&mIgzipHeader);
 				isal_inflate_init(&mStream);
 				mStream.crc_flag = ISAL_GZIP_NO_HDR_VER;

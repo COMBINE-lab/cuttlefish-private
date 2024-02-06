@@ -16,6 +16,7 @@
 
 //-----------------
 #include <stdlib.h>
+#include <cstddef>
 #include <iostream>
 #include <vector>
 #include <sys/stat.h>
@@ -182,11 +183,11 @@ inline uint64_t seq2int(const char* data, int start, int keylen, bool& valid) {
 const int revmap[4] = {2,3,0,1};
 //NOTICE: ensure there is no 'N' in key
 inline uint64_t kmer_reverse_complete(uint64_t key, int keylen){
- 	uint64_t res;
+ 	uint64_t res = 0;
  	for(int i = 0; i < keylen; ++i){
- 		res | revmap[key & 0x03];
- 		res << 2;
- 		key >> 2;
+ 		res |= revmap[key & 0x03];
+ 		res <<= 2;
+ 		key >>= 2;
  	}
  	return res;
 }
@@ -200,16 +201,16 @@ inline void reverse_complement(const char * src, char * dest, int length)
 
     base >>= 1;
     base &= 0x03;
-    dest[length - i - 1] = table[base];
+    dest[length - i - 1] = table[static_cast<std::size_t>(base)];
   }
 }
 
 inline void seq_to_lower(char* seq, size_t len){
-  for(int i = 0; i < len; ++i)
+  for(std::size_t i = 0; i < len; ++i)
     seq[i] |= 0x20;
 }
 inline void seq_to_upper(char* seq, size_t len){
-  for(int i = 0; i < len; ++i)
+  for(std::size_t i = 0; i < len; ++i)
     seq[i] &= 0xdf;
 }
 inline void seq_to_lower(std::string &seq){
@@ -313,7 +314,7 @@ inline string replace(const string &str, const string &src, const string &dest) 
 
 inline string reverse(const string &str) {
   string ret(str.length(), 0);
-  for (int pos = 0; pos < str.length(); pos++) {
+  for (std::size_t pos = 0; pos < str.length(); pos++) {
     ret[pos] = str[str.length() - pos - 1];
   }
   return ret;
