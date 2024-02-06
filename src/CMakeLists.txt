@@ -79,9 +79,10 @@ target_include_directories(cfcore_static PUBLIC ${INCLUDE_DIR} ${EXT_INCLUDE})
 # Build the `RabbitFX` library.
 aux_source_directory(${INCLUDE_DIR}/RabbitFX/io RABBITFX_SRC)
 add_library(rabbitfx STATIC ${RABBITFX_SRC})
-if(IGZIP_PREFIX)
+if(DEFINED IGZIP_PREFIX)
     target_include_directories(rabbitfx PUBLIC ${IGZIP_PREFIX}/include)
     target_link_directories(rabbitfx PUBLIC ${IGZIP_PREFIX}/lib)
+    target_link_libraries(rabbitfx PUBLIC isal)
 endif()
 
 
@@ -132,7 +133,7 @@ target_link_libraries(cfcore_static PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 
 
 # Link the executable to the required libraries.
-target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static)
+target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static rabbitfx)
 
 
 # Specify warnings flags to the compiler for the target executable.
@@ -168,7 +169,7 @@ install(FILES ${EXT_LIB}/libkmc_core.a
 )
 
 add_executable(test test.cpp)
-target_link_libraries(test PRIVATE cfcore_static)
+target_link_libraries(test PRIVATE cfcore_static rabbitfx)
 target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${WARNING_FLAGS}>" 
   PRIVATE "$<$<CONFIG:DEBUG>:${SUPPRESS_WARNING_FLAGS}>" 
   PRIVATE "$<$<CONFIG:DEBUG>:${OPTIMIZE_FLAGS}>")
