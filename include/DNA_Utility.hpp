@@ -140,6 +140,12 @@ public:
         return base <= 'T' ? base : (base - ('a' - 'A'));
     }
 
+    // Returns the upper-case equivalent of the character `base`.
+    static char to_upper(const char b)
+    {
+        return b & 0b0101'1111;
+    }
+
     // Returns the mapping `DNA::Extended_Base` representation of the
     // `DNA::Base` representation `base`.
     static DNA::Extended_Base map_extended_base(const DNA::Base base)

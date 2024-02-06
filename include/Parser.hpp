@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <string>
+#include <atomic>
 
 
 namespace cuttlefish
@@ -32,7 +33,7 @@ private:
     void produce(fq_chunk_pool_t& chunk_pool, fq_chunk_queue_t& chunk_q);
 
     // Proof-of-concept consumption method for parsed sequences.
-    void consume(fq_chunk_pool_t& chunk_pool, fq_chunk_queue_t& chunk_q);
+    void consume(fq_chunk_pool_t& chunk_pool, fq_chunk_queue_t& chunk_q, std::vector<std::atomic_uint64_t>& count);
 
 public:
 
