@@ -81,8 +81,6 @@ aux_source_directory(${INCLUDE_DIR}/RabbitFX/io RABBITFX_SRC)
 add_library(rabbitfx STATIC ${RABBITFX_SRC})
 if(DEFINED IGZIP_PREFIX)
     target_include_directories(rabbitfx PUBLIC ${IGZIP_PREFIX}/include)
-    target_link_directories(rabbitfx PUBLIC ${IGZIP_PREFIX}/lib)
-    target_link_libraries(rabbitfx PUBLIC isal)
 endif()
 
 
@@ -125,6 +123,14 @@ target_link_libraries(cfcore_static PRIVATE zstd)
 
 # Approrpiately link the core library to `rabbitfx`.
 target_link_libraries(rabbitfx PRIVATE z)
+if(IGZIP_PREFIX)
+    find_library(ISAL_LIB isal PATHS ${IGZIP_PREFIX}/lib)
+    if(ISAL_LIB_NOTFOUND)
+        message(FATAL_ERROR "isa-l (https://github.com/intel/isa-l) not found in the specified directory. Aborting.\n")
+    endif()
+
+    target_link_libraries(rabbitfx PRIVATE ${ISAL_LIB})
+endif()
 
 target_link_libraries(cfcore_static PRIVATE rabbitfx)
 
@@ -133,7 +139,7 @@ target_link_libraries(cfcore_static PRIVATE ${CMAKE_THREAD_LIBS_INIT})
 
 
 # Link the executable to the required libraries.
-target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static rabbitfx)
+target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static)
 
 
 # Specify warnings flags to the compiler for the target executable.
@@ -169,7 +175,7 @@ install(FILES ${EXT_LIB}/libkmc_core.a
 )
 
 add_executable(test test.cpp)
-target_link_libraries(test PRIVATE cfcore_static rabbitfx)
+target_link_libraries(test PRIVATE cfcore_static)
 target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${WARNING_FLAGS}>" 
   PRIVATE "$<$<CONFIG:DEBUG>:${SUPPRESS_WARNING_FLAGS}>" 
   PRIVATE "$<$<CONFIG:DEBUG>:${OPTIMIZE_FLAGS}>")
