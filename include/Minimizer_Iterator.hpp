@@ -20,7 +20,8 @@
 // sequence of type `T_seq_`, computing the minimizer for each k-mer in
 // amortized O(1) time. If `is_canonical_` is `true`, then canonical minimizers
 // are computed, i.e. both strand-forms of the sequence is considered.
-template <typename T_seq_, bool is_canonical_ = false>
+// `clean_seq_` denotes whether the passed sequence is clean in terms of bases.
+template <typename T_seq_, bool is_canonical_ = false, bool clean_seq_ = true>
 class Minimizer_Iterator
 {
     typedef cuttlefish::minimizer_t minimizer_t;
@@ -64,8 +65,8 @@ public:
 };
 
 
-template <typename T_seq_, bool is_canonical_>
-inline Minimizer_Iterator<T_seq_, is_canonical_>::Minimizer_Iterator(T_seq_ const seq, const std::size_t seq_len, const uint16_t k, const uint16_t l, const uint64_t seed):
+template <typename T_seq_, bool is_canonical_, bool clean_seq_>
+inline Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::Minimizer_Iterator(T_seq_ const seq, const std::size_t seq_len, const uint16_t k, const uint16_t l, const uint64_t seed):
     seq(seq),
     seq_len(seq_len),
     k(k),
@@ -83,6 +84,7 @@ inline Minimizer_Iterator<T_seq_, is_canonical_>::Minimizer_Iterator(T_seq_ cons
     for(std::size_t idx = 0; idx < l; ++idx)
     {
         base = DNA_Utility::map_base(seq[idx]);
+        assert(base != DNA::Base::N);
         last_lmer |= (static_cast<minimizer_t>(base) << (2 * (l - 1 - idx)));
 
         if constexpr(is_canonical_)
@@ -98,14 +100,20 @@ inline Minimizer_Iterator<T_seq_, is_canonical_>::Minimizer_Iterator(T_seq_ cons
 }
 
 
-template <typename T_seq_, bool is_canonical_>
-inline bool Minimizer_Iterator<T_seq_, is_canonical_>::operator++()
+template <typename T_seq_, bool is_canonical_, bool clean_seq_>
+inline bool Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::operator++()
 {
     if(last_lmer_idx + l == seq_len)
         return false;
 
+    const auto next_ch = seq[last_lmer_idx + l];
+    if constexpr(clean_seq_)
+        assert(DNA_Utility::is_DNA_base(next_ch));
+    else if(!DNA_Utility::is_DNA_base(next_ch))
+        return false;
+
     last_lmer_idx++;
-    const DNA::Base base = DNA_Utility::map_base(seq[last_lmer_idx + l - 1]);
+    const DNA::Base base = DNA_Utility::map_base(next_ch);
     last_lmer = ((last_lmer & clear_MSN_mask) << 2) | base;
     if constexpr(is_canonical_)
         last_lmer_bar = (last_lmer_bar >> 2) | (static_cast<minimizer_t>(DNA_Utility::complement(base)) << (2 * (l - 1)));
@@ -142,8 +150,8 @@ inline bool Minimizer_Iterator<T_seq_, is_canonical_>::operator++()
 }
 
 
-template <typename T_seq_, bool is_canonical_>
-inline void Minimizer_Iterator<T_seq_, is_canonical_>::value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index) const
+template <typename T_seq_, bool is_canonical_, bool clean_seq_>
+inline void Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index) const
 {
     if constexpr(is_canonical_)
     {
