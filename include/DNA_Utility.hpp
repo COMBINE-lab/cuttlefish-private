@@ -134,6 +134,13 @@ public:
         return IS_PLACEHOLDER[uint8_t(base)];
     }
 
+    // Returns `true` iff the character `base` is a DNA character.
+    static bool is_DNA_base(const char base)
+    {
+        const char b = to_upper(base);
+        return (b == 'A') | (b == 'C') | (b == 'G') | (b == 'T');
+    }
+
     // Returns the upper-case equivalent of the character `base`.
     static char upper(const char base)
     {
