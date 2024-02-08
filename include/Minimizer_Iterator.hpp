@@ -29,8 +29,8 @@ class Minimizer_Iterator
 
 private:
 
-    T_seq_ const seq;   // The sequence on which to iterate over.
-    const std::size_t seq_len;  // Length of the given sequence.
+    T_seq_ seq; // The sequence on which to iterate over.
+    std::size_t seq_len;    // Length of the given sequence.
 
     const uint16_t k;   // Size of the k-mers.
     const uint16_t l;   // Size of the minimizers.
@@ -53,10 +53,19 @@ private:
 public:
 
     // Constructs a minimizer iterator to iterate over `l`-minimizers of
+    // the `k`-mers of a given sequence in a streaming manner. The seed-value
+    // `seed` is used in hashing the `l`-mers.
+    Minimizer_Iterator(uint16_t k, uint16_t l, uint64_t seed = 0);
+
+    // Constructs a minimizer iterator to iterate over `l`-minimizers of
     // the `k`-mers of the sequence `seq`, of length `seq_len`, in a streaming
     // manner. The iterator sits at the first k-mer after the construction.
     // The seed-value `seed` is used in hashing the `l`-mers.
     Minimizer_Iterator(T_seq_ seq, std::size_t seq_len, uint16_t k, uint16_t l, uint64_t seed = 0);
+
+    // Resets the iterator to the sequence `seq` of length `seq_len`. The
+    // iterator sits at the first k-mer after the construction.
+    void reset(T_seq_ seq, std::size_t seq_len);
 
     // Moves the iterator to the next k-mer in the sequence. Returns `true` iff
     // the current k-mer is not the last k-mer in the sequence.
@@ -70,17 +79,32 @@ public:
 
 
 template <typename T_seq_, bool is_canonical_, bool clean_seq_>
-inline Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::Minimizer_Iterator(T_seq_ const seq, const std::size_t seq_len, const uint16_t k, const uint16_t l, const uint64_t seed):
-    seq(seq),
-    seq_len(seq_len),
-    k(k),
-    l(l),
-    seed(seed),
-    clear_MSN_mask(~(static_cast<minimizer_t>(0b11) << (2 * (l - 1))))
+inline Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::Minimizer_Iterator(const uint16_t k, const uint16_t l, const uint64_t seed):
+      k(k)
+    , l(l)
+    , seed(seed)
+    , clear_MSN_mask(~(static_cast<minimizer_t>(0b11) << (2 * (l - 1))))
     , dq_f(2 * k - l)
     , dq_r(2 * k - l)
 {
     assert(l <= k);
+}
+
+
+template <typename T_seq_, bool is_canonical_, bool clean_seq_>
+inline Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::Minimizer_Iterator(T_seq_ const seq, const std::size_t seq_len, const uint16_t k, const uint16_t l, const uint64_t seed):
+    Minimizer_Iterator(k, l, seed)
+{
+    reset(seq, seq_len);
+}
+
+
+template <typename T_seq_, bool is_canonical_, bool clean_seq_>
+inline void Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::reset(T_seq_ const seq, const std::size_t seq_len)
+{
+    this->seq = seq;
+    this->seq_len = seq_len;
+    dq_f.clear(), dq_r.clear();
 
     last_lmer = 0;
     last_lmer_bar = 0;

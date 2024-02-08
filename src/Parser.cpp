@@ -109,6 +109,8 @@ void Parser::consume_split_super_kmers(fq_chunk_pool_t& chunk_pool, fq_chunk_que
     uint64_t rec_count = 0;
     uint64_t sup_kmer_count = 0;
 
+    Minimizer_Iterator<const char*, true, false> min_it(k - 1, l, min_seed);
+
     while(chunk_q.Pop(id, fq_chunk))
     {
         parsed_chunk.clear();
@@ -145,7 +147,8 @@ void Parser::consume_split_super_kmers(fq_chunk_pool_t& chunk_pool, fq_chunk_que
                 }
 
 
-                Minimizer_Iterator<decltype(seq), true, false> min_it(seq + frag_beg, seq_len - frag_beg, k - 1, l, min_seed);
+                // Minimizer_Iterator<const char*, true, false> min_it(seq + frag_beg, seq_len - frag_beg, k - 1, l, min_seed);
+                min_it.reset(seq + frag_beg, seq_len - frag_beg);
                 minimizer_t last_min, last_min_idx;
                 minimizer_t min, min_idx;
                 min_it.value_at(last_min, last_min_idx);
