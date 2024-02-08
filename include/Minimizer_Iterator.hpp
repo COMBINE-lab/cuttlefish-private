@@ -8,6 +8,7 @@
 #include "DNA_Utility.hpp"
 #include "Kmer.hpp"
 #include "globals.hpp"
+#include "utility.hpp"
 #include "xxHash/xxh3.h"
 
 #include <cstdint>
@@ -41,10 +42,13 @@ private:
     std::size_t last_lmer_idx;  // Index into the sequence of the last l-mer processed.
     const minimizer_t clear_MSN_mask;   // Bitmask to clear the most-significant nucleotide bits of l-mers.
 
+    // typedef std::deque<Lmer_Tuple> deque_t;
+    typedef deque<Lmer_Tuple> deque_t;
+
     // Collection of l-mers that have already been seen, and cannot be ruled out
     // yet as candidate minimizers for the k-mers yet to be seen fully. `dq_f`
     // is for the forward-strand and `dq_r` is for the reverse-strand.
-    std::deque<Lmer_Tuple> dq_f, dq_r;
+    deque_t dq_f, dq_r;
 
 public:
 
@@ -73,6 +77,8 @@ inline Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::Minimizer_Iterator
     l(l),
     seed(seed),
     clear_MSN_mask(~(static_cast<minimizer_t>(0b11) << (2 * (l - 1))))
+    , dq_f(2 * k - l)
+    , dq_r(2 * k - l)
 {
     assert(l <= k);
 
@@ -130,7 +136,7 @@ inline bool Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::operator++()
 
 
     const auto fix_dq =
-        [](std::deque<Lmer_Tuple>& dq, const Lmer_Tuple& lmer_tuple)
+        [](deque_t& dq, const Lmer_Tuple& lmer_tuple)
         {
             while(!dq.empty())
                 if(dq.back() < lmer_tuple)
