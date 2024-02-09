@@ -2,6 +2,7 @@
 #include "Parser.hpp"
 #include "DNA_Utility.hpp"
 #include "Minimizer_Iterator.hpp"
+#include "utility.hpp"
 #include "RabbitFX/io/FastxStream.h"
 #include "RabbitFX/io/Formater.h"
 #include "RabbitFX/io/Globals.h"
@@ -20,6 +21,7 @@ namespace cuttlefish
 Parser::Parser(const std::string& file_path, const std::size_t parser_count):
       file_path(file_path)
     , consumer_count(parser_count)
+    , T(parser_count)
 {}
 
 
@@ -34,12 +36,17 @@ void Parser::parse()
     // std::vector<std::atomic_uint64_t> count(5);
     std::atomic_uint64_t count(0);
     for(uint64_t t = 0; t < consumer_count; ++t)
-        consumer.emplace_back(&Parser::consume_split_super_kmers, this, std::ref(fq_chunk_pool), std::ref(fq_chunk_q), std::ref(count));
+        consumer.emplace_back(&Parser::consume_split_super_kmers, this, std::ref(fq_chunk_pool), std::ref(fq_chunk_q), std::ref(count), std::ref(T[t].data()));
 
     producer.join();
     std::for_each(consumer.begin(), consumer.end(), [](auto& t){ t.join(); });
 
+    timing_info t;
+    std::for_each(T.cbegin(), T.cend(), [&t](const auto v){ t += v.data(); });
+
     std::cerr << "Count of super k-mers: " << count << ".\n";
+    std::cerr << "Timing:\n";
+    std::cerr << t << "\n";
 }
 
 
@@ -96,7 +103,7 @@ void Parser::consume_count_bases(fq_chunk_pool_t& chunk_pool, fq_chunk_queue_t& 
 }
 
 
-void Parser::consume_split_super_kmers(fq_chunk_pool_t& chunk_pool, fq_chunk_queue_t& chunk_q, std::atomic_uint64_t& count)
+void Parser::consume_split_super_kmers(fq_chunk_pool_t& chunk_pool, fq_chunk_queue_t& chunk_q, std::atomic_uint64_t& count, timing_info& t)
 {
     rabbit::int64 id = 0;
     std::vector<neoReference> parsed_chunk;
@@ -111,10 +118,21 @@ void Parser::consume_split_super_kmers(fq_chunk_pool_t& chunk_pool, fq_chunk_que
 
     Minimizer_Iterator<const char*, true, false> min_it(k - 1, l, min_seed);
 
-    while(chunk_q.Pop(id, fq_chunk))
+    while(true)
     {
+        auto t_s = timer::now();
+        if(!chunk_q.Pop(id, fq_chunk))
+            break;
+
+        auto t_e = timer::now();
+        t.q_wait_time += timer::duration(t_e - t_s);
+
         parsed_chunk.clear();
+
+        t_s = timer::now();
         rec_count += rabbit::fq::chunkFormat(fq_chunk, parsed_chunk);
+        t_e = timer::now();
+        t.chunk_format_time += timer::duration(t_e - t_s);
 
         for(const auto& rec : parsed_chunk)
         {
@@ -148,11 +166,17 @@ void Parser::consume_split_super_kmers(fq_chunk_pool_t& chunk_pool, fq_chunk_que
 
 
                 // Minimizer_Iterator<const char*, true, false> min_it(seq + frag_beg, seq_len - frag_beg, k - 1, l, min_seed);
+                t_s = timer::now();
                 min_it.reset(seq + frag_beg, seq_len - frag_beg);
+                t_e = timer::now();
+                t.min_it_init_time += timer::duration(t_e - t_s);
+
                 minimizer_t last_min, last_min_idx;
                 minimizer_t min, min_idx;
                 min_it.value_at(last_min, last_min_idx);
                 frag_len = k - 1;
+
+                t_s = timer::now();;
                 while(++min_it)
                 {
                     frag_len++;
@@ -163,6 +187,8 @@ void Parser::consume_split_super_kmers(fq_chunk_pool_t& chunk_pool, fq_chunk_que
                         last_min = min, last_min_idx = min_idx;
                     }
                 }
+                t_e = timer::now();
+                t.min_it_iter_time += timer::duration(t_e - t_s);
 
                 sup_kmer_count++;
 
