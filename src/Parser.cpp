@@ -21,6 +21,7 @@ namespace cuttlefish
 Parser::Parser(const std::string& file_path, const std::size_t parser_count):
       file_path(file_path)
     , consumer_count(parser_count)
+    , record_count(0)
     , T(parser_count)
 {}
 
@@ -44,6 +45,7 @@ void Parser::parse()
     timing_info t;
     std::for_each(T.cbegin(), T.cend(), [&t](const auto v){ t += v.data(); });
 
+    std::cerr << "Number of records: " << record_count << ".\n";
     std::cerr << "Count of super k-mers: " << count << ".\n";
     std::cerr << "Timing:\n";
     std::cerr << t << "\n";
@@ -200,6 +202,7 @@ void Parser::consume_split_super_kmers(fq_chunk_pool_t& chunk_pool, fq_chunk_que
     }
 
 
+    record_count += rec_count;
     count += sup_kmer_count;
 }
 

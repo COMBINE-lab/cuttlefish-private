@@ -30,6 +30,8 @@ private:
 
     std::size_t consumer_count; // Number of concurrent consumers of the read sequence data.
 
+    std::atomic_uint64_t record_count;  // Number of FASTX records in the input.
+
     // TODO: document.
     struct timing_info
     {
