@@ -55,7 +55,7 @@ set(DEBUG_FLAGS -ggdb)
 # Bundle the extra optimization flags (not associated with the `-O` levels)
 # that we want to pass on to the compiler.
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
-set(OPTIMIZE_FLAGS -funroll-loops)
+set(OPTIMIZE_FLAGS -funroll-loops -march=native)
 
 
 # Add the required preprocessor definitions (`#define`s) to pass on.
@@ -114,28 +114,25 @@ endif()
 add_compile_definitions(L1_CACHE_LINE_SIZE=${L1_CACHE_LINE_SIZE})
 
 
+# Set path for modules required to search for existing packages in the system.
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
+
 # Search the file system for the appropriate threads package for this platform, and then set
 # the `CMAKE_THREAD_LIBS_INIT` variable (and some other variables as well).
 find_package(Threads REQUIRED)  # The threads package is required for the BBHash library used in the project.
-set(THREADS_PREFER_PTHREAD_FLAG TRUE)   # The BBHash library uses `pthread`.
 
 # Search and load setting for the `zlib` library. The library is required to seamlessly adapt
 # the `kseq`, the `kmc`, and the `RabbitFX` libraries to gzip-compressed files.
-include(FindZLIB)
-if(NOT ZLIB_FOUND)
-    message(FATAL_ERROR "zlib (https://zlib.net/) is required. Aborting.")
-endif()
+find_package(ZLIB REQUIRED)
 
 # Search and load setting for the `bzip2` library. It is required to seamlessly adapt the
 # `kmc` library to bzip-compressed files.
-include(FindBZip2)
-if(NOT BZIP2_FOUND)
-    message(FATAL_ERROR "bzip2 (https://sourceware.org/bzip2/) is required. Aborting.")
-endif()
+find_package(BZip2 REQUIRED)
 
-
-# Set path for modules required to search for existing packages in the system.
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+# Prepare the `zstd` library. It provides fast lossless compression, targeting real-time
+# compression scenarios at zlib-level and better compression ratios.
+find_package(ZSTD REQUIRED)
 
 
 # Module required to download and install external projects.
@@ -178,22 +175,6 @@ set_target_properties(jemalloc PROPERTIES IMPORTED_LOCATION ${MALLOC_LIB})
 if(NOT JEMALLOC_FOUND)
     add_dependencies(jemalloc prj_jemalloc)
 endif()
-
-
-# Prepare the `zstd` library. It provides fast lossless compression, targeting real-time
-# compression scenarios at zlib-level and better compression ratios.
-set(ZSTD_LIB "")
-find_package(ZSTD)
-if(ZSTD_FOUND)
-    message("Found zstd in the system.")
-    set(ZSTD_LIB ${ZSTD_LIBRARY})
-else()
-    message(FATAL_ERROR "zstd not found.")
-    # TODO: do we need to handle this? `zstd` is in the Linux kernel.
-endif()
-
-add_library(zstd STATIC IMPORTED)
-set_target_properties(zstd PROPERTIES IMPORTED_LOCATION ${ZSTD_LIB})
 
 
 # Prepare the `kmc` library — required by the Cuttlefish algorithm implementation.
