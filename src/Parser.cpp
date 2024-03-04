@@ -178,11 +178,12 @@ void Parser::consume_split_super_kmers(fq_chunk_pool_t& chunk_pool, fq_chunk_que
                 min_it.value_at(last_min, last_min_idx);
                 frag_len = k - 1;
 
-                t_s = timer::now();;
-                while(++min_it)
+                t_s = timer::now();
+                while(DNA_Utility::is_DNA_base(seq[frag_beg + frag_len]))
                 {
-                    frag_len++;
+                    min_it.advance(seq[frag_beg + frag_len]);
                     min_it.value_at(min, min_idx);
+                    frag_len++;
                     if(min_idx != last_min_idx)
                     {
                         sup_kmer_count++;
