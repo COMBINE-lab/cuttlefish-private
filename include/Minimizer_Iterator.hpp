@@ -21,8 +21,7 @@
 // sequence of type `T_seq_`, computing the minimizer for each k-mer in
 // amortized O(1) time. If `is_canonical_` is `true`, then canonical minimizers
 // are computed, i.e. both strand-forms of the sequence is considered.
-// `clean_seq_` denotes whether the passed sequence is clean in terms of bases.
-template <typename T_seq_, bool is_canonical_ = false, bool clean_seq_ = true>
+template <typename T_seq_, bool is_canonical_ = false>
 class Minimizer_Iterator
 {
     typedef cuttlefish::minimizer_t minimizer_t;
@@ -83,8 +82,8 @@ public:
 };
 
 
-template <typename T_seq_, bool is_canonical_, bool clean_seq_>
-inline Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::Minimizer_Iterator(const uint16_t k, const uint16_t l, const uint64_t seed):
+template <typename T_seq_, bool is_canonical_>
+inline Minimizer_Iterator<T_seq_, is_canonical_>::Minimizer_Iterator(const uint16_t k, const uint16_t l, const uint64_t seed):
       k(k)
     , l(l)
     , seed(seed)
@@ -96,16 +95,16 @@ inline Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::Minimizer_Iterator
 }
 
 
-template <typename T_seq_, bool is_canonical_, bool clean_seq_>
-inline Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::Minimizer_Iterator(T_seq_ const seq, const std::size_t seq_len, const uint16_t k, const uint16_t l, const uint64_t seed):
+template <typename T_seq_, bool is_canonical_>
+inline Minimizer_Iterator<T_seq_, is_canonical_>::Minimizer_Iterator(T_seq_ const seq, const std::size_t seq_len, const uint16_t k, const uint16_t l, const uint64_t seed):
     Minimizer_Iterator(k, l, seed)
 {
     reset(seq, seq_len);
 }
 
 
-template <typename T_seq_, bool is_canonical_, bool clean_seq_>
-inline void Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::reset(T_seq_ const seq, const std::size_t seq_len)
+template <typename T_seq_, bool is_canonical_>
+inline void Minimizer_Iterator<T_seq_, is_canonical_>::reset(T_seq_ const seq, const std::size_t seq_len)
 {
     this->seq = seq;
     this->seq_len = seq_len;
@@ -135,8 +134,8 @@ inline void Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::reset(T_seq_ 
 }
 
 
-template <typename T_seq_, bool is_canonical_, bool clean_seq_>
-inline bool Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::advance(const char ch)
+template <typename T_seq_, bool is_canonical_>
+inline bool Minimizer_Iterator<T_seq_, is_canonical_>::advance(const char ch)
 {
     if(last_lmer_idx + l == seq_len)
         return false;
@@ -181,24 +180,19 @@ inline bool Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::advance(const
 }
 
 
-template <typename T_seq_, bool is_canonical_, bool clean_seq_>
-inline bool Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::operator++()
+template <typename T_seq_, bool is_canonical_>
+inline bool Minimizer_Iterator<T_seq_, is_canonical_>::operator++()
 {
     if(last_lmer_idx + l == seq_len)
         return false;
 
     const auto next_ch = seq[last_lmer_idx + l];
-    if constexpr(clean_seq_)
-        assert(DNA_Utility::is_DNA_base(next_ch));
-    else if(!DNA_Utility::is_DNA_base(next_ch))
-        return false;
-
     return advance(next_ch);
 }
 
 
-template <typename T_seq_, bool is_canonical_, bool clean_seq_>
-inline void Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index) const
+template <typename T_seq_, bool is_canonical_>
+inline void Minimizer_Iterator<T_seq_, is_canonical_>::value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index) const
 {
     if constexpr(is_canonical_)
     {
