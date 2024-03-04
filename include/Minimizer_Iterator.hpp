@@ -67,9 +67,8 @@ public:
     void reset(T_seq_ seq, std::size_t seq_len);
 
     // Moves the iterator to a next k-mer by extending it with the character
-    // `ch`. Returns `true` iff the current k-mer is not the last k-mer in the
-    // sequence.
-    bool advance(const char ch);
+    // `ch`.
+    void advance(char ch);
 
     // Moves the iterator to the next k-mer in the sequence. Returns `true` iff
     // the current k-mer is not the last k-mer in the sequence.
@@ -135,11 +134,8 @@ inline void Minimizer_Iterator<T_seq_, is_canonical_>::reset(T_seq_ const seq, c
 
 
 template <typename T_seq_, bool is_canonical_>
-inline bool Minimizer_Iterator<T_seq_, is_canonical_>::advance(const char ch)
+inline void Minimizer_Iterator<T_seq_, is_canonical_>::advance(const char ch)
 {
-    if(last_lmer_idx + l == seq_len)
-        return false;
-
     assert(DNA_Utility::is_DNA_base(ch));
 
     last_lmer_idx++;
@@ -175,8 +171,6 @@ inline bool Minimizer_Iterator<T_seq_, is_canonical_>::advance(const char ch)
     fix_dq(dq_f, Lmer_Tuple(last_lmer, last_lmer_idx, Minimizer_Utility::hash(last_lmer, seed)));
     if constexpr(is_canonical_)
         fix_dq(dq_r, Lmer_Tuple(last_lmer_bar, last_lmer_idx, Minimizer_Utility::hash(last_lmer_bar, seed)));
-
-    return true;
 }
 
 
@@ -186,8 +180,8 @@ inline bool Minimizer_Iterator<T_seq_, is_canonical_>::operator++()
     if(last_lmer_idx + l == seq_len)
         return false;
 
-    const auto next_ch = seq[last_lmer_idx + l];
-    return advance(next_ch);
+    advance(seq[last_lmer_idx + l]);
+    return true;
 }
 
 
