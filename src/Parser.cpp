@@ -118,7 +118,7 @@ void Parser::consume_split_super_kmers(fq_chunk_pool_t& chunk_pool, fq_chunk_que
     uint64_t rec_count = 0;
     uint64_t sup_kmer_count = 0;
 
-    Minimizer_Iterator<const char*, true> min_it(k - 1, l, min_seed);
+    Minimizer_Iterator<const char*, true> min_it(k, l, min_seed);
 
     while(true)
     {
@@ -176,7 +176,7 @@ void Parser::consume_split_super_kmers(fq_chunk_pool_t& chunk_pool, fq_chunk_que
                 minimizer_t last_min, last_min_idx;
                 minimizer_t min, min_idx;
                 min_it.value_at(last_min, last_min_idx);
-                frag_len = k - 1;
+                frag_len = k;
 
                 t_s = timer::now();
                 while(DNA_Utility::is_DNA_base(seq[frag_beg + frag_len]))
