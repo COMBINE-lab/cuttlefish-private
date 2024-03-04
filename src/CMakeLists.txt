@@ -52,6 +52,7 @@ set(PROJECT_SRC
         Discontinuity_Graph_Bootstrap.cpp
         dBG_Contractor.cpp
         Parser.cpp
+        Super_Kmer_Splitter.cpp
         Discontinuity_Graph.cpp
         Edge_Matrix.cpp
         Unitig_File.cpp
