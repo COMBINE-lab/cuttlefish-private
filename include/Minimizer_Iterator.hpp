@@ -67,6 +67,11 @@ public:
     // iterator sits at the first k-mer after the construction.
     void reset(T_seq_ seq, std::size_t seq_len);
 
+    // Moves the iterator to a next k-mer by extending it with the character
+    // `ch`. Returns `true` iff the current k-mer is not the last k-mer in the
+    // sequence.
+    bool advance(const char ch);
+
     // Moves the iterator to the next k-mer in the sequence. Returns `true` iff
     // the current k-mer is not the last k-mer in the sequence.
     bool operator++();
@@ -131,19 +136,15 @@ inline void Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::reset(T_seq_ 
 
 
 template <typename T_seq_, bool is_canonical_, bool clean_seq_>
-inline bool Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::operator++()
+inline bool Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::advance(const char ch)
 {
     if(last_lmer_idx + l == seq_len)
         return false;
 
-    const auto next_ch = seq[last_lmer_idx + l];
-    if constexpr(clean_seq_)
-        assert(DNA_Utility::is_DNA_base(next_ch));
-    else if(!DNA_Utility::is_DNA_base(next_ch))
-        return false;
+    assert(DNA_Utility::is_DNA_base(ch));
 
     last_lmer_idx++;
-    const DNA::Base base = DNA_Utility::map_base(next_ch);
+    const DNA::Base base = DNA_Utility::map_base(ch);
     last_lmer = ((last_lmer & clear_MSN_mask) << 2) | base;
     if constexpr(is_canonical_)
         last_lmer_bar = (last_lmer_bar >> 2) | (static_cast<minimizer_t>(DNA_Utility::complement(base)) << (2 * (l - 1)));
@@ -177,6 +178,22 @@ inline bool Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::operator++()
         fix_dq(dq_r, Lmer_Tuple(last_lmer_bar, last_lmer_idx, Minimizer_Utility::hash(last_lmer_bar, seed)));
 
     return true;
+}
+
+
+template <typename T_seq_, bool is_canonical_, bool clean_seq_>
+inline bool Minimizer_Iterator<T_seq_, is_canonical_, clean_seq_>::operator++()
+{
+    if(last_lmer_idx + l == seq_len)
+        return false;
+
+    const auto next_ch = seq[last_lmer_idx + l];
+    if constexpr(clean_seq_)
+        assert(DNA_Utility::is_DNA_base(next_ch));
+    else if(!DNA_Utility::is_DNA_base(next_ch))
+        return false;
+
+    return advance(next_ch);
 }
 
 
