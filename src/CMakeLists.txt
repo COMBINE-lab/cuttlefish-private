@@ -95,7 +95,7 @@ target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:DEBUG>:${WARNING_FLAGS}
 target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:RELEASE>:${WARNING_FLAGS}>" 
   PRIVATE "$<$<CONFIG:RELEASE>:${SUPPRESS_WARNING_FLAGS}>" 
   PRIVATE "$<$<CONFIG:RELEASE>:${OPTIMIZE_FLAGS}>")
-target_compile_features(cfcore_static PUBLIC cxx_std_17)
+# target_compile_features(cfcore_static PUBLIC cxx_std_17)
 
 
 
@@ -155,7 +155,7 @@ if(DEBUG_INFO)
     target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
     target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
 endif()
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
+# target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 
 # Set the installation directory. The parent directory is `/usr/local/` by default, and the
 # user may set it to a different path by passing a value for `CMAKE_INSTALL_PREFIX`. The target
@@ -192,5 +192,4 @@ if(DEBUG_INFO)
     target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
     target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
 endif()
-target_compile_features(test PUBLIC cxx_std_17)
-
+# target_compile_features(test PUBLIC cxx_std_17)

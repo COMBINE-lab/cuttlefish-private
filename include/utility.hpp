@@ -156,7 +156,7 @@ private:
     std::size_t back_;    // Current index to the back.
     T_* const arr;  // Underlying memory pool.
 
-    void grow_back_() { back_ = (back_ < cap_ - 1 ? back_ + 1 : 0); }
+    void grow_back() { back_ = (back_ < cap_ - 1 ? back_ + 1 : 0); }
 
     void grow_front() { front_ = (front_ > 0 ? front_ - 1 : cap_ - 1); }
 
@@ -183,12 +183,12 @@ public:
 
     void clear() { front_ = back_ = 0; }
 
-    void push_back(const T_& val) { arr[back_] = val; grow_back_(); }
+    void push_back(const T_& val) { arr[back_] = val; grow_back(); }
 
     void push_front(const T_& val) { grow_front(); arr[front_] = val; }
 
     template <typename... Args>
-    void emplace_back(Args&&... args) { new (arr + back_) T_(std::forward<Args>(args)...); grow_back_(); }
+    void emplace_back(Args&&... args) { new (arr + back_) T_(std::forward<Args>(args)...); grow_back(); }
 
     template <typename... Args>
     void emplace_front(Args&&... args) { grow_front(); new (arr + front_) T_(std::forward<Args>(args)...); };

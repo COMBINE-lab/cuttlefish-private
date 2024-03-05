@@ -1707,7 +1707,7 @@ private:
                 return step * SIZE_BIT + CTZ(bmask3);
         }
 
-        auto next_bucket = (bucket_from + 0 * SIZE_BIT) & qmask;
+        // auto next_bucket = (bucket_from + 0 * SIZE_BIT) & qmask;
         auto& last = EMH_BUCKET(_pairs, _num_buckets);
         for (size_type offset = 1; ; offset += 1) {
             last &= qmask;
