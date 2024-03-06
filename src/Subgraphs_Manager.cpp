@@ -1,5 +1,5 @@
 
-#include "Subgraphs_Processor.hpp"
+#include "Subgraphs_Manager.hpp"
 #include "Subgraph.hpp"
 #include "Data_Logistics.hpp"
 #include "globals.hpp"
@@ -13,7 +13,7 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Subgraphs_Processor<k>::Subgraphs_Processor(const Data_Logistics& logistics, const std::size_t bin_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf):
+Subgraphs_Manager<k>::Subgraphs_Manager(const Data_Logistics& logistics, const std::size_t bin_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf):
       bin_path_pref(logistics.subgraphs_path())
     , bin_count(bin_count)
     , G(G)
@@ -24,7 +24,7 @@ Subgraphs_Processor<k>::Subgraphs_Processor(const Data_Logistics& logistics, con
 
 
 template <uint16_t k>
-void Subgraphs_Processor<k>::process()
+void Subgraphs_Manager<k>::process()
 {
     Subgraph<k>::init_maps();
 
@@ -76,14 +76,14 @@ void Subgraphs_Processor<k>::process()
 
 
 template <uint16_t k>
-uint64_t Subgraphs_Processor<k>::trivial_mtig_count() const
+uint64_t Subgraphs_Manager<k>::trivial_mtig_count() const
 {
     return trivial_mtig_count_;
 }
 
 
 template <uint16_t k>
-uint64_t Subgraphs_Processor<k>::icc_count() const
+uint64_t Subgraphs_Manager<k>::icc_count() const
 {
     return icc_count_;
 }
@@ -93,4 +93,4 @@ uint64_t Subgraphs_Processor<k>::icc_count() const
 
 
 // Template-instantiations for the required instances.
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Subgraphs_Processor)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Subgraphs_Manager)

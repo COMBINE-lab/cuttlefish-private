@@ -56,7 +56,7 @@ set(PROJECT_SRC
         Discontinuity_Graph.cpp
         Edge_Matrix.cpp
         Unitig_File.cpp
-        Subgraphs_Processor.cpp
+        Subgraphs_Manager.cpp
         Subgraph.cpp
         State_Config.cpp
         Discontinuity_Graph_Contractor.cpp

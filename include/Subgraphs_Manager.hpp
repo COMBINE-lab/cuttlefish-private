@@ -1,6 +1,6 @@
 
-#ifndef SUBGRAPHS_PROCESSOR_HPP
-#define SUBGRAPHS_PROCESSOR_HPP
+#ifndef SUBGRAPHS_MANAGER_HPP
+#define SUBGRAPHS_MANAGER_HPP
 
 
 
@@ -25,7 +25,7 @@ namespace cuttlefish
 // super k-mer based sequence representation in KMC bins, and contracts them
 // into their compacted form.
 template <uint16_t k>
-class Subgraphs_Processor
+class Subgraphs_Manager
 {
 private:
 
@@ -52,7 +52,7 @@ public:
     // execution. The discontinuity-graph is produced at `G` without false-
     // phantom edges. Worker-specific trivially maximal unitigs are written to
     // the buffers in `op_buf`.
-    Subgraphs_Processor(const Data_Logistics& logistics, std::size_t bin_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf);
+    Subgraphs_Manager(const Data_Logistics& logistics, std::size_t bin_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf);
 
     // Constructs and contracts each subgraph.
     void process();

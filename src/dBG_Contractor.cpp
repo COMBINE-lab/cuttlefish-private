@@ -2,7 +2,7 @@
 #include "dBG_Contractor.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
 #include "State_Config.hpp"
-#include "Subgraphs_Processor.hpp"
+#include "Subgraphs_Manager.hpp"
 #include "Discontinuity_Graph_Contractor.hpp"
 #include "Contracted_Graph_Expander.hpp"
 #include "Unitig_Collator.hpp"
@@ -49,7 +49,7 @@ void dBG_Contractor<k>::construct()
     const auto t_0 = timer::now();
 
 
-    Subgraphs_Processor<k> subgraphs(logistics, params.subgraph_count(), G, op_buf);
+    Subgraphs_Manager<k> subgraphs(logistics, params.subgraph_count(), G, op_buf);
     subgraphs.process();
 
     std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";
