@@ -1,5 +1,5 @@
 
-#include "Super_Kmer_Splitter.hpp"
+#include "Graph_Partitioner.hpp"
 #include "Minimizer_Iterator.hpp"
 #include "DNA_Utility.hpp"
 #include "globals.hpp"
@@ -16,10 +16,10 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Super_Kmer_Splitter<k>::Super_Kmer_Splitter(const Data_Logistics& logistics, const uint16_t l):
+Graph_Partitioner<k>::Graph_Partitioner(const Data_Logistics& logistics, const uint16_t l):
       seqs(logistics.input_paths_collection())
     , l_(l)
-    , output_pref(logistics.subgraphs_path())
+    , subgraphs_path_pref(logistics.subgraphs_path())
     , record_count_(0)
     , super_kmer_count_(0)
     , super_kmers_len_(0)
@@ -27,13 +27,13 @@ Super_Kmer_Splitter<k>::Super_Kmer_Splitter(const Data_Logistics& logistics, con
 
 
 template <uint16_t k>
-void Super_Kmer_Splitter<k>::split()
+void Graph_Partitioner<k>::partition()
 {
     const auto chunk_count = std::ceil(parlay::num_workers() * 1.1);    // Maximum number of chunks. TODO: make a more informed choice.
     chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
     chunk_q_t chunk_q(chunk_count); // Parsed chunks.
 
-    std::thread parser(&Super_Kmer_Splitter::parse, this, std::ref(chunk_pool), std::ref(chunk_q));
+    std::thread parser(&Graph_Partitioner::parse, this, std::ref(chunk_pool), std::ref(chunk_q));
 
     const auto process = [&](std::size_t){ this->process(chunk_q, chunk_pool); };
     parlay::parallel_for(0, parlay::num_workers(), process, 1);
@@ -47,7 +47,7 @@ void Super_Kmer_Splitter<k>::split()
 
 
 template <uint16_t k>
-void Super_Kmer_Splitter<k>::parse(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
+void Graph_Partitioner<k>::parse(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {
     rabbit::int64 chunk_count = 0;
 
@@ -66,7 +66,7 @@ void Super_Kmer_Splitter<k>::parse(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 
 
 template <uint16_t k>
-void Super_Kmer_Splitter<k>::process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool)
+void Graph_Partitioner<k>::process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool)
 {
     rabbit::int64 chunk_id = 0;
     std::vector<neoReference> parsed_chunk;
@@ -159,4 +159,4 @@ void Super_Kmer_Splitter<k>::process(chunk_q_t& chunk_q, chunk_pool_t& chunk_poo
 
 
 // Template-instantiations for the required instances.
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Super_Kmer_Splitter)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Graph_Partitioner)

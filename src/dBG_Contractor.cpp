@@ -1,6 +1,7 @@
 
 #include "dBG_Contractor.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
+#include "Graph_Partitioner.hpp"
 #include "State_Config.hpp"
 #include "Subgraphs_Manager.hpp"
 #include "Discontinuity_Graph_Contractor.hpp"
