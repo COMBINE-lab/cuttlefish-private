@@ -61,12 +61,6 @@ public:
 };
 
 
-template <bool Colored_>
-inline std::size_t Super_Kmer_Chunk<Colored_>::bytes() const
-{
-    return att_buf.size() * sizeof(attribute_t) + label_buf.size() * sizeof(label_unit_t);
-}
-
 }
 
 

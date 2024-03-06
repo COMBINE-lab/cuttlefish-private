@@ -13,9 +13,9 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Subgraphs_Manager<k>::Subgraphs_Manager(const Data_Logistics& logistics, const std::size_t bin_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf):
-      bin_path_pref(logistics.subgraphs_path())
-    , bin_count(bin_count)
+Subgraphs_Manager<k>::Subgraphs_Manager(const Data_Logistics& logistics, const std::size_t graph_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf):
+      path_pref(logistics.subgraphs_path())
+    , graph_count(graph_count)
     , G(G)
     , trivial_mtig_count_(0)
     , icc_count_(0)
@@ -35,9 +35,9 @@ void Subgraphs_Manager<k>::process()
     std::vector<Padded_Data<std::size_t>> max_size(parlay::num_workers(), 0);   // Largest graph size processed per worker.
 
     const auto process_subgraph =
-        [&](const std::size_t bin_id)
+        [&](const std::size_t graph_id)
         {
-            Subgraph<k> sub_dBG(bin_path_pref, bin_id, G, op_buf[parlay::worker_id()].data());
+            Subgraph<k> sub_dBG(path_pref, graph_id, G, op_buf[parlay::worker_id()].data());
 
             const auto t_0 = timer::now();
             sub_dBG.construct();
@@ -59,7 +59,7 @@ void Subgraphs_Manager<k>::process()
             t_contraction[parlay::worker_id()].data()  += timer::duration(t_2 - t_1);
         };
 
-    parlay::parallel_for(0, bin_count, process_subgraph, 1);
+    parlay::parallel_for(0, graph_count, process_subgraph, 1);
     std::cerr << "\n";
 
     Subgraph<k>::free_maps();

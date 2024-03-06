@@ -21,16 +21,16 @@ namespace cuttlefish
 {
 
 // =============================================================================
-// Processor for the subgraphs of the de Bruijn graph—constructs them from their
-// super k-mer based sequence representation in KMC bins, and contracts them
-// into their compacted form.
+// Manager for the subgraphs of the de Bruijn graph—manages their super k-mer
+// based sequence representations in buckets, constructs them from these
+// representations, and contracts them into their compacted form.
 template <uint16_t k>
 class Subgraphs_Manager
 {
 private:
 
-    const std::string bin_path_pref;    // Path-prefix to the KMC bins.
-    const std::size_t bin_count;    // Numer of KMC bins, each one induces a subgraph.
+    const std::string path_pref;    // Path-prefix to the super k-mer buckets.
+    const std::size_t graph_count;  // Numer of subgraphs.
 
     Discontinuity_Graph<k>& G;  // The discontinuity graph.
 
@@ -47,12 +47,12 @@ private:
 
 public:
 
-    // Constructs a processor for the subgraphs induced by the `bin_count` KMC
-    // bins. `logistics` is the data logistics manager for the algorithm
-    // execution. The discontinuity-graph is produced at `G` without false-
-    // phantom edges. Worker-specific trivially maximal unitigs are written to
-    // the buffers in `op_buf`.
-    Subgraphs_Manager(const Data_Logistics& logistics, std::size_t bin_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf);
+    // Constructs a manager for the subgraphs of a de Bruijn graph which is
+    // partitioned into `graph_count` subgraphs. `logistics` is the data
+    // logistics manager for the algorithm execution. The discontinuity-graph
+    // is produced at `G` without false-phantom edges. Worker-specific
+    // trivially maximal unitigs are written to the buffers in `op_buf`.
+    Subgraphs_Manager(const Data_Logistics& logistics, std::size_t graph_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf);
 
     // Constructs and contracts each subgraph.
     void process();

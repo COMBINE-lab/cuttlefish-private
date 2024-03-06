@@ -3,6 +3,7 @@
 #include "utility.hpp"
 
 #include <cstdlib>
+#include <iostream>
 #include <cassert>
 
 
@@ -17,6 +18,8 @@ Super_Kmer_Chunk<Colored_>::Super_Kmer_Chunk(const uint16_t k, const uint16_t l,
     , att_buf(allocate<attribute_t>(cap))
     , label_buf(allocate<label_unit_t>(cap * sup_kmer_word_c))
 {
+    assert(k > l);
+    assert(sup_kmer_word_c > 0);
     assert(cap_ > 0);
 }
 
@@ -34,6 +37,12 @@ void Super_Kmer_Chunk<Colored_>::serialize(std::ofstream& os) const
 {
     os.write(reinterpret_cast<const char*>(att_buf), size_ * sizeof(attribute_t));
     os.write(reinterpret_cast<const char*>(label_buf), size_ * sup_kmer_word_c * sizeof(label_unit_t));
+
+    if(!os)
+    {
+        std::cerr << "Serialization of super chunk failed. Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 
