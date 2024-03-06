@@ -8,7 +8,7 @@
 #include "Kmer_Utility.hpp"
 
 #include <cstdint>
-#include <vector>
+#include <cstddef>
 #include <fstream>
 
 
@@ -25,30 +25,33 @@ class Super_Kmer_Chunk
 private:
 
     typedef Super_Kmer_Attributes<Colored_> attribute_t;
-    typedef std::vector<attribute_t> attribute_buf_t;
+    typedef attribute_t* attribute_buf_t;
     typedef uint64_t label_unit_t;
-    typedef std::vector<label_unit_t> label_buf_t;
+    typedef label_unit_t* label_buf_t;
 
     const std::size_t max_sup_kmer_len; // Maximum length of the (weak) super k-mers.
     const std::size_t sup_kmer_word_c;  // Number of 64-bit words in super k-mer encodings.
 
-    attribute_buf_t att_buf;    // Buffer of attributes of the super k-mers.
-    label_buf_t label_buf;  // Buffer of concatenated labels of the super k-mers.
+    const std::size_t cap_; // Maximum capacity of the chunk in number of super k-mers.
+    std::size_t size_;  // Size of the chunk in number of super k-mers.
+
+    attribute_buf_t const att_buf;  // Buffer of attributes of the super k-mers.
+    label_buf_t const label_buf;    // Buffer of concatenated labels of the super k-mers.
 
 
 public:
 
-    // Constructs a super k-mer chunk for `k`-mers and `l`-minimizers.
-    Super_Kmer_Chunk(uint16_t k, uint16_t l);
+    // Constructs a super k-mer chunk for `k`-mers and `l`-minimizers, with
+    // maximum capacity `cap`.
+    Super_Kmer_Chunk(uint16_t k, uint16_t l, std::size_t cap);
 
-    // Returns the current size of the chunk in bytes.
-    std::size_t bytes() const;
+    ~Super_Kmer_Chunk();
 
     // Returns the number of super k-mers in the chunk.
-    std::size_t size() const { return att_buf.size(); }
+    std::size_t size() const { return size_; }
 
     // Clears the chunk.
-    void clear();
+    void clear() { size_ = 0; }
 
     // Serializes the chunk to the stream `os`.
     void serialize(std::ofstream& os) const;
