@@ -1,6 +1,5 @@
 
 #include "Super_Kmer_Chunk.hpp"
-#include "utility.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -15,20 +14,12 @@ Super_Kmer_Chunk<Colored_>::Super_Kmer_Chunk(const uint16_t k, const uint16_t l,
       max_sup_kmer_len(2 * k - l + 2)
     , sup_kmer_word_c((max_sup_kmer_len + 31) / 32)
     , cap_(cap)
-    , att_buf(allocate<attribute_t>(cap))
-    , label_buf(allocate<label_unit_t>(cap * sup_kmer_word_c))
+    , att_buf(cap_)
+    , label_buf(cap * sup_kmer_word_c)
 {
     assert(k > l);
     assert(sup_kmer_word_c > 0);
     assert(cap_ > 0);
-}
-
-
-template <bool Colored_>
-Super_Kmer_Chunk<Colored_>::~Super_Kmer_Chunk()
-{
-    deallocate(att_buf);
-    deallocate(label_buf);
 }
 
 
@@ -42,8 +33,8 @@ std::size_t Super_Kmer_Chunk<Colored_>::record_size(const uint16_t k, const uint
 template <bool Colored_>
 void Super_Kmer_Chunk<Colored_>::serialize(std::ofstream& os) const
 {
-    os.write(reinterpret_cast<const char*>(att_buf), size_ * sizeof(attribute_t));
-    os.write(reinterpret_cast<const char*>(label_buf), label_units() * sizeof(label_unit_t));
+    os.write(reinterpret_cast<const char*>(att_buf.data()), size() * sizeof(attribute_t));
+    os.write(reinterpret_cast<const char*>(label_buf.data()), label_units() * sizeof(label_unit_t));
 
     if(!os)
     {
@@ -59,8 +50,8 @@ void Super_Kmer_Chunk<Colored_>::deserialize(std::ifstream& is, const std::size_
     assert(sz <= cap_);
 
     size_ = sz;
-    is.read(reinterpret_cast<char*>(att_buf), size_ * sizeof(attribute_t));
-    is.read(reinterpret_cast<char*>(label_buf), label_units() * sizeof(label_unit_t));
+    is.read(reinterpret_cast<char*>(att_buf.data()), size() * sizeof(attribute_t));
+    is.read(reinterpret_cast<char*>(label_buf.data()), label_units() * sizeof(label_unit_t));
 }
 
 }

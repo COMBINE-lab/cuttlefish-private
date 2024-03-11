@@ -35,7 +35,7 @@ private:
     static constexpr std::size_t chunk_bytes = 4 * 1024;    // 4 KB chunk capacity.
     const std::size_t chunk_cap;    // Capacity (in number of super k-mers) of the chunk of the bucket.
     chunk_t chunk;  // Super k-mer chunk for the bucket.
-    Padded_Data<chunk_t>* const chunk_w;    // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
+    std::vector<Padded_Data<chunk_t>> chunk_w;  // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
 
     mutable Spin_Lock lock; // Lock to the chunk and the external-memory bucket.
 
@@ -45,7 +45,9 @@ public:
     // external-memory path `path`.
     Super_Kmer_Bucket(uint16_t k, uint16_t l, const std::string& path);
 
-    ~Super_Kmer_Bucket();
+    Super_Kmer_Bucket(const Super_Kmer_Bucket&) = delete;
+
+    Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs);
 
     // Adds a super k-mer to the bucket with label `seq` and length `len`. The
     // markers `l_disc` and `r_disc` denote whether the left and the right ends
