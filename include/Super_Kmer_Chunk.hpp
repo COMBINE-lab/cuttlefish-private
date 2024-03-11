@@ -48,7 +48,13 @@ public:
     ~Super_Kmer_Chunk();
 
     // Returns the number of super k-mers in the chunk.
-    std::size_t size() const { return size_; }
+    auto size() const { return size_; }
+
+    // Returns the maximum capacity of the chunk in number of super k-mers.
+    auto capacity() const {return cap_;  }
+
+    // Returns the number of units, i.e. 64-bit words, in the label buffer.
+    auto label_units() const { return size_ * sup_kmer_word_c; }
 
     // Clears the chunk.
     void clear() { size_ = 0; }

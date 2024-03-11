@@ -43,7 +43,7 @@ template <bool Colored_>
 void Super_Kmer_Chunk<Colored_>::serialize(std::ofstream& os) const
 {
     os.write(reinterpret_cast<const char*>(att_buf), size_ * sizeof(attribute_t));
-    os.write(reinterpret_cast<const char*>(label_buf), size_ * sup_kmer_word_c * sizeof(label_unit_t));
+    os.write(reinterpret_cast<const char*>(label_buf), label_units() * sizeof(label_unit_t));
 
     if(!os)
     {
@@ -60,7 +60,7 @@ void Super_Kmer_Chunk<Colored_>::deserialize(std::ifstream& is, const std::size_
 
     size_ = sz;
     is.read(reinterpret_cast<char*>(att_buf), size_ * sizeof(attribute_t));
-    is.read(reinterpret_cast<char*>(label_buf), size_ * sup_kmer_word_c * sizeof(label_unit_t));
+    is.read(reinterpret_cast<char*>(label_buf), label_units() * sizeof(label_unit_t));
 }
 
 }
