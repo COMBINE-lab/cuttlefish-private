@@ -12,19 +12,24 @@
 namespace cuttlefish
 {
 
-template <uint16_t k>
-Subgraphs_Manager<k>::Subgraphs_Manager(const Data_Logistics& logistics, const std::size_t graph_count, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf):
+template <uint16_t k, bool Colored_>
+Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistics, const std::size_t graph_count, const uint16_t l, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf):
       path_pref(logistics.subgraphs_path())
     , graph_count(graph_count)
+    , l(l)
     , G(G)
     , trivial_mtig_count_(0)
     , icc_count_(0)
     , op_buf(op_buf)
-{}
+{
+    subgraph_bucket.reserve(graph_count);
+    for(std::size_t g_id = 0; g_id < graph_count; ++g_id)
+        subgraph_bucket.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id)));
+}
 
 
-template <uint16_t k>
-void Subgraphs_Manager<k>::process()
+template <uint16_t k, bool Colored_>
+void Subgraphs_Manager<k, Colored_>::process()
 {
     Subgraph<k>::init_maps();
 
@@ -65,7 +70,7 @@ void Subgraphs_Manager<k>::process()
     Subgraph<k>::free_maps();
 
     const auto sum_time = [&](const std::vector<Padded_Data<double>>& T)
-        { double t = 0; std::for_each(T.cbegin(), T.cend(), [&t](const auto v){ t += v.data(); }); return t; };
+        { double t = 0; std::for_each(T.cbegin(), T.cend(), [&t](const auto& v){ t += v.data(); }); return t; };
     std::cerr << "Total work in graph construction: " << sum_time(t_construction) << " (s).\n";
     std::cerr << "Total work in graph contraction:  " << sum_time(t_contraction) << " (s).\n";
     std::cerr << "Largest graph size: " <<
@@ -75,15 +80,15 @@ void Subgraphs_Manager<k>::process()
 }
 
 
-template <uint16_t k>
-uint64_t Subgraphs_Manager<k>::trivial_mtig_count() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraphs_Manager<k, Colored_>::trivial_mtig_count() const
 {
     return trivial_mtig_count_;
 }
 
 
-template <uint16_t k>
-uint64_t Subgraphs_Manager<k>::icc_count() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraphs_Manager<k, Colored_>::icc_count() const
 {
     return icc_count_;
 }
@@ -93,4 +98,4 @@ uint64_t Subgraphs_Manager<k>::icc_count() const
 
 
 // Template-instantiations for the required instances.
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Subgraphs_Manager)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Subgraphs_Manager)

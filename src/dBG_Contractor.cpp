@@ -49,8 +49,7 @@ void dBG_Contractor<k>::construct()
 
     const auto t_0 = timer::now();
 
-
-    Subgraphs_Manager<k> subgraphs(logistics, params.subgraph_count(), G, op_buf);
+    Subgraphs_Manager<k, false> subgraphs(logistics, params.subgraph_count(), params.min_len(), G, op_buf);
     subgraphs.process();
 
     std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";
