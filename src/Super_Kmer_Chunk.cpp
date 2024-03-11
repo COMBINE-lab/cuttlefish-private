@@ -33,6 +33,13 @@ Super_Kmer_Chunk<Colored_>::~Super_Kmer_Chunk()
 
 
 template <bool Colored_>
+std::size_t Super_Kmer_Chunk<Colored_>::record_size(const uint16_t k, const uint16_t l)
+{
+    return sizeof(attribute_t) + (((2* k - l + 2) + 31) / 32) * sizeof(label_unit_t);
+}
+
+
+template <bool Colored_>
 void Super_Kmer_Chunk<Colored_>::serialize(std::ofstream& os) const
 {
     os.write(reinterpret_cast<const char*>(att_buf), size_ * sizeof(attribute_t));

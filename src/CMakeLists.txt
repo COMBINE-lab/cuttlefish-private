@@ -53,6 +53,7 @@ set(PROJECT_SRC
         dBG_Contractor.cpp
         Parser.cpp
         Graph_Partitioner.cpp
+        Super_Kmer_Bucket.cpp
         Super_Kmer_Chunk.cpp
         Discontinuity_Graph.cpp
         Edge_Matrix.cpp

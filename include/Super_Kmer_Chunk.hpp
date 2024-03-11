@@ -42,7 +42,7 @@ private:
 public:
 
     // Constructs a super k-mer chunk for `k`-mers and `l`-minimizers, with
-    // maximum capacity `cap`.
+    // maximum capacity `cap` in number of super k-mers.
     Super_Kmer_Chunk(uint16_t k, uint16_t l, std::size_t cap);
 
     ~Super_Kmer_Chunk();
@@ -52,6 +52,10 @@ public:
 
     // Clears the chunk.
     void clear() { size_ = 0; }
+
+    // Returns the size of a super k-mer record in bytes, that is over `k`-mers
+    // and `l`-minimizers.
+    static std::size_t record_size(uint16_t k, uint16_t l);
 
     // Serializes the chunk to the stream `os`.
     void serialize(std::ofstream& os) const;
