@@ -1,4 +1,5 @@
 
+# =============================================================================
 
 # Specify the minimum version of CMake to use.
 # CMake can have different behaviors (policies) based on its version used.
@@ -8,7 +9,7 @@ cmake_minimum_required(VERSION 3.14)
 # Name the project, its version, and languages used in it.
 set(PROJECT_NAME cuttlefish)
 project(${PROJECT_NAME}
-        VERSION 2.0.0
+        VERSION 2.2.0
         LANGUAGES CXX C
         )
 
@@ -32,12 +33,12 @@ set(CLANG_VERSION_MIN "9.0")
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS GCC_VERSION_MIN)
         message(FATAL_ERROR "${PROJECT_NAME} requires GCC version to be at least ${GCC_VERSION_MIN}."
-                            "Available version is ${CMAKE_CXX_COMPILER_VERSION}.")
+                            " Available version is ${CMAKE_CXX_COMPILER_VERSION}.")
     endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS CLANG_VERSION_MIN)
         message(FATAL_ERROR "${PROJECT_NAME} requires Clang version to be at least ${CLANG_VERSION_MIN}."
-                            "Available version is ${CMAKE_CXX_COMPILER_VERSION}.")
+                            " Available version is ${CMAKE_CXX_COMPILER_VERSION}.")
     endif()
 endif()
 
@@ -77,8 +78,8 @@ if(CF_DEVELOP_MODE)
 endif()
 
 
-# Here, we have some platform-specific considerations
-# of which we must take care.
+# Here, we have some platform-specific considerations of which we must take
+# care.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     execute_process(
         COMMAND getconf LEVEL1_DCACHE_LINESIZE
@@ -86,17 +87,27 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         OUTPUT_VARIABLE L1_CACHE_LINE_SIZE
     )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    # OSX has `getconf`, but doesn't report `LEVEL1_DCACHE_LINESIZE`;
-    # so we instead use `sysctl` for the corresponding variable.
-    execute_process(
-        COMMAND sysctl machdep.cpu.cache.linesize
-        COMMAND awk "{print $2}"
-        COMMAND tr -d '\n'
-        OUTPUT_VARIABLE L1_CACHE_LINE_SIZE
-    )
+    if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64")
+        # OSX has `getconf`, but doesn't report `LEVEL1_DCACHE_LINESIZE`;
+        # so we instead use `sysctl` for the corresponding variable.
+        execute_process(
+            COMMAND sysctl machdep.cpu.cache.linesize
+            COMMAND awk "{print $2}"
+            COMMAND tr -d '\n'
+            OUTPUT_VARIABLE L1_CACHE_LINE_SIZE
+        )
+    elseif(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
+        execute_process(
+            COMMAND sysctl hw.cachelinesize
+            COMMAND awk "{print $2}"
+            COMMAND tr -d '\n'
+            OUTPUT_VARIABLE L1_CACHE_LINE_SIZE
+        )
+    else()
+        message(FATAL_ERROR "Unable to identify Apple Silicon processor architecture")
+    endif()
 
-    # Later on, jemalloc will complain if the C compiler 
-    # hasn't been properly set.
+    # Later on, jemalloc will complain if the C compiler  hasn't been properly set.
     if(NOT CONDA_BUILD)
         set(CMAKE_C_COMPILER clang)
         set(CMAKE_CXX_COMPILER clang++)
@@ -106,23 +117,17 @@ endif()
 add_compile_definitions(L1_CACHE_LINE_SIZE=${L1_CACHE_LINE_SIZE})
 
 
-# Search the file system for the appropriate threads package for this platform, and then set
-# the `CMAKE_THREAD_LIBS_INIT` variable (and some other variables as well).
-find_package(Threads REQUIRED)  # The threads package is required for the BBHash library used in the project.
-set(THREADS_PREFER_PTHREAD_FLAG TRUE)   # The BBHash library uses `pthread`.
+# Determine the thread library of the system.
+include(FindThreads)
+if(NOT Threads_FOUND)
+    message(FATAL_ERROR "A supported threads library is required. Aborting.")
+endif()
 
 # Search and load setting for the `zlib` library. The library is required to seamlessly adapt
 # the `kseq` and the `kmc` libraries to gzip-compressed files.
 include(FindZLIB)
 if(NOT ZLIB_FOUND)
     message(FATAL_ERROR "zlib (https://zlib.net/) is required. Aborting.")
-endif()
-
-# Search and load setting for the `bzip2` library. It is required to seamlessly adapt the
-# `kmc` library to bzip-compressed files.
-include(FindBZip2)
-if(NOT BZIP2_FOUND)
-    message(FATAL_ERROR "bzip2 (https://sourceware.org/bzip2/) is required. Aborting.")
 endif()
 
 
@@ -142,7 +147,7 @@ file(MAKE_DIRECTORY ${EXT_LIB} ${EXT_INCLUDE})
 # Prepare the `jemalloc` library. It provides scalable concurrency support and better avoidance
 # of fragmentation.
 set(MALLOC_LIB "")
-set(JEMALLOC_MIN_VERSION "5.2.1")
+set(JEMALLOC_MIN_VERSION "5.3.0")
 find_package(Jemalloc ${JEMALLOC_MIN_VERSION})
 if(JEMALLOC_FOUND)
     message("Found jemalloc (v${JEMALLOC_VERSION}) in the system")
@@ -151,11 +156,11 @@ else()
     message("Build system will fetch and install jemalloc")
     ExternalProject_Add(prj_jemalloc
         DOWNLOAD_DIR        ${CMAKE_SOURCE_DIR}/external
-        DOWNLOAD_COMMAND    curl -k -L https://github.com/jemalloc/jemalloc/archive/5.2.1.tar.gz -o jemalloc-5.2.1.tar.gz &&
-                            tar -xzf jemalloc-5.2.1.tar.gz &&
-                            rm jemalloc-5.2.1.tar.gz
+        DOWNLOAD_COMMAND    curl -k -L https://github.com/jemalloc/jemalloc/archive/${JEMALLOC_MIN_VERSION}.tar.gz -o jemalloc-${JEMALLOC_MIN_VERSION}.tar.gz &&
+                            tar -xzf jemalloc-${JEMALLOC_MIN_VERSION}.tar.gz &&
+                            rm jemalloc-${JEMALLOC_MIN_VERSION}.tar.gz
 
-        SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/jemalloc-5.2.1
+        SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/jemalloc-${JEMALLOC_MIN_VERSION}
         BUILD_IN_SOURCE     TRUE
         INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external
         CONFIGURE_COMMAND   sh -c "CC=${CMAKE_C_COMPILER} ./autogen.sh --disable-debug --enable-static --prefix=<INSTALL_DIR> --silent"
@@ -189,18 +194,18 @@ set_target_properties(zstd PROPERTIES IMPORTED_LOCATION ${ZSTD_LIB})
 
 
 # Prepare the `kmc` library — required by the Cuttlefish algorithm implementation.
+# NOTE: do something more intelligent below than the -j4
+set(KMC_VERSION "v3.2.2")
 message("Build system will fetch and install KMC3")
 ExternalProject_Add(prj_kmc
     DOWNLOAD_DIR        ${CMAKE_SOURCE_DIR}/external
-    DOWNLOAD_COMMAND    curl -k -L https://github.com/refresh-bio/KMC/archive/refs/tags/v3.2.1.tar.gz -o KMC-3.2.1.tar.gz &&
-                        tar -xzf KMC-3.2.1.tar.gz &&
-                        rm KMC-3.2.1.tar.gz
-    PATCH_COMMAND       patch --strip 1 < ${CMAKE_SOURCE_DIR}/patches/kmc_patch.diff
-    SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/KMC-3.2.1
+    DOWNLOAD_COMMAND    git clone --recurse-submodules git@github.com:refresh-bio/KMC.git --branch ${KMC_VERSION}
+    PATCH_COMMAND       patch --strip 1 < ${CMAKE_SOURCE_DIR}/patches/kmc_v3.2.2.patch
+    SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/KMC
     BUILD_IN_SOURCE     TRUE
     INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external/
     CONFIGURE_COMMAND   ""
-    BUILD_COMMAND       make -j CC=${CMAKE_CXX_COMPILER} kmc
+    BUILD_COMMAND       make -j bin/libkmc_core.a
     INSTALL_COMMAND     cp bin/libkmc_core.a ${EXT_LIB} &&
                         cp include/kmc_runner.h ${EXT_INCLUDE}
 )
