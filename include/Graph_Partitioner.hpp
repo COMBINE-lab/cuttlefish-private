@@ -17,16 +17,21 @@
 namespace cuttlefish
 {
 
+template <uint16_t k, bool Colored_> class Subgraphs_Manager;
+
 // =============================================================================
 // Class to partition de Bruijn graphs into subgraphs based on minimizers of the
 // `k`-mers. Effectively, splits input sequences to maximal weak super k-mers
-// and distributes those to appropriate subgraphs.
+// and distributes those to appropriate subgraphs. `Colored_` denotes whether
+// the vertices in the graph have associated colors.
 // TODO: only supports FASTQ for now; extend to FASTA also.
-template <uint16_t k>
+template <uint16_t k, bool Colored_>
 class Graph_Partitioner
 {
 
 private:
+
+    Subgraphs_Manager<k, Colored_>& subgraphs;  // Subgraphs of the de Bruijn graph.
 
     typedef rabbit::fq::FastqDataChunk chunk_t; // Type of chunks containing parsed sequences.
     typedef rabbit::fq::FastqDataPool chunk_pool_t; // Type of memory pools for chunks.
@@ -55,8 +60,9 @@ private:
 public:
 
     // Constructs a de Bruijn graph partitioner with `l`-minimizers for the
-    // sequences from the data logistics manager `logistics`.
-    Graph_Partitioner(const Data_Logistics& logistics, uint16_t l);
+    // sequences from the data logistics manager `logistics`. The graph is
+    // partitioned into the subgraph-manager `subgraphs`.
+    Graph_Partitioner(Subgraphs_Manager<k, Colored_>& subgraphs, const Data_Logistics& logistics, uint16_t l);
 
     // Returns the size of minimizers for the super k-mers.
     auto l() const { return l_; }
@@ -71,7 +77,7 @@ public:
     uint64_t super_kmers_len() const { return super_kmers_len_; }
 
     // Partitions the passed sequences into maximal weak super k-mers and
-    // deposits those to the super k-mer buckets.
+    // deposits those to corresponding subgraphs.
     void partition();
 };
 

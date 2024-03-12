@@ -1,5 +1,6 @@
 
 #include "Graph_Partitioner.hpp"
+#include "Subgraphs_Manager.hpp"
 #include "Minimizer_Iterator.hpp"
 #include "DNA_Utility.hpp"
 #include "globals.hpp"
@@ -15,9 +16,10 @@
 namespace cuttlefish
 {
 
-template <uint16_t k>
-Graph_Partitioner<k>::Graph_Partitioner(const Data_Logistics& logistics, const uint16_t l):
-      seqs(logistics.input_paths_collection())
+template <uint16_t k, bool Colored_>
+Graph_Partitioner<k, Colored_>::Graph_Partitioner(Subgraphs_Manager<k, Colored_>& subgraphs, const Data_Logistics& logistics, const uint16_t l):
+      subgraphs(subgraphs)
+    , seqs(logistics.input_paths_collection())
     , l_(l)
     , subgraphs_path_pref(logistics.subgraphs_path())
     , record_count_(0)
@@ -26,8 +28,8 @@ Graph_Partitioner<k>::Graph_Partitioner(const Data_Logistics& logistics, const u
 {}
 
 
-template <uint16_t k>
-void Graph_Partitioner<k>::partition()
+template <uint16_t k, bool Colored_>
+void Graph_Partitioner<k, Colored_>::partition()
 {
     const auto chunk_count = std::ceil(parlay::num_workers() * 1.1);    // Maximum number of chunks. TODO: make a more informed choice.
     chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
@@ -46,8 +48,8 @@ void Graph_Partitioner<k>::partition()
 }
 
 
-template <uint16_t k>
-void Graph_Partitioner<k>::parse(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
+template <uint16_t k, bool Colored_>
+void Graph_Partitioner<k, Colored_>::parse(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {
     rabbit::int64 chunk_count = 0;
 
@@ -65,8 +67,8 @@ void Graph_Partitioner<k>::parse(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 }
 
 
-template <uint16_t k>
-void Graph_Partitioner<k>::process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool)
+template <uint16_t k, bool Colored_>
+void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool)
 {
     rabbit::int64 chunk_id = 0;
     std::vector<neoReference> parsed_chunk;
@@ -159,4 +161,4 @@ void Graph_Partitioner<k>::process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool)
 
 
 // Template-instantiations for the required instances.
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Graph_Partitioner)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Graph_Partitioner)

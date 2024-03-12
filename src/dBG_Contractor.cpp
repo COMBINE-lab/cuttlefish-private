@@ -50,6 +50,9 @@ void dBG_Contractor<k>::construct()
     const auto t_0 = timer::now();
 
     Subgraphs_Manager<k, false> subgraphs(logistics, params.subgraph_count(), params.min_len(), G, op_buf);
+    Graph_Partitioner<k, false> super_kmer_splitter(subgraphs, logistics, params.min_len());
+    super_kmer_splitter.partition();
+
     subgraphs.process();
 
     std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";
