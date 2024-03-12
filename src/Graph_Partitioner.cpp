@@ -22,6 +22,7 @@ Graph_Partitioner<k, Colored_>::Graph_Partitioner(Subgraphs_Manager<k, Colored_>
     , seqs(logistics.input_paths_collection())
     , l_(l)
     , subgraphs_path_pref(logistics.subgraphs_path())
+    , chunk_count_(0)
     , record_count_(0)
     , super_kmer_count_(0)
     , super_kmers_len_(0)
@@ -42,6 +43,7 @@ void Graph_Partitioner<k, Colored_>::partition()
 
     parser.join();
 
+    std::cerr << "Number of processed chunks: " << chunk_count_ << ".\n";
     std::cerr << "Number of records: " << record_count_ << ".\n";
     std::cerr << "Number of super k-mers: " << super_kmer_count_ << ".\n";
     std::cerr << "Total length of the super k-mers: " << super_kmers_len_ << ".\n";
@@ -51,7 +53,8 @@ void Graph_Partitioner<k, Colored_>::partition()
 template <uint16_t k, bool Colored_>
 void Graph_Partitioner<k, Colored_>::parse(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {
-    rabbit::int64 chunk_count = 0;
+    uint64_t chunk_count = 0;   // Number of parsed chunks.
+    rabbit::int64 source_id = 0;    // Source (i.e. file) ID of a chunk.
 
     for(const auto& file_path : seqs)
     {
@@ -59,7 +62,12 @@ void Graph_Partitioner<k, Colored_>::parse(chunk_pool_t& chunk_pool, chunk_q_t& 
         rabbit::fq::FastqFileReader reader(file_path, chunk_pool);
         const chunk_t* chunk;
         while((chunk = reader.readNextChunk()) != NULL)
-            chunk_q.Push(chunk_count++, chunk);
+        {
+            chunk_q.Push(source_id, chunk);
+            chunk_count++;
+        }
+
+        source_id++;
     }
 
     chunk_q.SetCompleted();
@@ -70,16 +78,17 @@ void Graph_Partitioner<k, Colored_>::parse(chunk_pool_t& chunk_pool, chunk_q_t& 
 template <uint16_t k, bool Colored_>
 void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool)
 {
-    rabbit::int64 chunk_id = 0;
-    std::vector<neoReference> parsed_chunk;
-    chunk_t* chunk;
+    rabbit::int64 source_id;    // Source (i.e. file) ID of a chunk.
+    uint64_t chunk_count = 0;   // Number of processed chunks.
+    chunk_t* chunk; // Current chunk.
+    std::vector<neoReference> parsed_chunk; // Current parsed chunk.
 
     uint64_t rec_count = 0;
     uint64_t super_kmer_count = 0;
     uint64_t super_kmers_len = 0;
 
     Minimizer_Iterator<const char*, true> min_it(k, l_, min_seed);
-    while(chunk_q.Pop(chunk_id, chunk))
+    while(chunk_q.Pop(source_id, chunk))
     {
         parsed_chunk.clear();
         rec_count += rabbit::fq::chunkFormat(chunk, parsed_chunk);
@@ -148,9 +157,11 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
 
 
         chunk_pool.Release(chunk);
+        chunk_count++;
     }
 
 
+    chunk_count_ += chunk_count;
     record_count_ += rec_count;
     super_kmer_count_ += super_kmer_count;
     super_kmers_len_ += super_kmers_len;
