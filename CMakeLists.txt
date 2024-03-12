@@ -139,7 +139,7 @@ find_package(ZLIB REQUIRED)
 
 # Prepare the `zstd` library. It provides fast lossless compression, targeting real-time
 # compression scenarios at zlib-level and better compression ratios.
-find_package(ZSTD REQUIRED)
+# find_package(ZSTD REQUIRED)
 
 
 # Module required to download and install external projects.

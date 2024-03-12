@@ -3,7 +3,7 @@
 #include "DNA.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
-#include "kmc-super-kmers-iterator/iterate_super_kmers.h"
+// #include "kmc-super-kmers-iterator/iterate_super_kmers.h"
 
 #include "fstream"
 
@@ -53,6 +53,7 @@ void Subgraph<k>::free_maps()
 template <uint16_t k>
 void Subgraph<k>::construct()
 {
+/*
     const std::size_t q_sz = 1; // Number of internal queues for the iterator; set to the count of workers using the iterator.
     IterateSuperKmers super_kmer_it(graph_bin_dir_path, bin_id, q_sz);  // The iterator over the super k-mers in this graph-bin.
 
@@ -119,12 +120,14 @@ void Subgraph<k>::construct()
 
     super_kmer_it.AddConsumer(extract_kmers);
     super_kmer_it.WaitForAll();
+*/
 }
 
 
 template <uint16_t k>
 void Subgraph<k>::construct_loop_filtered()
 {
+/*
     const std::size_t q_sz = 1; // Number of internal queues for the iterator; set to the count of workers using the iterator.
     IterateSuperKmers super_kmer_it(graph_bin_dir_path, bin_id, q_sz);  // The iterator over the super k-mers in this graph-bin.
 
@@ -200,6 +203,7 @@ void Subgraph<k>::construct_loop_filtered()
 
     super_kmer_it.AddConsumer(extract_kmers);
     super_kmer_it.WaitForAll();
+*/
 }
 
 

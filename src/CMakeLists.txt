@@ -121,7 +121,7 @@ target_link_libraries(cfcore_static PRIVATE kmc)
 target_link_libraries(cfcore_static PRIVATE ZLIB::ZLIB)
 
 # Link the cfcore_static library to the `zstd` library.
-target_link_libraries(cfcore_static PRIVATE zstd)
+# target_link_libraries(cfcore_static PRIVATE zstd)
 
 # Approrpiately link the core library to `rabbitfx`.
 target_link_libraries(rabbitfx PRIVATE z)
