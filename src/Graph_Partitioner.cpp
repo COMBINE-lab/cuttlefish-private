@@ -11,6 +11,7 @@
 
 #include <cmath>
 #include <functional>
+#include <cassert>
 
 
 namespace cuttlefish
@@ -83,9 +84,9 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     chunk_t* chunk; // Current chunk.
     std::vector<neoReference> parsed_chunk; // Current parsed chunk.
 
-    uint64_t rec_count = 0;
-    uint64_t super_kmer_count = 0;
-    uint64_t super_kmers_len = 0;
+    uint64_t rec_count = 0; // Number of parsed records.
+    uint64_t super_kmer_count = 0;  // Number of parsed super k-mers.
+    uint64_t super_kmers_len = 0;   // Total length of the super k-mers, in bases.
 
     Minimizer_Iterator<const char*, true> min_it(k, l_, min_seed);
     while(chunk_q.Pop(source_id, chunk))
@@ -101,7 +102,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
             std::size_t last_frag_end = 0;  // Ending index (exclusive) of the last sequence fragment.
             while(true)
             {
-                std::size_t frag_beg;   // Beginning index of the next fragment.
+                std::size_t frag_beg;   // Offset of the next fragment in the sequence.
                 std::size_t frag_len;   // Length of the next fragment.
 
                 // Skip placeholder bases.
@@ -112,9 +113,11 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 if(frag_beg + k > seq_len)  // No more sequence fragment remains with complete k-mers.
                     break;
 
+                const auto frag = seq + frag_beg;   // Current fragment.
+
                 // Check whether the first k-mer of the fragment has any placeholder bases.
                 for(frag_len = 1; frag_len < k; ++frag_len)
-                    if(!DNA_Utility::is_DNA_base(seq[frag_beg + frag_len]))
+                    if(!DNA_Utility::is_DNA_base(frag[frag_len]))
                         break;
 
                 if(frag_len < k)
@@ -127,21 +130,26 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 minimizer_t last_min, last_min_idx;
                 minimizer_t min, min_idx;
                 std::size_t curr_sup_kmer_off = 0; // Relative offset of the current super k-mer in the fragment.
+                std::size_t kmer_idx = 0;   // Index of the current k-mer in the current super k-mer.
 
-                min_it.reset(seq + frag_beg, seq_len - frag_beg);
+                min_it.reset(frag, seq_len - frag_beg); // The fragment length is an estimate; upper-bound to be exact.
                 min_it.value_at(last_min, last_min_idx);
                 frag_len = k;
 
-                while(DNA_Utility::is_DNA_base(seq[frag_beg + frag_len]))
+                while(DNA_Utility::is_DNA_base(frag[frag_len]))
                 {
-                    min_it.advance(seq[frag_beg + frag_len]);
+                    min_it.advance(frag[frag_len]);
+                    kmer_idx++, frag_len++;
+
                     min_it.value_at(min, min_idx);
-                    frag_len++;
                     if(min_idx != last_min_idx)
                     {
-                        // TODO: add assert for minimizer-diff validity.
+                        // Either the last minimizer fell out of the k-window or the new minimizer sits at the last l-mer.
+                        assert(last_min_idx < kmer_idx || min_idx == kmer_idx + k - l);
+
                         const auto next_sup_kmer_off = frag_len - k;
-                        super_kmers_len += (next_sup_kmer_off - curr_sup_kmer_off) + k - 1;
+                        const auto len = (next_sup_kmer_off - curr_sup_kmer_off) + (k - 1);
+                        super_kmers_len += len;
                         curr_sup_kmer_off = next_sup_kmer_off;
                         super_kmer_count++;
 
