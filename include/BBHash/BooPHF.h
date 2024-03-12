@@ -1033,7 +1033,7 @@ we need this 2-functors scheme because HashFunctors won't work with unordered_ma
 		}
 
 
-		uint64_t lookup(elem_t elem) const
+		uint64_t lookup(const elem_t& elem) const
 		{
 			if(! _built) return ULLONG_MAX;
 			

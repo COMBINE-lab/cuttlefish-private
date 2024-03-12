@@ -39,6 +39,7 @@ private:
     const std::string output_file_path_;    // Path to the output file.
     const std::optional<cuttlefish::Output_Format> output_format_;  // Output format (0: FASTA, 1: GFAv1, 2: GFAv2, 3: GFA-reduced).
     const bool track_short_seqs_;   // Whether to track input sequences shorter than `k` bases.
+    const bool poly_n_stretch_; // Whether to include tiles in GFA-reduced output that track the polyN stretches in the input.
     const std::string working_dir_path_;    // Path to the working directory (for temporary files).
     const bool path_cover_; // Whether to extract a maximal path cover of the de Bruijn graph.
     const bool save_mph_;   // Option to save the MPH over the vertex set of the de Bruijn graph.
@@ -76,6 +77,7 @@ public:
                     const std::string& output_file_path,
                     std::optional<cuttlefish::Output_Format> output_format,
                     bool track_short_seqs,
+                    bool poly_n_stretch,
                     const std::string& working_dir_path,
                     bool path_cover,
                     bool save_mph,
@@ -142,6 +144,9 @@ public:
 
     // Returns whether to track input sequences shorter than `k` bases.
     auto track_short_seqs() const { return track_short_seqs_; }
+
+    // Returns whether to include tiles in GFA-reduced output that track the polyN stretches in the input.
+    auto poly_n_stretch() const { return poly_n_stretch_; }
 
     // Returns the path to the output segment-file for the GFA-reduced format.
     const auto segment_file_path() const { return output_file_path_ + cuttlefish::file_ext::seg_ext; }
