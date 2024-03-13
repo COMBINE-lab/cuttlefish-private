@@ -43,7 +43,7 @@ void Parser::parse()
     std::for_each(consumer.begin(), consumer.end(), [](auto& t){ t.join(); });
 
     timing_info t;
-    std::for_each(T.cbegin(), T.cend(), [&t](const auto v){ t += v.data(); });
+    std::for_each(T.cbegin(), T.cend(), [&t](const auto& v){ t += v.data(); });
 
     std::cerr << "Number of records: " << record_count << ".\n";
     std::cerr << "Count of super k-mers: " << count << ".\n";
