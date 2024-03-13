@@ -26,6 +26,7 @@ namespace cuttlefish
 
         // For cuttlefish 3.
 
+        constexpr char subgraph_ext[] = ".G";
         constexpr char edge_matrix_ext[] = ".E";
         constexpr char lmtig_bucket_ext[] = ".lmtig";
         constexpr char compressed_diagonal_ext[] = ".D";
