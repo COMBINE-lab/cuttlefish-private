@@ -191,7 +191,7 @@ public:
     void emplace_back(Args&&... args) { new (arr + back_) T_(std::forward<Args>(args)...); grow_back(); }
 
     template <typename... Args>
-    void emplace_front(Args&&... args) { grow_front(); new (arr + front_) T_(std::forward<Args>(args)...); };
+    void emplace_front(Args&&... args) { grow_front(); new (arr + front_) T_(std::forward<Args>(args)...); }
 
     void pop_back() { shrink_back(); }
 

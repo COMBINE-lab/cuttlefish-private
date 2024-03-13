@@ -31,6 +31,8 @@
 namespace cuttlefish
 {
 
+enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
+
 // =============================================================================
 // A subgraph of the de Bruijn graph, induced by a KMC bin.
 template <uint16_t k>
@@ -38,7 +40,6 @@ class Subgraph
 {
 private:
 
-    enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
     typedef Walk_Termination termination_t;
 
     const std::string graph_bin_dir_path;   // Path to the directory with all the graph KMC-bins.
@@ -139,8 +140,7 @@ public:
 
 
 // Type of scenarios how a unitig-walk terminates in the subgraph.
-template <uint16_t k>
-enum class Subgraph<k>::Walk_Termination
+enum class Walk_Termination
 {
     null,       // non-existent walk
     branched,   // branched off
