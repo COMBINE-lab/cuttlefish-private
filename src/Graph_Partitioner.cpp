@@ -147,19 +147,30 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                         // Either the last minimizer fell out of the k-window or the new minimizer sits at the last l-mer.
                         assert(last_min_idx < curr_sup_kmer_off + kmer_idx || min_idx == curr_sup_kmer_off + kmer_idx + k - l_);
 
-                        const auto next_sup_kmer_off = frag_len - k;
-                        const auto len = (next_sup_kmer_off - curr_sup_kmer_off) + (k - 1);
+                        const auto next_sup_kmer_off = curr_sup_kmer_off + kmer_idx;
+                        assert(curr_sup_kmer_off + kmer_idx == frag_len - k);
+                        const auto len = kmer_idx + (k - 1);
                         super_kmers_len += len;
-                        curr_sup_kmer_off = next_sup_kmer_off;
                         super_kmer_count++;
 
+                        const bool l_disc = (curr_sup_kmer_off > 0 && DNA_Utility::is_DNA_base(frag[curr_sup_kmer_off - 1]));
+                        const bool r_disc = true;
+                        subgraphs.add_super_kmer(last_min, frag + curr_sup_kmer_off, len + r_disc, l_disc, r_disc);
+
+                        curr_sup_kmer_off = next_sup_kmer_off;
                         last_min = min, last_min_idx = min_idx;
                         kmer_idx = 0;
                     }
                 }
 
+                const auto len = frag_len - curr_sup_kmer_off;
+                super_kmers_len += len;
                 super_kmer_count++;
-                super_kmers_len += frag_len - curr_sup_kmer_off;
+
+                const bool l_disc = (curr_sup_kmer_off > 0 && DNA_Utility::is_DNA_base(frag[curr_sup_kmer_off - 1]));
+                const bool r_disc = false;
+                subgraphs.add_super_kmer(last_min, frag + curr_sup_kmer_off, len + r_disc, l_disc, r_disc);
+
                 last_frag_end = frag_beg + frag_len;
             }
         }

@@ -7,6 +7,8 @@
 #include "parlay/parallel.h"
 
 #include <atomic>
+#include <iostream>
+#include <cstdlib>
 
 
 namespace cuttlefish
@@ -22,6 +24,12 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     , icc_count_(0)
     , op_buf(op_buf)
 {
+    if((graph_count & (graph_count - 1)) != 0)
+    {
+        std::cerr << "Subgraph count needs to be a power of 2. Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
     subgraph_bucket.reserve(graph_count);
     for(std::size_t g_id = 0; g_id < graph_count; ++g_id)
         subgraph_bucket.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id)));

@@ -72,14 +72,16 @@ inline void Super_Kmer_Bucket<Colored_>::add(const char* const seq, const std::s
     {
         lock.lock();
 
-        const auto break_idx = std::min(c_w.size(), chunk.capacity() - chunk.size());
+        const auto break_idx = std::min(c_w.size(), chunk.free_capacity());
         chunk.append(c_w, 0, break_idx);
-        if(chunk.size() == chunk.capacity())
+        if(chunk.full())
         {
             chunk.serialize(output);
             chunk.clear();
-            chunk.append(c_w, break_idx, c_w.size() - break_idx);
         }
+
+        if(break_idx < c_w.size())
+            chunk.append(c_w, break_idx, c_w.size());
 
         lock.unlock();
 

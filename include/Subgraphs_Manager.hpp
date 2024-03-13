@@ -9,6 +9,7 @@
 #include "Async_Logger_Wrapper.hpp"
 #include "Character_Buffer.hpp"
 #include "utility.hpp"
+#include "globals.hpp"
 
 #include <cstdint>
 #include <cstddef>
@@ -33,8 +34,8 @@ class Subgraphs_Manager
 private:
 
     const std::string path_pref;    // Path-prefix to the super k-mer buckets.
-    const std::size_t graph_count;  // Numer of subgraphs.
-    const uint16_t l;   // `l`-minimizer size to partition to the graph.
+    const std::size_t graph_count;  // Number of subgraphs; it needs to be a power of 2.
+    const uint16_t l;   // `l`-minimizer size to partition the graph.
 
     typedef Super_Kmer_Bucket<Colored_> bucket_t;
     std::vector<Padded_Data<bucket_t>> subgraph_bucket; // Super k-mer buckets for the subgraphs.
@@ -52,6 +53,10 @@ private:
     op_buf_list_t& op_buf; // Worker-specific output buffers.
 
 
+    // Returns the subgraph ID for the minimizer `min`.
+    uint64_t subgraph_ID(minimizer_t min) const { return min & (graph_count - 1); }
+
+
 public:
 
     // Constructs a manager for the subgraphs of a de Bruijn graph which is
@@ -61,6 +66,12 @@ public:
     // Worker-specific trivially maximal unitigs are written to the buffers in
     // `op_buf`.
     Subgraphs_Manager(const Data_Logistics& logistics, std::size_t graph_count, uint16_t l, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf);
+
+    // Adds a (weak) super k-mer with minimizer `min` to the de Bruijn graph
+    // with label `seq` and length `len`. The markers `l_disc` and `r_disc`
+    // denote whether the left and the right ends of the (weak) super k-mer are
+    // discontinuous or not.
+    void add_super_kmer(minimizer_t min, const char* seq, std::size_t len, bool l_disc, bool r_disc);
 
     // Constructs and contracts each subgraph.
     void process();
@@ -73,6 +84,15 @@ public:
     // ICCs.
     uint64_t icc_count() const;
 };
+
+
+template <uint16_t k, bool Colored_>
+inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const minimizer_t min, const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
+{
+    const auto g_id = subgraph_ID(min);
+    auto& bucket = subgraph_bucket[g_id].data();
+    bucket.add(seq, len, l_disc, r_disc);
+}
 
 }
 

@@ -32,7 +32,7 @@ namespace cuttlefish
         constexpr uint16_t MIN_LEN = 20;    // TODO: placeholder for now.
 
 
-        constexpr std::size_t SUBGRAPH_COUNT = 2000;
+        constexpr std::size_t SUBGRAPH_COUNT = 2048;
         constexpr std::size_t VERTEX_PART_COUNT = 64;
         constexpr std::size_t LMTIG_BUCKET_COUNT = 1024;
     }
