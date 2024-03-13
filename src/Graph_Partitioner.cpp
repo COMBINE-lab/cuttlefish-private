@@ -145,7 +145,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                     if(min_idx != last_min_idx)
                     {
                         // Either the last minimizer fell out of the k-window or the new minimizer sits at the last l-mer.
-                        assert(last_min_idx < kmer_idx || min_idx == kmer_idx + k - l);
+                        assert(last_min_idx < curr_sup_kmer_off + kmer_idx || min_idx == curr_sup_kmer_off + kmer_idx + k - l_);
 
                         const auto next_sup_kmer_off = frag_len - k;
                         const auto len = (next_sup_kmer_off - curr_sup_kmer_off) + (k - 1);
@@ -154,6 +154,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                         super_kmer_count++;
 
                         last_min = min, last_min_idx = min_idx;
+                        kmer_idx = 0;
                     }
                 }
 

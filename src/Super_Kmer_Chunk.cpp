@@ -14,6 +14,7 @@ Super_Kmer_Chunk<Colored_>::Super_Kmer_Chunk(const uint16_t k, const uint16_t l,
       max_sup_kmer_len(2 * k - l + 2)
     , sup_kmer_word_c((max_sup_kmer_len + 31) / 32)
     , cap_(cap)
+    , size_(0)
     , att_buf(cap_)
     , label_buf(cap * sup_kmer_word_c)
 {

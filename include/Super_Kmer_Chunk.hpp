@@ -57,6 +57,12 @@ public:
     // Returns the maximum capacity of the chunk in number of super k-mers.
     auto capacity() const {return cap_;  }
 
+    // Returns the free capacity of the chunk in number of super k-mers.
+    auto free_capacity() const { return capacity() - size(); }
+
+    // Returns whether the chunk is full or not.
+    auto full() const { return size() == capacity(); }
+
     // Returns the number of units, i.e. 64-bit words, in the label buffer.
     auto label_units() const { return size() * sup_kmer_word_c; }
 
