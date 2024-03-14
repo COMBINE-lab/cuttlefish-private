@@ -77,7 +77,11 @@ public:
     // Puts the minimizer of the current k-mer into `minimizer`, and stores its
     // index in the sequence at `index`. The position information over the
     // sequence is maintained internally.
-    void value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index) const;
+    void value_at(minimizer_t& minimizer, std::size_t& index) const;
+
+    // Returns the index of the `l`-minimizer of the `k`-length sequence
+    // `kmer`. The seed value `seed` is used in hashing the `l`-mers.
+    static std::size_t minimizer_idx(T_seq_ kmer, uint16_t k, uint16_t l, uint64_t seed);
 };
 
 
@@ -197,6 +201,18 @@ inline void Minimizer_Iterator<T_seq_, is_canonical_>::value_at(cuttlefish::mini
     }
     else
         minimizer = dq_f.front().lmer, index = dq_f.front().index;
+}
+
+
+template <typename T_seq_, bool is_canonical_>
+inline std::size_t Minimizer_Iterator<T_seq_, is_canonical_>::minimizer_idx(T_seq_ kmer, uint16_t k, uint16_t l, uint64_t seed)
+{
+    minimizer_t min;
+    std::size_t idx;
+    Minimizer_Iterator<T_seq_, is_canonical_> it(kmer, k, k, l, seed);
+
+    it.value_at(min, idx);
+    return idx;
 }
 
 
