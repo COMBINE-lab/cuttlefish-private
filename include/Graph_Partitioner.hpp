@@ -46,8 +46,9 @@ private:
 
     std::atomic_uint64_t chunk_count_;  // Number of chunks parsed from the sequences.
     std::atomic_uint64_t record_count_; // Number of records in the sequences.
-    std::atomic_uint64_t super_kmer_count_; // Number of super k-mers in the sequences.
-    std::atomic_uint64_t super_kmers_len_;  // Total length of the super k-mers in the sequences.
+    std::atomic_uint64_t weak_super_kmer_count_;    // Number of weak super k-mers in the sequences.
+    std::atomic_uint64_t weak_super_kmers_len_; // Total length of the weak super k-mers in the sequences.
+    std::atomic_uint64_t super_km1_mers_len_;   // Total length of the super (k - 1)-mers in the sequences.
 
 
     // Parses the provided sequences into chunks from the memory pool
@@ -71,11 +72,11 @@ public:
     // Returns the number of records in the sequences.
     uint64_t record_count() const { return record_count_; }
 
-    // Returns the number of super k-mers in the sequences.
-    uint64_t super_kmer_count() const { return super_kmer_count_; }
+    // Returns the number of weak super k-mers in the sequences.
+    uint64_t weak_super_kmer_count() const { return weak_super_kmer_count_; }
 
-    // Returns the total length of the super k-mers in the sequences.
-    uint64_t super_kmers_len() const { return super_kmers_len_; }
+    // Returns the total length of the weak super k-mers in the sequences.
+    uint64_t weak_super_kmers_len() const { return weak_super_kmers_len_; }
 
     // Partitions the passed sequences into maximal weak super k-mers and
     // deposits those to corresponding subgraphs.

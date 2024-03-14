@@ -25,8 +25,9 @@ Graph_Partitioner<k, Colored_>::Graph_Partitioner(Subgraphs_Manager<k, Colored_>
     , subgraphs_path_pref(logistics.subgraphs_path())
     , chunk_count_(0)
     , record_count_(0)
-    , super_kmer_count_(0)
-    , super_kmers_len_(0)
+    , weak_super_kmer_count_(0)
+    , weak_super_kmers_len_(0)
+    , super_km1_mers_len_(0)
 {}
 
 
@@ -46,8 +47,9 @@ void Graph_Partitioner<k, Colored_>::partition()
 
     std::cerr << "Number of processed chunks: " << chunk_count_ << ".\n";
     std::cerr << "Number of records: " << record_count_ << ".\n";
-    std::cerr << "Number of super k-mers: " << super_kmer_count_ << ".\n";
-    std::cerr << "Total length of the super k-mers: " << super_kmers_len_ << ".\n";
+    std::cerr << "Number of super (k - 1)-mers: " << weak_super_kmer_count_ << ".\n";
+    std::cerr << "Total length of the weak super k-mers:  " << weak_super_kmers_len_ << ".\n";
+    std::cerr << "Total length of the super (k - 1)-mers: " << super_km1_mers_len_ << ".\n";
 }
 
 
@@ -85,10 +87,12 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     std::vector<neoReference> parsed_chunk; // Current parsed chunk.
 
     uint64_t rec_count = 0; // Number of parsed records.
-    uint64_t super_kmer_count = 0;  // Number of parsed super k-mers.
-    uint64_t super_kmers_len = 0;   // Total length of the super k-mers, in bases.
+    uint64_t sup_km1_mer_count = 0; // Number of parsed super (k - 1)-mers.
+    std::size_t sup_km1_mers_len = 0;   // Total length of the super (k - 1)-mers, in bases.
+    std::size_t weak_sup_kmers_len = 0; // Total length of the (weak) super k-mers, in bases.
 
-    Minimizer_Iterator<const char*, true> min_it(k, l_, min_seed);
+    typedef Minimizer_Iterator<const char*, true> min_it_t;
+    min_it_t min_it(k - 1, l_, min_seed);   // `l`-minimizer iterator for `(k - 1)`-mers.
     while(chunk_q.Pop(source_id, chunk))
     {
         parsed_chunk.clear();
@@ -103,73 +107,82 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
             while(true)
             {
                 std::size_t frag_beg;   // Offset of the next fragment in the sequence.
-                std::size_t frag_len;   // Length of the next fragment.
+                std::size_t frag_len;   // Length of the fragment.
 
                 // Skip placeholder bases.
-                for(frag_beg = last_frag_end; frag_beg + k <= seq_len; ++frag_beg)
+                for(frag_beg = last_frag_end; frag_beg + (k + 1) <= seq_len; ++frag_beg)
                     if(DNA_Utility::is_DNA_base(seq[frag_beg]))
                         break;
 
-                if(frag_beg + k > seq_len)  // No more sequence fragment remains with complete k-mers.
+                if(frag_beg + (k + 1) > seq_len)    // No more fragment remains with complete (k + 1)-mers, i.e. edges.
                     break;
 
                 const auto frag = seq + frag_beg;   // Current fragment.
 
-                // Check whether the first k-mer of the fragment has any placeholder bases.
-                for(frag_len = 1; frag_len < k; ++frag_len)
+                // Check whether the first (k + 1)-mer of the fragment has any placeholder bases.
+                for(frag_len = 1; frag_len < (k + 1); ++frag_len)
                     if(!DNA_Utility::is_DNA_base(frag[frag_len]))
                         break;
 
-                if(frag_len < k)
+                if(frag_len < (k + 1))
                 {
                     last_frag_end = frag_beg + frag_len;
                     continue;
                 }
 
 
-                minimizer_t last_min, last_min_idx;
-                minimizer_t min, min_idx;
-                std::size_t curr_sup_kmer_off = 0; // Relative offset of the current super k-mer in the fragment.
-                std::size_t kmer_idx = 0;   // Index of the current k-mer in the current super k-mer.
+                minimizer_t last_min;   // Last minimizer found in the iteration.
+                minimizer_t min;    // Current minimizer in the iteration.
+                std::size_t last_min_off, min_off;  // Relative offset of the minimizers in the fragment.
+                std::size_t cur_sup_km1_mer_off = 0;    // Relative offset of the current super (k - 1)-mer in the fragment.
+                std::size_t km1_mer_idx = 0;    // Index of the current (k - 1)-mer in the current super (k - 1)-mer.
+                frag_len = k - 1;
 
                 min_it.reset(frag, seq_len - frag_beg); // The fragment length is an estimate; upper-bound to be exact.
-                min_it.value_at(last_min, last_min_idx);
-                frag_len = k;
+                min_it.value_at(min, min_off);
+                last_min = min, last_min_off = min_off;
 
                 while(DNA_Utility::is_DNA_base(frag[frag_len]))
                 {
                     min_it.advance(frag[frag_len]);
-                    kmer_idx++, frag_len++;
+                    km1_mer_idx++, frag_len++;
 
-                    min_it.value_at(min, min_idx);
-                    if(min_idx != last_min_idx)
+                    min_it.value_at(min, min_off);
+                    if(min_off != last_min_off) // Encountered a discontinuity vertex—the k-mer whose suffix is the current (k - 1)-mer.
                     {
-                        // Either the last minimizer fell out of the k-window or the new minimizer sits at the last l-mer.
-                        assert(last_min_idx < curr_sup_kmer_off + kmer_idx || min_idx == curr_sup_kmer_off + kmer_idx + k - l_);
+                        // Either the last minimizer just fell out of the (k - 1)-mer window or the new minimizer sits at the last l-mer.
+                        assert( last_min_off == cur_sup_km1_mer_off + km1_mer_idx - 1 ||
+                                min_off == cur_sup_km1_mer_off + km1_mer_idx + (k - 1) - l_);
 
-                        const auto next_sup_kmer_off = curr_sup_kmer_off + kmer_idx;
-                        assert(curr_sup_kmer_off + kmer_idx == frag_len - k);
-                        const auto len = kmer_idx + (k - 1);
-                        super_kmers_len += len;
-                        super_kmer_count++;
+                        // The `(k - 1)`-mers of this discontinuity k-mer have different minimizer instances.
+                        assert( min_it_t::minimizer_idx(frag + cur_sup_km1_mer_off + km1_mer_idx - 1, k - 1, l_, min_seed) !=
+                                1 + min_it_t::minimizer_idx(frag + cur_sup_km1_mer_off + km1_mer_idx, k - 1, l_, min_seed));
 
-                        const bool l_disc = (curr_sup_kmer_off > 0 && DNA_Utility::is_DNA_base(frag[curr_sup_kmer_off - 1]));
+                        const auto next_sup_km1_mer_off = cur_sup_km1_mer_off + km1_mer_idx;
+                        assert(next_sup_km1_mer_off == frag_len - (k - 1));
+                        const auto len = km1_mer_idx + (k - 2); // Length of the super (k - 1)-mer that just terminated.
+                        sup_km1_mers_len += len;
+                        sup_km1_mer_count++;
+
+                        const bool l_disc = (cur_sup_km1_mer_off > 0);
                         const bool r_disc = true;
-                        subgraphs.add_super_kmer(last_min, frag + curr_sup_kmer_off, len + r_disc, l_disc, r_disc);
+                        subgraphs.add_super_kmer(last_min, frag + cur_sup_km1_mer_off - l_disc, l_disc + len + r_disc, l_disc, r_disc);
+                        weak_sup_kmers_len += l_disc + len + r_disc;
 
-                        curr_sup_kmer_off = next_sup_kmer_off;
-                        last_min = min, last_min_idx = min_idx;
-                        kmer_idx = 0;
+                        cur_sup_km1_mer_off = next_sup_km1_mer_off;
+                        last_min = min, last_min_off = min_off;
+                        km1_mer_idx = 0;
                     }
                 }
 
-                const auto len = frag_len - curr_sup_kmer_off;
-                super_kmers_len += len;
-                super_kmer_count++;
+                const auto len = frag_len - cur_sup_km1_mer_off;
+                sup_km1_mers_len += len;
+                sup_km1_mer_count++;
 
-                const bool l_disc = (curr_sup_kmer_off > 0 && DNA_Utility::is_DNA_base(frag[curr_sup_kmer_off - 1]));
+                const bool l_disc = (cur_sup_km1_mer_off > 0);
                 const bool r_disc = false;
-                subgraphs.add_super_kmer(last_min, frag + curr_sup_kmer_off, len + r_disc, l_disc, r_disc);
+                subgraphs.add_super_kmer(last_min, frag + cur_sup_km1_mer_off - l_disc, l_disc + len + r_disc, l_disc, r_disc);
+                weak_sup_kmers_len += l_disc + len + r_disc;
 
                 last_frag_end = frag_beg + frag_len;
             }
@@ -183,8 +196,9 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
 
     chunk_count_ += chunk_count;
     record_count_ += rec_count;
-    super_kmer_count_ += super_kmer_count;
-    super_kmers_len_ += super_kmers_len;
+    weak_super_kmer_count_ += sup_km1_mer_count;
+    weak_super_kmers_len_ += weak_sup_kmers_len;
+    super_km1_mers_len_ += sup_km1_mers_len;
 }
 
 }
