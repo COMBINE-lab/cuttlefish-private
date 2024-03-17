@@ -38,19 +38,9 @@ template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::close()
 {
     for(std::size_t w_id = 0; w_id < parlay::num_workers(); ++w_id)
-    {
-        auto& c_w = chunk_w[w_id].data();
-        const auto break_idx = std::min(c_w.size(), chunk.capacity() - chunk.size());
-        chunk.append(c_w, 0, break_idx);
-        if(chunk.size() == chunk.capacity())
-        {
-            chunk.serialize(output);
-            chunk.clear();
-            chunk.append(c_w, break_idx, c_w.size() - break_idx);
-        }
+        empty_w_local_chunk(w_id);
 
-        c_w.clear();
-    }
+    output.close();
 }
 
 }

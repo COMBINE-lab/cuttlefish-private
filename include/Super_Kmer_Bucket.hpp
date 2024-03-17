@@ -39,6 +39,11 @@ private:
 
     mutable Spin_Lock lock; // Lock to the chunk and the external-memory bucket.
 
+
+    // Empties the local chunk of worker `w_id` to the chunk of the bucket in a
+    // thread-safe manner.
+    void empty_w_local_chunk(std::size_t w_id);
+
 public:
 
     // Constructs a super k-mer bucket for `k`-mers and `l`-minimizers, at
@@ -69,24 +74,32 @@ inline void Super_Kmer_Bucket<Colored_>::add(const char* const seq, const std::s
     c_w.add(seq, len, l_disc, r_disc);
 
     if(c_w.size() == c_w.capacity())
-    {
-        lock.lock();
+        empty_w_local_chunk(w_id);
+}
 
-        const auto break_idx = std::min(c_w.size(), chunk.free_capacity());
-        chunk.append(c_w, 0, break_idx);
-        if(chunk.full())
-        {
-            chunk.serialize(output);
-            chunk.clear();
-        }
+
+template <bool Colored_>
+inline void Super_Kmer_Bucket<Colored_>::empty_w_local_chunk(const std::size_t w_id)
+{
+    auto& c_w = chunk_w[w_id].data();
+
+    lock.lock();
+
+    const auto break_idx = std::min(c_w.size(), chunk.free_capacity());
+    chunk.append(c_w, 0, break_idx);
+    if(chunk.full())
+    {
+        chunk.serialize(output);
+        chunk.clear();
 
         if(break_idx < c_w.size())
+            assert(chunk.capacity() >= c_w.size() - break_idx),
             chunk.append(c_w, break_idx, c_w.size());
-
-        lock.unlock();
-
-        c_w.clear();
     }
+
+    lock.unlock();
+
+    c_w.clear();
 }
 
 }
