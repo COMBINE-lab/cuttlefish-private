@@ -41,6 +41,12 @@ void Super_Kmer_Bucket<Colored_>::close()
     for(std::size_t w_id = 0; w_id < parlay::num_workers(); ++w_id)
         empty_w_local_chunk(w_id);
 
+    if(!chunk.empty())
+    {
+        chunk.serialize(output);
+        chunk.clear();
+    }
+
     output.close();
 }
 

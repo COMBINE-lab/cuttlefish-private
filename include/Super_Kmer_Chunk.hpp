@@ -54,6 +54,9 @@ public:
     // Returns the number of super k-mers in the chunk.
     auto size() const { return size_; }
 
+    // Returns whether the chunk is empty.
+    bool empty() const { return size_ == 0; }
+
     // Returns the maximum capacity of the chunk in number of super k-mers.
     auto capacity() const {return cap_;  }
 
