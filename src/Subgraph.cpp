@@ -11,11 +11,11 @@
 namespace cuttlefish
 {
 
-template<uint16_t k> std::vector<Padded_Data<typename Subgraph<k>::map_t>> Subgraph<k>::map;
+template <uint16_t k, bool Colored_> std::vector<Padded_Data<typename Subgraph<k, Colored_>::map_t>> Subgraph<k, Colored_>::map;
 
 
-template <uint16_t k>
-Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id, Discontinuity_Graph<k>& G, op_buf_t& op_buf):
+template <uint16_t k, bool Colored_>
+Subgraph<k, Colored_>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id, Discontinuity_Graph<k>& G, op_buf_t& op_buf):
       graph_bin_dir_path(bin_dir_path)
     , bin_id(bin_id)
     , M(map[parlay::worker_id()].data())
@@ -32,15 +32,15 @@ Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id,
 }
 
 
-template <uint16_t k>
-void Subgraph<k>::init_maps()
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::init_maps()
 {
     map.resize(parlay::num_workers());
 }
 
 
-template <uint16_t k>
-void Subgraph<k>::free_maps()
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::free_maps()
 {
     for(auto& M : map)
         force_free(M.data());
@@ -50,8 +50,8 @@ void Subgraph<k>::free_maps()
 }
 
 
-template <uint16_t k>
-void Subgraph<k>::construct()
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::construct()
 {
 /*
     const std::size_t q_sz = 1; // Number of internal queues for the iterator; set to the count of workers using the iterator.
@@ -124,8 +124,8 @@ void Subgraph<k>::construct()
 }
 
 
-template <uint16_t k>
-void Subgraph<k>::construct_loop_filtered()
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::construct_loop_filtered()
 {
 /*
     const std::size_t q_sz = 1; // Number of internal queues for the iterator; set to the count of workers using the iterator.
@@ -207,8 +207,8 @@ void Subgraph<k>::construct_loop_filtered()
 }
 
 
-template <uint16_t k>
-void Subgraph<k>::contract()
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::contract()
 {
     Maximal_Unitig_Scratch<k> maximal_unitig;   // Scratch space to be used to construct maximal unitigs.
     uint64_t vertex_count = 0;  // Count of vertices processed.
@@ -248,50 +248,50 @@ void Subgraph<k>::contract()
 }
 
 
-template <uint16_t k>
-std::size_t Subgraph<k>::size() const
+template <uint16_t k, bool Colored_>
+std::size_t Subgraph<k, Colored_>::size() const
 {
     return M.size();
 }
 
 
-template <uint16_t k>
-uint64_t Subgraph<k>::edge_count() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::edge_count() const
 {
     return edge_c;
 }
 
 
-template <uint16_t k>
-uint64_t Subgraph<k>::discontinuity_edge_count() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::discontinuity_edge_count() const
 {
     return disc_edge_c;
 }
 
 
-template <uint16_t k>
-uint64_t Subgraph<k>::trivial_mtig_count() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::trivial_mtig_count() const
 {
     return trivial_mtig_c;
 }
 
 
-template <uint16_t k>
-uint64_t Subgraph<k>::icc_count() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::icc_count() const
 {
     return icc_count_;
 }
 
 
-template <uint16_t k>
-uint64_t Subgraph<k>::label_size() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::label_size() const
 {
     return label_sz;
 }
 
 
-template <uint16_t k>
-uint64_t Subgraph<k>::isolated_vertex_count() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::isolated_vertex_count() const
 {
     return isolated;
 }
@@ -317,4 +317,4 @@ for b in B:    // B: collection of buckets
 
 
 // Template instantiations for the required instances.
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Subgraph)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Subgraph)

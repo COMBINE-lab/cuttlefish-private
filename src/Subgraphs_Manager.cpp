@@ -47,7 +47,7 @@ void Subgraphs_Manager<k, Colored_>::finalize()
 template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::process()
 {
-    Subgraph<k>::init_maps();
+    Subgraph<k, Colored_>::init_maps();
 
     std::atomic_uint64_t solved = 0;
 
@@ -58,7 +58,7 @@ void Subgraphs_Manager<k, Colored_>::process()
     const auto process_subgraph =
         [&](const std::size_t graph_id)
         {
-            Subgraph<k> sub_dBG(path_pref, graph_id, G, op_buf[parlay::worker_id()].data());
+            Subgraph<k, false> sub_dBG(path_pref, graph_id, G, op_buf[parlay::worker_id()].data());
 
             const auto t_0 = timer::now();
             sub_dBG.construct();
@@ -83,7 +83,7 @@ void Subgraphs_Manager<k, Colored_>::process()
     parlay::parallel_for(0, graph_count, process_subgraph, 1);
     std::cerr << "\n";
 
-    Subgraph<k>::free_maps();
+    Subgraph<k, Colored_>::free_maps();
 
     const auto sum_time = [&](const std::vector<Padded_Data<double>>& T)
         { double t = 0; std::for_each(T.cbegin(), T.cend(), [&t](const auto& v){ t += v.data(); }); return t; };

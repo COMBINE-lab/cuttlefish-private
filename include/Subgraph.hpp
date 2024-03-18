@@ -34,12 +34,11 @@ namespace cuttlefish
 enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
 
 // =============================================================================
-// A subgraph of the de Bruijn graph, induced by a KMC bin.
-template <uint16_t k>
+// A subgraph of a de Bruijn graph of `k`-mers. `Colored_` denotes whether the
+// vertices have colors.
+template <uint16_t k, bool Colored_>
 class Subgraph
 {
-private:
-
     typedef Walk_Termination termination_t;
 
     const std::string graph_bin_dir_path;   // Path to the directory with all the graph KMC-bins.
@@ -150,8 +149,8 @@ enum class Walk_Termination
 };
 
 
-template <uint16_t k>
-inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Unitig_Scratch<k>& maximal_unitig)
+template <uint16_t k, bool Colored_>
+inline bool Subgraph<k, Colored_>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Unitig_Scratch<k>& maximal_unitig)
 {
     constexpr auto back = side_t::back;
     constexpr auto front = side_t::front;
@@ -199,8 +198,8 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
 }
 
 
-template <uint16_t k>
-inline typename Subgraph<k>::termination_t Subgraph<k>::walk_unitig(const Kmer<k>& v_hat, const side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v)
+template <uint16_t k, bool Colored_>
+inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk_unitig(const Kmer<k>& v_hat, const side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v)
 {
     const auto s_icc_return = inv_side(s_v_hat);    // The side through which to return to `v_hat` if it's contained in an ICC.
     Directed_Vertex<k> v(s_v_hat == side_t::back ? v_hat : v_hat.reverse_complement()); // Current vertex being added to the unitig.
