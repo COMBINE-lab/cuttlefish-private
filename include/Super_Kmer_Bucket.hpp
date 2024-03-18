@@ -25,6 +25,8 @@ namespace cuttlefish
 template <bool Colored_>
 class Super_Kmer_Bucket
 {
+    class Iterator;
+    friend class Iterator;
 
 private:
 
@@ -36,8 +38,8 @@ private:
     typedef Super_Kmer_Chunk<Colored_> chunk_t;
     static constexpr std::size_t chunk_bytes = 4 * 1024;    // 4 KB chunk capacity.
     const std::size_t chunk_cap;    // Capacity (in number of super k-mers) of the chunk of the bucket.
-    chunk_t chunk;  // Super k-mer chunk for the bucket.
-    std::vector<Padded_Data<chunk_t>> chunk_w;  // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
+    mutable chunk_t chunk;  // Super k-mer chunk for the bucket.
+    mutable std::vector<Padded_Data<chunk_t>> chunk_w;  // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
 
     mutable Spin_Lock lock; // Lock to the chunk and the external-memory bucket.
 
@@ -67,6 +69,49 @@ public:
 
     // Closes the bucket—no more content should be added afterwards.
     void close();
+
+    // Returns an iterator over the super k-mers in the bucket. The bucket
+    // should be closed before iteration.
+    Iterator iterator() const;
+};
+
+
+// Iterator over super k-mer buckets.
+template <bool Colored_>
+class Super_Kmer_Bucket<Colored_>::Iterator
+{
+    friend class Super_Kmer_Bucket<Colored_>;
+
+    typedef typename Super_Kmer_Chunk<Colored_>::attribute_t attribute_t;
+    typedef typename Super_Kmer_Chunk<Colored_>::label_unit_t label_unit_t;
+
+private:
+
+    const Super_Kmer_Bucket<Colored_>& B;   // Bucket to iterate over.
+    std::ifstream input;    // Input stream from the external-memory bucket.
+
+    std::size_t idx;    // Current slot-index the iterator is in, i.e. next super k-mer to access.
+    std::size_t chunk_start_idx;    // Index into the bucket where the current in-memory chunk starts.
+    std::size_t chunk_end_idx;  // Non-inclusive index into the bucket where the current in-memory chunk ends.
+
+
+    // Constructs an iterator for the super k-mer bucket `B`.
+    Iterator(const Super_Kmer_Bucket& B);
+
+    // Reads in the next super k-mer chunk from the bucket and returns the
+    // number of super k-mers read.
+    std::size_t read_chunk();
+
+
+public:
+
+    // Return the number of 64-bit words in super k-mer encodings.
+    auto super_kmer_word_count() const { return B.chunk.super_kmer_word_count(); }
+
+    // Moves the iterator to the next super k-mer in the bucket. Iff the bucket
+    // is not depleted, the associated super k-mer's attribute and label-
+    // encoding are put in `att` and `label` respectively, and returns `true`.
+    bool next(attribute_t& att, label_unit_t* label);
 };
 
 
@@ -108,6 +153,28 @@ inline void Super_Kmer_Bucket<Colored_>::empty_w_local_chunk(const std::size_t w
     lock.unlock();
 
     c_w.clear();
+}
+
+
+template <bool Colored_>
+inline bool Super_Kmer_Bucket<Colored_>::Iterator::next(attribute_t& att, label_unit_t* label)
+{
+    assert(idx <= B.size());
+
+    if(idx == B.size())
+        return false;
+
+    if(idx == chunk_end_idx)
+    {
+        chunk_start_idx = chunk_end_idx;
+        chunk_end_idx += read_chunk();
+    }
+
+    assert(idx >= chunk_start_idx && idx < chunk_end_idx);
+    B.chunk.get_super_kmer(idx - chunk_start_idx, att, label);
+    idx++;
+
+    return true;
 }
 
 }

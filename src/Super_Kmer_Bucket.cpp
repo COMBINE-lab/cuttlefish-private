@@ -50,6 +50,35 @@ void Super_Kmer_Bucket<Colored_>::close()
     output.close();
 }
 
+
+template <bool Colored_>
+typename Super_Kmer_Bucket<Colored_>::Iterator Super_Kmer_Bucket<Colored_>::iterator() const
+{
+    assert(chunk.empty());
+    return Iterator(*this);
+}
+
+
+template <bool Colored_>
+Super_Kmer_Bucket<Colored_>::Iterator::Iterator(const Super_Kmer_Bucket& B):
+      B(B)
+    , input(B.path_, std::ios::in | std::ios::binary)
+    , idx(0)
+    , chunk_start_idx(0)
+    , chunk_end_idx(0)
+{}
+
+
+template <bool Colored_>
+std::size_t Super_Kmer_Bucket<Colored_>::Iterator::read_chunk()
+{
+    assert(chunk_end_idx <= B.size());
+    const auto super_kmers_to_read = std::min(B.size() - chunk_end_idx, B.chunk.capacity());
+    B.chunk.deserialize(input, super_kmers_to_read);
+
+    return super_kmers_to_read;
+}
+
 }
 
 

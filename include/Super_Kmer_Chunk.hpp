@@ -24,11 +24,14 @@ template <bool Colored_>
 class Super_Kmer_Chunk
 {
 
-private:
+public:
 
     typedef Super_Kmer_Attributes<Colored_> attribute_t;
-    typedef std::vector<attribute_t> attribute_buf_t;
     typedef uint64_t label_unit_t;
+
+private:
+
+    typedef std::vector<attribute_t> attribute_buf_t;
     typedef std::vector<label_unit_t> label_buf_t;
 
     const std::size_t max_sup_kmer_len; // Maximum length of the (weak) super k-mers.
@@ -50,6 +53,9 @@ public:
     Super_Kmer_Chunk(const Super_Kmer_Chunk&) = delete;
 
     Super_Kmer_Chunk(Super_Kmer_Chunk&&) = default;
+
+    // Returns the number of 64-bit words in super k-mer encodings.
+    auto super_kmer_word_count() const { return sup_kmer_word_c; }
 
     // Returns the number of super k-mers in the chunk.
     auto size() const { return size_; }
@@ -92,6 +98,10 @@ public:
 
     // Appends the chunk `c` to the end of this chunk.
     void append(const Super_Kmer_Chunk& c);
+
+    // Gets the `idx`'th super k-mer's (in the chunk) attributes to `att` and
+    // label to `label`.
+    void get_super_kmer(std::size_t idx, attribute_t& att, label_unit_t*& label);
 };
 
 
@@ -133,6 +143,16 @@ template <bool Colored_>
 inline void Super_Kmer_Chunk<Colored_>::append(const Super_Kmer_Chunk& c)
 {
     append(c, 0, c.size());
+}
+
+
+template <bool Colored_>
+inline void Super_Kmer_Chunk<Colored_>::get_super_kmer(std::size_t idx, attribute_t& att, label_unit_t*& label)
+{
+    assert(idx < size());
+
+    att = att_buf[idx];
+    label = label_buf.data() + idx * sup_kmer_word_c;
 }
 
 }
