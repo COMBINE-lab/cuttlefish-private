@@ -37,6 +37,14 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
 
 
 template <uint16_t k, bool Colored_>
+void Subgraphs_Manager<k, Colored_>::finalize()
+{
+    const auto close_bucket = [&B = subgraph_bucket](const std::size_t g_id) { B[g_id].data().close(); };
+    parlay::parallel_for(0, graph_count, close_bucket, 1);
+}
+
+
+template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::process()
 {
     Subgraph<k>::init_maps();

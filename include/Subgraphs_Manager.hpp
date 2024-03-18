@@ -73,6 +73,10 @@ public:
     // discontinuous or not.
     void add_super_kmer(minimizer_t min, const char* seq, std::size_t len, bool l_disc, bool r_disc);
 
+    // Finalizes the subgraphs for iteration—no more content should be added
+    // after this.
+    void finalize();
+
     // Constructs and contracts each subgraph.
     void process();
 
