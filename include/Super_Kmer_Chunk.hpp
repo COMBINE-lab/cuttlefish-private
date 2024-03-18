@@ -18,7 +18,7 @@ namespace cuttlefish
 {
 
 // =============================================================================
-// A chunk of super k-mers: their attributes and labels. `Colored_` denotes
+// A chunk of weak super k-mers: their attributes and labels. `Colored_` denotes
 // whether each super k-mer has an associated source ID.
 template <bool Colored_>
 class Super_Kmer_Chunk

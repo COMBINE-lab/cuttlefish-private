@@ -11,7 +11,7 @@ namespace cuttlefish
 
 template <bool Colored_>
 Super_Kmer_Chunk<Colored_>::Super_Kmer_Chunk(const uint16_t k, const uint16_t l, const std::size_t cap):
-      max_sup_kmer_len(2 * k - l + 2)
+      max_sup_kmer_len(2 * (k - 1) - l + 2)
     , sup_kmer_word_c((max_sup_kmer_len + 31) / 32)
     , cap_(cap)
     , size_(0)
@@ -27,7 +27,7 @@ Super_Kmer_Chunk<Colored_>::Super_Kmer_Chunk(const uint16_t k, const uint16_t l,
 template <bool Colored_>
 std::size_t Super_Kmer_Chunk<Colored_>::record_size(const uint16_t k, const uint16_t l)
 {
-    return sizeof(attribute_t) + (((2* k - l + 2) + 31) / 32) * sizeof(label_unit_t);
+    return sizeof(attribute_t) + (((2 * (k - 1) - l + 2) + 31) / 32) * sizeof(label_unit_t);
 }
 
 
