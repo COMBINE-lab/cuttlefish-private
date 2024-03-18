@@ -31,6 +31,8 @@ private:
     const std::string path_;    // Path to the external-memory bucket.
     std::ofstream output;   // Output stream to the external-memory bucket.
 
+    uint64_t size_; // Number of super k-mers in the bucket. It's not necessarily correct before closing the bucket.
+
     typedef Super_Kmer_Chunk<Colored_> chunk_t;
     static constexpr std::size_t chunk_bytes = 4 * 1024;    // 4 KB chunk capacity.
     const std::size_t chunk_cap;    // Capacity (in number of super k-mers) of the chunk of the bucket.
@@ -53,6 +55,10 @@ public:
     Super_Kmer_Bucket(const Super_Kmer_Bucket&) = delete;
 
     Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs);
+
+    // Returns the number of super k-mers in the bucket. It's not necessarily
+    // correct before closing the bucket.
+    auto size() const { return size_; }
 
     // Adds a super k-mer to the bucket with label `seq` and length `len`. The
     // markers `l_disc` and `r_disc` denote whether the left and the right ends
@@ -96,6 +102,8 @@ inline void Super_Kmer_Bucket<Colored_>::empty_w_local_chunk(const std::size_t w
             assert(chunk.capacity() >= c_w.size() - break_idx),
             chunk.append(c_w, break_idx, c_w.size());
     }
+
+    size_ += c_w.size();
 
     lock.unlock();
 

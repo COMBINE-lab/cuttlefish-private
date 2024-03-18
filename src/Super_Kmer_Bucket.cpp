@@ -12,6 +12,7 @@ template <bool Colored_>
 Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t l, const std::string& path):
       path_(path)
     , output(path_, std::ios::out | std::ios::binary)
+    , size_(0)
     , chunk_cap(chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l))
     , chunk(k, l, chunk_cap)
 {
