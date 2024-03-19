@@ -111,7 +111,7 @@ public:
     // Moves the iterator to the next super k-mer in the bucket. Iff the bucket
     // is not depleted, the associated super k-mer's attribute and label-
     // encoding are put in `att` and `label` respectively, and returns `true`.
-    bool next(attribute_t& att, label_unit_t* label);
+    bool next(attribute_t& att, label_unit_t*& label);
 };
 
 
@@ -157,7 +157,7 @@ inline void Super_Kmer_Bucket<Colored_>::empty_w_local_chunk(const std::size_t w
 
 
 template <bool Colored_>
-inline bool Super_Kmer_Bucket<Colored_>::Iterator::next(attribute_t& att, label_unit_t* label)
+inline bool Super_Kmer_Bucket<Colored_>::Iterator::next(attribute_t& att, label_unit_t*& label)
 {
     assert(idx <= B.size());
 
