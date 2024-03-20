@@ -108,9 +108,10 @@ public:
     // Gets the k-mer from its KMC raw-binary representation.
     void from_KMC_data(const uint64_t* kmc_data);
 
-    // Gets the first k-mer from a KMC super k-mer's binary representation
-    // `super_kmer` that has `word_count` words.
-    void from_KMC_super_kmer(const uint64_t* super_kmer, std::size_t word_count);
+    // Gets the first k-mer from a super k-mer's binary representation
+    // `super_kmer` that has `word_count` words. The super k-mer is assumed to
+    // be MSB-aligned.
+    void from_super_kmer(const uint64_t* super_kmer, std::size_t word_count);
 
     // Gets the k-mer that is a prefix of the provided
     // (k + 1)-mer `k_plus_1_mer`.
@@ -418,15 +419,15 @@ inline void Kmer<k>::from_KMC_data(const uint64_t* const kmc_data)
 
 template <uint16_t k>
 __attribute__((optimize("unroll-loops")))
-inline void Kmer<k>::from_KMC_super_kmer(const uint64_t* const super_kmer, const std::size_t word_count)
+inline void Kmer<k>::from_super_kmer(const uint64_t* const super_kmer, const std::size_t word_count)
 {
     constexpr uint16_t t = 32 - (k & 31);   // Trailing (little-endian) empty characters in KMC representation.
 
-    auto const kmc_data = super_kmer + (word_count - NUM_INTS);
+    const auto word_off = word_count - NUM_INTS;    // Word offset of the first k-mer in the super k-mer encoding.
     for(std::size_t i = 0; i < NUM_INTS - 1; ++i)
-        kmer_data[i] = (kmc_data[i] >> (2 * t)) | (kmc_data[i + 1] << (2 * (32 - t)));
+        kmer_data[i] = (super_kmer[word_off + i] >> (2 * t)) | (super_kmer[word_off + (i + 1)] << (2 * (32 - t)));
 
-    kmer_data[NUM_INTS - 1] = kmc_data[NUM_INTS - 1] >> (2 * t);
+    kmer_data[NUM_INTS - 1] = super_kmer[word_off + NUM_INTS - 1] >> (2 * t);
 }
 
 

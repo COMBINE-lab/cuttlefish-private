@@ -69,9 +69,10 @@ public:
     // and uses the hash table `hash` to get the hash value of the vertex.
     void from_suffix(const Kmer<k + 1>& e, const Kmer_Hash_Table<k, cuttlefish::BITS_PER_READ_KMER>& hash);
 
-    // Configures the vertex with the first k-mer from a KMC super k-mer's
-    // binary representation `super_kmer` that has `word_count` words.
-    void from_KMC_super_kmer(const uint64_t* super_kmer, std::size_t word_count);
+    // Configures the vertex with the first k-mer from a super k-mer's binary
+    // representation `super_kmer` that has `word_count` words. The super k-mer
+    // is assumed to be MSB-aligned.
+    void from_super_kmer(const uint64_t* super_kmer, std::size_t word_count);
 
     // Returns the observed k-mer for the vertex.
     const Kmer<k>& kmer() const;
@@ -214,9 +215,9 @@ inline void Directed_Vertex<k>::from_suffix(const Kmer<k + 1>& e, const Kmer_Has
 
 
 template <uint16_t k>
-inline void Directed_Vertex<k>::from_KMC_super_kmer(const uint64_t* const super_kmer, const std::size_t word_count)
+inline void Directed_Vertex<k>::from_super_kmer(const uint64_t* const super_kmer, const std::size_t word_count)
 {
-    kmer_.from_KMC_super_kmer(super_kmer, word_count);
+    kmer_.from_super_kmer(super_kmer, word_count);
     init();
 }
 

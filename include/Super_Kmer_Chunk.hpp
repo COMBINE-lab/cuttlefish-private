@@ -108,6 +108,7 @@ public:
 template <bool Colored_>
 inline void Super_Kmer_Chunk<Colored_>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
 {
+    assert(len / 32 < sup_kmer_word_c);
     assert(size() < cap_);
 
     att_buf[size()] = Super_Kmer_Attributes<Colored_>(len, l_disc, r_disc);
@@ -116,7 +117,7 @@ inline void Super_Kmer_Chunk<Colored_>::add(const char* const seq, const std::si
     int64_t word_idx = sup_kmer_word_c - 1; // Index of the current word being encoded from the label; the encoding is MSB-boundary aligned for now.
     for(std::size_t b_idx = 0; b_idx < len; b_idx += 32)
     {
-        label_buf[label_off + word_idx] = Kmer_Utility::encode<32>(seq + b_idx);
+        label_buf[label_off + word_idx] = Kmer_Utility::encode_checked<32>(seq + b_idx);
         word_idx--;
     }
 

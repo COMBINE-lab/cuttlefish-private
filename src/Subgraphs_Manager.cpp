@@ -58,7 +58,7 @@ void Subgraphs_Manager<k, Colored_>::process()
     const auto process_subgraph =
         [&](const std::size_t graph_id)
         {
-            Subgraph<k, false> sub_dBG(path_pref, graph_id, G, op_buf[parlay::worker_id()].data());
+            Subgraph<k, false> sub_dBG(subgraph_bucket[graph_id].data(), G, op_buf[parlay::worker_id()].data());
 
             const auto t_0 = timer::now();
             sub_dBG.construct();

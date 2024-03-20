@@ -110,6 +110,13 @@ public:
         return MAPPED_BASE[uint8_t(base)];
     }
 
+    // Returns the mapping integer value of the given character `base`.
+    // Placeholder bases are not checked for, and returns some valid integer.
+    static DNA::Base map_base_unchecked(const char base)
+    {
+        return DNA::Base(((base >> 2) ^ (base >> 1)) & 0b11);
+    }
+
     // Returns the mapping integer value of the complement of `base`.
     static DNA::Base complement(const DNA::Base base)
     {

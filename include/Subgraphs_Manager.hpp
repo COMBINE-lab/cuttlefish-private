@@ -93,6 +93,8 @@ public:
 template <uint16_t k, bool Colored_>
 inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const minimizer_t min, const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
 {
+    assert(len >= k);
+
     const auto g_id = subgraph_ID(min);
     auto& bucket = subgraph_bucket[g_id].data();
     bucket.add(seq, len, l_disc, r_disc);

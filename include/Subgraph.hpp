@@ -31,6 +31,8 @@
 namespace cuttlefish
 {
 
+template <bool Colored_> class Super_Kmer_Bucket;
+
 enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
 
 // =============================================================================
@@ -41,8 +43,9 @@ class Subgraph
 {
     typedef Walk_Termination termination_t;
 
-    const std::string graph_bin_dir_path;   // Path to the directory with all the graph KMC-bins.
-    const std::size_t bin_id; // ID of the graph KMC-bin.
+private:
+
+    const Super_Kmer_Bucket<Colored_>& B;   // The weak super k-mer bucket inducing this subgraph.
 
     // typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
     typedef emhash7::HashMap<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
@@ -85,11 +88,11 @@ class Subgraph
 
 public:
 
-    // Constructs a subgraph object for the `bin_id`'th bin in the graph bin
-    // directory `bin_dir_path`. Updates the discontinuity graph `G` with its
-    // edges observed from this subgraph and writes the trivially maximal
+    // Constructs a subgraph object where the subgraph is induced by the weak
+    // super k-mers in the bucket `B`. Updates the discontinuity graph `G` with
+    // its edges observed from this subgraph and writes the trivially maximal
     // unitigs to `op_buf`.
-    Subgraph(const std::string& bin_dir_path, std::size_t bin_id, Discontinuity_Graph<k>& d_graph, op_buf_t& op_buf);
+    Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& d_graph, op_buf_t& op_buf);
 
     Subgraph(const Subgraph&) = delete;
     Subgraph(Subgraph&&) = delete;
@@ -100,13 +103,13 @@ public:
     // Free the map collection from memory of different workers.
     static void free_maps();
 
-    // Constructs the subgraph from the KMC bin into an internal navigable and
-    // membership data structure.
+    // Constructs the subgraph from the provided weak super k-mer bucket into
+    // an internal navigable and membership data structure.
     void construct();
 
-    // Constructs the subgraph from the KMC bin into an internal navigable and
-    // membership data structure. Addresses "exact" loop-filtering opposed to
-    // `construct`.
+    // Constructs the subgraph from the provided weak super k-mer bucket into
+    // an internal navigable and membership data structure. Addresses "exact"
+    // loop-filtering opposed to `construct`.
     void construct_loop_filtered();
 
     // Builds the compacted graph from the original graph.

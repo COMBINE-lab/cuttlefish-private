@@ -65,9 +65,17 @@ public:
         return REVERSE_COMPLEMENT_BYTE[byte];
     }
 
-    // Returns the binary encoding word of the literal k-mer `label`.
+    // Returns the binary encoding word of the literal k-mer `label`. If
+    // `label` contains placeholder bases, they can affect the encoding of the
+    // valid bases.
     template <uint16_t k>
     static uint64_t encode(const char* label);
+
+    // Returns the binary encoding word of the literal k-mer `label`. If
+    // `label` contains placeholder bases, they do not affect the encoding of
+    // the valid bases.
+    template <uint16_t k>
+    static uint64_t encode_checked(const char* label);
 
     // Returns the base-reversed representation of the `B`-base (DNA) binary
     // representation of `val`: if `val` represents `b_{B - 1} ... b_1 b_0`,
@@ -86,6 +94,18 @@ inline uint64_t Kmer_Utility::encode(const char* const label)
         return (static_cast<uint64_t>(DNA_Utility::map_base(*label)) << (2 * (k - 1))) | encode<k - 1>(label + 1);
 
     return static_cast<uint64_t>(DNA_Utility::map_base(*label));
+}
+
+
+template <uint16_t k>
+inline uint64_t Kmer_Utility::encode_checked(const char* const label)
+{
+    static_assert(0 < k && k <= 32, "invalid k-mer label length for machine word encoding");
+
+    if constexpr(k > 1)
+        return (static_cast<uint64_t>(DNA_Utility::map_base_unchecked(*label)) << (2 * (k - 1))) | encode_checked<k - 1>(label + 1);
+
+    return DNA_Utility::map_base_unchecked(*label);
 }
 
 

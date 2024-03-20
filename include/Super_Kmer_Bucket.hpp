@@ -7,6 +7,7 @@
 #include "Super_Kmer_Chunk.hpp"
 #include "Spin_Lock.hpp"
 #include "utility.hpp"
+#include "globals.hpp"
 #include "parlay/parallel.h"
 
 #include <cstddef>
@@ -82,9 +83,6 @@ class Super_Kmer_Bucket<Colored_>::Iterator
 {
     friend class Super_Kmer_Bucket<Colored_>;
 
-    typedef typename Super_Kmer_Chunk<Colored_>::attribute_t attribute_t;
-    typedef typename Super_Kmer_Chunk<Colored_>::label_unit_t label_unit_t;
-
 private:
 
     const Super_Kmer_Bucket<Colored_>& B;   // Bucket to iterate over.
@@ -105,6 +103,9 @@ private:
 
 public:
 
+    typedef typename Super_Kmer_Chunk<Colored_>::attribute_t attribute_t;
+    typedef typename Super_Kmer_Chunk<Colored_>::label_unit_t label_unit_t;
+
     // Return the number of 64-bit words in super k-mer encodings.
     auto super_kmer_word_count() const { return B.chunk.super_kmer_word_count(); }
 
@@ -124,7 +125,7 @@ inline void Super_Kmer_Bucket<Colored_>::add(const char* const seq, const std::s
     assert(c_w.size() < c_w.capacity());
     c_w.add(seq, len, l_disc, r_disc);
 
-    if(c_w.size() == c_w.capacity())
+    if(c_w.full())
         empty_w_local_chunk(w_id);
 }
 
@@ -161,7 +162,7 @@ inline bool Super_Kmer_Bucket<Colored_>::Iterator::next(attribute_t& att, label_
 {
     assert(idx <= B.size());
 
-    if(idx == B.size())
+    if(CF_UNLIKELY(idx == B.size()))
         return false;
 
     if(idx == chunk_end_idx)
