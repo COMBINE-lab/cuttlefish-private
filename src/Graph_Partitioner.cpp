@@ -130,10 +130,12 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 }
 
 
-                minimizer_t prev_min;   // Minimizer of the previous super (k - 1)-mer in the iteration.
                 minimizer_t cur_min;    // Minimizer of the current super (k - 1)-mer in the iteration.
                 minimizer_t next_min;   // Minimizer of the next super (k - 1)-mer in the iteration.
-                std::size_t cur_min_off, next_min_off;  // Relative offsets of the minimizers in the fragment.
+                std::size_t prev_g; // Subgraph ID of the previous super (k - 1)-mer's minimizer.
+                std::size_t cur_g;  // Subgraph ID of the current super (k - 1)-mer's minimizer.
+                std::size_t next_g; // Subgraph ID of the next super (k - 1)-mer's minimizer.
+                std::size_t cur_min_off, next_min_off;  // Relative offsets of the minimizers in the fragment. Used for assertion checks.
                 std::size_t cur_sup_km1_mer_off = 0;    // Relative offset of the current super (k - 1)-mer in the fragment.
                 std::size_t prev_sup_km1_mer_len = 0;   // Length of the previous super (k- 1)-mer. Used for assertion checks.
                 std::size_t km1_mer_idx = 0;    // Index of the current (k - 1)-mer in the current super (k - 1)-mer.
@@ -141,6 +143,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
 
                 min_it.reset(frag, seq_len - frag_beg); // The fragment length is an estimate; upper-bound to be exact.
                 min_it.value_at(cur_min, cur_min_off);
+                cur_g = subgraphs.graph_ID(cur_min);
 
                 while(DNA_Utility::is_DNA_base(frag[frag_len]))
                 {
@@ -149,6 +152,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                     const auto len = km1_mer_idx + (k - 2); // Length of the current super (k - 1)-mer.
 
                     min_it.value_at(next_min, next_min_off);
+                    next_g = subgraphs.graph_ID(next_min);
                     assert(next_min_off >= cur_sup_km1_mer_off + km1_mer_idx);
 
                     if(next_min_off != cur_min_off)
@@ -157,45 +161,48 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                                 next_min_off == cur_sup_km1_mer_off + km1_mer_idx + (k - 1) - l_);
 
                     // Either encountered a discontinuity vertex—the k-mer whose suffix is the current (k - 1)-mer, or the super (k - 1)-mer extends too long.
-                    if(next_min != cur_min || len == sup_km1_mer_len_th)
+                    if(next_g != cur_g || len == sup_km1_mer_len_th)
                     {
-                        if(next_min != cur_min)
-                            // The `(k - 1)`-mers of this discontinuity k-mer have different minimizers.
-                            assert(is_discontinuity(frag + cur_sup_km1_mer_off + km1_mer_idx - 1, l_));
+                        if(next_g != cur_g)
+                            // The `(k - 1)`-mers of this discontinuity k-mer have minimizers mapping to different subgraphs.
+                            assert(is_discontinuity(frag + cur_sup_km1_mer_off + km1_mer_idx - 1));
 
                         const auto next_sup_km1_mer_off = cur_sup_km1_mer_off + km1_mer_idx;
                         assert(next_sup_km1_mer_off == frag_len - (k - 1));
                         sup_km1_mers_len += len;
                         sup_km1_mer_count++;
 
-                        const bool l_disc = (cur_sup_km1_mer_off > 0 && prev_min != cur_min);
-                        const bool r_disc = (next_min != cur_min);
+                        const bool l_disc = (cur_sup_km1_mer_off > 0 && prev_g != cur_g);
+                        const bool r_disc = (next_g != cur_g);
                         const auto len_weak = l_disc + len + r_disc;
                         assert(len_weak >= k);
                         subgraphs.add_super_kmer(cur_min, frag + cur_sup_km1_mer_off - l_disc, len_weak, l_disc, r_disc);
                         weak_sup_kmers_len += len_weak;
 
                         cur_sup_km1_mer_off = next_sup_km1_mer_off;
-                        prev_min = cur_min, prev_sup_km1_mer_len = len;
-                        cur_min = next_min, cur_min_off = next_min_off;
+                        prev_g = cur_g, prev_sup_km1_mer_len = len;
+                        cur_g = next_g;
                         km1_mer_idx = 0;
                     }
-                    else if(next_min == cur_min)
-                        cur_min_off = next_min_off; // The minimizer-instance offsets are tracked only for assertion checks.
+
+                    if(next_min != cur_min)
+                        cur_min = next_min;
+
+                    cur_min_off = next_min_off; // The minimizer-instance offsets are tracked only for assertion checks.
                 }
 
                 const auto len = frag_len - cur_sup_km1_mer_off;
                 sup_km1_mers_len += len;
                 sup_km1_mer_count++;
 
-                const bool l_disc = (cur_sup_km1_mer_off > 0 && prev_min != cur_min);
+                const bool l_disc = (cur_sup_km1_mer_off > 0 && prev_g != cur_g);
                 const bool r_disc = false;
                 const auto len_weak = l_disc + len + r_disc;
                 if(len_weak >= k)
                     subgraphs.add_super_kmer(cur_min, frag + cur_sup_km1_mer_off - l_disc, len_weak, l_disc, r_disc),
                     weak_sup_kmers_len += len_weak;
                 else    // This is a hanging super (k - 1)-mer of length `k - 1` at the end, formed due to the preceding one reaching length threshold.
-                    assert(prev_min == cur_min),
+                    assert(prev_g == cur_g),
                     assert(prev_sup_km1_mer_len == sup_km1_mer_len_th);
 
                 last_frag_end = frag_beg + frag_len;
@@ -217,15 +224,15 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
 
 
 template <uint16_t k, bool Colored_>
-bool Graph_Partitioner<k, Colored_>::is_discontinuity(const char* const seq, const uint16_t l)
+bool Graph_Partitioner<k, Colored_>::is_discontinuity(const char* const seq) const
 {
     minimizer_t min_l, min_r;
     std::size_t idx_l, idx_r;
 
-    min_it_t::minimizer(seq, k - 1, l, min_seed, min_l, idx_l);
-    min_it_t::minimizer(seq + 1, k - 1, l, min_seed, min_r, idx_r);
+    min_it_t::minimizer(seq, k - 1, l_, min_seed, min_l, idx_l);
+    min_it_t::minimizer(seq + 1, k - 1, l_, min_seed, min_r, idx_r);
 
-    if(min_l == min_r)
+    if(subgraphs.graph_ID(min_l) == subgraphs.graph_ID(min_r))
         return false;
 
     assert(idx_l != 1 + idx_r);

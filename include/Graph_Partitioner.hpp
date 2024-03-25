@@ -63,9 +63,8 @@ private:
     // processed chunks to the memory pool `chunk_pool`.
     void process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool);
 
-    // Returns `true` iff the k-mer at `seq` is a discontinuity vertex wrt
-    // `l`-minimizers.
-    static bool is_discontinuity(const char* seq, uint16_t l);
+    // Returns `true` iff the k-mer at `seq` is a discontinuity vertex.
+    bool is_discontinuity(const char* seq) const;
 
 public:
 

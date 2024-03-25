@@ -53,10 +53,6 @@ private:
     op_buf_list_t& op_buf; // Worker-specific output buffers.
 
 
-    // Returns the subgraph ID for the minimizer `min`.
-    uint64_t subgraph_ID(minimizer_t min) const { return min & (graph_count - 1); }
-
-
 public:
 
     // Constructs a manager for the subgraphs of a de Bruijn graph which is
@@ -87,6 +83,9 @@ public:
     // Returns the number of trivial maximal unitigs in the subgraphs that are
     // ICCs.
     uint64_t icc_count() const;
+
+    // Returns the subgraph ID for the minimizer `min`.
+    uint64_t graph_ID(minimizer_t min) const { return min & (graph_count - 1); }
 };
 
 
@@ -95,7 +94,7 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const minimizer_t min
 {
     assert(len >= k);
 
-    const auto g_id = subgraph_ID(min);
+    const auto g_id = graph_ID(min);
     auto& bucket = subgraph_bucket[g_id].data();
     bucket.add(seq, len, l_disc, r_disc);
 }
