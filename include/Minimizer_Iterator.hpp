@@ -79,9 +79,10 @@ public:
     // sequence is maintained internally.
     void value_at(minimizer_t& minimizer, std::size_t& index) const;
 
-    // Returns the index of the `l`-minimizer of the `k`-length sequence
-    // `kmer`. The seed value `seed` is used in hashing the `l`-mers.
-    static std::size_t minimizer_idx(T_seq_ kmer, uint16_t k, uint16_t l, uint64_t seed);
+    // Computes the `l`-minimizer of the `k`-length sequence `kmer` at `min`
+    // and index in `kmer` ar `idx`. The seed value `seed` is used in hashing
+    // the `l`-mers.
+    static void minimizer(T_seq_ kmer, uint16_t k, uint16_t l, uint64_t seed, minimizer_t& min, std::size_t& idx);
 };
 
 
@@ -205,14 +206,9 @@ inline void Minimizer_Iterator<T_seq_, is_canonical_>::value_at(cuttlefish::mini
 
 
 template <typename T_seq_, bool is_canonical_>
-inline std::size_t Minimizer_Iterator<T_seq_, is_canonical_>::minimizer_idx(T_seq_ kmer, uint16_t k, uint16_t l, uint64_t seed)
+inline void Minimizer_Iterator<T_seq_, is_canonical_>::minimizer(T_seq_ kmer, uint16_t k, uint16_t l, uint64_t seed, minimizer_t& min, std::size_t& idx)
 {
-    minimizer_t min;
-    std::size_t idx;
-    Minimizer_Iterator<T_seq_, is_canonical_> it(kmer, k, k, l, seed);
-
-    it.value_at(min, idx);
-    return idx;
+    Minimizer_Iterator(kmer, k, k, l, seed).value_at(min, idx);
 }
 
 

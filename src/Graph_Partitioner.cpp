@@ -1,7 +1,6 @@
 
 #include "Graph_Partitioner.hpp"
 #include "Subgraphs_Manager.hpp"
-#include "Minimizer_Iterator.hpp"
 #include "DNA_Utility.hpp"
 #include "globals.hpp"
 #include "RabbitFX/io/FastxStream.h"
@@ -22,6 +21,7 @@ Graph_Partitioner<k, Colored_>::Graph_Partitioner(Subgraphs_Manager<k, Colored_>
       subgraphs(subgraphs)
     , seqs(logistics.input_paths_collection())
     , l_(l)
+    , sup_km1_mer_len_th(2 * (k - 1) - l_)
     , subgraphs_path_pref(logistics.subgraphs_path())
     , chunk_count_(0)
     , record_count_(0)
@@ -91,7 +91,6 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     std::size_t sup_km1_mers_len = 0;   // Total length of the super (k - 1)-mers, in bases.
     std::size_t weak_sup_kmers_len = 0; // Total length of the (weak) super k-mers, in bases.
 
-    typedef Minimizer_Iterator<const char*, true> min_it_t;
     min_it_t min_it(k - 1, l_, min_seed);   // `l`-minimizer iterator for `(k - 1)`-mers.
     while(chunk_q.Pop(source_id, chunk))
     {
@@ -131,58 +130,73 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 }
 
 
-                minimizer_t last_min;   // Last minimizer found in the iteration.
-                minimizer_t min;    // Current minimizer in the iteration.
-                std::size_t last_min_off, min_off;  // Relative offset of the minimizers in the fragment.
+                minimizer_t prev_min;   // Minimizer of the previous super (k - 1)-mer in the iteration.
+                minimizer_t cur_min;    // Minimizer of the current super (k - 1)-mer in the iteration.
+                minimizer_t next_min;   // Minimizer of the next super (k - 1)-mer in the iteration.
+                std::size_t cur_min_off, next_min_off;  // Relative offsets of the minimizers in the fragment.
                 std::size_t cur_sup_km1_mer_off = 0;    // Relative offset of the current super (k - 1)-mer in the fragment.
+                std::size_t prev_sup_km1_mer_len = 0;   // Length of the previous super (k- 1)-mer. Used for assertion checks.
                 std::size_t km1_mer_idx = 0;    // Index of the current (k - 1)-mer in the current super (k - 1)-mer.
                 frag_len = k - 1;
 
                 min_it.reset(frag, seq_len - frag_beg); // The fragment length is an estimate; upper-bound to be exact.
-                min_it.value_at(min, min_off);
-                last_min = min, last_min_off = min_off;
+                min_it.value_at(cur_min, cur_min_off);
 
                 while(DNA_Utility::is_DNA_base(frag[frag_len]))
                 {
                     min_it.advance(frag[frag_len]);
                     km1_mer_idx++, frag_len++;
+                    const auto len = km1_mer_idx + (k - 2); // Length of the current super (k - 1)-mer.
 
-                    min_it.value_at(min, min_off);
-                    if(min_off != last_min_off) // Encountered a discontinuity vertex—the k-mer whose suffix is the current (k - 1)-mer.
-                    {
+                    min_it.value_at(next_min, next_min_off);
+                    assert(next_min_off >= cur_sup_km1_mer_off + km1_mer_idx);
+
+                    if(next_min_off != cur_min_off)
                         // Either the last minimizer just fell out of the (k - 1)-mer window or the new minimizer sits at the last l-mer.
-                        assert( last_min_off == cur_sup_km1_mer_off + km1_mer_idx - 1 ||
-                                min_off == cur_sup_km1_mer_off + km1_mer_idx + (k - 1) - l_);
+                        assert( cur_min_off == cur_sup_km1_mer_off + km1_mer_idx - 1 ||
+                                next_min_off == cur_sup_km1_mer_off + km1_mer_idx + (k - 1) - l_);
 
-                        // The `(k - 1)`-mers of this discontinuity k-mer have different minimizer instances.
-                        assert( min_it_t::minimizer_idx(frag + cur_sup_km1_mer_off + km1_mer_idx - 1, k - 1, l_, min_seed) !=
-                                1 + min_it_t::minimizer_idx(frag + cur_sup_km1_mer_off + km1_mer_idx, k - 1, l_, min_seed));
+                    // Either encountered a discontinuity vertex—the k-mer whose suffix is the current (k - 1)-mer, or the super (k - 1)-mer extends too long.
+                    if(next_min != cur_min || len == sup_km1_mer_len_th)
+                    {
+                        if(next_min != cur_min)
+                            // The `(k - 1)`-mers of this discontinuity k-mer have different minimizers.
+                            assert(is_discontinuity(frag + cur_sup_km1_mer_off + km1_mer_idx - 1, l_));
 
                         const auto next_sup_km1_mer_off = cur_sup_km1_mer_off + km1_mer_idx;
                         assert(next_sup_km1_mer_off == frag_len - (k - 1));
-                        const auto len = km1_mer_idx + (k - 2); // Length of the super (k - 1)-mer that just terminated.
                         sup_km1_mers_len += len;
                         sup_km1_mer_count++;
 
-                        const bool l_disc = (cur_sup_km1_mer_off > 0);
-                        const bool r_disc = true;
-                        subgraphs.add_super_kmer(last_min, frag + cur_sup_km1_mer_off - l_disc, l_disc + len + r_disc, l_disc, r_disc);
-                        weak_sup_kmers_len += l_disc + len + r_disc;
+                        const bool l_disc = (cur_sup_km1_mer_off > 0 && prev_min != cur_min);
+                        const bool r_disc = (next_min != cur_min);
+                        const auto len_weak = l_disc + len + r_disc;
+                        assert(len_weak >= k);
+                        subgraphs.add_super_kmer(cur_min, frag + cur_sup_km1_mer_off - l_disc, len_weak, l_disc, r_disc);
+                        weak_sup_kmers_len += len_weak;
 
                         cur_sup_km1_mer_off = next_sup_km1_mer_off;
-                        last_min = min, last_min_off = min_off;
+                        prev_min = cur_min, prev_sup_km1_mer_len = len;
+                        cur_min = next_min, cur_min_off = next_min_off;
                         km1_mer_idx = 0;
                     }
+                    else if(next_min == cur_min)
+                        cur_min_off = next_min_off; // The minimizer-instance offsets are tracked only for assertion checks.
                 }
 
                 const auto len = frag_len - cur_sup_km1_mer_off;
                 sup_km1_mers_len += len;
                 sup_km1_mer_count++;
 
-                const bool l_disc = (cur_sup_km1_mer_off > 0);
+                const bool l_disc = (cur_sup_km1_mer_off > 0 && prev_min != cur_min);
                 const bool r_disc = false;
-                subgraphs.add_super_kmer(last_min, frag + cur_sup_km1_mer_off - l_disc, l_disc + len + r_disc, l_disc, r_disc);
-                weak_sup_kmers_len += l_disc + len + r_disc;
+                const auto len_weak = l_disc + len + r_disc;
+                if(len_weak >= k)
+                    subgraphs.add_super_kmer(cur_min, frag + cur_sup_km1_mer_off - l_disc, len_weak, l_disc, r_disc),
+                    weak_sup_kmers_len += len_weak;
+                else    // This is a hanging super (k - 1)-mer of length `k - 1` at the end, formed due to the preceding one reaching length threshold.
+                    assert(prev_min == cur_min),
+                    assert(prev_sup_km1_mer_len == sup_km1_mer_len_th);
 
                 last_frag_end = frag_beg + frag_len;
             }
@@ -199,6 +213,23 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     weak_super_kmer_count_ += sup_km1_mer_count;
     weak_super_kmers_len_ += weak_sup_kmers_len;
     super_km1_mers_len_ += sup_km1_mers_len;
+}
+
+
+template <uint16_t k, bool Colored_>
+bool Graph_Partitioner<k, Colored_>::is_discontinuity(const char* const seq, const uint16_t l)
+{
+    minimizer_t min_l, min_r;
+    std::size_t idx_l, idx_r;
+
+    min_it_t::minimizer(seq, k - 1, l, min_seed, min_l, idx_l);
+    min_it_t::minimizer(seq + 1, k - 1, l, min_seed, min_r, idx_r);
+
+    if(min_l == min_r)
+        return false;
+
+    assert(idx_l != 1 + idx_r);
+    return true;
 }
 
 }

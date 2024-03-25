@@ -4,6 +4,7 @@
 
 
 
+#include "Minimizer_Iterator.hpp"
 #include "Data_Logistics.hpp"
 #include "RabbitFX/io/FastxChunk.h"
 #include "RabbitFX/io/DataQueue.h"
@@ -41,6 +42,7 @@ private:
 
     const uint16_t l_;  // Size of minimizers for the super k-mers.
     static constexpr uint64_t min_seed = 0; // Seed for `l`-minimizer hashing.
+    const std::size_t sup_km1_mer_len_th;   // Length threshold of super (k - 1)-mers.
 
     const std::string subgraphs_path_pref;  // Path prefix for the subgraphs' super k-mer buckets.
 
@@ -50,6 +52,8 @@ private:
     std::atomic_uint64_t weak_super_kmers_len_; // Total length of the weak super k-mers in the sequences.
     std::atomic_uint64_t super_km1_mers_len_;   // Total length of the super (k - 1)-mers in the sequences.
 
+    typedef Minimizer_Iterator<const char*, true> min_it_t; // Type of minimizer-iterator.
+
 
     // Parses the provided sequences into chunks from the memory pool
     // `chunk_pool` and puts the parsed chunks into the queue `chunk_q`.
@@ -58,6 +62,10 @@ private:
     // Processes the parsed chunks from the queue `chunk_q` and returns the
     // processed chunks to the memory pool `chunk_pool`.
     void process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool);
+
+    // Returns `true` iff the k-mer at `seq` is a discontinuity vertex wrt
+    // `l`-minimizers.
+    static bool is_discontinuity(const char* seq, uint16_t l);
 
 public:
 

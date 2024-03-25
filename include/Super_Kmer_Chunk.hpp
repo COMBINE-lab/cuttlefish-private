@@ -108,7 +108,7 @@ public:
 template <bool Colored_>
 inline void Super_Kmer_Chunk<Colored_>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
 {
-    assert(len / 32 < sup_kmer_word_c);
+    assert(len <= max_sup_kmer_len);
     assert(size() < cap_);
 
     att_buf[size()] = Super_Kmer_Attributes<Colored_>(len, l_disc, r_disc);
