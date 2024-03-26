@@ -57,17 +57,6 @@ void Subgraph<k, Colored_>::construct()
     typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
     const auto word_count = super_kmer_it.super_kmer_word_count();  // Fixed number of words in a super k-mer label.
 
-    // Returns the `idx`'th base in a super k-mer label encoding.
-    const auto get_base =
-        [word_count](const label_unit_t* const super_kmer, const std::size_t idx)
-        {
-            assert(idx / 32 < word_count);
-
-            const auto word_idx = idx >> 5;
-            const auto bit_idx  = (idx & 31) << 1;
-            return base_t((super_kmer[(word_count - 1) - word_idx] >> (62 - bit_idx)) & 0b11lu);
-        };
-
     Directed_Vertex<k> v;
 
     Super_Kmer_Attributes<Colored_> att;
@@ -85,8 +74,8 @@ void Subgraph<k, Colored_>::construct()
             assert(kmer_idx + k - 1 < len);
 
             const auto is_canonical = v.in_canonical_form();
-            const auto pred_base = (kmer_idx == 0 ? base_t::E : get_base(label, kmer_idx - 1));
-            const auto succ_base = (kmer_idx + k == len ? base_t::E : get_base(label, kmer_idx + k));
+            const auto pred_base = (kmer_idx == 0 ? base_t::E : get_base(label, word_count, kmer_idx - 1));
+            const auto succ_base = (kmer_idx + k == len ? base_t::E : get_base(label, word_count, kmer_idx + k));
             const auto front = (is_canonical ? pred_base : DNA_Utility::complement(succ_base));
             const auto back  = (is_canonical ? succ_base : DNA_Utility::complement(pred_base));
 
@@ -122,19 +111,7 @@ void Subgraph<k, Colored_>::construct_loop_filtered()
 {
     auto super_kmer_it = B.iterator();  // Iterator over the weak super k-mers inducing this graph.
 
-    typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
     const auto word_count = super_kmer_it.super_kmer_word_count();  // Fixed number of words in a super k-mer label.
-
-    // Returns the `idx`'th base in a super k-mer label encoding.
-    const auto get_base =
-        [word_count](const label_unit_t* const super_kmer, const std::size_t idx)
-        {
-            assert(idx / 32 < word_count);
-
-            const auto word_idx = idx >> 5;
-            const auto bit_idx  = (idx & 31) << 1;
-            return base_t((super_kmer[(word_count - 1) - word_idx] >> (62 - bit_idx)) & 0b11lu);
-        };
 
     Directed_Vertex<k> v_pre, v_suf;
 
@@ -151,23 +128,16 @@ void Subgraph<k, Colored_>::construct_loop_filtered()
 
         std::size_t edge_idx = 0;
         v_pre.from_super_kmer(label, word_count);
-        auto succ_base_pre = get_base(label, edge_idx + k);
+        auto succ_base_pre = get_base(label, word_count, edge_idx + k);
         v_suf = std::as_const(v_pre).roll_forward(succ_base_pre);
-        auto pred_base_suf = get_base(label, edge_idx);
+        auto pred_base_suf = get_base(label, word_count, edge_idx);
 
         while(true)
         {
             assert(edge_idx + k < len);
 
-            auto it_l = M.find(v_pre.canonical());
-            if(it_l == M.end())
-                it_l = M.emplace(v_pre.canonical(), State_Config()).first;
-            auto& st_pre = it_l->second;
-
-            auto it_r = M.find(v_suf.canonical());
-            if(it_r == M.end())
-                it_r = M.emplace(v_suf.canonical(), State_Config()).first;
-            auto& st_suf = it_r->second;
+            auto& st_pre = M[v_pre.canonical()];
+            auto& st_suf = M[v_suf.canonical()];
 
             v_pre.in_canonical_form() ? st_pre.update_edge(side_t::back, succ_base_pre) : st_pre.update_edge(side_t::front, DNA_Utility::complement(succ_base_pre));
             if(!v_suf.is_same_vertex(v_pre))    // Avoid double-counting of self-loops.
@@ -188,8 +158,8 @@ void Subgraph<k, Colored_>::construct_loop_filtered()
 
             edge_idx++;
             v_pre = v_suf;
-            succ_base_pre = get_base(label, edge_idx + k);
-            pred_base_suf = get_base(label, edge_idx);
+            succ_base_pre = get_base(label, word_count, edge_idx + k);
+            pred_base_suf = get_base(label, word_count, edge_idx);
             v_suf.roll_forward(succ_base_pre);
         }
     }

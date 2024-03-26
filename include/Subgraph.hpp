@@ -67,10 +67,16 @@ private:
 
     // TODO: move the following out to a central location.
 
+    typedef uint64_t label_unit_t;
+
     typedef Async_Logger_Wrapper sink_t;
     typedef Character_Buffer<sink_t> op_buf_t;
     op_buf_t& op_buf;   // Output buffer for trivially maximal unitigs of the underlying dBG.
 
+
+    // Returns the `idx`'th base of the super k-mer label encoding `super_kmer`
+    // that has `word_count` words.
+    base_t get_base(const label_unit_t* super_kmer, std::size_t word_count, std::size_t idx);
 
     // Extracts the maximal unitig containing the vertex `v_hat`, and
     // `maximal_unitig` is used as the working scratch for the extraction, i.e.
@@ -149,6 +155,17 @@ enum class Walk_Termination
     crossed,    // crossed to a different unitig, or looped / cycled back to the same unitig
     dead_ended, // no extension existed
     exitted,    // exitted the subgraph
+};
+
+
+template <uint16_t k, bool Colored_>
+inline base_t Subgraph<k, Colored_>::get_base(const label_unit_t* const super_kmer, const std::size_t word_count, const std::size_t idx)
+{
+    assert(idx / 32 < word_count);
+
+    const auto word_idx = idx >> 5;
+    const auto bit_idx  = (idx & 31) << 1;
+    return base_t((super_kmer[(word_count - 1) - word_idx] >> (62 - bit_idx)) & 0b11lu);
 };
 
 
