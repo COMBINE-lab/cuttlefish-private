@@ -136,8 +136,14 @@ void Subgraph<k, Colored_>::construct_loop_filtered()
         {
             assert(edge_idx + k < len);
 
-            auto& st_pre = M[v_pre.canonical()];
-            auto& st_suf = M[v_suf.canonical()];
+            if(M.find(v_pre.canonical()) == M.end())
+                M.emplace(v_pre.canonical(), State_Config());
+
+            if(M.find(v_suf.canonical()) == M.end())
+                M.emplace(v_suf.canonical(), State_Config());
+
+            auto& st_pre = M.find(v_pre.canonical())->second;
+            auto& st_suf = M.find(v_suf.canonical())->second;
 
             v_pre.in_canonical_form() ? st_pre.update_edge(side_t::back, succ_base_pre) : st_pre.update_edge(side_t::front, DNA_Utility::complement(succ_base_pre));
             if(!v_suf.is_same_vertex(v_pre))    // Avoid double-counting of self-loops.
