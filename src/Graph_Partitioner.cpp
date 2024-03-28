@@ -137,7 +137,6 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 std::size_t next_g; // Subgraph ID of the next super (k - 1)-mer's minimizer.
                 std::size_t cur_min_off, next_min_off;  // Relative offsets of the minimizers in the fragment. Used for assertion checks.
                 std::size_t cur_sup_km1_mer_off = 0;    // Relative offset of the current super (k - 1)-mer in the fragment.
-                std::size_t prev_sup_km1_mer_len = 0;   // Length of the previous super (k- 1)-mer. Used for assertion checks.
                 std::size_t km1_mer_idx = 0;    // Index of the current (k - 1)-mer in the current super (k - 1)-mer.
                 frag_len = k - 1;
 
@@ -172,15 +171,19 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                         sup_km1_mers_len += len;
                         sup_km1_mer_count++;
 
-                        const bool l_disc = (cur_sup_km1_mer_off > 0 && prev_g != cur_g);
-                        const bool r_disc = (next_g != cur_g);
-                        const auto len_weak = l_disc + len + r_disc;
+                        const bool l_joined = (cur_sup_km1_mer_off > 0);    // Whether this weak super k-mer is joined to the one to its left.
+                        const bool r_joined = true; // Whether this weak super k-mer is joined to the one to its right.
+                        const bool l_disc = (l_joined && prev_g != cur_g);  // Whether it's left-discontinuous.
+                        const bool r_disc = (next_g != cur_g);  // Whether it's right-discontinuous.
+                        // const bool l_cont = (l_joined && prev_g == cur_g);  // Whether it's left-continuous.
+                        // const bool r_cont = (next_g == cur_g);  // Whether it's right-continuous.
+                        const auto len_weak = l_joined + len + r_joined;    // Length of the weak super k-mer.
                         assert(len_weak >= k);
-                        subgraphs.add_super_kmer(cur_min, frag + cur_sup_km1_mer_off - l_disc, len_weak, l_disc, r_disc);
+                        subgraphs.add_super_kmer(cur_min, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
                         weak_sup_kmers_len += len_weak;
 
                         cur_sup_km1_mer_off = next_sup_km1_mer_off;
-                        prev_g = cur_g, prev_sup_km1_mer_len = len;
+                        prev_g = cur_g;
                         cur_g = next_g;
                         km1_mer_idx = 0;
                     }
@@ -195,15 +198,16 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 sup_km1_mers_len += len;
                 sup_km1_mer_count++;
 
-                const bool l_disc = (cur_sup_km1_mer_off > 0 && prev_g != cur_g);
+                const bool l_joined = (cur_sup_km1_mer_off > 0);
+                const bool r_joined = false;
+                const bool l_disc = (l_joined && prev_g != cur_g);
                 const bool r_disc = false;
-                const auto len_weak = l_disc + len + r_disc;
-                if(len_weak >= k)
-                    subgraphs.add_super_kmer(cur_min, frag + cur_sup_km1_mer_off - l_disc, len_weak, l_disc, r_disc),
-                    weak_sup_kmers_len += len_weak;
-                else    // This is a hanging super (k - 1)-mer of length `k - 1` at the end, formed due to the preceding one reaching length threshold.
-                    assert(prev_g == cur_g),
-                    assert(prev_sup_km1_mer_len == sup_km1_mer_len_th);
+                // const bool l_cont = (l_joined && prev_g == cur_g);
+                // const bool r_cont = false;
+                const auto len_weak = l_joined + len + r_joined;
+                assert(len_weak >= k);
+                subgraphs.add_super_kmer(cur_min, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
+                weak_sup_kmers_len += len_weak;
 
                 last_frag_end = frag_beg + frag_len;
             }
