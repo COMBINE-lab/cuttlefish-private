@@ -114,6 +114,7 @@ template <uint16_t k>
 inline void Edge_Matrix<k>::add(const Kmer<k> u, const side_t s_u, const Kmer<k> v, const side_t s_v, const weight_t w, const uint16_t b, const std::size_t b_idx, const bool u_is_phi, const bool v_is_phi)
 {
     // TODO: add batched insertion per worker instead of locking a cell at every insertion.
+    // TODO: almost surely the lack of batched insertion is the scalability bottleneck.
 
     auto p = u_is_phi ? 0 : partition(u);
     auto q = v_is_phi ? 0 : partition(v);
