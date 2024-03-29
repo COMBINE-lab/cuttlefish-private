@@ -58,6 +58,7 @@ void Subgraph<k, Colored_>::construct()
     const auto word_count = super_kmer_it.super_kmer_word_count();  // Fixed number of words in a super k-mer label.
 
     Directed_Vertex<k> v;
+    Kmer<k> pred_v;
 
     Super_Kmer_Attributes<Colored_> att;
     label_unit_t* label;
@@ -76,8 +77,11 @@ void Subgraph<k, Colored_>::construct()
             const auto is_canonical = v.in_canonical_form();
             const auto pred_base = (kmer_idx == 0 ? base_t::E : get_base(label, word_count, kmer_idx - 1));
             const auto succ_base = (kmer_idx + k == len ? base_t::E : get_base(label, word_count, kmer_idx + k));
-            const auto front = (is_canonical ? pred_base : DNA_Utility::complement(succ_base));
-            const auto back  = (is_canonical ? succ_base : DNA_Utility::complement(pred_base));
+            auto front = (is_canonical ? pred_base : DNA_Utility::complement(succ_base));
+            auto back  = (is_canonical ? succ_base : DNA_Utility::complement(pred_base));
+
+            if(CF_UNLIKELY(kmer_idx > 0 && v.canonical() == pred_v))    // Counter overcounting of self-loops.
+                (is_canonical ? front : back) = base_t::E;
 
             edge_c += (succ_base != base_t::E);
 
@@ -99,6 +103,7 @@ void Subgraph<k, Colored_>::construct()
                 assert(!st.is_discontinuity());
 
 
+            pred_v = v.canonical();
             v.roll_forward(succ_base);
             kmer_idx++;
         }
