@@ -1,9 +1,9 @@
 
 #include "Subgraph.hpp"
+#include "Super_Kmer_Bucket.hpp"
 #include "DNA.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
-#include "kmc-super-kmers-iterator/iterate_super_kmers.h"
 
 #include "fstream"
 
@@ -11,13 +11,12 @@
 namespace cuttlefish
 {
 
-template<uint16_t k> std::vector<Padded_Data<typename Subgraph<k>::map_t>> Subgraph<k>::map;
+template <uint16_t k, bool Colored_> std::vector<Padded_Data<typename Subgraph<k, Colored_>::map_t>> Subgraph<k, Colored_>::map;
 
 
-template <uint16_t k>
-Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id, Discontinuity_Graph<k>& G, op_buf_t& op_buf):
-      graph_bin_dir_path(bin_dir_path)
-    , bin_id(bin_id)
+template <uint16_t k, bool Colored_>
+Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& G, op_buf_t& op_buf):
+      B(B)
     , M(map[parlay::worker_id()].data())
     , edge_c(0)
     , label_sz(0)
@@ -32,15 +31,15 @@ Subgraph<k>::Subgraph(const std::string& bin_dir_path, const std::size_t bin_id,
 }
 
 
-template <uint16_t k>
-void Subgraph<k>::init_maps()
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::init_maps()
 {
     map.resize(parlay::num_workers());
 }
 
 
-template <uint16_t k>
-void Subgraph<k>::free_maps()
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::free_maps()
 {
     for(auto& M : map)
         force_free(M.data());
@@ -50,161 +49,131 @@ void Subgraph<k>::free_maps()
 }
 
 
-template <uint16_t k>
-void Subgraph<k>::construct()
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::construct()
 {
-    const std::size_t q_sz = 1; // Number of internal queues for the iterator; set to the count of workers using the iterator.
-    IterateSuperKmers super_kmer_it(graph_bin_dir_path, bin_id, q_sz);  // The iterator over the super k-mers in this graph-bin.
+    auto super_kmer_it = B.iterator();  // Iterator over the weak super k-mers inducing this graph.
 
-    typedef unsigned long long super_kmer_data_t;   // KMC's super k-mer's representation type.
-    const auto word_count = super_kmer_it.GetSuperKmerDataLen();    // Fixed number of words in KMC super k-mer.
-
-    // Returns the `idx`'th base in a KMC super k-mer `super_kmer`.
-    const auto get_base =
-        [word_count](const uint64_t* const super_kmer, const std::size_t idx)
-        {
-            assert(idx / 32 < word_count);
-            return DNA::Base((super_kmer[word_count - 1 - (idx >> 5)] >> ((31 - (idx & 31)) << 1)) & uint64_t(0b11));
-        };
+    typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
+    const auto word_count = super_kmer_it.super_kmer_word_count();  // Fixed number of words in a super k-mer label.
 
     Directed_Vertex<k> v;
 
-    // Extracts and processes each k-mer (vertex) from a given super k-mer
-    // `super_kmer` of length `len` bases. `disc_l` and `disc_r` denote whether
-    // the left- and the right-end k-mers are discontinuity vertices or not.
-    const auto extract_kmers =
-        [&](const super_kmer_data_t* const super_kmer, const std::size_t len, const bool disc_l, const bool disc_r)
+    Super_Kmer_Attributes<Colored_> att;
+    label_unit_t* label;
+    while(super_kmer_it.next(att, label))
+    {
+        const auto len = att.len();
+        assert(len >= k);
+        assert(len < 2 * (k - 1));
+
+        v.from_super_kmer(label, word_count);
+        std::size_t kmer_idx = 0;
+        while(true)
         {
-            assert(len >= k);
+            assert(kmer_idx + k - 1 < len);
 
-            auto const kmc_data = reinterpret_cast<const uint64_t*>(super_kmer);
-            v.from_KMC_super_kmer(kmc_data, word_count);
-            std::size_t kmer_idx = 0;
+            const auto is_canonical = v.in_canonical_form();
+            const auto pred_base = (kmer_idx == 0 ? base_t::E : get_base(label, word_count, kmer_idx - 1));
+            const auto succ_base = (kmer_idx + k == len ? base_t::E : get_base(label, word_count, kmer_idx + k));
+            const auto front = (is_canonical ? pred_base : DNA_Utility::complement(succ_base));
+            const auto back  = (is_canonical ? succ_base : DNA_Utility::complement(pred_base));
 
-            while(true)
+            edge_c += (succ_base != base_t::E);
+
+            // Update hash table with the neighborhood info.
+            auto& st = M[v.canonical()];
+            st.update_edges(front, back);
+            if(kmer_idx == 0 && att.left_discontinuous())
+                st.mark_discontinuous(v.entrance_side());
+
+            if(kmer_idx + k == len)
             {
-                assert(kmer_idx + k - 1 < len);
+                if(att.right_discontinuous())
+                    st.mark_discontinuous(v.exit_side());
 
-                const auto is_canonical = v.in_canonical_form();
-                const auto pred_base = (kmer_idx == 0 ? base_t::E : get_base(kmc_data, kmer_idx - 1));
-                const auto succ_base = (kmer_idx + k == len ? base_t::E : get_base(kmc_data, kmer_idx + k));
-                const auto front = (is_canonical ? pred_base : DNA_Utility::complement(succ_base));
-                const auto back  = (is_canonical ? succ_base : DNA_Utility::complement(pred_base));
-
-                edge_c += (succ_base != base_t::E);
-
-                // Update hash table with the neighborhood info.
-                auto& st = M[v.canonical()];
-                st.update_edges(front, back);
-                if(kmer_idx == 0 && disc_l)
-                    st.mark_discontinuous(v.entrance_side());
-
-                if(kmer_idx + k == len)
-                {
-                    if(disc_r)
-                        st.mark_discontinuous(v.exit_side());
-
-                    break;
-                }
-
-
-                if((kmer_idx > 0 || !disc_l) && (kmer_idx + k < len || !disc_r))
-                    assert(!st.is_discontinuity());
-
-
-                v.roll_forward(succ_base);
-                kmer_idx++;
+                break;
             }
-        };
 
-    super_kmer_it.AddConsumer(extract_kmers);
-    super_kmer_it.WaitForAll();
+            if((kmer_idx > 0 || !att.left_discontinuous()) && (kmer_idx + k < len || !att.right_discontinuous()))
+                assert(!st.is_discontinuity());
+
+
+            v.roll_forward(succ_base);
+            kmer_idx++;
+        }
+    }
 }
 
 
-template <uint16_t k>
-void Subgraph<k>::construct_loop_filtered()
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::construct_loop_filtered()
 {
-    const std::size_t q_sz = 1; // Number of internal queues for the iterator; set to the count of workers using the iterator.
-    IterateSuperKmers super_kmer_it(graph_bin_dir_path, bin_id, q_sz);  // The iterator over the super k-mers in this graph-bin.
+    auto super_kmer_it = B.iterator();  // Iterator over the weak super k-mers inducing this graph.
 
-    typedef unsigned long long super_kmer_data_t;   // KMC's super k-mer's representation type.
-    const auto word_count = super_kmer_it.GetSuperKmerDataLen();    // Fixed number of words in KMC super k-mer.
-
-    // Returns the `idx`'th base in a KMC super k-mer `super_kmer`.
-    const auto get_base =
-        [word_count](const uint64_t* const super_kmer, const std::size_t idx)
-        {
-            assert(idx / 32 < word_count);
-            return DNA::Base((super_kmer[word_count - 1 - (idx >> 5)] >> ((31 - (idx & 31)) << 1)) & uint64_t(0b11));
-        };
+    const auto word_count = super_kmer_it.super_kmer_word_count();  // Fixed number of words in a super k-mer label.
 
     Directed_Vertex<k> v_pre, v_suf;
 
-    // Extracts and processes each k-mer (vertex) from a given super k-mer
-    // `super_kmer` of length `len` bases. `disc_l` and `disc_r` denote whether
-    // the left- and the right-end k-mers are discontinuity vertices or not.
-    const auto extract_kmers =
-        [&](const super_kmer_data_t* const super_kmer, const std::size_t len, const bool disc_l, const bool disc_r)
+    Super_Kmer_Attributes<Colored_> att;
+    label_unit_t* label;
+    while(super_kmer_it.next(att, label))
+    {
+        const auto len = att.len();
+        assert(len >= k);
+        assert(len < 2 * (k - 1));
+
+        if(len == k)
+            continue;
+
+        std::size_t edge_idx = 0;
+        v_pre.from_super_kmer(label, word_count);
+        auto succ_base_pre = get_base(label, word_count, edge_idx + k);
+        v_suf = std::as_const(v_pre).roll_forward(succ_base_pre);
+        auto pred_base_suf = get_base(label, word_count, edge_idx);
+
+        while(true)
         {
-            assert(len >= k);
+            assert(edge_idx + k < len);
 
-            if(len == k)
-                return;
+            if(M.find(v_pre.canonical()) == M.end())
+                M.emplace(v_pre.canonical(), State_Config());
 
-            auto const kmc_data = reinterpret_cast<const uint64_t*>(super_kmer);
-            std::size_t edge_idx = 0;
-            v_pre.from_KMC_super_kmer(kmc_data, word_count);
-            auto succ_base_pre = get_base(kmc_data, edge_idx + k);
-            v_suf = std::as_const(v_pre).roll_forward(succ_base_pre);
-            auto pred_base_suf = get_base(kmc_data, edge_idx);
+            if(M.find(v_suf.canonical()) == M.end())
+                M.emplace(v_suf.canonical(), State_Config());
 
-            while(true)
+            auto& st_pre = M.find(v_pre.canonical())->second;
+            auto& st_suf = M.find(v_suf.canonical())->second;
+
+            v_pre.in_canonical_form() ? st_pre.update_edge(side_t::back, succ_base_pre) : st_pre.update_edge(side_t::front, DNA_Utility::complement(succ_base_pre));
+            if(!v_suf.is_same_vertex(v_pre))    // Avoid double-counting of self-loops.
+                v_suf.in_canonical_form() ? st_suf.update_edge(side_t::front, pred_base_suf) : st_suf.update_edge(side_t::back, DNA_Utility::complement(pred_base_suf));
+            edge_c++;
+
+            if(edge_idx == 0 && att.left_discontinuous())
+                st_pre.mark_discontinuous(v_pre.entrance_side());
+
+            if(edge_idx + 1 + k == len)
             {
-                assert(edge_idx + k < len);
+                if(att.right_discontinuous())
+                    st_suf.mark_discontinuous(v_suf.exit_side());
 
-                auto it_l = M.find(v_pre.canonical());
-                if(it_l == M.end())
-                    it_l = M.emplace(v_pre.canonical(), State_Config()).first;
-                auto& st_pre = it_l->second;
-
-                auto it_r = M.find(v_suf.canonical());
-                if(it_r == M.end())
-                    it_r = M.emplace(v_suf.canonical(), State_Config()).first;
-                auto& st_suf = it_r->second;
-
-                v_pre.in_canonical_form() ? st_pre.update_edge(side_t::back, succ_base_pre) : st_pre.update_edge(side_t::front, DNA_Utility::complement(succ_base_pre));
-                if(!v_suf.is_same_vertex(v_pre))    // Avoid double-counting of self-loops.
-                    v_suf.in_canonical_form() ? st_suf.update_edge(side_t::front, pred_base_suf) : st_suf.update_edge(side_t::back, DNA_Utility::complement(pred_base_suf));
-                edge_c++;
-
-                if(edge_idx == 0 && disc_l)
-                    st_pre.mark_discontinuous(v_pre.entrance_side());
-
-                if(edge_idx + 1 + k == len)
-                {
-                    if(disc_r)
-                        st_suf.mark_discontinuous(v_suf.exit_side());
-
-                    break;
-                }
-
-
-                edge_idx++;
-                v_pre = v_suf;
-                succ_base_pre = get_base(kmc_data, edge_idx + k);
-                pred_base_suf = get_base(kmc_data, edge_idx);
-                v_suf.roll_forward(succ_base_pre);
+                break;
             }
-        };
 
-    super_kmer_it.AddConsumer(extract_kmers);
-    super_kmer_it.WaitForAll();
+
+            edge_idx++;
+            v_pre = v_suf;
+            succ_base_pre = get_base(label, word_count, edge_idx + k);
+            pred_base_suf = get_base(label, word_count, edge_idx);
+            v_suf.roll_forward(succ_base_pre);
+        }
+    }
 }
 
 
-template <uint16_t k>
-void Subgraph<k>::contract()
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::contract()
 {
     Maximal_Unitig_Scratch<k> maximal_unitig;   // Scratch space to be used to construct maximal unitigs.
     uint64_t vertex_count = 0;  // Count of vertices processed.
@@ -244,50 +213,50 @@ void Subgraph<k>::contract()
 }
 
 
-template <uint16_t k>
-std::size_t Subgraph<k>::size() const
+template <uint16_t k, bool Colored_>
+std::size_t Subgraph<k, Colored_>::size() const
 {
     return M.size();
 }
 
 
-template <uint16_t k>
-uint64_t Subgraph<k>::edge_count() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::edge_count() const
 {
     return edge_c;
 }
 
 
-template <uint16_t k>
-uint64_t Subgraph<k>::discontinuity_edge_count() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::discontinuity_edge_count() const
 {
     return disc_edge_c;
 }
 
 
-template <uint16_t k>
-uint64_t Subgraph<k>::trivial_mtig_count() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::trivial_mtig_count() const
 {
     return trivial_mtig_c;
 }
 
 
-template <uint16_t k>
-uint64_t Subgraph<k>::icc_count() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::icc_count() const
 {
     return icc_count_;
 }
 
 
-template <uint16_t k>
-uint64_t Subgraph<k>::label_size() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::label_size() const
 {
     return label_sz;
 }
 
 
-template <uint16_t k>
-uint64_t Subgraph<k>::isolated_vertex_count() const
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::isolated_vertex_count() const
 {
     return isolated;
 }
@@ -313,4 +282,4 @@ for b in B:    // B: collection of buckets
 
 
 // Template instantiations for the required instances.
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Subgraph)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Subgraph)

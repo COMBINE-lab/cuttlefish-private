@@ -31,18 +31,21 @@
 namespace cuttlefish
 {
 
+template <bool Colored_> class Super_Kmer_Bucket;
+
+enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
+
 // =============================================================================
-// A subgraph of the de Bruijn graph, induced by a KMC bin.
-template <uint16_t k>
+// A subgraph of a de Bruijn graph of `k`-mers. `Colored_` denotes whether the
+// vertices have colors.
+template <uint16_t k, bool Colored_>
 class Subgraph
 {
-private:
-
-    enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
     typedef Walk_Termination termination_t;
 
-    const std::string graph_bin_dir_path;   // Path to the directory with all the graph KMC-bins.
-    const std::size_t bin_id; // ID of the graph KMC-bin.
+private:
+
+    const Super_Kmer_Bucket<Colored_>& B;   // The weak super k-mer bucket inducing this subgraph.
 
     // typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
     typedef emhash7::HashMap<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
@@ -64,10 +67,16 @@ private:
 
     // TODO: move the following out to a central location.
 
+    typedef uint64_t label_unit_t;
+
     typedef Async_Logger_Wrapper sink_t;
     typedef Character_Buffer<sink_t> op_buf_t;
     op_buf_t& op_buf;   // Output buffer for trivially maximal unitigs of the underlying dBG.
 
+
+    // Returns the `idx`'th base of the super k-mer label encoding `super_kmer`
+    // that has `word_count` words.
+    base_t get_base(const label_unit_t* super_kmer, std::size_t word_count, std::size_t idx);
 
     // Extracts the maximal unitig containing the vertex `v_hat`, and
     // `maximal_unitig` is used as the working scratch for the extraction, i.e.
@@ -85,11 +94,11 @@ private:
 
 public:
 
-    // Constructs a subgraph object for the `bin_id`'th bin in the graph bin
-    // directory `bin_dir_path`. Updates the discontinuity graph `G` with its
-    // edges observed from this subgraph and writes the trivially maximal
+    // Constructs a subgraph object where the subgraph is induced by the weak
+    // super k-mers in the bucket `B`. Updates the discontinuity graph `G` with
+    // its edges observed from this subgraph and writes the trivially maximal
     // unitigs to `op_buf`.
-    Subgraph(const std::string& bin_dir_path, std::size_t bin_id, Discontinuity_Graph<k>& d_graph, op_buf_t& op_buf);
+    Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& d_graph, op_buf_t& op_buf);
 
     Subgraph(const Subgraph&) = delete;
     Subgraph(Subgraph&&) = delete;
@@ -100,13 +109,13 @@ public:
     // Free the map collection from memory of different workers.
     static void free_maps();
 
-    // Constructs the subgraph from the KMC bin into an internal navigable and
-    // membership data structure.
+    // Constructs the subgraph from the provided weak super k-mer bucket into
+    // an internal navigable and membership data structure.
     void construct();
 
-    // Constructs the subgraph from the KMC bin into an internal navigable and
-    // membership data structure. Addresses "exact" loop-filtering opposed to
-    // `construct`.
+    // Constructs the subgraph from the provided weak super k-mer bucket into
+    // an internal navigable and membership data structure. Addresses "exact"
+    // loop-filtering opposed to `construct`.
     void construct_loop_filtered();
 
     // Builds the compacted graph from the original graph.
@@ -139,8 +148,7 @@ public:
 
 
 // Type of scenarios how a unitig-walk terminates in the subgraph.
-template <uint16_t k>
-enum class Subgraph<k>::Walk_Termination
+enum class Walk_Termination
 {
     null,       // non-existent walk
     branched,   // branched off
@@ -150,8 +158,19 @@ enum class Subgraph<k>::Walk_Termination
 };
 
 
-template <uint16_t k>
-inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Unitig_Scratch<k>& maximal_unitig)
+template <uint16_t k, bool Colored_>
+inline base_t Subgraph<k, Colored_>::get_base(const label_unit_t* const super_kmer, const std::size_t word_count, const std::size_t idx)
+{
+    assert(idx / 32 < word_count);
+
+    const auto word_idx = idx >> 5;
+    const auto bit_idx  = (idx & 31) << 1;
+    return base_t((super_kmer[(word_count - 1) - word_idx] >> (62 - bit_idx)) & 0b11lu);
+};
+
+
+template <uint16_t k, bool Colored_>
+inline bool Subgraph<k, Colored_>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Unitig_Scratch<k>& maximal_unitig)
 {
     constexpr auto back = side_t::back;
     constexpr auto front = side_t::front;
@@ -199,8 +218,8 @@ inline bool Subgraph<k>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Un
 }
 
 
-template <uint16_t k>
-inline typename Subgraph<k>::termination_t Subgraph<k>::walk_unitig(const Kmer<k>& v_hat, const side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v)
+template <uint16_t k, bool Colored_>
+inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk_unitig(const Kmer<k>& v_hat, const side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v)
 {
     const auto s_icc_return = inv_side(s_v_hat);    // The side through which to return to `v_hat` if it's contained in an ICC.
     Directed_Vertex<k> v(s_v_hat == side_t::back ? v_hat : v_hat.reverse_complement()); // Current vertex being added to the unitig.

@@ -1,8 +1,9 @@
 
 #include "dBG_Contractor.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
+#include "Graph_Partitioner.hpp"
 #include "State_Config.hpp"
-#include "Subgraphs_Processor.hpp"
+#include "Subgraphs_Manager.hpp"
 #include "Discontinuity_Graph_Contractor.hpp"
 #include "Contracted_Graph_Expander.hpp"
 #include "Unitig_Collator.hpp"
@@ -48,15 +49,22 @@ void dBG_Contractor<k>::construct()
 
     const auto t_0 = timer::now();
 
+    Subgraphs_Manager<k, false> subgraphs(logistics, params.subgraph_count(), params.min_len(), G, op_buf);
 
-    Subgraphs_Processor<k> subgraphs(logistics, params.subgraph_count(), G, op_buf);
+    Graph_Partitioner<k, false> super_kmer_splitter(subgraphs, logistics, params.min_len());
+    super_kmer_splitter.partition();
+    subgraphs.finalize();
+
+    const auto t_part = timer::now();
+    std::cerr << "Sequence splitting into subgraphs completed. Time taken: " << timer::duration(t_part - t_0) << " seconds.\n";
+
     subgraphs.process();
 
     std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";
     std::cerr << "Trivial ICC count: " << subgraphs.icc_count() << ".\n";
 
-    const auto t_s = timer::now();
-    std::cerr << "Subgraphs contraction completed. Time taken: " << timer::duration(t_s - t_0) << " seconds.\n";
+    const auto t_subg = timer::now();
+    std::cerr << "Subgraphs construction and contraction completed. Time taken: " << timer::duration(t_subg - t_part) << " seconds.\n";
 
     std::cerr << "Edge-matrix size: " << G.E().size() << "\n";
     std::cerr << "Phantom edge upper-bound: " << G.phantom_edge_upper_bound() << "\n";
@@ -69,7 +77,7 @@ void dBG_Contractor<k>::construct()
     G.close_lmtig_stream();
 
     const auto t_c = timer::now();
-    std::cerr << "Discontinuity-graph contraction completed. Time taken: " << timer::duration(t_c - t_s) << " seconds.\n";
+    std::cerr << "Discontinuity-graph contraction completed. Time taken: " << timer::duration(t_c - t_subg) << " seconds.\n";
 
     Contracted_Graph_Expander<k> expander(G, P_v, P_e, logistics);
     expander.expand();

@@ -41,7 +41,7 @@ public:
     // Returns the path to the final output file by Cuttlefish.
     const std::string output_file_path() const;
 
-    // Returns the path prefix to the subgraphs (i.e. KMC bins).
+    // Returns the path prefix to the subgraphs (i.e. super k-mer buckets).
     const std::string subgraphs_path() const;
 
     // Returns path prefix to the edge-matrix produced by Cuttlefish.

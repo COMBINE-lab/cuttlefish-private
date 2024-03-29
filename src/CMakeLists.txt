@@ -52,10 +52,14 @@ set(PROJECT_SRC
         Multiway_Merger.cpp
         Discontinuity_Graph_Bootstrap.cpp
         dBG_Contractor.cpp
+        Parser.cpp
+        Graph_Partitioner.cpp
+        Super_Kmer_Bucket.cpp
+        Super_Kmer_Chunk.cpp
         Discontinuity_Graph.cpp
         Edge_Matrix.cpp
         Unitig_File.cpp
-        Subgraphs_Processor.cpp
+        Subgraphs_Manager.cpp
         Subgraph.cpp
         State_Config.cpp
         Discontinuity_Graph_Contractor.cpp
@@ -77,6 +81,13 @@ add_library(cfcore_static STATIC ${PROJECT_SRC})
 set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 target_include_directories(cfcore_static PUBLIC ${INCLUDE_DIR} ${EXT_INCLUDE})
 
+# Build the `RabbitFX` library.
+aux_source_directory(${INCLUDE_DIR}/RabbitFX/io RABBITFX_SRC)
+add_library(rabbitfx STATIC ${RABBITFX_SRC})
+if(DEFINED IGZIP_PREFIX)
+    target_include_directories(rabbitfx PUBLIC ${IGZIP_PREFIX}/include)
+endif()
+
 
 # Specify the warnings and the extra optimization flags to the compiler for the target library.
 # As the flags are specified as `PRIVATE`, they will only be used when compiling this library.
@@ -87,7 +98,7 @@ target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:DEBUG>:${WARNING_FLAGS}
 target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:RELEASE>:${WARNING_FLAGS}>"
   PRIVATE "$<$<CONFIG:RELEASE>:${SUPPRESS_WARNING_FLAGS}>"
   PRIVATE "$<$<CONFIG:RELEASE>:${OPTIMIZE_FLAGS}>")
-target_compile_features(cfcore_static PUBLIC cxx_std_17)
+# target_compile_features(cfcore_static PUBLIC cxx_std_17)
 
 
 
@@ -110,7 +121,20 @@ target_link_libraries(cfcore_static PRIVATE kmc)
 target_link_libraries(cfcore_static PRIVATE ZLIB::ZLIB)
 
 # Link the cfcore_static library to the `zstd` library.
-target_link_libraries(cfcore_static PRIVATE zstd)
+# target_link_libraries(cfcore_static PRIVATE zstd)
+
+# Approrpiately link the core library to `rabbitfx`.
+target_link_libraries(rabbitfx PRIVATE z)
+if(IGZIP_PREFIX)
+    find_library(ISAL_LIB isal PATHS ${IGZIP_PREFIX}/lib)
+    if(ISAL_LIB_NOTFOUND)
+        message(FATAL_ERROR "isa-l (https://github.com/intel/isa-l) not found in the specified directory. Aborting.\n")
+    endif()
+
+    target_link_libraries(rabbitfx PRIVATE ${ISAL_LIB})
+endif()
+
+target_link_libraries(cfcore_static PRIVATE rabbitfx)
 
 # Link the cfcore_static library to the threads library of the platform.
 target_link_libraries(cfcore_static PRIVATE Threads::Threads)
@@ -132,7 +156,11 @@ target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${WARNING_FLAG
 target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${WARNING_FLAGS}>"
   PRIVATE "$<$<CONFIG:RELEASE>:${SUPPRESS_WARNING_FLAGS}>"
   PRIVATE "$<$<CONFIG:RELEASE>:${OPTIMIZE_FLAGS}>")
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
+if(DEBUG_INFO)
+    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
+    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
+endif()
+# target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 
 # Set the installation directory. The parent directory is `/usr/local/` by default, and the
 # user may set it to a different path by passing a value for `CMAKE_INSTALL_PREFIX`. The target
@@ -161,5 +189,8 @@ target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${WARNING_FLAGS}>"
 target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${WARNING_FLAGS}>"
   PRIVATE "$<$<CONFIG:RELEASE>:${SUPPRESS_WARNING_FLAGS}>"
   PRIVATE "$<$<CONFIG:RELEASE>:${OPTIMIZE_FLAGS}>")
-target_compile_features(test PUBLIC cxx_std_17)
-
+if(DEBUG_INFO)
+    target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
+    target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
+endif()
+# target_compile_features(test PUBLIC cxx_std_17)

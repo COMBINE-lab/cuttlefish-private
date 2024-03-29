@@ -74,17 +74,11 @@ inline Lmer_Tuple::Lmer_Tuple(const minimizer_t lmer, const std::size_t index, c
 
 inline bool Lmer_Tuple::operator<(const Lmer_Tuple& rhs) const
 {
-    if(hash < rhs.hash)
-        return true;
+    if(hash != rhs.hash)
+        return hash < rhs.hash;
 
-    if(hash > rhs.hash)
-        return false;
-
-    if(lmer < rhs.lmer)
-        return true;
-
-    if(lmer > rhs.lmer)
-        return false;
+    if(lmer != rhs.lmer)
+        return lmer < rhs.lmer;
 
     return index < rhs.index;
 }

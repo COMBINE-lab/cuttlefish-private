@@ -15,6 +15,7 @@
 // #include "Kmer_Index.hpp"
 // #include "Index_Validator.hpp"
 // #include "Minimizer_Iterator.hpp"
+#include "Parser.hpp"
 #include "Discontinuity_Graph_Bootstrap.hpp"
 #include "Edge_Matrix.hpp"
 #include "Subgraph.hpp"
@@ -1186,7 +1187,7 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
     parlay::parallel_for(0, bin_c,
         [&](const std::size_t bin_id)
         {
-            cuttlefish::Subgraph<k> G(bin_dir, bin_id, E, lmtigs, output_buf[parlay::worker_id()].data());
+            cuttlefish::Subgraph<k, false> G(bin_dir, bin_id, E, lmtigs, output_buf[parlay::worker_id()].data());
             G.construct();
             v_c += G.size();
             e_c += G.edge_count();
@@ -1296,6 +1297,7 @@ int main(int argc, char** argv)
     // const std::string bin_dir(argv[1]);
     // const std::size_t bin_c(std::atoi(argv[2]));
     // iterate_subgraphs<k>(bin_dir, bin_c);
+    cuttlefish::Parser(argv[1], std::atoi(argv[2])).parse();
 
     return 0;
 }

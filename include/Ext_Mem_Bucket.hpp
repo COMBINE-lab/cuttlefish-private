@@ -114,6 +114,12 @@ inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(const std::string& file_path, const bo
     }
     else if(!file_path.empty())
         file.open(file_path, std::ios::out | std::ios::binary);
+
+    if(!file)
+    {
+        std::cerr << "Error opening external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 
@@ -155,6 +161,12 @@ template <typename T_>
 inline void Ext_Mem_Bucket<T_>::flush()
 {
     file.write(reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
+    if(!file)
+    {
+        std::cerr << "Error writing to external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
     buf.clear();
 }
 
@@ -166,6 +178,11 @@ inline void Ext_Mem_Bucket<T_>::close()
         flush();
 
     file.close();
+    if(!file)
+    {
+        std::cerr << "Error closing external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 

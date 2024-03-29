@@ -46,13 +46,17 @@ endif()
 # Bundle the warning flags that we want to pass on to the compiler.
 # Disable unknown pragmas, b/c bbhash uses them extensively.
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
-set(WARNING_FLAGS -Wall -Wextra)
-set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas -ggdb)
+set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
+set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas)
+
+# Bundle debugging information flags that we want to conditionally
+# pass on to the compiler.
+set(DEBUG_FLAGS -ggdb)
 
 # Bundle the extra optimization flags (not associated with the `-O` levels)
 # that we want to pass on to the compiler.
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
-set(OPTIMIZE_FLAGS -funroll-loops)
+set(OPTIMIZE_FLAGS -funroll-loops -march=native)
 
 
 # Add the required preprocessor definitions (`#define`s) to pass on.
@@ -75,6 +79,10 @@ endif()
 
 if(CF_DEVELOP_MODE)
     add_compile_definitions(CF_DEVELOP_MODE)
+endif()
+
+if(IGZIP_PREFIX)
+    add_compile_definitions(USE_IGZIP)
 endif()
 
 
@@ -117,22 +125,21 @@ endif()
 add_compile_definitions(L1_CACHE_LINE_SIZE=${L1_CACHE_LINE_SIZE})
 
 
-# Determine the thread library of the system.
-include(FindThreads)
-if(NOT Threads_FOUND)
-    message(FATAL_ERROR "A supported threads library is required. Aborting.")
-endif()
-
-# Search and load setting for the `zlib` library. The library is required to seamlessly adapt
-# the `kseq` and the `kmc` libraries to gzip-compressed files.
-include(FindZLIB)
-if(NOT ZLIB_FOUND)
-    message(FATAL_ERROR "zlib (https://zlib.net/) is required. Aborting.")
-endif()
-
-
 # Set path for modules required to search for existing packages in the system.
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
+
+# Search the file system for the appropriate threads package for this platform, and then set
+# the `CMAKE_THREAD_LIBS_INIT` variable (and some other variables as well).
+find_package(Threads REQUIRED)  # The threads package is required for the BBHash library used in the project.
+
+# Search and load setting for the `zlib` library. The library is required to seamlessly adapt
+# the `kseq`, the `kmc`, and the `RabbitFX` libraries to gzip-compressed files.
+find_package(ZLIB REQUIRED)
+
+# Prepare the `zstd` library. It provides fast lossless compression, targeting real-time
+# compression scenarios at zlib-level and better compression ratios.
+# find_package(ZSTD REQUIRED)
 
 
 # Module required to download and install external projects.
@@ -177,22 +184,6 @@ if(NOT JEMALLOC_FOUND)
 endif()
 
 
-# Prepare the `zstd` library. It provides fast lossless compression, targeting real-time
-# compression scenarios at zlib-level and better compression ratios.
-set(ZSTD_LIB "")
-find_package(ZSTD)
-if(ZSTD_FOUND)
-    message("Found zstd in the system.")
-    set(ZSTD_LIB ${ZSTD_LIBRARY})
-else()
-    message(FATAL_ERROR "zstd not found.")
-    # TODO: do we need to handle this? `zstd` is in the Linux kernel.
-endif()
-
-add_library(zstd STATIC IMPORTED)
-set_target_properties(zstd PROPERTIES IMPORTED_LOCATION ${ZSTD_LIB})
-
-
 # Prepare the `kmc` library — required by the Cuttlefish algorithm implementation.
 # NOTE: do something more intelligent below than the -j4
 set(KMC_VERSION "v3.2.2")
@@ -215,6 +206,9 @@ set_target_properties(kmc PROPERTIES IMPORTED_LOCATION ${EXT_LIB}/libkmc_core.a)
 add_dependencies(kmc prj_kmc)
 
 
+# Add / install ISA-L.
+
+
 # Prepare the `parlay` library—a parallel algorithms programming toolkit.
 message("Build system will fetch and install parlaylib")
 ExternalProject_Add(prj_parlaylib
@@ -235,11 +229,6 @@ ExternalProject_Add(prj_parlaylib
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
-
-#set(CMAKE_CXX_FLAGS_DEBUG "-g")
-#set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-#set(CMAKE_C_FLAGS_DEBUG "-g")
-#set(CMAKE_C_FLAGS_RELEASE "-O3")
 
 
 # Help `conda` build for OSX through circumventing some of its old SDK-based checks.

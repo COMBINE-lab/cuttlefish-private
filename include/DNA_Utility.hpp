@@ -110,6 +110,13 @@ public:
         return MAPPED_BASE[uint8_t(base)];
     }
 
+    // Returns the mapping integer value of the given character `base`.
+    // Placeholder bases are not checked for, and returns some valid integer.
+    static DNA::Base map_base_unchecked(const char base)
+    {
+        return DNA::Base(((base >> 2) ^ (base >> 1)) & 0b11);
+    }
+
     // Returns the mapping integer value of the complement of `base`.
     static DNA::Base complement(const DNA::Base base)
     {
@@ -134,10 +141,23 @@ public:
         return IS_PLACEHOLDER[uint8_t(base)];
     }
 
+    // Returns `true` iff the character `base` is a DNA character.
+    static bool is_DNA_base(const char base)
+    {
+        const char b = to_upper(base);
+        return (b == 'A') | (b == 'C') | (b == 'G') | (b == 'T');
+    }
+
     // Returns the upper-case equivalent of the character `base`.
     static char upper(const char base)
     {
         return base <= 'T' ? base : (base - ('a' - 'A'));
+    }
+
+    // Returns the upper-case equivalent of the character `base`.
+    static char to_upper(const char b)
+    {
+        return b & 0b0101'1111;
     }
 
     // Returns the mapping `DNA::Extended_Base` representation of the
