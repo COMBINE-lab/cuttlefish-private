@@ -169,7 +169,7 @@ void Contracted_Graph_Expander<k>::expand()
 
 #ifndef NDEBUG
     uint64_t e_h = 0;
-    std::for_each(H_p_e_w.cbegin(), H_p_e_w.cend(), [&](const auto v){ e_h ^= v.data(); });
+    std::for_each(H_p_e_w.cbegin(), H_p_e_w.cend(), [&](const auto& v){ e_h ^= v.data(); });
     std::cerr << "Collated edge path-info hash: " << e_h << ".\n";
 #endif
 
@@ -263,7 +263,7 @@ uint64_t Contracted_Graph_Expander<k>::collate_w_local_bufs(T_s_& source, const 
         }, 1);
 
     uint64_t c = 0;
-    std::for_each(C.cbegin(), C.cend(), [&](auto v){ c += v.data(); });
+    std::for_each(C.cbegin(), C.cend(), [&](auto& v){ c += v.data(); });
     return c;
 }
 
