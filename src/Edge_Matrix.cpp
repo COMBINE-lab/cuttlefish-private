@@ -12,7 +12,7 @@ namespace cuttlefish
 template <uint16_t k> const std::string Edge_Matrix<k>::edge_block_ext(".blk");
 
 template <uint16_t k>
-Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path, const bool append):
+Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
       vertex_part_count_(part_count)
     , path(path)
     , row_to_read(part_count + 1, 0)
@@ -31,7 +31,7 @@ Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path, con
     {
         for(std::size_t j = 0; j <= part_count; ++j)
             j < i ? edge_matrix[i].emplace_back() :
-                    edge_matrix[i].emplace_back(bucket_file_path(i, j), append);
+                    edge_matrix[i].emplace_back(bucket_file_path(i, j));
 
         lock[i] = new Spin_Lock[part_count + 1];
     }
