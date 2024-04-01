@@ -30,7 +30,7 @@ private:
     const std::size_t vertex_part_count_;   // Number of vertex-partitions in the graph; it needs to be a power of 2.
     const std::string path; // File-path prefix to the external-memory blocks of the matrix.
     std::vector<std::vector<Ext_Mem_Bucket<Discontinuity_Edge<k>>>> edge_matrix;    // Blocked edge matrix.
-    std::vector<Spin_Lock*> lock;   // Locks for the blocks for concurrent updates.
+    std::vector<std::vector<Spin_Lock>> lock;   // Locks for the blocks for concurrent updates.
 
     mutable std::vector<std::size_t> row_to_read;   // `j`'th entry contains the row of the next block to read from column `j`.
     mutable std::vector<std::size_t> col_to_read;   // `i`'th entry contains the column of the next block to read from row `i`.
@@ -46,8 +46,6 @@ public:
     // Constructs a blocked edge-matrix for `part_count` vertex-partitions. The
     // partition-count needs to be a power of 2.
     Edge_Matrix(std::size_t part_count, const std::string& path);
-
-    ~Edge_Matrix();
 
     // Returns the number of vertex-partitions in the graph.
     std::size_t vertex_part_count() const { return vertex_part_count_; }
