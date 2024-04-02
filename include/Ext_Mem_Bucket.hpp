@@ -29,8 +29,8 @@ private:
     static constexpr std::size_t in_memory_bytes = 16lu * 1024; // 16KB.
 
     const std::string file_path;    // Path to the file storing the bucket.
-    const std::size_t max_write_buf_bytes;  // Maximum size of the in-memory write-buffer in bytes.
-    const std::size_t max_write_buf_elems;  // Maximum size of the in-memory write-buffer in elements.
+    const std::size_t max_buf_bytes;    // Maximum size of the in-memory write-buffer in bytes.
+    const std::size_t max_buf_elems;    // Maximum size of the in-memory write-buffer in elements.
 
     // TODO: replace vector with custom container.
     std::vector<T_> buf;    // In-memory buffer of the bucket-elements.
@@ -54,7 +54,7 @@ public:
     {}
 
     // Returns the size of the bucket.
-    std::size_t size() const { return size_; }
+    auto size() const { return size_; }
 
     // Adds the element `elem` to the bucket.
     void add(const T_& elem);
@@ -71,10 +71,11 @@ public:
     // the bucket.
     template <typename... Args> void emplace(Args&&... args);
 
-    // Closes the bucket. Elements should not be added anymore once this has
-    // been invoked. This method is required only if the entirety of the bucket
-    // needs to live in external-memory after the parent process finishes.
-    void close();
+    // Serializes and closes the bucket. Elements should not be added anymore
+    // once this has been invoked. This method is required only if the entirety
+    // of the bucket needs to live in external-memory after the parent process
+    // finishes.
+    void serialize();
 
     // Loads the bucket into the vector `v`.
     void load(std::vector<T_>& v) const;
@@ -87,11 +88,13 @@ public:
 template <typename T_>
 inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(const std::string& file_path, const std::size_t buf_sz):
       file_path(file_path)
-    , max_write_buf_bytes(buf_sz)
-    , max_write_buf_elems(buf_sz / sizeof(T_))
+    , max_buf_bytes(buf_sz)
+    , max_buf_elems(buf_sz / sizeof(T_))
     , size_(0)
 {
-    buf.reserve(max_write_buf_elems);
+    assert(max_buf_elems > 0);
+
+    buf.reserve(max_buf_elems);
 
     if(!file_path.empty())
         file.open(file_path, std::ios::out | std::ios::binary);
@@ -109,7 +112,7 @@ inline void Ext_Mem_Bucket<T_>::add(const T_& elem)
 {
     buf.push_back(elem);
     size_++;
-    if(buf.size() >= max_write_buf_elems)
+    if(buf.size() >= max_buf_elems)
         flush();
 }
 
@@ -120,7 +123,7 @@ inline void Ext_Mem_Bucket<T_>::add(const T_* const buf, const std::size_t sz)
     std::for_each(buf, buf + sz, [&](const auto elem){ add(elem); });
 
     // size_ += sz;
-    // if(this->buf.size() + sz >= max_write_buf_elems)
+    // if(this->buf.size() + sz >= max_buf_elems)
     //     file.write(reinterpret_cast<const char*>(buf), sz * sizeof(T_));    // TODO: thrashing possible with an almost full buffer.
     // else
     //     std::for_each(buf, buf + sz, [&](const auto elem){ this->buf.push_back(elem); });
@@ -133,7 +136,7 @@ inline void Ext_Mem_Bucket<T_>::emplace(Args&&... args)
 {
     buf.emplace_back(std::forward<Args>(args)...);  // TODO: learn details.
     size_++;
-    if(buf.size() >= max_write_buf_elems)
+    if(buf.size() >= max_buf_elems)
         flush();
 }
 
@@ -153,7 +156,7 @@ inline void Ext_Mem_Bucket<T_>::flush()
 
 
 template <typename T_>
-inline void Ext_Mem_Bucket<T_>::close()
+inline void Ext_Mem_Bucket<T_>::serialize()
 {
     if(!buf.empty())
         flush();

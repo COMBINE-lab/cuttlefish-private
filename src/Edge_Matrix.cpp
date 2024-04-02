@@ -53,7 +53,7 @@ void Edge_Matrix<k>::serialize()
 {
     for(std::size_t i = 0; i <= vertex_part_count_; ++i)
         for(std::size_t j = 0; j <= vertex_part_count_; ++j)
-            edge_matrix[i][j].close();
+            edge_matrix[i][j].serialize();
 }
 
 
