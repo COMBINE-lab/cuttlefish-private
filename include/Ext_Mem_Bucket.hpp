@@ -92,7 +92,7 @@ inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(const std::string& file_path, const st
     , max_buf_elems(buf_sz / sizeof(T_))
     , size_(0)
 {
-    assert(max_buf_elems > 0);
+    assert(file_path.empty() || max_buf_elems > 0);
 
     buf.reserve(max_buf_elems);
 
