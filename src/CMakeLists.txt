@@ -98,6 +98,11 @@ target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:DEBUG>:${WARNING_FLAGS}
 target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:RELEASE>:${WARNING_FLAGS}>"
   PRIVATE "$<$<CONFIG:RELEASE>:${SUPPRESS_WARNING_FLAGS}>"
   PRIVATE "$<$<CONFIG:RELEASE>:${OPTIMIZE_FLAGS}>")
+
+if(DEBUG_INFO)
+    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
+    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
+endif()
 # target_compile_features(cfcore_static PUBLIC cxx_std_17)
 
 
