@@ -53,6 +53,10 @@ set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas)
 # pass on to the compiler.
 set(DEBUG_FLAGS -ggdb)
 
+# Bundle address sanitization flags: https://github.com/google/sanitizers/wiki/AddressSanitizer.
+set(ASAN_FLAGS -fsanitize=address -fno-omit-frame-pointer)
+set(ASAN_LINK_FLAGS -static-libasan)
+
 # Bundle the extra optimization flags (not associated with the `-O` levels)
 # that we want to pass on to the compiler.
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html

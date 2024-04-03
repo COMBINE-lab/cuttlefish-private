@@ -103,6 +103,13 @@ if(DEBUG_INFO)
     target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
     target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
 endif()
+
+if(SANITIZE)
+    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:DEBUG>:${ASAN_FLAGS}>" "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
+    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:RELEASE>:${ASAN_FLAGS}>" "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
+    target_link_libraries(cfcore_static PRIVATE ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
+endif()
+
 # target_compile_features(cfcore_static PUBLIC cxx_std_17)
 
 
@@ -161,10 +168,17 @@ target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${WARNING_FLAG
 target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${WARNING_FLAGS}>"
   PRIVATE "$<$<CONFIG:RELEASE>:${SUPPRESS_WARNING_FLAGS}>"
   PRIVATE "$<$<CONFIG:RELEASE>:${OPTIMIZE_FLAGS}>")
+
 if(DEBUG_INFO)
     target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
     target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
 endif()
+
+if(SANITIZE)
+    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${ASAN_FLAGS}>" "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
+    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${ASAN_FLAGS}>" "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
+endif()
+
 # target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 
 # Set the installation directory. The parent directory is `/usr/local/` by default, and the
@@ -194,8 +208,15 @@ target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${WARNING_FLAGS}>"
 target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${WARNING_FLAGS}>"
   PRIVATE "$<$<CONFIG:RELEASE>:${SUPPRESS_WARNING_FLAGS}>"
   PRIVATE "$<$<CONFIG:RELEASE>:${OPTIMIZE_FLAGS}>")
+
 if(DEBUG_INFO)
     target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
     target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
 endif()
+
+if(SANITIZE)
+    target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${ASAN_FLAGS}>" "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
+    target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${ASAN_FLAGS}>" "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
+endif()
+
 # target_compile_features(test PUBLIC cxx_std_17)
