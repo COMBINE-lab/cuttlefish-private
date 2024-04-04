@@ -40,7 +40,7 @@ class Buffer {
     size = size_;
   }
 
-  ~Buffer() { delete buffer; }
+  ~Buffer() { delete[] buffer; }
 
   uint64 Size() const { return size; }
 

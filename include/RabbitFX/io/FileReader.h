@@ -240,7 +240,7 @@ namespace rabbit{
 		}
 
 		~FileReader(){
-			if(mIgInbuf != NULL) delete mIgInbuf;
+			if(mIgInbuf != NULL) delete[] mIgInbuf;
 			if(mFile != NULL){
 				fclose(mFile);
 				mFile = NULL;
