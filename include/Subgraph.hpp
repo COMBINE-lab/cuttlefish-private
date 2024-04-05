@@ -48,8 +48,8 @@ private:
     const Super_Kmer_Bucket<Colored_>& B;   // The weak super k-mer bucket inducing this subgraph.
 
     // typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
-    typedef emhash7::HashMap<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
-    // typedef ankerl::unordered_dense::map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
+    // typedef emhash7::HashMap<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
+    typedef ankerl::unordered_dense::map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
     static std::vector<Padded_Data<map_t>> map; // Map collection for different workers.
 
     map_t& M;   // Map to be used for this subgraph.
