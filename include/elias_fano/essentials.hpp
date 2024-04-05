@@ -536,7 +536,9 @@ struct contiguous_memory_allocator {
 
     template <typename T>
     size_t allocate(T& data_structure, char const* filename) {
-        loader l(filename);
+        // loader l(filename);
+        std::ifstream is(filename);
+        loader l(is);
         l.visit(data_structure);
         m_size = l.bytes_vecs_of_pods();
         m_begin = reinterpret_cast<uint8_t*>(malloc(m_size));

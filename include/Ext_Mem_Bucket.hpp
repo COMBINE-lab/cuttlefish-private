@@ -210,7 +210,7 @@ inline void Ext_Mem_Bucket<T_>::load(std::vector<T_>& v) const
     const auto file_sz = std::filesystem::file_size(file_path, ec);
 
     assert(file_sz % sizeof(T_) == 0);
-    assert(file_sz / sizeof(T_) + buf.size() == size_);
+    assert(file_sz / sizeof(T_) + in_mem_size == size_);
 
     v.resize(size_);
 
