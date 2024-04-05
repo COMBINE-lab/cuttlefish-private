@@ -110,6 +110,12 @@ if(ASAN)
     target_link_libraries(cfcore_static PRIVATE ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
 endif()
 
+if(UBSAN)
+    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:DEBUG>:${UBSAN_FLAGS}>")
+    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:RELEASE>:${UBSAN_FLAGS}>")
+    target_link_options(cfcore_static PRIVATE ${UBSAN_LINK_FLAGS} ${UBSAN_FLAGS})
+endif()
+
 # target_compile_features(cfcore_static PUBLIC cxx_std_17)
 
 
@@ -177,6 +183,13 @@ endif()
 if(ASAN)
     target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${ASAN_FLAGS}>" "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
     target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${ASAN_FLAGS}>" "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
+endif()
+
+if(UBSAN)
+    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${UBSAN_FLAGS}>")
+    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${UBSAN_FLAGS}>")
+    target_link_options(${PROJECT_NAME} PRIVATE ${UBSAN_LINK_FLAGS} ${UBSAN_FLAGS})
 endif()
 
 # target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
@@ -217,6 +230,13 @@ endif()
 if(ASAN)
     target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${ASAN_FLAGS}>" "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
     target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${ASAN_FLAGS}>" "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
+    target_link_libraries(test PRIVATE ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
+endif()
+
+if(UBSAN)
+    target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${UBSAN_FLAGS}>")
+    target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${UBSAN_FLAGS}>")
+    target_link_options(test PRIVATE ${UBSAN_LINK_FLAGS} ${UBSAN_FLAGS})
 endif()
 
 # target_compile_features(test PUBLIC cxx_std_17)

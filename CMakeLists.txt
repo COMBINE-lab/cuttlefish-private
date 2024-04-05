@@ -30,6 +30,12 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(GCC_VERSION_MIN "9.1")
 set(CLANG_VERSION_MIN "9.0")
 
+if(UBSAN)
+    set(CMAKE_C_COMPILER clang)
+    set(CMAKE_CXX_COMPILER clang++)
+    # set(CMAKE_LINKER_TYPE LLD)
+endif()
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS GCC_VERSION_MIN)
         message(FATAL_ERROR "${PROJECT_NAME} requires GCC version to be at least ${GCC_VERSION_MIN}."
@@ -55,7 +61,13 @@ set(DEBUG_FLAGS -ggdb)
 
 # Bundle address sanitization flags: https://github.com/google/sanitizers/wiki/AddressSanitizer.
 set(ASAN_FLAGS -fsanitize=address -fno-omit-frame-pointer)
-set(ASAN_LINK_FLAGS -static-libasan)
+# set(ASAN_LINK_FLAGS -static-libasan)
+
+# Bundle undefined behavior sanitization flags: https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html.
+set(UBSAN_FLAGS -fsanitize=undefined
+                -fsanitize=float-divide-by-zero #-fsanitize=unsigned-integer-overflow
+                -fsanitize=implicit-conversion -fsanitize=local-bounds -fsanitize=nullability)
+# set(UBSAN_LINK_FLAGS -fuse-ld=lld)
 
 # Bundle the extra optimization flags (not associated with the `-O` levels)
 # that we want to pass on to the compiler.
