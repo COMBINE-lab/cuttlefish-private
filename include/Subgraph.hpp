@@ -230,6 +230,7 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
 
     auto it = M.find(v.canonical());
     // auto it = M.find_positive(v.canonical());
+    assert(it != M.end());
     State_Config state = it->second;    // State of `v`.
     while(true)
     {
@@ -255,9 +256,9 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
             b_ext = DNA_Utility::complement(b_ext);
 
         v.roll_forward(b_ext);  // Walk to the next vertex.
-        assert(M.find(v.canonical()) != M.end());
         it = M.find(v.canonical());
         // it = M.find_positive(v.canonical());
+        assert(it != M.end());
         state = it->second;
 
         s_v = v.entrance_side();

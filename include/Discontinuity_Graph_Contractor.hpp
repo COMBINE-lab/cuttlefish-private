@@ -10,7 +10,6 @@
 #include "Discontinuity_Graph.hpp"
 #include "Path_Info.hpp"
 #include "Ext_Mem_Bucket.hpp"
-#include "Spin_Lock.hpp"
 #include "Concurrent_Hash_Table.hpp"
 #include "utility.hpp"
 

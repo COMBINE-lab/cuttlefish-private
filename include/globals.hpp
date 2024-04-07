@@ -55,6 +55,7 @@ namespace cuttlefish
     constexpr dir_t BWD = false;
 
 
+    // TODO: move this out to somewhere more suitable.
     enum class State_Class: uint8_t
     {
         single_in_single_out = 0,
@@ -64,6 +65,7 @@ namespace cuttlefish
     };
 
 
+    // TODO: move this out to somewhere more suitable.
     typedef enum class Side: uint8_t
     {
         front = 0,

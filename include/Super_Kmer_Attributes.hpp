@@ -57,7 +57,7 @@ public:
 
 
 inline Super_Kmer_Attributes<false>::Super_Kmer_Attributes(const std::size_t len, const bool l_disc, const bool r_disc):
-      bit_pack((len << len_pos) | (l_disc << l_disc_pos) | (r_disc << r_disc_pos))
+      bit_pack((len << len_pos) | (static_cast<uint16_t>(l_disc) << l_disc_pos) | (static_cast<uint16_t>(r_disc) << r_disc_pos))
 {
     assert(len <= (len_mask >> len_pos));
 }

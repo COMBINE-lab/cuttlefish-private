@@ -39,7 +39,7 @@ void Super_Kmer_Chunk<Colored_>::serialize(std::ofstream& os) const
 
     if(!os)
     {
-        std::cerr << "Serialization of super chunk failed. Aborting.\n";
+        std::cerr << "Serialization of super k-mer chunk of size " << size() << " failed. Aborting.\n";
         std::exit(EXIT_FAILURE);
     }
 }
@@ -53,6 +53,11 @@ void Super_Kmer_Chunk<Colored_>::deserialize(std::ifstream& is, const std::size_
     size_ = sz;
     is.read(reinterpret_cast<char*>(att_buf.data()), size() * sizeof(attribute_t));
     is.read(reinterpret_cast<char*>(label_buf.data()), label_units() * sizeof(label_unit_t));
+    if(!is)
+    {
+        std::cerr << "Deserialization of super k-mer chunk of size " << size() << " failed. Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 }

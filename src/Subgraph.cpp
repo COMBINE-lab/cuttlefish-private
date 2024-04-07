@@ -150,9 +150,13 @@ void Subgraph<k, Colored_>::construct_loop_filtered()
             auto& st_pre = M.find(v_pre.canonical())->second;
             auto& st_suf = M.find(v_suf.canonical())->second;
 
-            v_pre.in_canonical_form() ? st_pre.update_edge(side_t::back, succ_base_pre) : st_pre.update_edge(side_t::front, DNA_Utility::complement(succ_base_pre));
+            v_pre.in_canonical_form() ?
+                st_pre.update_edge(side_t::back, succ_base_pre) :
+                st_pre.update_edge(side_t::front, DNA_Utility::complement(succ_base_pre));
             if(!v_suf.is_same_vertex(v_pre))    // Avoid double-counting of self-loops.
-                v_suf.in_canonical_form() ? st_suf.update_edge(side_t::front, pred_base_suf) : st_suf.update_edge(side_t::back, DNA_Utility::complement(pred_base_suf));
+                v_suf.in_canonical_form() ?
+                    st_suf.update_edge(side_t::front, pred_base_suf) :
+                    st_suf.update_edge(side_t::back, DNA_Utility::complement(pred_base_suf));
             edge_c++;
 
             if(edge_idx == 0 && att.left_discontinuous())
