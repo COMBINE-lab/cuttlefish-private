@@ -29,6 +29,7 @@ template <bool Colored_>
 Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs):
       path_(std::move(rhs.path_))
     , output(std::move(rhs.output))
+    , size_(std::move(rhs.size_))
     , chunk_cap(std::move(rhs.chunk_cap))
     , chunk(std::move(rhs.chunk))
     , chunk_w(std::move(rhs.chunk_w))
