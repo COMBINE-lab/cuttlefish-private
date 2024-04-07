@@ -1008,6 +1008,8 @@ public:
     : m_ptr(p), m_offset(o) { }
   const_iterator(const const_iterator& rhs)
     : m_ptr(rhs.m_ptr), m_offset(rhs.m_offset) { }
+  const_iterator& operator=(const const_iterator& rhs)
+  { m_ptr = rhs.m_ptr, m_offset = rhs.m_offset; return *this; }
   template<bool TS>
   const_iterator(const iterator<IDX, BITS, W, TS>& rhs)
     : m_ptr(rhs.m_ptr), m_offset(rhs.m_offset) { }

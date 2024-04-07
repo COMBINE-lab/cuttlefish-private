@@ -8,8 +8,6 @@
 namespace cuttlefish
 {
 
-template <uint16_t k> const Kmer<k> Discontinuity_Graph<k>::phi_(phi_label);
-
 
 template <uint16_t k>
 Discontinuity_Graph<k>::Discontinuity_Graph(const std::size_t part_count, const std::size_t lmtig_bucket_count, const Data_Logistics& logistics):

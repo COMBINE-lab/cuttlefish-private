@@ -63,7 +63,7 @@ public:
     bool is_discontinuous(const side_t s) const;
 
     // Returns whether the associated vertex has any discontinuous side.
-    bool is_discontinuity() const { return is_discontinuous(side_t::front) | is_discontinuous(side_t::back); }
+    bool is_discontinuity() const;
 
     // Returns the `Base`-encoding of the edge(s) incident to the side `s` of a
     // vertex having this state.
@@ -134,6 +134,17 @@ inline bool State_Config::is_discontinuous(const side_t s) const
 {
     assert(as_int(s) < 2);
     return status & discontinuity[as_int(s)];
+}
+
+
+inline bool State_Config::is_discontinuity() const
+{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wbitwise-instead-of-logical"
+
+    return is_discontinuous(side_t::front) | is_discontinuous(side_t::back);
+
+#pragma GCC diagnostic pop
 }
 
 

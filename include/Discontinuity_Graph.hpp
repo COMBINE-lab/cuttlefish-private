@@ -87,6 +87,9 @@ public:
 };
 
 
+template <uint16_t k> const Kmer<k> Discontinuity_Graph<k>::phi_(phi_label);
+
+
 template <uint16_t k>
 inline void Discontinuity_Graph<k>::add_edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const bool u_is_phi, const bool v_is_phi, const Maximal_Unitig_Scratch<k>& mtig)
 {

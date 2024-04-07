@@ -112,10 +112,10 @@ public:
     {}
 
     // Returns the object.
-    const auto obj() const { return obj_; }
+    auto obj() const { return obj_; }
 
     // Returns the path-info of the object.
-    const auto path_info() const { return path_info_; }
+    auto path_info() const { return path_info_; }
 
     // Returns `true` iff this information is the same as in `rhs`.
     bool operator==(const Obj_Path_Info_Pair& rhs) const { return obj_ == rhs.obj_ && path_info_ == rhs.path_info_; }

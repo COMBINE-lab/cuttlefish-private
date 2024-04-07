@@ -134,10 +134,10 @@ public:
     auto min_len() const { return min_len_; }
 
     // Returns the path prefix for all outputs of the algorithm.
-    const auto output_prefix() const { return output_file_path_; }
+    auto output_prefix() const { return output_file_path_; }
 
     // Returns the path to the output file.
-    const auto output_file_path() const { return output_file_path_ + output_file_ext(); }
+    auto output_file_path() const { return output_file_path_ + output_file_ext(); }
 
     // Returns the output format.
     auto output_format() const { return output_format_.value_or(cuttlefish::_default::OP_FORMAT); }
@@ -149,22 +149,22 @@ public:
     auto poly_n_stretch() const { return poly_n_stretch_; }
 
     // Returns the path to the output segment-file for the GFA-reduced format.
-    const auto segment_file_path() const { return output_file_path_ + cuttlefish::file_ext::seg_ext; }
+    auto segment_file_path() const { return output_file_path_ + cuttlefish::file_ext::seg_ext; }
 
     // Returns the path to the output sequence-file for the GFA-reduced format.
-    const auto sequence_file_path() const { return output_file_path_ + cuttlefish::file_ext::seq_ext; }
+    auto sequence_file_path() const { return output_file_path_ + cuttlefish::file_ext::seq_ext; }
 
     // Returns the working directory (for temporary files).
-    const auto working_dir_path() const { return working_dir_path_; }
+    auto working_dir_path() const { return working_dir_path_; }
 
     // Returns whether to extract a maximal path cover of the de Bruijn graph.
     auto path_cover() const { return path_cover_; }
 
     // Returns the path to the optional MPH file.
-    const auto mph_file_path() const { return output_file_path_ + cuttlefish::file_ext::hash_ext; }
+    auto mph_file_path() const { return output_file_path_ + cuttlefish::file_ext::hash_ext; }
 
     // Returns the path to the optional file storing the hash table buckets.
-    const auto buckets_file_path() const { return output_file_path_ + cuttlefish::file_ext::buckets_ext; }
+    auto buckets_file_path() const { return output_file_path_ + cuttlefish::file_ext::buckets_ext; }
 
     // Returns whether the option to save the MPH over the vertex set of the de Bruijn graph is specified ot not.
     auto save_mph() const { return save_mph_; }
@@ -176,7 +176,7 @@ public:
     auto save_vertices() const { return save_vertices_; }
 
     // Returns the path to the optional file storing meta-information about the graph and cuttlefish executions.
-    const auto json_file_path() const { return output_file_path_ + cuttlefish::file_ext::json_ext; }
+    auto json_file_path() const { return output_file_path_ + cuttlefish::file_ext::json_ext; }
 
 #ifdef CF_DEVELOP_MODE
     // Returns the gamma parameter for the BBHash MPHF.

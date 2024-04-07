@@ -30,7 +30,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(GCC_VERSION_MIN "9.1")
 set(CLANG_VERSION_MIN "9.0")
 
-if(UBSAN)
+if(ASAN OR UBSAN)
     set(CMAKE_C_COMPILER clang)
     set(CMAKE_CXX_COMPILER clang++)
     # set(CMAKE_LINKER_TYPE LLD)
@@ -54,6 +54,11 @@ endif()
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
 set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
 set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas)
+set(CLANG_SUPPRESS_WARNING_FLAGS -Wno-unknown-attributes)   # Warning flags to be suppressed with clang.
+
+if(ASAN OR UBSAN)
+    set(SUPPRESS_WARNING_FLAGS ${SUPPRESS_WARNING_FLAGS} ${CLANG_SUPPRESS_WARNING_FLAGS})
+endif()
 
 # Bundle debugging information flags that we want to conditionally
 # pass on to the compiler.

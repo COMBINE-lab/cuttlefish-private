@@ -100,6 +100,7 @@ void Parser::consume_count_bases(fq_chunk_pool_t& chunk_pool, fq_chunk_queue_t& 
     }
 
 
+    (void)rec_count;
     for(std::size_t b = 0; b < 5; ++b)
         count[b] += nuc_count[b];
 }

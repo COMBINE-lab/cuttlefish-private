@@ -1722,6 +1722,7 @@ private:
                 return next1 * SIZE_BIT + CTZ(bmask1);
             }
             last += 1;
+            (void)offset;
 #else
             next_bucket += offset < 10 ? 1 + SIZE_BIT * offset : 1 + qmask / 32;
             if (next_bucket >= qmask) {

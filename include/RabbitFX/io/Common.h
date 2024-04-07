@@ -26,7 +26,9 @@
 #define BIT_ISSET(x, pos) ((x & BIT(pos)) != 0)
 #define BIT_SET(x, pos) (x |= BIT(pos))
 #define BIT_UNSET(x, pos) (x &= ~(BIT(pos)))
-#define MIN(x, y) ((x) <= (y) ? (x) : (y))
+#ifndef MIN
+    #define MIN(x, y) ((x) <= (y) ? (x) : (y))
+#endif
 #define MAX(x, y) ((x) >= (y) ? (x) : (y))
 #define ABS(x) ((x) >= 0 ? (x) : -(x))
 #define SIGN(x) ((x) >= 0 ? 1 : -1)
