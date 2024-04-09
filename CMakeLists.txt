@@ -30,7 +30,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(GCC_VERSION_MIN "9.1")
 set(CLANG_VERSION_MIN "9.0")
 
-if(ASAN OR UBSAN)
+if(ASAN OR MSAN OR UBSAN)
     set(CMAKE_C_COMPILER clang)
     set(CMAKE_CXX_COMPILER clang++)
     # set(CMAKE_LINKER_TYPE LLD)
@@ -56,7 +56,7 @@ set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
 set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas)
 set(CLANG_SUPPRESS_WARNING_FLAGS -Wno-unknown-attributes)   # Warning flags to be suppressed with clang.
 
-if(ASAN OR UBSAN)
+if(ASAN OR MSAN OR UBSAN)
     set(SUPPRESS_WARNING_FLAGS ${SUPPRESS_WARNING_FLAGS} ${CLANG_SUPPRESS_WARNING_FLAGS})
 endif()
 
@@ -67,6 +67,10 @@ set(DEBUG_FLAGS -ggdb)
 # Bundle address sanitization flags: https://github.com/google/sanitizers/wiki/AddressSanitizer.
 set(ASAN_FLAGS -fsanitize=address -fno-omit-frame-pointer)
 # set(ASAN_LINK_FLAGS -static-libasan)
+
+# Bundle memory sanitization flags: https://github.com/google/sanitizers/wiki/MemorySanitizer.
+set(MSAN_FLAGS -fsanitize=memory -fPIE -fno-omit-frame-pointer -fsanitize-memory-track-origins)
+set(MSAN_LINK_FLAGS -pie)
 
 # Bundle undefined behavior sanitization flags: https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html.
 set(UBSAN_FLAGS -fsanitize=undefined
