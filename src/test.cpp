@@ -1,46 +1,4 @@
 
-// #include "Directed_Kmer.hpp"
-// #include "Kmer_Container.hpp"
-// #include "Kmer_SPMC_Iterator.hpp"
-// #include "BBHash/BooPHF.h"
-// #include "Kmer_Hasher.hpp"
-// #include "Validator.hpp"
-// #include "Character_Buffer.hpp"
-// #include "Kmer_SPMC_Iterator.hpp"
-// #include "Kmer_SPSC_Iterator.hpp"
-// #include "FASTA_Record.hpp"
-// #include "Ref_Parser.hpp"
-// #include "Minimizer_Iterator.hpp"
-// #include "Multiway_Merger.hpp"
-// #include "Kmer_Index.hpp"
-// #include "Index_Validator.hpp"
-// #include "Minimizer_Iterator.hpp"
-#include "Parser.hpp"
-#include "Discontinuity_Graph_Bootstrap.hpp"
-#include "Edge_Matrix.hpp"
-#include "Subgraph.hpp"
-#include "dBG_Contractor.hpp"
-#include "Unitig_File.hpp"
-#include "Concurrent_Hash_Table.hpp"
-#include "parlay/parallel.h"
-// #include "kseq/kseq.h"
-// #include "spdlog/spdlog.h"
-// #include "spdlog/async.h"
-// #include "spdlog/sinks/basic_file_sink.h"
-// #include "spdlog/sinks/stdout_color_sinks.h"
-
-// #include <chrono>
-// #include <iostream>
-// #include <fstream>
-// #include <cstdio>
-// #include <cstdlib>
-// #include <string>
-// #include <zlib.h>
-// #include <cstring>
-// #include <set>
-// #include <map>
-
-
 /*
 // STEP 1: declare the type of file handler and the read() function
 KSEQ_INIT(int, read)
@@ -1156,7 +1114,6 @@ void benchmark_hash_table(std::size_t elem_count, double load_factor = 0.8)
     std::cerr << "Searched " << elem_count << " true-negative elements into std::unordered_map in time " << duration(t_en - t_st) << " seconds.\n";
 
 }
-*/
 
 
 template <uint16_t k>
@@ -1232,6 +1189,8 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
     std::cerr << "Discontinuity edge count: " << disc_edge_c << ".\n";
 }
 
+*/
+
 
 int main(int argc, char** argv)
 {
@@ -1297,7 +1256,7 @@ int main(int argc, char** argv)
     // const std::string bin_dir(argv[1]);
     // const std::size_t bin_c(std::atoi(argv[2]));
     // iterate_subgraphs<k>(bin_dir, bin_c);
-    cuttlefish::Parser(argv[1], std::atoi(argv[2])).parse();
+    // cuttlefish::Parser(argv[1], std::atoi(argv[2])).parse();
 
     return 0;
 }

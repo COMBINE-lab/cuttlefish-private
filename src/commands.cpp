@@ -20,6 +20,7 @@ extern "C" {
 #endif
   int cf_build(int argc, char** argv);
   int cf_validate(int argc, char** argv);
+  int print_cf_version();
 #ifdef __cplusplus
 }
 #endif
@@ -259,3 +260,8 @@ int cf_validate(int argc, char** argv)
 }
 
 
+int print_cf_version()
+{
+    std::cout << "cuttlefish " VERSION << std::endl;
+    return 0;
+}

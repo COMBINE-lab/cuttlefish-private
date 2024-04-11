@@ -69,17 +69,14 @@ set(PROJECT_SRC
         commands.cpp
     )
 
-
-# Build a library with the provided source(s).
+# Build the core library.
 # `STATIC` will force the creation of a static library (and so no runtime linking).
 add_library(cfcore_static STATIC ${PROJECT_SRC})
 
-
 # This controls the `-I` (include paths) switch of the compiler invocation.
-# Since `include` is declared `PUBLIC` for the library, it is propagated to all the
-# consumers of the library.
 set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
-target_include_directories(cfcore_static PUBLIC ${INCLUDE_DIR} ${EXT_INCLUDE})
+target_include_directories(cfcore_static PRIVATE ${INCLUDE_DIR} ${EXT_INCLUDE})
+
 
 # Build the `RabbitFX` library.
 aux_source_directory(${INCLUDE_DIR}/RabbitFX/io RABBITFX_SRC)
@@ -92,43 +89,26 @@ endif()
 # Specify the warnings and the extra optimization flags to the compiler for the target library.
 # As the flags are specified as `PRIVATE`, they will only be used when compiling this library.
 # These will not be propagated to the targets linking to it.
-target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:DEBUG>:${WARNING_FLAGS}>"
-  PRIVATE "$<$<CONFIG:DEBUG>:${SUPPRESS_WARNING_FLAGS}>"
-  PRIVATE "$<$<CONFIG:DEBUG>:${OPTIMIZE_FLAGS}>")
-target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:RELEASE>:${WARNING_FLAGS}>"
-  PRIVATE "$<$<CONFIG:RELEASE>:${SUPPRESS_WARNING_FLAGS}>"
-  PRIVATE "$<$<CONFIG:RELEASE>:${OPTIMIZE_FLAGS}>")
+target_compile_options(cfcore_static PRIVATE ${WARNING_FLAGS} ${SUPPRESS_WARNING_FLAGS} ${OPTIMIZE_FLAGS})
 
 if(DEBUG_INFO)
-    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
-    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
+    target_compile_options(cfcore_static PRIVATE ${DEBUG_FLAGS})
 endif()
 
 if(ASAN)
-    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:DEBUG>:${ASAN_FLAGS}>" "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
-    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:RELEASE>:${ASAN_FLAGS}>" "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
+    target_compile_options(cfcore_static PRIVATE ${ASAN_FLAGS} ${DEBUG_FLAGS})
     target_link_libraries(cfcore_static PRIVATE ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
 endif()
 
 if(MSAN)
-    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:DEBUG>:${MSAN_FLAGS}>" "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
-    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:RELEASE>:${MSAN_FLAGS}>" "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
+    target_compile_options(cfcore_static PRIVATE ${MSAN_FLAGS} ${DEBUG_FLAGS})
     target_link_libraries(cfcore_static PRIVATE ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
 endif()
 
 if(UBSAN)
-    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:DEBUG>:${UBSAN_FLAGS}>")
-    target_compile_options(cfcore_static PRIVATE "$<$<CONFIG:RELEASE>:${UBSAN_FLAGS}>")
+    target_compile_options(cfcore_static PRIVATE ${UBSAN_FLAGS} ${DEBUG_FLAGS})
     target_link_options(cfcore_static PRIVATE ${UBSAN_LINK_FLAGS} ${UBSAN_FLAGS})
 endif()
-
-# target_compile_features(cfcore_static PUBLIC cxx_std_17)
-
-
-
-# Create an executable from the driver program.
-add_executable(${PROJECT_NAME} main.cpp)
-target_include_directories(${PROJECT_NAME} PUBLIC ${INCLUDE_DIR} ${EXT_INCLUDE})
 
 
 # Link the cfcore_static library to the `jemalloc` library, for better `malloc` support.
@@ -144,9 +124,6 @@ target_link_libraries(cfcore_static PRIVATE kmc)
 # Link the cfcore_static library to the `zlib` library.
 target_link_libraries(cfcore_static PRIVATE ZLIB::ZLIB)
 
-# Link the cfcore_static library to the `zstd` library.
-# target_link_libraries(cfcore_static PRIVATE zstd)
-
 # Approrpiately link the core library to `rabbitfx`.
 target_link_libraries(rabbitfx PRIVATE z)
 if(IGZIP_PREFIX)
@@ -155,7 +132,7 @@ if(IGZIP_PREFIX)
         message(FATAL_ERROR "isa-l (https://github.com/intel/isa-l) not found in the specified directory. Aborting.\n")
     endif()
 
-    target_link_libraries(rabbitfx PRIVATE ${ISAL_LIB})
+    target_link_libraries(rabbitfx INTERFACE ${ISAL_LIB})
 endif()
 
 target_link_libraries(cfcore_static PRIVATE rabbitfx)
@@ -163,48 +140,19 @@ target_link_libraries(cfcore_static PRIVATE rabbitfx)
 # Link the cfcore_static library to the threads library of the platform.
 target_link_libraries(cfcore_static PRIVATE Threads::Threads)
 
-# when building on conda on OSX with clang, we apparently need to explicitly
-# link the filesystem library, see (https://github.com/bioconda/bioconda-recipes/pull/37269/files)
+# When building on conda on OSX with clang, we apparently need to explicitly
+# link the filesystem library, see (https://github.com/bioconda/bioconda-recipes/pull/37269/files).
 if("$ENV{CF_INSTALL}" STREQUAL "conda" AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_libraries(cfcore_static PRIVATE c++experimental)
 endif()
 
+
+# Create an executable from the driver program.
+add_executable(${PROJECT_NAME} main.cpp)
+
 # Link the executable to the required libraries.
 target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static)
 
-
-# Specify warnings flags to the compiler for the target executable.
-target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${WARNING_FLAGS}>"
-  PRIVATE "$<$<CONFIG:DEBUG>:${SUPPRESS_WARNING_FLAGS}>"
-  PRIVATE "$<$<CONFIG:DEBUG>:${OPTIMIZE_FLAGS}>")
-target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${WARNING_FLAGS}>"
-  PRIVATE "$<$<CONFIG:RELEASE>:${SUPPRESS_WARNING_FLAGS}>"
-  PRIVATE "$<$<CONFIG:RELEASE>:${OPTIMIZE_FLAGS}>")
-
-if(DEBUG_INFO)
-    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
-    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
-endif()
-
-if(ASAN)
-    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${ASAN_FLAGS}>" "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
-    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${ASAN_FLAGS}>" "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
-endif()
-
-if(MSAN)
-    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${MSAN_FLAGS}>" "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
-    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${MSAN_FLAGS}>" "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
-endif()
-
-if(UBSAN)
-    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:DEBUG>:${UBSAN_FLAGS}>")
-    target_compile_options(${PROJECT_NAME} PRIVATE "$<$<CONFIG:RELEASE>:${UBSAN_FLAGS}>")
-    target_link_options(${PROJECT_NAME} PRIVATE ${UBSAN_LINK_FLAGS} ${UBSAN_FLAGS})
-endif()
-
-# target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
 
 # Set the installation directory. The parent directory is `/usr/local/` by default, and the
 # user may set it to a different path by passing a value for `CMAKE_INSTALL_PREFIX`. The target
@@ -227,34 +175,3 @@ install(FILES ${EXT_LIB}/libkmc_core.a
 
 add_executable(test test.cpp)
 target_link_libraries(test PRIVATE cfcore_static)
-target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${WARNING_FLAGS}>"
-  PRIVATE "$<$<CONFIG:DEBUG>:${SUPPRESS_WARNING_FLAGS}>"
-  PRIVATE "$<$<CONFIG:DEBUG>:${OPTIMIZE_FLAGS}>")
-target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${WARNING_FLAGS}>"
-  PRIVATE "$<$<CONFIG:RELEASE>:${SUPPRESS_WARNING_FLAGS}>"
-  PRIVATE "$<$<CONFIG:RELEASE>:${OPTIMIZE_FLAGS}>")
-
-if(DEBUG_INFO)
-    target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
-    target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
-endif()
-
-if(ASAN)
-    target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${ASAN_FLAGS}>" "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
-    target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${ASAN_FLAGS}>" "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
-    target_link_libraries(test PRIVATE ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
-endif()
-
-if(MSAN)
-    target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${MSAN_FLAGS}>" "$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
-    target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${MSAN_FLAGS}>" "$<$<CONFIG:RELEASE>:${DEBUG_FLAGS}>")
-    target_link_libraries(test PRIVATE ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
-endif()
-
-if(UBSAN)
-    target_compile_options(test PRIVATE "$<$<CONFIG:DEBUG>:${UBSAN_FLAGS}>")
-    target_compile_options(test PRIVATE "$<$<CONFIG:RELEASE>:${UBSAN_FLAGS}>")
-    target_link_options(test PRIVATE ${UBSAN_LINK_FLAGS} ${UBSAN_FLAGS})
-endif()
-
-# target_compile_features(test PUBLIC cxx_std_17)
