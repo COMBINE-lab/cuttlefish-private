@@ -177,18 +177,24 @@ file(MAKE_DIRECTORY ${EXT_LIB} ${EXT_INCLUDE})
 
 
 # Build instrumented `libc++` to avoid false-positives from memory sanitizers.
+# Ref for some of the fixes: https://github.com/google/sanitizers/issues/1685#issuecomment-1734197581
 if(MSAN)
     message("Build system will fetch and install instrumented libc++.")
     ExternalProject_Add(prj_libcpp
         DOWNLOAD_DIR        ${CMAKE_SOURCE_DIR}/external
         DOWNLOAD_COMMAND    curl -k -L https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-17.0.1.zip -o llvm.zip &&
-                            unzip -q llvm.zip &&
+                            unzip -q -o llvm.zip &&
                             rm llvm.zip
 
         SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/llvm-project-llvmorg-17.0.1
         BUILD_IN_SOURCE     TRUE
         INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external
-        CONFIGURE_COMMAND   cmake -G Ninja -S runtimes -B msan_out -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi" -DLLVM_USE_SANITIZER=MemoryWithOrigins
+
+        CONFIGURE_COMMAND   cmake -G Ninja -S runtimes -B msan_out
+                            -DCMAKE_BUILD_TYPE=Release
+                            -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+                            -DLLVM_ENABLE_RUNTIMES=libcxx$<SEMICOLON>libcxxabi
+                            -DLLVM_USE_SANITIZER=MemoryWithOrigins
         BUILD_COMMAND       ninja -C msan_out
         INSTALL_COMMAND     ""
     )
