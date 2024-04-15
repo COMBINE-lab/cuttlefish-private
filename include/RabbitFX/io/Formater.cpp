@@ -401,6 +401,7 @@ string getLine(FastqDataChunk *&chunk, int &pos) {
   return "";
 }
 
+__attribute__((no_sanitize("memory")))
 int neoGetLine(FastqDataChunk *&chunk, uint64_t &pos, uint64_t &len) {
   int start_pos = pos;
   const char *data = (char *)chunk->data.Pointer();

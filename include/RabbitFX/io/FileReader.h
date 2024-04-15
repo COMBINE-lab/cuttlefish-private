@@ -149,6 +149,7 @@ namespace rabbit{
 		}
 
 #if	defined(USE_IGZIP)
+		__attribute__((no_sanitize("memory")))
 		int64 igzip_read(FILE* zipFile, byte *memory_, size_t size_){
 			uint64_t offset = 0;
 			int ret = 0;

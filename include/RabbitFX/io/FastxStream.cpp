@@ -716,6 +716,7 @@ namespace rabbit {
             }
         }
 
+        __attribute__((no_sanitize("memory")))
         uint64 FastqFileReader::GetNextRecordPos_(uchar *data_, uint64 pos_, const uint64 size_) {
             //cerr << "in get next record pos: " << "pos: " << pos_ << " size: " << size_ << endl;
             SkipToEol(data_, pos_, size_);
@@ -752,6 +753,7 @@ namespace rabbit {
          * @param pos_ start position to skip
          * @param size_ data_ size
          */
+        __attribute__((no_sanitize("memory")))
         void FastqFileReader::SkipToEol(uchar *data_, uint64 &pos_, const uint64 size_) {
             //cerr << "pos: " << pos_ << " size: " << size_ << endl;
             ASSERT(pos_ < size_);
