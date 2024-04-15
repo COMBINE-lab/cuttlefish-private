@@ -244,6 +244,7 @@ endif()
 
 # Prepare the `kmc` library — required by the Cuttlefish algorithm implementation.
 # NOTE: do something more intelligent below than the -j4
+#[[
 set(KMC_VERSION "v3.2.2")
 message("Build system will fetch and install KMC3")
 ExternalProject_Add(prj_kmc
@@ -262,6 +263,7 @@ ExternalProject_Add(prj_kmc
 add_library(kmc STATIC IMPORTED)
 set_target_properties(kmc PROPERTIES IMPORTED_LOCATION ${EXT_LIB}/libkmc_core.a)
 add_dependencies(kmc prj_kmc)
+]]
 
 
 # Add / install ISA-L.

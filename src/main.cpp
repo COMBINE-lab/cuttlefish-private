@@ -45,8 +45,8 @@ int main(int argc, char** argv)
 
         if(command == "build")
             return cf_build(argc - 1, argv + 1);
-        else if(command == "validate")
-            return cf_validate(argc - 1, argv + 1);
+        // else if(command == "validate")
+        //     return cf_validate(argc - 1, argv + 1);
         else if(command == "help")
             display_help_message();
         else if(command == "version")

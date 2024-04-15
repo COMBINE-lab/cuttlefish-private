@@ -19,6 +19,7 @@ Application<k, T_App>::Application(const Build_Params& params):
 {}
 
 
+/*
 template <uint16_t k, template <uint16_t> typename T_App>
 Application<k, T_App>::Application(const Validation_Params& params):
 #ifndef FIXED_K
@@ -29,6 +30,7 @@ Application<k, T_App>::Application(const Validation_Params& params):
     , app(nullptr)
     , validator(params.k() == k ? new Validator<k>(params): nullptr)
 {}
+*/
 
 
 template <uint16_t k, template <uint16_t> typename T_App>
@@ -54,6 +56,7 @@ void Application<k, T_App>::execute() const
 }
 
 
+/*
 template <uint16_t k, template <uint16_t> typename T_App>
 bool Application<k, T_App>::validate() const
 {
@@ -62,11 +65,12 @@ bool Application<k, T_App>::validate() const
 
     return app_next_level->validate();
 }
+*/
 
 
 
 // Template instantiations for the required instances.
-template class Application<cuttlefish::MAX_K, CdBG>;
-template class Application<cuttlefish::MAX_K, Read_CdBG>;
-template class Application<cuttlefish::MAX_K, Kmer_Index>;
+// template class Application<cuttlefish::MAX_K, CdBG>;
+// template class Application<cuttlefish::MAX_K, Read_CdBG>;
+// template class Application<cuttlefish::MAX_K, Kmer_Index>;
 template class Application<cuttlefish::MAX_K, cuttlefish::dBG_Contractor>;

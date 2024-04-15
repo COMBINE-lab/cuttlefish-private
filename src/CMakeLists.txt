@@ -3,10 +3,10 @@
 
 # Bundle the cfcore_static source files into a variable.
 set(PROJECT_SRC
-        kmc_api/kmc_file.cpp
-        kmc_api/kmer_api.cpp
-        kmc_api/mmer.cpp
-        kmc_api/Virtual_Prefix_File.cpp
+        # kmc_api/kmc_file.cpp
+        # kmc_api/kmer_api.cpp
+        # kmc_api/mmer.cpp
+        # kmc_api/Virtual_Prefix_File.cpp
         xxHash/xxhash.c
         Build_Params.cpp
         Application.cpp
@@ -21,18 +21,18 @@ set(PROJECT_SRC
         Kmer_Container.cpp
         Kmer_SPSC_Iterator.cpp
         Kmer_Hash_Table.cpp
-        CdBG.cpp
-        CdBG_Builder.cpp
-        CdBG_Writer.cpp
-        CdBG_Plain_Writer.cpp
-        CdBG_GFA_Writer.cpp
-        CdBG_GFA_Reduced_Writer.cpp
-        kmer_Enumerator.cpp
-        kmer_Enumeration_Stats.cpp
-        State_Read_Space.cpp
-        Read_CdBG.cpp
-        Read_CdBG_Constructor.cpp
-        Read_CdBG_Extractor.cpp
+        # CdBG.cpp
+        # CdBG_Builder.cpp
+        # CdBG_Writer.cpp
+        # CdBG_Plain_Writer.cpp
+        # CdBG_GFA_Writer.cpp
+        # CdBG_GFA_Reduced_Writer.cpp
+        # kmer_Enumerator.cpp
+        # kmer_Enumeration_Stats.cpp
+        # State_Read_Space.cpp
+        # Read_CdBG.cpp
+        # Read_CdBG_Constructor.cpp
+        # Read_CdBG_Extractor.cpp
         Unitig_Scratch.cpp
         Maximal_Unitig_Scratch.cpp
         Unipaths_Meta_info.cpp
@@ -41,13 +41,13 @@ set(PROJECT_SRC
         Character_Buffer_Flusher.cpp
         Progress_Tracker.cpp
         dBG_Info.cpp
-        Validator.cpp
-        Validator_Hash_Table.cpp
-        Sequence_Validator.cpp
-        Kmers_Validator.cpp
+        # Validator.cpp
+        # Validator_Hash_Table.cpp
+        # Sequence_Validator.cpp
+        # Kmers_Validator.cpp
         utility.cpp
-        Kmer_Index.cpp
-        Kmer_Index_Utility.cpp
+        # Kmer_Index.cpp
+        # Kmer_Index_Utility.cpp
         Minimizer_Instance_Iterator.cpp
         Multiway_Merger.cpp
         Discontinuity_Graph_Bootstrap.cpp
@@ -100,14 +100,6 @@ if(ASAN)
     target_link_libraries(cfcore_static PRIVATE ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
 endif()
 
-if(MSAN)
-    target_include_directories(cfcore_static PRIVATE ${LIBCXX_INCLUDE})
-
-    target_compile_options(cfcore_static PRIVATE ${MSAN_FLAGS} ${DEBUG_FLAGS})
-    target_link_libraries(cfcore_static PRIVATE ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
-    target_link_directories(cfcore_static PRIVATE ${LIBCXX})
-endif()
-
 if(UBSAN)
     target_compile_options(cfcore_static PRIVATE ${UBSAN_FLAGS} ${DEBUG_FLAGS})
     target_link_options(cfcore_static PRIVATE ${UBSAN_LINK_FLAGS} ${UBSAN_FLAGS})
@@ -122,7 +114,7 @@ target_link_libraries(cfcore_static PRIVATE jemalloc)
 target_link_libraries(cfcore_static PRIVATE ${CMAKE_DL_LIBS})
 
 # Link the cfcore_static library to the `kmc` library.
-target_link_libraries(cfcore_static PRIVATE kmc)
+# target_link_libraries(cfcore_static PRIVATE kmc)
 
 # Link the cfcore_static library to the `zlib` library.
 target_link_libraries(cfcore_static PRIVATE ZLIB::ZLIB)
@@ -154,11 +146,24 @@ endif()
 add_executable(${PROJECT_NAME} main.cpp)
 
 if(MSAN)
+    target_include_directories(rabbitfx PRIVATE ${LIBCXX_INCLUDE})
+    target_include_directories(cfcore_static PRIVATE ${LIBCXX_INCLUDE})
     target_include_directories(${PROJECT_NAME} PRIVATE ${LIBCXX_INCLUDE})
 
+    target_compile_options(rabbitfx PRIVATE ${MSAN_FLAGS} ${DEBUG_FLAGS})
+    target_compile_options(cfcore_static PRIVATE ${MSAN_FLAGS} ${DEBUG_FLAGS})
     target_compile_options(${PROJECT_NAME} PRIVATE ${MSAN_FLAGS} ${DEBUG_FLAGS})
+
+    target_link_libraries(rabbitfx PRIVATE ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
+    target_link_libraries(cfcore_static PRIVATE ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
     target_link_libraries(${PROJECT_NAME} PRIVATE ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
+
+    target_link_directories(rabbitfx PRIVATE ${LIBCXX})
+    target_link_directories(cfcore_static PRIVATE ${LIBCXX})
     target_link_directories(${PROJECT_NAME} PRIVATE ${LIBCXX})
+
+    add_dependencies(rabbitfx prj_libcxx)
+    add_dependencies(cfcore_static prj_libcxx)
 endif()
 
 # Link the executable to the required libraries.
@@ -179,9 +184,11 @@ install(TARGETS cfcore_static
 # Apparently the cfcore_static_static library is not enough itself and tools
 # wanting to use this downstream will need to link against `libkmc_core` as
 # well.
+#[[
 install(FILES ${EXT_LIB}/libkmc_core.a
   DESTINATION lib
 )
+]]
 
 
 # add_executable(test test.cpp)

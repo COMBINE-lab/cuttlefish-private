@@ -163,7 +163,7 @@ int cf_build(int argc, char** argv)
         {
             std::cout << "\nConstructing a k-mer index of the de Bruijn graph for k = " << k << ".\n";
 
-            Application<cuttlefish::MAX_K, Kmer_Index>(params).execute();
+            // Application<cuttlefish::MAX_K, Kmer_Index>(params).execute();
 
             std::cout << "\nConstructed a k-mer index of the de Bruijn graph at " << params.output_prefix() << ".\n";
         }
@@ -193,6 +193,7 @@ int cf_build(int argc, char** argv)
 
 
 // Driver function for the CdBG validation.
+/*
 int cf_validate(int argc, char** argv)
 {
     cxxopts::Options options("cuttlefish validate", "Validate a compacted de Bruijn graph constructed by cuttlefish");
@@ -258,7 +259,7 @@ int cf_validate(int argc, char** argv)
 
     return 0;
 }
-
+*/
 
 int print_cf_version()
 {
