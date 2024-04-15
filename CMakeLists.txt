@@ -180,24 +180,32 @@ file(MAKE_DIRECTORY ${EXT_LIB} ${EXT_INCLUDE})
 # Ref for some of the fixes: https://github.com/google/sanitizers/issues/1685#issuecomment-1734197581
 if(MSAN)
     message("Build system will fetch and install instrumented libc++.")
-    ExternalProject_Add(prj_libcpp
+    set(LLVM_RELEASE llvmorg-17.0.1)
+    set(LLVM_SRC ${CMAKE_SOURCE_DIR}/external/llvm-project-${LLVM_RELEASE})
+    ExternalProject_Add(prj_libcxx
         DOWNLOAD_DIR        ${CMAKE_SOURCE_DIR}/external
-        DOWNLOAD_COMMAND    curl -k -L https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-17.0.1.zip -o llvm.zip &&
+        DOWNLOAD_COMMAND    curl -k -L https://github.com/llvm/llvm-project/archive/refs/tags/${LLVM_RELEASE}.zip -o llvm.zip &&
                             unzip -q -o llvm.zip &&
                             rm llvm.zip
 
-        SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/llvm-project-llvmorg-17.0.1
+        SOURCE_DIR          ${LLVM_SRC}
         BUILD_IN_SOURCE     TRUE
         INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external
 
-        CONFIGURE_COMMAND   cmake -G Ninja -S runtimes -B msan_out
+        CONFIGURE_COMMAND   cmake -G Ninja -S runtimes -B msan
                             -DCMAKE_BUILD_TYPE=Release
                             -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
                             -DLLVM_ENABLE_RUNTIMES=libcxx$<SEMICOLON>libcxxabi
                             -DLLVM_USE_SANITIZER=MemoryWithOrigins
-        BUILD_COMMAND       ninja -C msan_out
+        BUILD_COMMAND       ninja -C msan
         INSTALL_COMMAND     ""
     )
+
+    set(LIBCXX_INCLUDE ${LLVM_SRC}/msan/include/c++/v1/)
+    set(LIBCXX ${LLVM_SRC}/msan/lib/)
+
+    set(MSAN_FLAGS ${MSAN_FLAGS} -stdlib=libc++)
+    set(MSAN_LINK_FLAGS ${MSAN_LINK_FLAGS} -stdlib=libc++ -lc++abi -lstdc++)
 endif()
 
 

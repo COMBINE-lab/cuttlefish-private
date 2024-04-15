@@ -101,8 +101,11 @@ if(ASAN)
 endif()
 
 if(MSAN)
+    target_include_directories(cfcore_static PRIVATE ${LIBCXX_INCLUDE})
+
     target_compile_options(cfcore_static PRIVATE ${MSAN_FLAGS} ${DEBUG_FLAGS})
     target_link_libraries(cfcore_static PRIVATE ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
+    target_link_directories(cfcore_static PRIVATE ${LIBCXX})
 endif()
 
 if(UBSAN)
@@ -150,6 +153,14 @@ endif()
 # Create an executable from the driver program.
 add_executable(${PROJECT_NAME} main.cpp)
 
+if(MSAN)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${LIBCXX_INCLUDE})
+
+    target_compile_options(${PROJECT_NAME} PRIVATE ${MSAN_FLAGS} ${DEBUG_FLAGS})
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
+    target_link_directories(${PROJECT_NAME} PRIVATE ${LIBCXX})
+endif()
+
 # Link the executable to the required libraries.
 target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static)
 
@@ -173,5 +184,5 @@ install(FILES ${EXT_LIB}/libkmc_core.a
 )
 
 
-add_executable(test test.cpp)
-target_link_libraries(test PRIVATE cfcore_static)
+# add_executable(test test.cpp)
+# target_link_libraries(test PRIVATE cfcore_static)
