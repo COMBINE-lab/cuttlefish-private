@@ -758,9 +758,9 @@ namespace rabbit {
             //cerr << "pos: " << pos_ << " size: " << size_ << endl;
             ASSERT(pos_ < size_);
 
-            while (data_[pos_] != '\n' && data_[pos_] != '\r' && pos_ < size_) ++pos_;
+            while (pos_ < size_ && data_[pos_] != '\n' && data_[pos_] != '\r') ++pos_;
 
-            if (data_[pos_] == '\r' && pos_ < size_) {
+            if (pos_ < size_ && data_[pos_] == '\r') {
                 if (data_[pos_ + 1] == '\n') {
                     usesCrlf = true;
                     ++pos_;
