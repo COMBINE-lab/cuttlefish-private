@@ -87,6 +87,10 @@ add_library(rabbitfx STATIC ${RABBITFX_SRC})
 add_executable(${PROJECT_NAME} main.cpp)
 
 
+# Define dependencies between the targets.
+add_dependencies(cfcore_static prj_parlaylib)
+
+
 # Accumulate the compile- and link-flags.
 set(COMPILE_FLAGS "")
 set(LINK_FLAGS "")
