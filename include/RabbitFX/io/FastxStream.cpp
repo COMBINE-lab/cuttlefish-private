@@ -104,7 +104,7 @@ namespace rabbit {
                     if (usesCrlf) chunk_->size -= 1;
 
                     // copy tail to swapBuffer
-                    int haloCount = 0;
+                    uint64 haloCount = 0;
                     uint64 tmpPtr = chunkEnd - 1;
                     if (mHalo > 0) {
                         while (true) {
@@ -129,6 +129,7 @@ namespace rabbit {
 
                     // only for get seqsinfo
                     uint64 chunkEnd = FindCutPos_(dataChunk_, data, chunk_->size, mHalo, seqInfos);
+                    (void)chunkEnd;
                     // debug only
                     // std::string content((char*)data, chunk_->size);
                     // std::cout << "tail content ori: " << data << std::endl;
@@ -146,7 +147,7 @@ namespace rabbit {
 
         uint64 FastaFileReader::FindCutPos_(FastaChunk *dataChunk_, uchar *data_, const uint64 size_, const uint64 halo_,
                 SeqInfos &seqInfos) {
-            int count = 0;
+            // int count = 0;
             uint64 pos_ = 0;
             uint64 cut_ = 0;       // cut_ point to next '>'
             uint64 lastSeq_ = 0;   //-> the start of last sequences content
@@ -230,6 +231,8 @@ namespace rabbit {
         }
 
         bool FastaFileReader::ReadNextFaChunk_(FastaDataChunk *chunk_, SeqInfos &seqInfos, bool &continue_read) {
+            (void)seqInfos;
+
             if (Eof()) {
                 chunk_->size = 0;
                 return false;

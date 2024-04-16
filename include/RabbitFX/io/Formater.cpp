@@ -90,8 +90,9 @@ int chunkListFormat(FastaChunk &fachunk, vector<Reference> &refs) {
 	Reference *current = NULL; 
 	do{
 		uint64 pos = 0;
-		bool done = false;
+		// bool done = false;
 		const char *data = (char *)tmp->data.Pointer();
+    (void)data;
 		//doneone = false;
 		while(true){
 			if (pos > tmp->size) break;
@@ -106,7 +107,7 @@ int chunkListFormat(FastaChunk &fachunk, vector<Reference> &refs) {
 				current = new Reference();
 				int str_pos = line.find_first_of(' ');
 				current->name = line.substr(1, str_pos - 1);  // remove '>' and ' '
-				if (str_pos < line.size()) current->comment = line.substr(str_pos + 1);
+				if (static_cast<std::size_t>(str_pos) < line.size()) current->comment = line.substr(str_pos + 1);
 				current->gid = chunk_seq_start;
 				current->seq = "";
 				chunk_seq_start++;
@@ -164,7 +165,7 @@ int chunkFormat(FastaChunk &fachunk, vector<Reference> &refs, int kmerSize) {
   while (true) {
     Reference ref = getNextSeq(fachunk, done, pos);
     if (done) break;
-    if (ref.seq.length() < kmerSize)
+    if (ref.seq.length() < static_cast<std::size_t>(kmerSize))
       short_count++;
     else
       refs.push_back(ref);
@@ -204,7 +205,7 @@ Reference getNextSeq(FastaChunk &fachunk, bool &done, uint64 &pos) {
     string line = getLine(fachunk.chunk, pos);
     int str_pos = line.find_first_of(' ');
     ref.name = line.substr(1, str_pos - 1);  // remove '>' and ' '
-    if (str_pos < line.size()) ref.comment = line.substr(str_pos + 1);
+    if (static_cast<std::size_t>(str_pos) < line.size()) ref.comment = line.substr(str_pos + 1);
     // cerr << "name: " << ref.name << endl << flush;
     ref.seq = getSequence(fachunk.chunk, pos);
     // cerr << "seq: " << ref.seq << endl << flush;
@@ -237,7 +238,7 @@ void print_read(neoReference &ref) {
 int chunkFormat(FastqChunk *fqChunk, std::vector<neoReference> &data) {
   FastqDataChunk *chunk = fqChunk->chunk;
   uint64_t seq_count = 0;
-  uint64_t line_count = 0;
+  // uint64_t line_count = 0;
   uint64_t pos_ = 0;
   neoReference ref;
   while (true) {
@@ -264,7 +265,7 @@ int chunkFormat(FastqChunk *fqChunk, std::vector<neoReference> &data) {
 int chunkFormat(FastqDataChunk *fqDataChunk, std::vector<neoReference> &data) {
   FastqDataChunk *chunk = fqDataChunk;
   uint64_t seq_count = 0;
-  uint64_t line_count = 0;
+  // uint64_t line_count = 0;
   uint64_t pos_ = 0;
   neoReference ref;
   while (true) {
@@ -299,7 +300,7 @@ int chunkFormat(FastqChunk* fqChunk, std::vector<Reference> &data, bool mHasQual
 	//format a whole chunk and return number of reads
 	FastqDataChunk * chunk = fqChunk->chunk;
 	int seq_count = 0;
-	int line_count = 0;
+	// int line_count = 0;
 	int pos_ = 0;
 	Reference ref;
 
@@ -344,7 +345,7 @@ int chunkFormat(FastqDataChunk* fqDataChunk, std::vector<Reference> &data, bool 
 	//format a whole chunk and return number of reads
 	FastqDataChunk * chunk = fqDataChunk;
 	int seq_count = 0;
-	int line_count = 0;
+	// int line_count = 0;
 	int pos_ = 0;
 	Reference ref;
 
@@ -389,8 +390,9 @@ string getLine(FastqDataChunk *&chunk, int &pos) {
   int start_pos = pos;
   char *data = (char *)chunk->data.Pointer();
 
-  while (pos <= (chunk->size + 1)) {
-    if (data[pos] == '\n' || data[pos] == '\r' || pos == (chunk->size + 1)) {
+  const int end = chunk->size + 1;
+  while (pos <= end) {
+    if (data[pos] == '\n' || data[pos] == '\r' || pos == end) {
       // find a line
       pos++;
       return string(data + start_pos, pos - start_pos - 1);
