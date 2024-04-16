@@ -5,19 +5,17 @@
 #include "globals.hpp"
 #include "parlay/parallel.h"
 
-#include "fstream"
+#include <cassert>
 
 
 namespace cuttlefish
 {
 
-template <uint16_t k, bool Colored_> std::vector<Padded_Data<typename Subgraph<k, Colored_>::map_t>> Subgraph<k, Colored_>::map;
-
 
 template <uint16_t k, bool Colored_>
-Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& G, op_buf_t& op_buf):
+Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& G, op_buf_t& op_buf, Subgraphs_Scratch_Space<k>& space):
       B(B)
-    , M(map[parlay::worker_id()].data())
+    , M(space.map())
     , edge_c(0)
     , label_sz(0)
     , disc_edge_c(0)
@@ -28,24 +26,6 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
     , op_buf(op_buf)
 {
     M.clear();
-}
-
-
-template <uint16_t k, bool Colored_>
-void Subgraph<k, Colored_>::init_maps()
-{
-    map.resize(parlay::num_workers());
-}
-
-
-template <uint16_t k, bool Colored_>
-void Subgraph<k, Colored_>::free_maps()
-{
-    for(auto& M : map)
-        force_free(M.data());
-
-    map.clear();
-    map.shrink_to_fit();
 }
 
 
@@ -270,6 +250,20 @@ uint64_t Subgraph<k, Colored_>::isolated_vertex_count() const
     return isolated;
 }
 
+
+template <uint16_t k>
+Subgraphs_Scratch_Space<k>::Subgraphs_Scratch_Space():
+      map_(parlay::num_workers())
+{}
+
+
+template <uint16_t k>
+typename Subgraphs_Scratch_Space<k>::map_t& Subgraphs_Scratch_Space<k>::map()
+{
+    assert(map_.size() == parlay::num_workers());
+    return map_[parlay::worker_id()].data();
+}
+
 }
 
 /*
@@ -292,3 +286,4 @@ for b in B:    // B: collection of buckets
 
 // Template instantiations for the required instances.
 ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Subgraph)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Subgraphs_Scratch_Space)

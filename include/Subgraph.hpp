@@ -19,7 +19,6 @@
 #include "globals.hpp"
 #include "emhash/hash_table7.hpp"
 #include "unordered_dense/unordered_dense.h"
-#include "parlay/parallel.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -35,6 +34,29 @@ template <bool Colored_> class Super_Kmer_Bucket;
 
 enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
 
+
+// Working space for workers processing different subgraphs.
+template <uint16_t k>
+class Subgraphs_Scratch_Space
+{
+public:
+
+    // typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
+    // typedef emhash7::HashMap<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
+    typedef ankerl::unordered_dense::map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
+
+    Subgraphs_Scratch_Space();
+
+    // Returns the appropriate map for a worker.
+    map_t& map();
+
+
+private:
+
+    std::vector<Padded_Data<map_t>> map_;   // Map collection for different workers.
+};
+
+
 // =============================================================================
 // A subgraph of a de Bruijn graph of `k`-mers. `Colored_` denotes whether the
 // vertices have colors.
@@ -47,12 +69,7 @@ private:
 
     const Super_Kmer_Bucket<Colored_>& B;   // The weak super k-mer bucket inducing this subgraph.
 
-    // typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
-    // typedef emhash7::HashMap<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
-    typedef ankerl::unordered_dense::map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
-    static std::vector<Padded_Data<map_t>> map; // Map collection for different workers.
-
-    map_t& M;   // Map to be used for this subgraph.
+    typename Subgraphs_Scratch_Space<k>::map_t& M;  // Map to be used for this subgraph.
 
     uint64_t edge_c;    // Number of edges in the graph.
     uint64_t label_sz;  // Total number of characters in the literal representations of all the maximal unitigs.
@@ -76,7 +93,7 @@ private:
 
     // Returns the `idx`'th base of the super k-mer label encoding `super_kmer`
     // that has `word_count` words.
-    base_t get_base(const label_unit_t* super_kmer, std::size_t word_count, std::size_t idx);
+    static base_t get_base(const label_unit_t* super_kmer, std::size_t word_count, std::size_t idx);
 
     // Extracts the maximal unitig containing the vertex `v_hat`, and
     // `maximal_unitig` is used as the working scratch for the extraction, i.e.
@@ -97,17 +114,12 @@ public:
     // Constructs a subgraph object where the subgraph is induced by the weak
     // super k-mers in the bucket `B`. Updates the discontinuity graph `G` with
     // its edges observed from this subgraph and writes the trivially maximal
-    // unitigs to `op_buf`.
-    Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& d_graph, op_buf_t& op_buf);
+    // unitigs to `op_buf`. Uses scratch space for internal data structures
+    // from `space`.
+    Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& d_graph, op_buf_t& op_buf, Subgraphs_Scratch_Space<k>& space);
 
     Subgraph(const Subgraph&) = delete;
     Subgraph(Subgraph&&) = delete;
-
-    // Initialize the map collection of different workers.
-    static void init_maps();
-
-    // Free the map collection from memory of different workers.
-    static void free_maps();
 
     // Constructs the subgraph from the provided weak super k-mer bucket into
     // an internal navigable and membership data structure.
