@@ -86,23 +86,33 @@ if(DEFINED IGZIP_PREFIX)
 endif()
 
 
+# Accumulate the compile- and link-flags.
+set(COMPILE_FLAGS "")
+set(LINK_FLAGS "")
+
 # Specify the warnings and the extra optimization flags to the compiler for the target library.
 # As the flags are specified as `PRIVATE`, they will only be used when compiling this library.
 # These will not be propagated to the targets linking to it.
-target_compile_options(cfcore_static PRIVATE ${WARNING_FLAGS} ${SUPPRESS_WARNING_FLAGS} ${OPTIMIZE_FLAGS})
+list(APPEND COMPILE_FLAGS ${WARNING_FLAGS} ${SUPPRESS_WARNING_FLAGS} ${OPTIMIZE_FLAGS})
+
 
 if(DEBUG_INFO)
-    target_compile_options(cfcore_static PRIVATE ${DEBUG_FLAGS})
+    list(APPEND COMPILE_FLAGS ${DEBUG_FLAGS})
 endif()
 
 if(ASAN)
-    target_compile_options(cfcore_static PRIVATE ${ASAN_FLAGS} ${DEBUG_FLAGS})
-    target_link_libraries(cfcore_static PRIVATE ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
+    list(APPEND COMPILE_FLAGS ${ASAN_FLAGS} ${DEBUG_FLAGS})
+    list(APPEND LINK_FLAGS ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
 endif()
 
 if(UBSAN)
-    target_compile_options(cfcore_static PRIVATE ${UBSAN_FLAGS} ${DEBUG_FLAGS})
-    target_link_options(cfcore_static PRIVATE ${UBSAN_LINK_FLAGS} ${UBSAN_FLAGS})
+    list(APPEND COMPILE_FLAGS ${UBSAN_FLAGS} ${DEBUG_FLAGS})
+    list(APPEND LINK_FLAGS ${UBSAN_LINK_FLAGS} ${UBSAN_FLAGS})
+endif()
+
+if(MSAN)
+    list(APPEND COMPILE_FLAGS ${MSAN_FLAGS} ${DEBUG_FLAGS})
+    list(APPEND LINK_FLAGS ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
 endif()
 
 
@@ -145,18 +155,18 @@ endif()
 # Create an executable from the driver program.
 add_executable(${PROJECT_NAME} main.cpp)
 
+target_compile_options(cfcore_static PRIVATE ${COMPILE_FLAGS})
+target_compile_options(rabbitfx PRIVATE ${COMPILE_FLAGS})
+target_compile_options(${PROJECT_NAME} PRIVATE ${COMPILE_FLAGS})
+
+target_link_libraries(cfcore_static PRIVATE ${LINK_FLAGS})
+target_link_libraries(rabbitfx PRIVATE ${LINK_FLAGS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${LINK_FLAGS})
+
 if(MSAN)
     target_include_directories(rabbitfx PRIVATE ${LIBCXX_INCLUDE})
     target_include_directories(cfcore_static PRIVATE ${LIBCXX_INCLUDE})
     target_include_directories(${PROJECT_NAME} PRIVATE ${LIBCXX_INCLUDE})
-
-    target_compile_options(rabbitfx PRIVATE ${MSAN_FLAGS} ${DEBUG_FLAGS})
-    target_compile_options(cfcore_static PRIVATE ${MSAN_FLAGS} ${DEBUG_FLAGS})
-    target_compile_options(${PROJECT_NAME} PRIVATE ${MSAN_FLAGS} ${DEBUG_FLAGS})
-
-    target_link_libraries(rabbitfx PRIVATE ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
-    target_link_libraries(cfcore_static PRIVATE ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
 
     target_link_directories(rabbitfx PRIVATE ${LIBCXX})
     target_link_directories(cfcore_static PRIVATE ${LIBCXX})
