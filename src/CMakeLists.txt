@@ -1,6 +1,12 @@
 
 # =============================================================================
 
+# This controls the `-I` (include paths) switch of the compiler invocation.
+set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
+
+
+# Define the targets.
+
 # Bundle the cfcore_static source files into a variable.
 set(PROJECT_SRC
         # kmc_api/kmc_file.cpp
@@ -69,21 +75,16 @@ set(PROJECT_SRC
         commands.cpp
     )
 
-# Build the core library.
+# Define the core library.
 # `STATIC` will force the creation of a static library (and so no runtime linking).
 add_library(cfcore_static STATIC ${PROJECT_SRC})
 
-# This controls the `-I` (include paths) switch of the compiler invocation.
-set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
-target_include_directories(cfcore_static PRIVATE ${INCLUDE_DIR} ${EXT_INCLUDE})
-
-
-# Build the `RabbitFX` library.
+# Define the `RabbitFX` library.
 aux_source_directory(${INCLUDE_DIR}/RabbitFX/io RABBITFX_SRC)
 add_library(rabbitfx STATIC ${RABBITFX_SRC})
-if(DEFINED IGZIP_PREFIX)
-    target_include_directories(rabbitfx PUBLIC ${IGZIP_PREFIX}/include)
-endif()
+
+# Define an executable from the driver program.
+add_executable(${PROJECT_NAME} main.cpp)
 
 
 # Accumulate the compile- and link-flags.
@@ -94,7 +95,6 @@ set(LINK_FLAGS "")
 # As the flags are specified as `PRIVATE`, they will only be used when compiling this library.
 # These will not be propagated to the targets linking to it.
 list(APPEND COMPILE_FLAGS ${WARNING_FLAGS} ${SUPPRESS_WARNING_FLAGS} ${OPTIMIZE_FLAGS})
-
 
 if(DEBUG_INFO)
     list(APPEND COMPILE_FLAGS ${DEBUG_FLAGS})
@@ -116,21 +116,50 @@ if(MSAN)
 endif()
 
 
-# Link the cfcore_static library to the `jemalloc` library, for better `malloc` support.
+# Set the include directories for the targets.
+
+target_include_directories(cfcore_static PRIVATE ${INCLUDE_DIR} ${EXT_INCLUDE})
+if(DEFINED IGZIP_PREFIX)
+    target_include_directories(rabbitfx PUBLIC ${IGZIP_PREFIX}/include)
+endif()
+target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
+
+
+# Set the compile flags for the targets.
+
+target_compile_options(cfcore_static PRIVATE ${COMPILE_FLAGS})
+target_compile_options(rabbitfx PRIVATE ${COMPILE_FLAGS})
+target_compile_options(${PROJECT_NAME} PRIVATE ${COMPILE_FLAGS})
+
+
+# Link appropriate libraries and targets.
+
+# Link to `jemalloc`, for better `malloc` support.
 target_link_libraries(cfcore_static PRIVATE jemalloc)
 
-# Link the cfcore_static library to the `dl` library, required in using dynamic shared object.
+# Link to `dl`, required in using dynamic shared object.
 # Needed by `jemalloc`.
 target_link_libraries(cfcore_static PRIVATE ${CMAKE_DL_LIBS})
 
-# Link the cfcore_static library to the `kmc` library.
+# Link to `kmc`, for k-mer enumeration in cuttlefish 1/2.
 # target_link_libraries(cfcore_static PRIVATE kmc)
 
-# Link the cfcore_static library to the `zlib` library.
+# Link to `zlib`, required to support `gzip` files.
 target_link_libraries(cfcore_static PRIVATE ZLIB::ZLIB)
 
-# Approrpiately link the core library to `rabbitfx`.
-target_link_libraries(rabbitfx PRIVATE z)
+# Link to the threads library of the platform.
+target_link_libraries(cfcore_static PRIVATE Threads::Threads)
+
+# Link to `rabbitfx`, for FASTX parsing.
+target_link_libraries(cfcore_static PRIVATE rabbitfx)
+
+# When building on conda on OSX with clang, we apparently need to explicitly
+# link to the filesystem library; see (https://github.com/bioconda/bioconda-recipes/pull/37269/files).
+if("$ENV{CF_INSTALL}" STREQUAL "conda" AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_libraries(cfcore_static PRIVATE c++experimental)
+endif()
+
+# Link to intel-gzip.
 if(IGZIP_PREFIX)
     find_library(ISAL_LIB isal PATHS ${IGZIP_PREFIX}/lib)
     if(ISAL_LIB_NOTFOUND)
@@ -140,28 +169,18 @@ if(IGZIP_PREFIX)
     target_link_libraries(rabbitfx INTERFACE ${ISAL_LIB})
 endif()
 
-target_link_libraries(cfcore_static PRIVATE rabbitfx)
-
-# Link the cfcore_static library to the threads library of the platform.
-target_link_libraries(cfcore_static PRIVATE Threads::Threads)
-
-# When building on conda on OSX with clang, we apparently need to explicitly
-# link the filesystem library, see (https://github.com/bioconda/bioconda-recipes/pull/37269/files).
-if("$ENV{CF_INSTALL}" STREQUAL "conda" AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_link_libraries(cfcore_static PRIVATE c++experimental)
-endif()
+# Link the executable to the core library.
+target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static)
 
 
-# Create an executable from the driver program.
-add_executable(${PROJECT_NAME} main.cpp)
-
-target_compile_options(cfcore_static PRIVATE ${COMPILE_FLAGS})
-target_compile_options(rabbitfx PRIVATE ${COMPILE_FLAGS})
-target_compile_options(${PROJECT_NAME} PRIVATE ${COMPILE_FLAGS})
+# Set the link flags for the targets.
 
 target_link_libraries(cfcore_static PRIVATE ${LINK_FLAGS})
 target_link_libraries(rabbitfx PRIVATE ${LINK_FLAGS})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LINK_FLAGS})
+
+
+# Specialized options for memory-sanitizer.
 
 if(MSAN)
     target_include_directories(rabbitfx PRIVATE ${LIBCXX_INCLUDE})
@@ -199,7 +218,3 @@ install(FILES ${EXT_LIB}/libkmc_core.a
   DESTINATION lib
 )
 ]]
-
-
-# add_executable(test test.cpp)
-# target_link_libraries(test PRIVATE cfcore_static)
