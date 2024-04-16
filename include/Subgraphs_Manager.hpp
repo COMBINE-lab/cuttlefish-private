@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <atomic>
 #include <string>
 #include <vector>
 
@@ -42,8 +43,8 @@ private:
 
     Discontinuity_Graph<k>& G;  // The discontinuity graph.
 
-    uint64_t trivial_mtig_count_;   // Number of trivial maximal unitigs in the subgraphs (i.e. also maximal unitigs in the supergraph).
-    uint64_t icc_count_;    // Number of trivial maximal unitigs in the subgraphs that are ICCs.
+    std::atomic_uint64_t trivial_mtig_count_;   // Number of trivial maximal unitigs in the subgraphs (i.e. also maximal unitigs in the supergraph).
+    std::atomic_uint64_t icc_count_;    // Number of trivial maximal unitigs in the subgraphs that are ICCs.
 
     // TODO: move out the following to some CF3-centralized location.
 
