@@ -148,13 +148,20 @@ inline void Ext_Mem_Bucket<T_>::add(const T_& elem)
 template <typename T_>
 inline void Ext_Mem_Bucket<T_>::add(const T_* const buf, const std::size_t sz)
 {
-    std::for_each(buf, buf + sz, [&](const auto elem){ add(elem); });
+    std::size_t rem_sz = sz;
+    std::size_t added = 0;
+    while(rem_sz > 0)
+    {
+        const auto to_add = std::min(rem_sz, max_buf_elems - in_mem_size);
+        std::memcpy(this->buf + in_mem_size, buf + added, to_add * sizeof(T_));
+        in_mem_size += to_add, added += to_add, rem_sz -= to_add;
 
-    // size_ += sz;
-    // if(this->buf.size() + sz >= max_buf_elems)
-    //     file.write(reinterpret_cast<const char*>(buf), sz * sizeof(T_));    // TODO: thrashing possible with an almost full buffer.
-    // else
-    //     std::for_each(buf, buf + sz, [&](const auto elem){ this->buf.push_back(elem); });
+        assert(in_mem_size <= max_buf_elems);
+        if(in_mem_size == max_buf_elems)
+            flush();
+    }
+
+    size_ += sz;
 }
 
 
