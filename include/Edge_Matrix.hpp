@@ -29,7 +29,7 @@ private:
 
     const std::size_t vertex_part_count_;   // Number of vertex-partitions in the graph; it needs to be a power of 2.
     const std::string path; // File-path prefix to the external-memory blocks of the matrix.
-    std::vector<std::vector<Ext_Mem_Bucket<Discontinuity_Edge<k>>>> edge_matrix;    // Blocked edge matrix.
+    std::vector<std::vector<Ext_Mem_Bucket_Concurrent<Discontinuity_Edge<k>>>> edge_matrix; // Blocked edge matrix.
     std::vector<std::vector<Spin_Lock>> lock;   // Locks for the blocks for concurrent updates.
 
     mutable std::vector<std::size_t> row_to_read;   // `j`'th entry contains the row of the next block to read from column `j`.
@@ -59,12 +59,6 @@ public:
     // are ϕ, respectively.
     // TODO: why not using refs here for the k-mers? Check.
     void add(Kmer<k> u, side_t s_u, Kmer<k> v, side_t s_v, weight_t w, uint16_t b, std::size_t b_idx, bool u_is_phi, bool v_is_phi);
-
-    // Serializes the matrix to external-memory. Edges should not be added
-    // anymore once this has been invoked. This method is required only if the
-    // entirety of the edge-matrix needs to live in external-memory after the
-    // parent process finishes.
-    void serialize();
 
     // Reads the edges from the `[j, j]`'th block into `buf`.
     void read_diagonal_block(std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const;
@@ -116,17 +110,9 @@ inline void Edge_Matrix<k>::add(const Kmer<k> u, const side_t s_u, const Kmer<k>
     auto q = v_is_phi ? 0 : partition(v);
 
     if(p <= q)
-    {
-        lock[p][q].lock();
         edge_matrix[p][q].emplace(u, s_u, v, s_v, w, b, b_idx, u_is_phi, v_is_phi, side_t::back);
-        lock[p][q].unlock();
-    }
     else    // p and q needs to be swapped along with the edge endpoints
-    {
-        lock[q][p].lock();
         edge_matrix[q][p].emplace(v, s_v, u, s_u, w, b, b_idx, v_is_phi, u_is_phi, side_t::front);
-        lock[q][p].unlock();
-    }
 }
 
 }

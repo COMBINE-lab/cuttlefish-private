@@ -49,15 +49,6 @@ const std::string Edge_Matrix<k>::bucket_file_path(const std::size_t i, const st
 
 
 template <uint16_t k>
-void Edge_Matrix<k>::serialize()
-{
-    for(std::size_t i = 0; i <= vertex_part_count_; ++i)
-        for(std::size_t j = 0; j <= vertex_part_count_; ++j)
-            edge_matrix[i][j].serialize();
-}
-
-
-template <uint16_t k>
 void Edge_Matrix<k>::read_diagonal_block(const std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const
 {
     edge_matrix[j][j].load(buf);
