@@ -29,9 +29,9 @@ namespace cuttlefish
 template <typename T_>
 class Ext_Mem_Bucket
 {
-protected:
+public:
 
-    static constexpr std::size_t in_memory_bytes = 32lu * 1024; // 16KB.
+    static constexpr std::size_t in_memory_bytes = 4lu * 1024; // 4KB.
 
     const std::string file_path;    // Path to the file storing the bucket.
     const std::size_t max_buf_bytes;    // Maximum size of the in-memory write-buffer in bytes.
@@ -156,7 +156,7 @@ inline void Ext_Mem_Bucket<T_>::add(const T_* const buf, const std::size_t sz)
     while(rem_sz > 0)
     {
         const auto to_add = std::min(rem_sz, max_buf_elems - in_mem_size);
-        std::memcpy(this->buf + in_mem_size, buf + added, to_add * sizeof(T_));
+        std::memcpy(reinterpret_cast<char*>(this->buf + in_mem_size), reinterpret_cast<const char*>(buf + added), to_add * sizeof(T_));
         in_mem_size += to_add, added += to_add, rem_sz -= to_add;
 
         assert(in_mem_size <= max_buf_elems);
@@ -269,23 +269,35 @@ inline std::size_t Ext_Mem_Bucket<T_>::load(T_* b) const
 
 // A concurrent external-memory bucket for elements of type `T_`.
 template <typename T_>
-class Ext_Mem_Bucket_Concurrent : public Ext_Mem_Bucket<T_>
+class Ext_Mem_Bucket_Concurrent
 {
 private:
 
-    const std::size_t max_w_local_buf_bytes;    // Maximum size of the in-memory worker-local write-buffers in bytes.
-    const std::size_t max_w_local_buf_elems;    // Maximum size of the in-memory worker-local write-buffers in elements.
+    static constexpr std::size_t in_memory_bytes = 4 * 1024;    // 4KB.
+
+    const std::string file_path;    // Path to the file storing the bucket.
+    const std::size_t max_buf_bytes;    // Maximum size of the in-memory worker-local write-buffers in bytes.
+    const std::size_t max_buf_elems;    // Maximum size of the in-memory worker-local write-buffers in elements.
+
+    std::size_t flushed;    // Number of elements added to the bucket and flushed to external-memory.
 
     std::vector<Padded_Data<std::vector<T_>>> buf_w_local;  // In-memory worker-local buffers of the bucket-elements.
-    Spin_Lock lock_;    // Lock to the global bucket.
+
+    std::ofstream file; // The bucket-file.
+    Spin_Lock lock_;    // Lock to the bucket-file.
+
+
+    // Flushes the in-memory buffer content of the invoking worker to external-
+    // memory.
+    void flush();
 
 
 public:
 
     // Constructs a concurrent external-memory bucket at path `file_path`. An
-    // optional in-memory buffer size (in bytes) `buf_sz` for the bucket can be
-    // specified.
-    Ext_Mem_Bucket_Concurrent(const std::string& file_path, const std::size_t buf_sz = Ext_Mem_Bucket<T_>::in_memory_bytes);
+    // optional in-memory buffer size (in bytes) `buf_sz` for each worker can
+    // be specified.
+    Ext_Mem_Bucket_Concurrent(const std::string& file_path, const std::size_t buf_sz = in_memory_bytes);
 
     // Constructs a placeholder bucket.
     Ext_Mem_Bucket_Concurrent(): Ext_Mem_Bucket_Concurrent("", 0)
@@ -309,29 +321,45 @@ public:
     // the bucket.
     template <typename... Args> void emplace(Args&&... args);
 
-    // Loads the bucket into the vector `v`.
+    // Loads the bucket into the vector `v`. It is safe only when the bucket is
+    // not being updated, otherwise runs the risk of data races.
+    // TODO: remove this method and support only raw containers, such that user modules are forced to avoid adversarial resizing.
     void load(std::vector<T_>& v) const;
 };
 
 
 template <typename T_>
 inline Ext_Mem_Bucket_Concurrent<T_>::Ext_Mem_Bucket_Concurrent(const std::string& file_path, const std::size_t buf_sz):
-      Ext_Mem_Bucket<T_>(file_path, buf_sz)
-    , max_w_local_buf_bytes(this->max_buf_bytes / parlay::num_workers())
-    , max_w_local_buf_elems(max_w_local_buf_bytes / sizeof(T_))
+      file_path(file_path)
+    , max_buf_bytes(buf_sz)
+    , max_buf_elems(max_buf_bytes / sizeof(T_))
+    , flushed(0)
     , buf_w_local(parlay::num_workers())
 {
-    assert(file_path.empty() || max_w_local_buf_elems > 0);
-    std::for_each(buf_w_local.begin(), buf_w_local.end(), [&](auto& v){ v.data().reserve(max_w_local_buf_elems); });
+    assert(file_path.empty() || max_buf_elems > 0);
+
+    if(!file_path.empty())
+        file.open(file_path, std::ios::out | std::ios::binary);
+
+    if(!file)
+    {
+        std::cerr << "Error opening external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+
+    std::for_each(buf_w_local.begin(), buf_w_local.end(), [&](auto& v){ v.data().reserve(max_buf_elems); });
 }
 
 
 template <typename T_>
 inline Ext_Mem_Bucket_Concurrent<T_>::Ext_Mem_Bucket_Concurrent(Ext_Mem_Bucket_Concurrent&& rhs):
-      Ext_Mem_Bucket<T_>(std::move(rhs))
-    , max_w_local_buf_bytes(std::move(rhs.max_w_local_buf_bytes))
-    , max_w_local_buf_elems(std::move(rhs.max_w_local_buf_elems))
+      file_path(std::move(rhs.file_path))
+    , max_buf_bytes(std::move(rhs.max_buf_bytes))
+    , max_buf_elems(std::move(rhs.max_buf_elems))
+    , flushed(std::move(rhs.flushed))
     , buf_w_local(std::move(rhs.buf_w_local))
+    , file(std::move(rhs.file))
 {}
 
 
@@ -341,25 +369,19 @@ inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::size() const
     std::size_t in_buf_sz = 0;
     std::for_each(buf_w_local.cbegin(), buf_w_local.cend(), [&](const auto& b){ in_buf_sz += b.data().size(); });
 
-    return Ext_Mem_Bucket<T_>::size() + in_buf_sz;
+    return flushed + in_buf_sz;
 }
 
 
 template <typename T_>
 inline void Ext_Mem_Bucket_Concurrent<T_>::add(const T_& elem)
 {
-    auto& w_local_buf = buf_w_local[parlay::worker_id()].data();
-    w_local_buf.push_back(elem);
+    auto& buf = buf_w_local[parlay::worker_id()].data();
+    buf.push_back(elem);
 
-    assert(w_local_buf.size() <= max_w_local_buf_elems);
-    if(w_local_buf.size() == max_w_local_buf_elems)
-    {
-        lock_.lock();
-        Ext_Mem_Bucket<T_>::add(w_local_buf.data(), w_local_buf.size());
-        lock_.unlock();
-
-        w_local_buf.clear();
-    }
+    assert(buf.size() <= max_buf_elems);
+    if(buf.size() == max_buf_elems)
+        flush();
 }
 
 
@@ -367,18 +389,36 @@ template <typename T_>
 template <typename... Args>
 inline void Ext_Mem_Bucket_Concurrent<T_>::emplace(Args&&... args)
 {
-    auto& w_local_buf = buf_w_local[parlay::worker_id()].data();
-    w_local_buf.emplace_back(args...);
+    auto& buf = buf_w_local[parlay::worker_id()].data();
+    buf.emplace_back(args...);
 
-    assert(w_local_buf.size() <= max_w_local_buf_elems);
-    if(w_local_buf.size() == max_w_local_buf_elems)
+    assert(buf.size() <= max_buf_elems);
+    if(buf.size() == max_buf_elems)
+        flush();
+}
+
+
+template <typename T_>
+inline void Ext_Mem_Bucket_Concurrent<T_>::flush()
+{
+    auto& buf = buf_w_local[parlay::worker_id()].data();
+    assert(buf.size() <= max_buf_elems);
+
+    lock_.lock();
+
+    // TODO: use async-write.
+    file.write(reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
+    if(!file)
     {
-        lock_.lock();
-        Ext_Mem_Bucket<T_>::add(w_local_buf.data(), w_local_buf.size());
-        lock_.unlock();
-
-        w_local_buf.clear();
+        std::cerr << "Error writing to external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
     }
+
+    flushed += buf.size();
+
+    lock_.unlock();
+
+    buf.clear();
 }
 
 
@@ -386,19 +426,25 @@ template <typename T_>
 inline void Ext_Mem_Bucket_Concurrent<T_>::load(std::vector<T_>& v) const
 {
     const auto sz = size();
-    v.reserve(sz);
+    v.resize(sz);
 
-    // Load from the global bucket.
-    Ext_Mem_Bucket<T_>::load(v);
+    // Load from the bucket-file.
+    std::ifstream input(file_path, std::ios::in | std::ios::binary);
+    input.read(reinterpret_cast<char*>(v.data()), flushed * sizeof(T_));
+    if(!input)
+    {
+        std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
 
     // Load the elements pending in the worker-local buffers.
 
-    auto curr_end = v.data() + v.size();
-    v.resize(sz);
+    auto curr_end = v.data() + flushed;
     for(const auto& b : buf_w_local)
     {
         const auto buf = b.data();
-        std::memcpy(reinterpret_cast<char*>(curr_end), reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
+        if(!buf.empty())    // Conditional to avoid UB on `nullptr` being passed to `memcpy`.
+            std::memcpy(reinterpret_cast<char*>(curr_end), reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
         curr_end += buf.size();
     }
 }
