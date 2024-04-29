@@ -143,6 +143,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 min_it.reset(frag, seq_len - frag_beg); // The fragment length is an estimate; upper-bound to be exact.
                 min_it.value_at(cur_min, cur_min_off);
                 cur_g = subgraphs.graph_ID(cur_min);
+                prev_g = subgraphs.graph_count();   // To deal with false-positive `-Wmaybe-uninitialized` later on.
 
                 while(DNA_Utility::is_DNA_base(frag[frag_len]))
                 {

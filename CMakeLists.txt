@@ -53,7 +53,7 @@ endif()
 # Disable unknown pragmas, b/c bbhash uses them extensively.
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
 set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
-set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas)
+set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas -Wno-pragmas)
 set(CLANG_SUPPRESS_WARNING_FLAGS -Wno-unknown-attributes)   # Warning flags to be suppressed with clang.
 
 if(ASAN OR MSAN OR UBSAN)

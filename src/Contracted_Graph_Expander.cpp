@@ -227,7 +227,7 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
         if(!M.find(e.y(), y_inf))
         {
             assert(M.find(e.x()));
-            M.find(e.x(), x_inf);
+            x_inf = *M.find(e.x()); // M.find(e.x(), x_inf);
             y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
             if(y_inf.r() > 0)
                 M.insert(e.y(), y_inf);

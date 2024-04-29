@@ -16,6 +16,7 @@
 // unambiguous canonical k-mer `v_hat`, the vertex can be observed in two different k-mer
 // forms: `v_hat` and `{v_hat}_bar` — the class keeps track of the particular k-mer form
 // observed for the vertex instance.
+// TODO: remove hash value from here, and inherit this from a hashed-variant which will be used in CF2.
 template <uint16_t k>
 class Directed_Vertex
 {
@@ -143,6 +144,7 @@ inline void Directed_Vertex<k>::init()
 {
     kmer_bar_.as_reverse_complement(kmer_);
     kmer_hat_ptr = Kmer<k>::canonical(kmer_, kmer_bar_);
+    h = 0;
 }
 
 
