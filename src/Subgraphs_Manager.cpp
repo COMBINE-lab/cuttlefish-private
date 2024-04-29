@@ -15,23 +15,23 @@ namespace cuttlefish
 {
 
 template <uint16_t k, bool Colored_>
-Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistics, const std::size_t graph_count, const uint16_t l, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf):
+Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistics, const std::size_t graph_count_, const uint16_t l, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf):
       path_pref(logistics.subgraphs_path())
-    , graph_count(graph_count)
+    , graph_count_(graph_count_)
     , l(l)
     , G(G)
     , trivial_mtig_count_(0)
     , icc_count_(0)
     , op_buf(op_buf)
 {
-    if((graph_count & (graph_count - 1)) != 0)
+    if((graph_count_ & (graph_count_ - 1)) != 0)
     {
         std::cerr << "Subgraph count needs to be a power of 2. Aborting.\n";
         std::exit(EXIT_FAILURE);
     }
 
-    subgraph_bucket.reserve(graph_count);
-    for(std::size_t g_id = 0; g_id < graph_count; ++g_id)
+    subgraph_bucket.reserve(graph_count_);
+    for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
         subgraph_bucket.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id)));
 }
 
@@ -40,7 +40,7 @@ template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::finalize()
 {
     const auto close_bucket = [&B = subgraph_bucket](const std::size_t g_id) { B[g_id].data().close(); };
-    parlay::parallel_for(0, graph_count, close_bucket, 1);
+    parlay::parallel_for(0, graph_count_, close_bucket, 1);
 }
 
 
@@ -79,7 +79,7 @@ void Subgraphs_Manager<k, Colored_>::process()
             t_contraction[parlay::worker_id()].data()  += timer::duration(t_2 - t_1);
         };
 
-    parlay::parallel_for(0, graph_count, process_subgraph, 1);
+    parlay::parallel_for(0, graph_count_, process_subgraph, 1);
     std::cerr << "\n";
 
     const auto sum_time = [&](const std::vector<Padded_Data<double>>& T)

@@ -35,7 +35,7 @@ class Subgraphs_Manager
 private:
 
     const std::string path_pref;    // Path-prefix to the super k-mer buckets.
-    const std::size_t graph_count;  // Number of subgraphs; it needs to be a power of 2.
+    const std::size_t graph_count_; // Number of subgraphs; it needs to be a power of 2.
     const uint16_t l;   // `l`-minimizer size to partition the graph.
 
     typedef Super_Kmer_Bucket<Colored_> bucket_t;
@@ -64,6 +64,9 @@ public:
     // `op_buf`.
     Subgraphs_Manager(const Data_Logistics& logistics, std::size_t graph_count, uint16_t l, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf);
 
+    // Returns the number of subgraphs.
+    auto graph_count() const { return graph_count_; }
+
     // Adds a (weak) super k-mer with minimizer `min` to the de Bruijn graph
     // with label `seq` and length `len`. The markers `l_disc` and `r_disc`
     // denote whether the left and the right ends of the (weak) super k-mer are
@@ -86,7 +89,7 @@ public:
     uint64_t icc_count() const;
 
     // Returns the subgraph ID for the minimizer `min`.
-    uint64_t graph_ID(minimizer_t min) const { return min & (graph_count - 1); }
+    uint64_t graph_ID(minimizer_t min) const { return min & (graph_count_ - 1); }
 };
 
 
