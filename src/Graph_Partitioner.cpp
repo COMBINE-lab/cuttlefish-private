@@ -132,6 +132,8 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
 
                 minimizer_t cur_min;    // Minimizer of the current super (k - 1)-mer in the iteration.
                 minimizer_t next_min;   // Minimizer of the next super (k - 1)-mer in the iteration.
+                uint64_t cur_h; // 64-bit hash of the current super (k - 1)-mer's minimizer.
+                uint64_t next_h;    // 64-bit hash of the next super (k - 1)-mer's minimizer.
                 std::size_t prev_g; // Subgraph ID of the previous super (k - 1)-mer's minimizer.
                 std::size_t cur_g;  // Subgraph ID of the current super (k - 1)-mer's minimizer.
                 std::size_t next_g; // Subgraph ID of the next super (k - 1)-mer's minimizer.
@@ -141,8 +143,8 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 frag_len = k - 1;
 
                 min_it.reset(frag, seq_len - frag_beg); // The fragment length is an estimate; upper-bound to be exact.
-                min_it.value_at(cur_min, cur_min_off);
-                cur_g = subgraphs.graph_ID(cur_min);
+                min_it.value_at(cur_min, cur_min_off, cur_h);
+                cur_g = subgraphs.graph_ID(cur_h);
                 prev_g = subgraphs.graph_count();   // To deal with false-positive `-Wmaybe-uninitialized` later on.
 
                 while(DNA_Utility::is_DNA_base(frag[frag_len]))
@@ -151,8 +153,8 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                     km1_mer_idx++, frag_len++;
                     const auto len = km1_mer_idx + (k - 2); // Length of the current super (k - 1)-mer.
 
-                    min_it.value_at(next_min, next_min_off);
-                    next_g = subgraphs.graph_ID(next_min);
+                    min_it.value_at(next_min, next_min_off, next_h);
+                    next_g = subgraphs.graph_ID(next_h);
                     assert(next_min_off >= cur_sup_km1_mer_off + km1_mer_idx);
 
                     if(next_min_off != cur_min_off)
@@ -180,7 +182,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                         // const bool r_cont = (next_g == cur_g);  // Whether it's right-continuous.
                         const auto len_weak = l_joined + len + r_joined;    // Length of the weak super k-mer.
                         assert(len_weak >= k);
-                        subgraphs.add_super_kmer(cur_min, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
+                        subgraphs.add_super_kmer(cur_h, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
                         weak_sup_kmers_len += len_weak;
 
                         cur_sup_km1_mer_off = next_sup_km1_mer_off;
@@ -189,10 +191,9 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                         km1_mer_idx = 0;
                     }
 
-                    if(next_min != cur_min)
-                        cur_min = next_min;
-
+                    cur_min = next_min;
                     cur_min_off = next_min_off; // The minimizer-instance offsets are tracked only for assertion checks.
+                    cur_h = next_h;
                 }
 
                 const auto len = frag_len - cur_sup_km1_mer_off;
@@ -207,7 +208,8 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 // const bool r_cont = false;
                 const auto len_weak = l_joined + len + r_joined;
                 assert(len_weak >= k);
-                subgraphs.add_super_kmer(cur_min, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
+                // TODO: the following add, being to different subgraphs' different worker-buffers, causes lots of cache misses.
+                subgraphs.add_super_kmer(cur_h, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
                 weak_sup_kmers_len += len_weak;
 
                 last_frag_end = frag_beg + frag_len;

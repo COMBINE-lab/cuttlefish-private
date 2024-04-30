@@ -67,11 +67,11 @@ public:
     // Returns the number of subgraphs.
     auto graph_count() const { return graph_count_; }
 
-    // Adds a (weak) super k-mer with minimizer `min` to the de Bruijn graph
+    // Adds a (weak) super k-mer with minimizer hash `h` to the de Bruijn graph
     // with label `seq` and length `len`. The markers `l_disc` and `r_disc`
     // denote whether the left and the right ends of the (weak) super k-mer are
     // discontinuous or not.
-    void add_super_kmer(minimizer_t min, const char* seq, std::size_t len, bool l_disc, bool r_disc);
+    void add_super_kmer(uint64_t h, const char* seq, std::size_t len, bool l_disc, bool r_disc);
 
     // Finalizes the subgraphs for iteration—no more content should be added
     // after this.
@@ -88,17 +88,17 @@ public:
     // ICCs.
     uint64_t icc_count() const;
 
-    // Returns the subgraph ID for the minimizer `min`.
-    uint64_t graph_ID(minimizer_t min) const { return min & (graph_count_ - 1); }
+    // Returns the subgraph ID for a minimizer with 64-bit hash value `h`.
+    uint64_t graph_ID(uint64_t h) const { return h & (graph_count_ - 1); }
 };
 
 
 template <uint16_t k, bool Colored_>
-inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const minimizer_t min, const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
+inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const uint64_t h, const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
 {
     assert(len >= k);
 
-    const auto g_id = graph_ID(min);
+    const auto g_id = graph_ID(h);
     auto& bucket = subgraph_bucket[g_id].data();
     bucket.add(seq, len, l_disc, r_disc);
 }
