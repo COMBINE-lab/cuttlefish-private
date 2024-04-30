@@ -7,6 +7,7 @@
 #include "parlay/parallel.h"
 
 #include <atomic>
+#include <limits>
 #include <iostream>
 #include <cstdlib>
 
@@ -52,7 +53,9 @@ void Subgraphs_Manager<k, Colored_>::process()
 
     std::vector<Padded_Data<double>> t_construction(parlay::num_workers(), 0);  // Timer-per-worker for construction work.
     std::vector<Padded_Data<double>> t_contraction(parlay::num_workers(), 0);   // Timer-per-worker for contraction work.
+    std::vector<Padded_Data<std::size_t>> size(parlay::num_workers(), 0);   // Sum graph size processed per worker.
     std::vector<Padded_Data<std::size_t>> max_size(parlay::num_workers(), 0);   // Largest graph size processed per worker.
+    std::vector<Padded_Data<std::size_t>> min_size(parlay::num_workers(), std::numeric_limits<std::size_t>::max()); // Smallest graph size processed per worker.
 
     const auto process_subgraph =
         [&](const std::size_t graph_id)
@@ -66,8 +69,12 @@ void Subgraphs_Manager<k, Colored_>::process()
             sub_dBG.contract();
             const auto t_2 = timer::now();
 
+            auto& sz = size[parlay::worker_id()].data();
             auto& max_sz = max_size[parlay::worker_id()].data();
+            auto& min_sz = min_size[parlay::worker_id()].data();
+            sz += sub_dBG.size();
             max_sz = std::max(max_sz, sub_dBG.size());
+            min_sz = std::min(min_sz, sub_dBG.size());
 
             trivial_mtig_count_ += sub_dBG.trivial_mtig_count();
             icc_count_ += sub_dBG.icc_count();
@@ -86,10 +93,19 @@ void Subgraphs_Manager<k, Colored_>::process()
         { double t = 0; std::for_each(T.cbegin(), T.cend(), [&t](const auto& v){ t += v.data(); }); return t; };
     std::cerr << "Total work in graph construction: " << sum_time(t_construction) << " (s).\n";
     std::cerr << "Total work in graph contraction:  " << sum_time(t_contraction) << " (s).\n";
+
+    std::cerr << "Sum graph size: " <<
+        [&](){  std::size_t sz = 0;
+                std::for_each(size.cbegin(), size.cend(), [&](const auto& v){ sz += v.data(); });
+                return sz; }() << ".\n";
     std::cerr << "Largest graph size: " <<
         [&](){  std::size_t max_sz = 0;
                 std::for_each(max_size.cbegin(), max_size.cend(), [&](const auto& v){ max_sz = std::max(max_sz, v.data()); });
                 return max_sz; }() << ".\n";
+    std::cerr << "Smallest graph size: " <<
+        [&](){  std::size_t min_sz = std::numeric_limits<std::size_t>::max();
+                std::for_each(min_size.cbegin(), min_size.cend(), [&](const auto& v){ min_sz = std::min(min_sz, v.data()); });
+                return min_sz; }() << ".\n";
 }
 
 
