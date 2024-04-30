@@ -9,10 +9,11 @@
 
 
 // Executes `f()` with optional profiling at record-file `tag`.
+// Empty `__VA_ARGS__` will produce ISO C++11 warning, which can be fixed with C++20 `__VA_OPTS__(,)`.
 #ifdef PART_PROFILE
-    #define EXECUTE(f, tag) (cuttlefish::profile([&](){ f(); }, (tag)));
+    #define EXECUTE(tag, f, ...) (cuttlefish::profile([&](){ f(__VA_ARGS__); }, (tag)));
 #else
-    #define EXECUTE(f, tag) (f());
+    #define EXECUTE(tag, f, ...) (f(__VA_ARGS__));
 #endif
 
 
