@@ -9,6 +9,7 @@
 #include "Unitig_Collator.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
+#include "profile.hpp"
 #include "parlay/parallel.h"
 
 
@@ -52,13 +53,13 @@ void dBG_Contractor<k>::construct()
     Subgraphs_Manager<k, false> subgraphs(logistics, params.subgraph_count(), params.min_len(), G, op_buf);
 
     Graph_Partitioner<k, false> super_kmer_splitter(subgraphs, logistics, params.min_len());
-    super_kmer_splitter.partition();
+    EXECUTE("partition", super_kmer_splitter.partition);
     subgraphs.finalize();
 
     const auto t_part = timer::now();
     std::cerr << "Sequence splitting into subgraphs completed. Time taken: " << timer::duration(t_part - t_0) << " seconds.\n";
 
-    subgraphs.process();
+    EXECUTE("subgraphs", subgraphs.process);
 
     std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";
     std::cerr << "Trivial ICC count: " << subgraphs.icc_count() << ".\n";
@@ -72,7 +73,7 @@ void dBG_Contractor<k>::construct()
     return; // Perf-diagnose
 
     Discontinuity_Graph_Contractor<k> contractor(G, P_v, logistics);
-    contractor.contract();
+    EXECUTE("contract", contractor.contract)
 
     G.close_lmtig_stream();
 
@@ -80,13 +81,13 @@ void dBG_Contractor<k>::construct()
     std::cerr << "Discontinuity-graph contraction completed. Time taken: " << timer::duration(t_c - t_subg) << " seconds.\n";
 
     Contracted_Graph_Expander<k> expander(G, P_v, P_e, logistics);
-    expander.expand();
+    EXECUTE("expand", expander.expand)
 
     const auto t_e = timer::now();
     std::cerr << "Expansion of contracted graph completed. Time taken: " << timer::duration(t_e - t_c) << " seconds.\n";
 
     Unitig_Collator<k> collator(P_e, logistics, op_buf);
-    collator.par_collate();
+    EXECUTE("collate", collator.par_collate);
 
     // Flush data and close the output sink.
     parlay::parallel_for(0, parlay::num_workers(),
