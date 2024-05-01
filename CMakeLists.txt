@@ -84,6 +84,35 @@ set(UBSAN_FLAGS -fsanitize=undefined
 set(OPTIMIZE_FLAGS -funroll-loops -march=native)
 
 
+# Accumulate the compile- and link-flags.
+set(COMPILE_FLAGS "")
+set(LINK_FLAGS "")
+
+# Specify the warnings and the extra optimization flags to the compiler for the target library.
+# As the flags are specified as `PRIVATE`, they will only be used when compiling this library.
+# These will not be propagated to the targets linking to it.
+list(APPEND COMPILE_FLAGS ${WARNING_FLAGS} ${SUPPRESS_WARNING_FLAGS} ${OPTIMIZE_FLAGS})
+
+if(DEBUG_INFO)
+    list(APPEND COMPILE_FLAGS ${DEBUG_FLAGS})
+endif()
+
+if(ASAN)
+    list(APPEND COMPILE_FLAGS ${ASAN_FLAGS} ${DEBUG_FLAGS})
+    list(APPEND LINK_FLAGS ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
+endif()
+
+if(UBSAN)
+    list(APPEND COMPILE_FLAGS ${UBSAN_FLAGS} ${DEBUG_FLAGS})
+    list(APPEND LINK_FLAGS ${UBSAN_LINK_FLAGS} ${UBSAN_FLAGS})
+endif()
+
+if(MSAN)
+    list(APPEND COMPILE_FLAGS ${MSAN_FLAGS} ${DEBUG_FLAGS})
+    list(APPEND LINK_FLAGS ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
+endif()
+
+
 # Add the required preprocessor definitions (`#define`s) to pass on.
 # TODO: find out what are `__STDC_FORMAT_MACROS` and `SPDLOG_FMT_EXTERNAL_HO` for.
 add_compile_definitions(__STDC_FORMAT_MACROS SPDLOG_FMT_EXTERNAL_HO FMT_HEADER_ONLY XXH_INLINE_ALL)
@@ -108,6 +137,10 @@ endif()
 
 if(IGZIP_PREFIX)
     add_compile_definitions(USE_IGZIP)
+endif()
+
+if(PART_PROFILE)
+    add_compile_definitions(PART_PROFILE)
 endif()
 
 

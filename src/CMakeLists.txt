@@ -92,35 +92,6 @@ add_executable(${PROJECT_NAME} main.cpp)
 add_dependencies(cfcore_static prj_parlaylib)
 
 
-# Accumulate the compile- and link-flags.
-set(COMPILE_FLAGS "")
-set(LINK_FLAGS "")
-
-# Specify the warnings and the extra optimization flags to the compiler for the target library.
-# As the flags are specified as `PRIVATE`, they will only be used when compiling this library.
-# These will not be propagated to the targets linking to it.
-list(APPEND COMPILE_FLAGS ${WARNING_FLAGS} ${SUPPRESS_WARNING_FLAGS} ${OPTIMIZE_FLAGS})
-
-if(DEBUG_INFO)
-    list(APPEND COMPILE_FLAGS ${DEBUG_FLAGS})
-endif()
-
-if(ASAN)
-    list(APPEND COMPILE_FLAGS ${ASAN_FLAGS} ${DEBUG_FLAGS})
-    list(APPEND LINK_FLAGS ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
-endif()
-
-if(UBSAN)
-    list(APPEND COMPILE_FLAGS ${UBSAN_FLAGS} ${DEBUG_FLAGS})
-    list(APPEND LINK_FLAGS ${UBSAN_LINK_FLAGS} ${UBSAN_FLAGS})
-endif()
-
-if(MSAN)
-    list(APPEND COMPILE_FLAGS ${MSAN_FLAGS} ${DEBUG_FLAGS})
-    list(APPEND LINK_FLAGS ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
-endif()
-
-
 # Set the include directories for the targets.
 
 target_include_directories(cfcore_static PRIVATE ${INCLUDE_DIR} ${EXT_INCLUDE})
