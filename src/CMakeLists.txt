@@ -86,6 +86,7 @@ add_library(rabbitfx STATIC ${RABBITFX_SRC})
 
 # Define an executable from the driver program.
 add_executable(${PROJECT_NAME} main.cpp)
+add_executable(test test.cpp)
 
 
 # Define dependencies between the targets.
@@ -99,6 +100,7 @@ if(DEFINED IGZIP_PREFIX)
     target_include_directories(rabbitfx PUBLIC ${IGZIP_PREFIX}/include)
 endif()
 target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
+target_include_directories(test PRIVATE ${INCLUDE_DIR} ${EXT_INCLUDE})
 
 
 # Set the compile flags for the targets.
@@ -106,6 +108,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
 target_compile_options(cfcore_static PRIVATE ${COMPILE_FLAGS})
 target_compile_options(rabbitfx PRIVATE ${COMPILE_FLAGS})
 target_compile_options(${PROJECT_NAME} PRIVATE ${COMPILE_FLAGS})
+target_compile_options(test PRIVATE ${COMPILE_FLAGS})
 
 
 # Link appropriate libraries and targets.
@@ -147,6 +150,7 @@ endif()
 
 # Link the executable to the core library.
 target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static)
+target_link_libraries(test PRIVATE cfcore_static)
 
 
 # Set the link flags for the targets.
@@ -154,6 +158,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static)
 target_link_libraries(cfcore_static PRIVATE ${LINK_FLAGS})
 target_link_libraries(rabbitfx PRIVATE ${LINK_FLAGS})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${LINK_FLAGS})
+target_link_libraries(test PRIVATE ${LINK_FLAGS})
 
 
 # Specialized options for memory-sanitizer.
@@ -162,10 +167,11 @@ if(MSAN)
     target_include_directories(rabbitfx PRIVATE ${LIBCXX_INCLUDE})
     target_include_directories(cfcore_static PRIVATE ${LIBCXX_INCLUDE})
     target_include_directories(${PROJECT_NAME} PRIVATE ${LIBCXX_INCLUDE})
+    target_include_directories(test PRIVATE ${LIBCXX_INCLUDE})
 
     target_link_directories(rabbitfx PRIVATE ${LIBCXX})
     target_link_directories(cfcore_static PRIVATE ${LIBCXX})
-    target_link_directories(${PROJECT_NAME} PRIVATE ${LIBCXX})
+    target_link_directories(test PRIVATE ${LIBCXX})
 
     add_dependencies(rabbitfx prj_libcxx)
     add_dependencies(cfcore_static prj_libcxx)
