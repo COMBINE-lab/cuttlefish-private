@@ -90,17 +90,19 @@ add_executable(test test.cpp)
 
 
 # Define dependencies between the targets.
+add_dependencies(rabbitfx prj_rapidgzip)
 add_dependencies(cfcore_static prj_parlaylib)
 
 
 # Set the include directories for the targets.
 
+set(RAPIDGZIP_INCLUDE ${EXT_INCLUDE}/rapidgzip ${EXT_INCLUDE}/rapidgzip/core ${EXT_INCLUDE}/rapidgzip/indexed_bzip2 ${EXT_INCLUDE}/rapidgzip/rapidgzip
+                      ${EXT_INCLUDE}/rapidgzip/isa-l/ ${EXT_INCLUDE}/rapidgzip/rpmalloc)
+
 target_include_directories(cfcore_static PRIVATE ${INCLUDE_DIR} ${EXT_INCLUDE})
-if(DEFINED IGZIP_PREFIX)
-    target_include_directories(rabbitfx PUBLIC ${IGZIP_PREFIX}/include)
-endif()
+target_include_directories(rabbitfx PUBLIC ${RAPIDGZIP_INCLUDE})
 target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
-target_include_directories(test PRIVATE ${INCLUDE_DIR} ${EXT_INCLUDE})
+target_include_directories(test PRIVATE ${INCLUDE_DIR} ${EXT_INCLUDE} ${RAPIDGZIP_INCLUDE})
 
 
 # Set the compile flags for the targets.
@@ -138,15 +140,11 @@ if("$ENV{CF_INSTALL}" STREQUAL "conda" AND CMAKE_CXX_COMPILER_ID MATCHES "Clang"
     target_link_libraries(cfcore_static PRIVATE c++experimental)
 endif()
 
-# Link to intel-gzip.
-if(IGZIP_PREFIX)
-    find_library(ISAL_LIB isal PATHS ${IGZIP_PREFIX}/lib)
-    if(ISAL_LIB_NOTFOUND)
-        message(FATAL_ERROR "isa-l (https://github.com/intel/isa-l) not found in the specified directory. Aborting.\n")
-    endif()
+# Link to intel storage acceleration library's decompression core.
+target_link_libraries(rabbitfx INTERFACE isal_inflate)
 
-    target_link_libraries(rabbitfx INTERFACE ${ISAL_LIB})
-endif()
+# Link to `rpmalloc` for `rapidgzip`'s memory allocation impl.
+target_link_libraries(rabbitfx INTERFACE rpmalloc)
 
 # Link the executable to the core library.
 target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static)
