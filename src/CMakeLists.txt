@@ -140,6 +140,9 @@ if("$ENV{CF_INSTALL}" STREQUAL "conda" AND CMAKE_CXX_COMPILER_ID MATCHES "Clang"
     target_link_libraries(cfcore_static PRIVATE c++experimental)
 endif()
 
+# Link to `zlib`, required to support `gzip` files.
+target_link_libraries(rabbitfx PRIVATE ZLIB::ZLIB)
+
 # Link to intel storage acceleration library's decompression core.
 target_link_libraries(rabbitfx INTERFACE isal_inflate)
 
