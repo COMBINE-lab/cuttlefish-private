@@ -1191,7 +1191,8 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
 
 */
 
-
+#include <memory>
+#include <functional>
 #include "rapidgzip/ParallelGzipReader.hpp"
 
 
@@ -1269,14 +1270,19 @@ int main(int argc, char** argv)
 	const size_t n_threads = std::atoi(argv[2]);
 	const size_t reader_chunk_size = std::atoi(argv[3]) * (1ull << 20);
 
-	rapidgzip::ParallelGzipReader<> reader(std::move(file_reader), n_threads);
-    reader.setCRC32Enabled(false);
-
-	//reader.setCRC32Enabled( true );
-
 	const size_t chunk_size = 4 * 1024 * 1024;
 	std::vector<char> chunk(chunk_size);
 
+	std::function<void( const std::shared_ptr<rapidgzip::ChunkData>, size_t, size_t )> writeFunctor;
+	rapidgzip::ParallelGzipReader<rapidgzip::ChunkData> reader(std::move(file_reader), n_threads);
+	//rapidgzip::ParallelGzipReader<> reader(std::move(file_reader), n_threads);
+	reader.setCRC32Enabled(false);
+	//reader.setCRC32Enabled( true );
+	
+	auto totalBytesRead = reader.read( writeFunctor );
+
+
+	/*
 	while (true) {
 		auto R = reader.read(chunk.data(), chunk_size);
 		if (!R)
@@ -1285,7 +1291,8 @@ int main(int argc, char** argv)
 	}
 
 	std::cerr << "eof?: " << reader.eof() << "\n";
-
+	*/
+	std::cerr << "total bytes read : " << totalBytesRead << "\n";
 
     return 0;
 }
