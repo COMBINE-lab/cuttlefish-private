@@ -123,7 +123,7 @@ add_compile_definitions(PROJECT_VERSION=${CMAKE_PROJECT_VERSION})
 
 add_compile_definitions(WITH_ISAL)  # For `rapidgzip`.
 add_compile_definitions(WITH_RPMALLOC)  # For `rapidzip`.
-add_compile_definitions(USE_RAPIDGZIP)
+add_compile_definitions(USE_RAPIDGZIP)  # TODO: temporary for `rabbitfx`.
 add_compile_definitions(USE_IGZIP)  # TODO: temporary for `rabbitfx`.
 
 if(INSTANCE_COUNT)
@@ -142,9 +142,9 @@ if(CF_DEVELOP_MODE)
     add_compile_definitions(CF_DEVELOP_MODE)
 endif()
 
-if(IGZIP_PREFIX)
-    add_compile_definitions(USE_IGZIP)
-endif()
+# if(IGZIP_PREFIX)
+#     add_compile_definitions(USE_IGZIP)
+# endif()
 
 if(PART_PROFILE)
     add_compile_definitions(PART_PROFILE)
@@ -324,7 +324,7 @@ ExternalProject_Add(prj_parlaylib
 )
 
 
-# Prepare the `rapidgzip` library—gzip decompressor with multi-cores.
+# Prepare the `rapidgzip` library—gzip decompressor with multi-cores, and its dependencies.
 set(RAPIDGZIP_VERSION "rapidgzip-v0.13.2")
 message("Build system will fetch and install rapidgzip")
 ExternalProject_Add(prj_rapidgzip

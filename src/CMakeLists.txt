@@ -148,11 +148,12 @@ target_link_libraries(rabbitfx PRIVATE isal_inflate)
 
 # Link to `rpmalloc` for `rapidgzip`'s memory allocation impl.
 target_link_libraries(rabbitfx PRIVATE rpmalloc)
-target_link_libraries(test PRIVATE rpmalloc)
 
 # Link the executable to the core library.
 target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static)
-target_link_libraries(test PRIVATE cfcore_static)
+
+# Link the tester.
+target_link_libraries(test PRIVATE cfcore_static rabbitfx)
 
 
 # Set the link flags for the targets.

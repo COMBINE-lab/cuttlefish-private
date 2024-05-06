@@ -1,12 +1,22 @@
 
 #include "FileReader.h"
 
+#include "rapidgzip/ParallelGzipReader.hpp"
+
 
 namespace rabbit
 {
 
 FileReader::FileReader(const std::string &fileName_, bool isZipped){
     if(ends_with(fileName_, ".gz") || isZipped) {
+
+#ifdef USE_RAPIDGZIP
+        constexpr std::size_t worker_count = 1; // TODO: temporary.
+        auto file_reader = std::make_unique<StandardFileReader>(fileName_);
+        par_gzip_reader = std::make_unique<rapidgzip::ParallelGzipReader<>>(std::move(file_reader), worker_count);
+        par_gzip_reader->setCRC32Enabled(false);
+#endif
+
 #if defined(USE_IGZIP)
         printf("using igzip!!\n");
         mFile = fopen(fileName_.c_str(), "rb");
@@ -54,6 +64,7 @@ FileReader::FileReader(const std::string &fileName_, bool isZipped){
 }
 
 
+/*
 FileReader::FileReader(int fd, bool isZipped){
     if (isZipped) {
 #if defined(USE_IGZIP)
@@ -98,6 +109,7 @@ FileReader::FileReader(int fd, bool isZipped){
         }
     }
 }
+*/
 
 
 #if	defined(USE_IGZIP)
@@ -160,6 +172,9 @@ int64 FileReader::igzip_read(FILE* zipFile, byte *memory_, size_t size_){
 
 int64 FileReader::Read(byte *memory_, uint64 size_) {
     if (isZipped) {
+#ifdef USE_RAPIDGZIP
+        return par_gzip_reader->read(reinterpret_cast<char*>(memory_), size_);
+#endif
 #if defined(USE_IGZIP)			
         int64 n = igzip_read(mFile, memory_, size_);
 #else

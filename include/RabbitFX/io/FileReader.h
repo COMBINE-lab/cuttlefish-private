@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <cstring>
+#include <memory>
 #include <cassert>
 #include "Reference.h"
 
@@ -49,6 +50,16 @@
 #define FCLOSE fclose
 #endif
 
+
+// Forward declarations for `rapidgzip`. Multi-defn errors arise from `rapidgzip` if its headers are included here.
+namespace rapidgzip
+{
+
+struct ChunkData;
+template<typename T_ChunkData> class ParallelGzipReader;
+
+}
+
 namespace rabbit{
 	class FileReader{
 	private:
@@ -84,6 +95,11 @@ namespace rabbit{
 		gzFile mZipFile = NULL;
 		//igzip usage
 		unsigned char *mIgInbuf = NULL;
+
+#ifdef USE_RAPIDGZIP
+		std::unique_ptr<rapidgzip::ParallelGzipReader<rapidgzip::ChunkData>> par_gzip_reader;
+#endif
+
 #if defined(USE_IGZIP)	
 		isal_gzip_header mIgzipHeader;
 		inflate_state mStream;

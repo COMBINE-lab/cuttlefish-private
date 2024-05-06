@@ -58,6 +58,7 @@ void dBG_Contractor<k>::construct()
 
     const auto t_part = timer::now();
     std::cerr << "Sequence splitting into subgraphs completed. Time taken: " << timer::duration(t_part - t_0) << " seconds.\n";
+    return; // Perf-diagnose
 
     EXECUTE("subgraphs", subgraphs.process);
 

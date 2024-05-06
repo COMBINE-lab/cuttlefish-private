@@ -34,7 +34,7 @@ Graph_Partitioner<k, Colored_>::Graph_Partitioner(Subgraphs_Manager<k, Colored_>
 template <uint16_t k, bool Colored_>
 void Graph_Partitioner<k, Colored_>::partition()
 {
-    const auto chunk_count = std::ceil(parlay::num_workers() * 1.1);    // Maximum number of chunks. TODO: make a more informed choice.
+    const auto chunk_count = std::ceil(parlay::num_workers() * 2);    // Maximum number of chunks. TODO: make a more informed choice.
     chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
     chunk_q_t chunk_q(chunk_count); // Parsed chunks.
 
@@ -94,6 +94,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     min_it_t min_it(k - 1, l_, min_seed);   // `l`-minimizer iterator for `(k - 1)`-mers.
     while(chunk_q.Pop(source_id, chunk))
     {
+        /*
         parsed_chunk.clear();
         rec_count += rabbit::fq::chunkFormat(chunk, parsed_chunk);
 
@@ -215,6 +216,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 last_frag_end = frag_beg + frag_len;
             }
         }
+        */
 
 
         chunk_pool.Release(chunk);
