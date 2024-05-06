@@ -144,10 +144,11 @@ endif()
 target_link_libraries(rabbitfx PRIVATE ZLIB::ZLIB)
 
 # Link to intel storage acceleration library's decompression core.
-target_link_libraries(rabbitfx INTERFACE isal_inflate)
+target_link_libraries(rabbitfx PRIVATE isal_inflate)
 
 # Link to `rpmalloc` for `rapidgzip`'s memory allocation impl.
-target_link_libraries(rabbitfx INTERFACE rpmalloc)
+target_link_libraries(rabbitfx PRIVATE rpmalloc)
+target_link_libraries(test PRIVATE rpmalloc)
 
 # Link the executable to the core library.
 target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static)

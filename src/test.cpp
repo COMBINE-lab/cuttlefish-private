@@ -1192,6 +1192,9 @@ void iterate_subgraphs(const std::string& bin_dir, const std::size_t bin_c)
 */
 
 
+#include "rapidgzip/ParallelGzipReader.hpp"
+
+
 int main(int argc, char** argv)
 {
     (void)argc;
@@ -1258,5 +1261,43 @@ int main(int argc, char** argv)
     // iterate_subgraphs<k>(bin_dir, bin_c);
     // cuttlefish::Parser(argv[1], std::atoi(argv[2])).parse();
 
+    if (argc < 4) {
+		std::cerr << "Usage: " << argv[0] << " <input_file> <n_threads> <reader_chunk_size_in_MB>\n";
+		return 1;
+	}
+	UniqueFileReader file_reader = std::make_unique<StandardFileReader>(argv[1]);
+	const size_t n_threads = std::atoi(argv[2]);
+	const size_t reader_chunk_size = std::atoi(argv[3]) * (1ull << 20);
+
+	rapidgzip::ParallelGzipReader<> reader(std::move(file_reader), n_threads);
+    reader.setCRC32Enabled(false);
+
+	//reader.setCRC32Enabled( true );
+
+	const size_t chunk_size = 4 * 1024 * 1024;
+	std::vector<char> chunk(chunk_size);
+
+	while (true) {
+		auto R = reader.read(chunk.data(), chunk_size);
+		if (!R)
+			break;
+		std::cout.write(chunk.data(), R);
+	}
+
+	std::cerr << "eof?: " << reader.eof() << "\n";
+
+
     return 0;
 }
+
+
+/*
+/usr/bin/time rapidgzip -dk -P 1 /ssd2/jamshed/seq-reads/SRR3440495__NIST_sequencing_of_the_AJ_Trio-_2x250bp_overlapping_libraries_with_nominal_350bp_insert_size_designed_for_DISCOVAR_assembly_NIST_HG004_NA24143-D3_S3_L002_004__2.fastq.gz -o /dev/null
+40.67user 2.65system 0:43.34elapsed 99%CPU (0avgtext+0avgdata 41472maxresident)k
+0inputs+0outputs (0major+119600minor)pagefaults 0swaps
+
+/usr/bin/time ./cuttlefish-private/build/src/test /ssd2/jamshed/seq-reads/SRR3440495__NIST_sequencing_of_the_AJ_Trio-_2x250bp_overlapping_libraries_with_nominal_350bp_insert_size_designed_for_DISCOVAR_assembly_NIST_HG004_NA24143-D3_S3_L002_004__2.fastq.gz 1 1 > /dev/null
+eof?: 1
+193.61user 4.74system 3:18.40elapsed 99%CPU (0avgtext+0avgdata 678684maxresident)k
+0inputs+0outputs (0major+814642minor)pagefaults 0swaps
+*/
