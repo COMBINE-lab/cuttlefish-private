@@ -1,6 +1,7 @@
 #include "Buffer.h"
 #include "FastxChunk.h"
 #include "utils.h"
+#include <cstddef>
 #include <iostream>
 #include <string>
 #include <cstring>
@@ -66,7 +67,7 @@ namespace rabbit{
 		static const uint32 IGZIP_IN_BUF_SIZE = 1 << 22; // 4M gziped file onece fetch
 		static const uint32 GZIP_HEADER_BYTES_REQ = 1<<16;
 	public:
-		FileReader(const std::string &fileName_, bool isZipped);
+		FileReader(const std::string &fileName_, bool isZipped, std::size_t worker_count = 1);
 
 		FileReader(int fd, bool isZipped = false);
 
@@ -96,13 +97,12 @@ namespace rabbit{
 		//igzip usage
 		unsigned char *mIgInbuf = NULL;
 
-#ifdef USE_RAPIDGZIP
-		std::unique_ptr<rapidgzip::ParallelGzipReader<rapidgzip::ChunkData>> par_gzip_reader;
-#endif
-
 #if defined(USE_IGZIP)	
 		isal_gzip_header mIgzipHeader;
 		inflate_state mStream;
+
+		bool par_deflate;
+		std::unique_ptr<rapidgzip::ParallelGzipReader<rapidgzip::ChunkData>> par_gzip_reader;
 #endif	
 		bool isZipped = false;
 		bool eof = false;

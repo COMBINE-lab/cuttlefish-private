@@ -7,17 +7,22 @@
 namespace rabbit
 {
 
-FileReader::FileReader(const std::string &fileName_, bool isZipped){
+FileReader::FileReader(const std::string &fileName_, bool isZipped, const std::size_t worker_count){
     if(ends_with(fileName_, ".gz") || isZipped) {
 
-#ifdef USE_RAPIDGZIP
-        constexpr std::size_t worker_count = 1; // TODO: temporary.
-        auto file_reader = std::make_unique<StandardFileReader>(fileName_);
-        par_gzip_reader = std::make_unique<rapidgzip::ParallelGzipReader<>>(std::move(file_reader), worker_count);
-        par_gzip_reader->setCRC32Enabled(false);
-#endif
+        this->isZipped = true;
+        par_deflate = (worker_count > 1);
 
 #if defined(USE_IGZIP)
+        if(par_deflate)
+        {
+            auto file_reader = std::make_unique<StandardFileReader>(fileName_);
+            par_gzip_reader = std::make_unique<rapidgzip::ParallelGzipReader<>>(std::move(file_reader), worker_count);
+            par_gzip_reader->setCRC32Enabled(false);
+
+            return;
+        }
+
         printf("using igzip!!\n");
         mFile = fopen(fileName_.c_str(), "rb");
         if (mFile == NULL){
@@ -48,7 +53,6 @@ FileReader::FileReader(const std::string &fileName_, bool isZipped){
         }
         gzrewind(mZipFile);
 #endif			
-        this->isZipped = true;
     }else {
         mFile = FOPEN(fileName_.c_str(), "rb");
         if (fileName_ != "") {
@@ -172,10 +176,10 @@ int64 FileReader::igzip_read(FILE* zipFile, byte *memory_, size_t size_){
 
 int64 FileReader::Read(byte *memory_, uint64 size_) {
     if (isZipped) {
-#ifdef USE_RAPIDGZIP
-        return par_gzip_reader->read(reinterpret_cast<char*>(memory_), size_);
-#endif
 #if defined(USE_IGZIP)			
+        if(par_deflate)
+            return par_gzip_reader->read(reinterpret_cast<char*>(memory_), size_);
+
         int64 n = igzip_read(mFile, memory_, size_);
 #else
         int64 n = gzread(mZipFile, memory_, size_);
@@ -204,6 +208,9 @@ FileReader::~FileReader(){
 bool FileReader::FinishRead(){
     if(isZipped){
 #if defined(USE_IGZIP)			
+        if(par_deflate)
+            return Eof();
+
         return feof(mFile) && (mStream.avail_in == 0);
 #else
         return gzeof(mZipFile);

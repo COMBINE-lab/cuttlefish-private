@@ -123,7 +123,6 @@ add_compile_definitions(PROJECT_VERSION=${CMAKE_PROJECT_VERSION})
 
 add_compile_definitions(WITH_ISAL)  # For `rapidgzip`.
 add_compile_definitions(WITH_RPMALLOC)  # For `rapidzip`.
-add_compile_definitions(USE_RAPIDGZIP)  # TODO: temporary for `rabbitfx`.
 add_compile_definitions(USE_IGZIP)  # TODO: temporary for `rabbitfx`.
 
 if(INSTANCE_COUNT)

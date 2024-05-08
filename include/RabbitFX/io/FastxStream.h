@@ -16,6 +16,7 @@ last modified by Zekun Yin 2020/5/18
 #include "Buffer.h"
 #include "FastxChunk.h"
 #include "utils.h"
+#include <cstddef>
 #include <iostream>
 #include <string>
 #include <zlib.h>  //support gziped files, functional but inefficient
@@ -303,6 +304,7 @@ namespace rabbit {
                  * @param isZippedNew if true, it will use gzopen to read fileName_ and fileName2_
                  */
                 FastqFileReader(const std::string &fileName_, FastqDataPool &pool_,
+                      std::size_t worker_count = 1,
                       bool isZippedNew = false, std::string fileName2_ = "")
                     : swapBuffer(SwapBufferSize),
                     bufferSize(0),
@@ -313,9 +315,9 @@ namespace rabbit {
                     isZipped(isZippedNew),
                     recordsPool(pool_),
                     numParts(0) {
-                        mFqReader = new FileReader(fileName_, isZipped);
+                        mFqReader = new FileReader(fileName_, isZipped, worker_count);
                         if(fileName2_ != ""){
-                            mFqReader2 = new FileReader(fileName2_, isZipped);
+                            mFqReader2 = new FileReader(fileName2_, isZipped, worker_count);
                         }
                     }
 
