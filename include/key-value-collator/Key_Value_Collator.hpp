@@ -442,7 +442,9 @@ inline void Key_Value_Collator<T_key_, T_val_, T_hasher_>::collate(const uint32_
                     const auto p_bytes = file_size(p_path.c_str());
 
                     std::ifstream input(p_path.c_str(), std::ios::in | std::ios::binary);
-                    if(!input.read(reinterpret_cast<char*>(p_data), p_bytes))
+                    input.read(reinterpret_cast<char*>(p_data), p_bytes);
+                    assert(input.gcount() == p_bytes);
+                    if(!input)
                     {
                         std::cerr << "Error reading the partition files. Aborting.\n";
                         std::exit(EXIT_FAILURE);

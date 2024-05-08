@@ -4,7 +4,9 @@
 #include "globals.hpp"
 #include "parlay/parallel.h"
 
+#include <iostream>
 #include <fstream>
+#include <cstdlib>
 #include <algorithm>
 
 
@@ -251,8 +253,15 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
     }
 
 
-    std::ofstream output(compressed_diagonal_path + "_" + std::to_string(j));
+    const auto d_j_path = compressed_diagonal_path + "_" + std::to_string(j);
+    std::ofstream output(d_j_path);
     output.write(reinterpret_cast<const char*>(D_j.data()), D_j.size() * sizeof(Discontinuity_Edge<k>));
+    if(!output)
+    {
+        std::cerr << "Error writing compressed diagonal edge block at " << d_j_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
     output.close();
 
 

@@ -15,6 +15,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <cstdlib>
 #include <cassert>
 
 
@@ -197,6 +198,12 @@ inline void Unitig_File_Writer::add(const T_it_ beg_1, const T_it_ end_1, const 
 inline void Unitig_File_Writer::flush_unitigs()
 {
     output.write(reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(decltype(buf)::value_type));
+    if(!output)
+    {
+        std::cerr << "Error writing of unitig content to " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
     buf.clear();
 }
 
@@ -204,6 +211,12 @@ inline void Unitig_File_Writer::flush_unitigs()
 inline void Unitig_File_Writer::flush_lengths()
 {
     output_len.write(reinterpret_cast<const char*>(len.data()), len.size() * sizeof(decltype(len)::value_type));
+    if(!output_len)
+    {
+        std::cerr << "Error writing of unitig lengths to " << length_file_path() << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
     len.clear();
 }
 
@@ -233,6 +246,11 @@ inline std::size_t Unitig_File_Reader::read_next_unitig(T_& unitig)
         buf.resize(bytes_to_read);
         input.read(buf.data(), bytes_to_read * sizeof(char));
         assert(input.gcount() == bytes_to_read);
+        if(!input)
+        {
+            std::cerr << "Error reading of unitig content from " << file_path << ". Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
 
         buf_idx = 0;
         uni_idx_in_mem = 0;

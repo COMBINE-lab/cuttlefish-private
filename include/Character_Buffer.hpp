@@ -13,6 +13,7 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
+#include <cstdlib>
 
 
 // A buffer class to contain contiguous characters. The buffer is to have a maximum
@@ -224,8 +225,7 @@ inline void Character_Buffer_Flusher<std::ofstream>::write(std::vector<char>& bu
     lock.lock();
 
     output.write(buf.data(), buf.size());
-
-    if(output.fail())
+    if(!output)
     {
         std::cerr << "Error writing the output. Aborting.\n";
         std::exit(EXIT_FAILURE);
