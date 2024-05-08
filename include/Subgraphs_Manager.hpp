@@ -67,11 +67,11 @@ public:
     // Returns the number of subgraphs.
     auto graph_count() const { return graph_count_; }
 
-    // Adds a (weak) super k-mer with minimizer hash `h` to the de Bruijn graph
+    // Adds a (weak) super k-mer to the subgraph `g` of the de Bruijn graph
     // with label `seq` and length `len`. The markers `l_disc` and `r_disc`
     // denote whether the left and the right ends of the (weak) super k-mer are
     // discontinuous or not.
-    void add_super_kmer(uint64_t h, const char* seq, std::size_t len, bool l_disc, bool r_disc);
+    void add_super_kmer(std::size_t g, const char* seq, std::size_t len, bool l_disc, bool r_disc);
 
     // Finalizes the subgraphs for iteration—no more content should be added
     // after this.
@@ -94,12 +94,11 @@ public:
 
 
 template <uint16_t k, bool Colored_>
-inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const uint64_t h, const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
+inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
 {
     assert(len >= k);
 
-    const auto g_id = graph_ID(h);
-    auto& bucket = subgraph_bucket[g_id].data();
+    auto& bucket = subgraph_bucket[g].data();
     bucket.add(seq, len, l_disc, r_disc);
 }
 
