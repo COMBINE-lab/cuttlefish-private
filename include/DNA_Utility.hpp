@@ -120,6 +120,7 @@ public:
     // Returns the mapping integer value of the complement of `base`.
     static DNA::Base complement(const DNA::Base base)
     {
+        // TODO: fetching this array causes lots of cache misses. How about putting it directly in the instruction cache?
         return COMPLEMENTED_BASE[base];
     }
 

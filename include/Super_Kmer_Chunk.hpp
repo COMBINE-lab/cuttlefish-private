@@ -115,6 +115,7 @@ inline void Super_Kmer_Chunk<Colored_>::add(const char* const seq, const std::si
 
     const auto label_off = label_units();   // Offset into the packed-encoding concatenation where to put the label.
     int64_t word_idx = sup_kmer_word_c - 1; // Index of the current word being encoded from the label; the encoding is MSB-boundary aligned for now.
+    // TODO: use vectorized encoding.
     for(std::size_t b_idx = 0; b_idx < len; b_idx += 32)
     {
         label_buf[label_off + word_idx] = Kmer_Utility::encode_checked<32>(seq + b_idx);

@@ -1262,37 +1262,32 @@ int main(int argc, char** argv)
     // iterate_subgraphs<k>(bin_dir, bin_c);
     // cuttlefish::Parser(argv[1], std::atoi(argv[2])).parse();
 
-    if (argc < 4) {
-		std::cerr << "Usage: " << argv[0] << " <input_file> <n_threads> <reader_chunk_size_in_MB>\n";
-		return 1;
-	}
-	UniqueFileReader file_reader = std::make_unique<StandardFileReader>(argv[1]);
-	const size_t n_threads = std::atoi(argv[2]);
-	const size_t reader_chunk_size = std::atoi(argv[3]) * (1ull << 20);
+	auto file_reader = std::make_unique<StandardFileReader>(argv[1]);
+	const size_t thread_count = std::atoi(argv[2]);
 
-	const size_t chunk_size = 4 * 1024 * 1024;
-	std::vector<char> chunk(chunk_size);
+	const size_t chunk_size = 8 * 1024 * 1024;
+	auto chunk = new char[chunk_size];
+    std::size_t total_bytes_read = 0;
 
-	std::function<void( const std::shared_ptr<rapidgzip::ChunkData>, size_t, size_t )> writeFunctor;
-	rapidgzip::ParallelGzipReader<rapidgzip::ChunkData> reader(std::move(file_reader), n_threads);
-	//rapidgzip::ParallelGzipReader<> reader(std::move(file_reader), n_threads);
+	rapidgzip::ParallelGzipReader<> reader(std::move(file_reader), thread_count);
 	reader.setCRC32Enabled(false);
-	//reader.setCRC32Enabled( true );
-	
-	auto totalBytesRead = reader.read( writeFunctor );
+
+	// std::function<void( const std::shared_ptr<rapidgzip::ChunkData>, size_t, size_t )> writeFunctor;
+	// auto totalBytesRead = reader.read( writeFunctor );
 
 
-	/*
-	while (true) {
-		auto R = reader.read(chunk.data(), chunk_size);
-		if (!R)
+	while (true)
+    {
+		const auto read = reader.read(chunk, chunk_size);
+		if (!read)
 			break;
-		std::cout.write(chunk.data(), R);
+
+        total_bytes_read += read;
 	}
 
-	std::cerr << "eof?: " << reader.eof() << "\n";
-	*/
-	std::cerr << "total bytes read : " << totalBytesRead << "\n";
+    delete[] chunk;
+
+	std::cerr << "Total bytes decompressed: " << total_bytes_read << ".\n";
 
     return 0;
 }

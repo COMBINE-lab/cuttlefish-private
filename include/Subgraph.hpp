@@ -44,6 +44,7 @@ public:
     // typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
     // typedef emhash7::HashMap<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
     typedef ankerl::unordered_dense::map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
+    // TODO: try swiss table.
 
     Subgraphs_Scratch_Space();
 

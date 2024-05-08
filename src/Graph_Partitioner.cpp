@@ -94,7 +94,6 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     min_it_t min_it(k - 1, l_, min_seed);   // `l`-minimizer iterator for `(k - 1)`-mers.
     while(chunk_q.Pop(source_id, chunk))
     {
-        /*
         parsed_chunk.clear();
         rec_count += rabbit::fq::chunkFormat(chunk, parsed_chunk);
 
@@ -216,7 +215,6 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 last_frag_end = frag_beg + frag_len;
             }
         }
-        */
 
 
         chunk_pool.Release(chunk);
