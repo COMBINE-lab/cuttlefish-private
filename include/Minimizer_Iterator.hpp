@@ -8,7 +8,7 @@
 #include "DNA_Utility.hpp"
 #include "Kmer.hpp"
 #include "globals.hpp"
-#include "utility.hpp"
+#include "Fixed_Cap_Deque.hpp"
 #include "xxHash/xxh3.h"
 
 #include <cstdint>
@@ -41,8 +41,7 @@ private:
     std::size_t last_lmer_idx;  // Index into the sequence of the last l-mer processed.
     const minimizer_t clear_MSN_mask;   // Bitmask to clear the most-significant nucleotide bits of l-mers.
 
-    // typedef std::deque<Lmer_Tuple> deque_t;
-    typedef deque<Lmer_Tuple> deque_t;
+    typedef cuttlefish::Fixed_Cap_Deque<Lmer_Tuple> deque_t;
 
     // Collection of l-mers that have already been seen, and cannot be ruled out
     // yet as candidate minimizers for the k-mers yet to be seen fully. `dq_f`
