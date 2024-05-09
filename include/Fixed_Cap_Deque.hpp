@@ -12,42 +12,40 @@
 namespace cuttlefish
 {
 
-// Fixed-capacity deque of capacity `cap_`, which needs to be a power of 2. UB
-// when size exceeds capacity.
-template <typename T_>
+// Fixed-capacity deque of capacity at least `req_cap_`. UB when size exceeds
+// capacity.
+template <typename T_, std::size_t req_cap>
 class Fixed_Cap_Deque
 {
 private:
 
-    const std::size_t cap_; // Maximum capacity.
+    static constexpr std::size_t cap_ = ceil_pow_2(req_cap);    // Maximum capacity.
+    static constexpr auto wrap_mask = cap_ - 1; // Mask to wrap indices around the deque.
+
     std::size_t front_; // Current index to the front.
-    std::size_t back_;    // Current index to the back.
-    T_* const arr;  // Underlying memory pool.
+    std::size_t back_;  // Current index to the back.
+    T_ arr[cap_];   // Underlying memory pool.
 
-    void grow_back() { back_ = (back_ < cap_ - 1 ? back_ + 1 : 0); }
+    void grow_back() { back_ = (back_ + 1) & wrap_mask; }
 
-    void grow_front() { front_ = (front_ > 0 ? front_ - 1 : cap_ - 1); }
+    void grow_front() { front_ = (front_ - 1) & wrap_mask; }    // Under(over)-flow is defined for unsigned.
 
-    void shrink_back() { back_ = (back_ > 0 ? back_ - 1 : cap_ - 1); }
+    void shrink_back() { back_ = (back_ - 1) & wrap_mask; }
 
-    void shrink_front() { front_ = (front_ < cap_ - 1 ? front_ + 1 : 0); }
+    void shrink_front() { front_ = (front_ + 1) & wrap_mask; }
 
 public:
 
-    Fixed_Cap_Deque(const std::size_t capacity):
-          cap_(capacity)
-        , front_(0)
+    Fixed_Cap_Deque():
+          front_(0)
         , back_(0)
-        , arr(allocate<T_>(cap_ + 1))
     {}
-
-    ~Fixed_Cap_Deque() { deallocate(arr); }
 
     bool empty() const { return front_ == back_; }
 
     const T_& front() const { return arr[front_]; }
 
-    const T_& back() const { return arr[back_ > 0 ? back_ - 1 : cap_ - 1]; }
+    const T_& back() const { return arr[(back_ - 1) & wrap_mask]; }
 
     void clear() { front_ = back_; }
 

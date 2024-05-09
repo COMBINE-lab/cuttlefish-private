@@ -53,6 +53,9 @@ private:
 
 public:
 
+    Lmer_Tuple()
+    {};
+
     // Constructs a tuple for an l-mer `lmer`, positioned at index `index` of
     // the underlying sequence, and having a hash value `hash`.
     Lmer_Tuple(minimizer_t lmer, std::size_t index, uint64_t hash);

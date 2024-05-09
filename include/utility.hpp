@@ -112,7 +112,23 @@ constexpr T_to_ as_int(const T_ enum_val)
     return static_cast<T_to_>(enum_val);
 }
 
-// TODO: Add thread-joiner wrapper.
+// Returns the smallest power of 2 at least as large as `x`.
+constexpr std::size_t ceil_pow_2(std::size_t x)
+{
+    assert(x > 0 && x <= (1lu << 63));
+
+    if((x & (x - 1)) == 0)
+        return x;
+
+    x |= (x >> 1);
+    x |= (x >> 2);
+    x |= (x >> 4);
+    x |= (x >> 8);
+    x |= (x >> 16);
+    x |= (x >> 32);
+
+    return x + 1;
+}
 
 
 // Wrapper class for a data-element of type `T_` to ensure that in a linear

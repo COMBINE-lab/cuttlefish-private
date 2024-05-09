@@ -40,7 +40,7 @@ private:
     std::size_t last_lmer_idx;  // Index into the sequence of the last l-mer processed.
     const minimizer_t clear_MSN_mask;   // Bitmask to clear the most-significant nucleotide bits of l-mers.
 
-    typedef cuttlefish::Fixed_Cap_Deque<Lmer_Tuple> deque_t;
+    typedef cuttlefish::Fixed_Cap_Deque<Lmer_Tuple, 2 * k> deque_t;
 
     // Collection of l-mers that have already been seen, and cannot be ruled out
     // yet as candidate minimizers for the k-mers yet to be seen fully. `dq_f`
@@ -94,8 +94,6 @@ inline Minimizer_Iterator<T_seq_, k, is_canonical_>::Minimizer_Iterator(const ui
       l(l)
     , seed(seed)
     , clear_MSN_mask(~(static_cast<minimizer_t>(0b11) << (2 * (l - 1))))
-    , dq_f(2 * k - l)
-    , dq_r(2 * k - l)
 {
     assert(l <= k);
 }
