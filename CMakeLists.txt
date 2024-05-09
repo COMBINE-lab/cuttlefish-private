@@ -85,7 +85,11 @@ set(OPTIMIZE_FLAGS -funroll-loops -march=native)
 
 # Bundle miscellaneous required flags.
 # `-fconstexpr-ops-limit` for compile-time computations in `rapidgzip`.
-set(MISC_FLAGS -fconstexpr-ops-limit=99000100)
+if(ASAN OR MSAN OR UBSAN)
+    set(MISC_FLAGS -fconstexpr-steps=99000100)
+else()
+    set(MISC_FLAGS -fconstexpr-ops-limit=99000100)
+endif()
 
 
 # Accumulate the compile- and link-flags.
