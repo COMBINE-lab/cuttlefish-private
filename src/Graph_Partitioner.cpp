@@ -91,7 +91,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     std::size_t sup_km1_mers_len = 0;   // Total length of the super (k - 1)-mers, in bases.
     std::size_t weak_sup_kmers_len = 0; // Total length of the (weak) super k-mers, in bases.
 
-    min_it_t min_it(k - 1, l_, min_seed);   // `l`-minimizer iterator for `(k - 1)`-mers.
+    min_it_t min_it(l_, min_seed);   // `l`-minimizer iterator for `(k - 1)`-mers.
     while(chunk_q.Pop(source_id, chunk))
     {
         parsed_chunk.clear();
@@ -237,8 +237,8 @@ bool Graph_Partitioner<k, Colored_>::is_discontinuity(const char* const seq) con
     minimizer_t min_l, min_r;
     std::size_t idx_l, idx_r;
 
-    min_it_t::minimizer(seq, k - 1, l_, min_seed, min_l, idx_l);
-    min_it_t::minimizer(seq + 1, k - 1, l_, min_seed, min_r, idx_r);
+    min_it_t::minimizer(seq, l_, min_seed, min_l, idx_l);
+    min_it_t::minimizer(seq + 1, l_, min_seed, min_r, idx_r);
 
     if(subgraphs.graph_ID(min_l) == subgraphs.graph_ID(min_r))
         return false;

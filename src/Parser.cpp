@@ -119,7 +119,7 @@ void Parser::consume_split_super_kmers(fq_chunk_pool_t& chunk_pool, fq_chunk_que
     uint64_t rec_count = 0;
     uint64_t sup_kmer_count = 0;
 
-    Minimizer_Iterator<const char*, true> min_it(k, l, min_seed);
+    Minimizer_Iterator<const char*, k, true> min_it(l, min_seed);
 
     while(true)
     {

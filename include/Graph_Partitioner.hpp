@@ -52,7 +52,7 @@ private:
     std::atomic_uint64_t weak_super_kmers_len_; // Total length of the weak super k-mers in the sequences.
     std::atomic_uint64_t super_km1_mers_len_;   // Total length of the super (k - 1)-mers in the sequences.
 
-    typedef Minimizer_Iterator<const char*, true> min_it_t; // Type of minimizer-iterator.
+    typedef Minimizer_Iterator<const char*, k - 1, true> min_it_t;  // Type of minimizer-iterator.
 
 
     // Parses the provided sequences into chunks from the memory pool

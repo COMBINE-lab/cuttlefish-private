@@ -17,11 +17,11 @@
 
 
 // =============================================================================
-// A class to iterate over the minimizers of the constituent k-mers of a given
-// sequence of type `T_seq_`, computing the minimizer for each k-mer in
+// A class to iterate over the minimizers of the constituent `k`-mers of a given
+// sequence of type `T_seq_`, computing the minimizer for each `k`-mer in
 // amortized O(1) time. If `is_canonical_` is `true`, then canonical minimizers
 // are computed, i.e. both strand-forms of the sequence is considered.
-template <typename T_seq_, bool is_canonical_ = false>
+template <typename T_seq_, uint16_t k, bool is_canonical_ = false>
 class Minimizer_Iterator
 {
     typedef cuttlefish::minimizer_t minimizer_t;
@@ -31,7 +31,6 @@ private:
     T_seq_ seq; // The sequence on which to iterate over.
     std::size_t seq_len;    // Length of the given sequence.
 
-    const uint16_t k;   // Size of the k-mers.
     const uint16_t l;   // Size of the minimizers.
 
     const uint64_t seed;    // Seed for hashing l-mers.
@@ -53,13 +52,13 @@ public:
     // Constructs a minimizer iterator to iterate over `l`-minimizers of
     // the `k`-mers of a given sequence in a streaming manner. The seed-value
     // `seed` is used in hashing the `l`-mers.
-    Minimizer_Iterator(uint16_t k, uint16_t l, uint64_t seed = 0);
+    Minimizer_Iterator(uint16_t l, uint64_t seed = 0);
 
     // Constructs a minimizer iterator to iterate over `l`-minimizers of
     // the `k`-mers of the sequence `seq`, of length `seq_len`, in a streaming
     // manner. The iterator sits at the first k-mer after the construction.
     // The seed-value `seed` is used in hashing the `l`-mers.
-    Minimizer_Iterator(T_seq_ seq, std::size_t seq_len, uint16_t k, uint16_t l, uint64_t seed = 0);
+    Minimizer_Iterator(T_seq_ seq, std::size_t seq_len, uint16_t l, uint64_t seed = 0);
 
     // Resets the iterator to the sequence `seq` of length `seq_len`. The
     // iterator sits at the first k-mer after the construction.
@@ -86,14 +85,13 @@ public:
     // Computes the `l`-minimizer of the `k`-length sequence `kmer` at `min`
     // and index in `kmer` ar `idx`. The seed value `seed` is used in hashing
     // the `l`-mers.
-    static void minimizer(T_seq_ kmer, uint16_t k, uint16_t l, uint64_t seed, minimizer_t& min, std::size_t& idx);
+    static void minimizer(T_seq_ kmer, uint16_t l, uint64_t seed, minimizer_t& min, std::size_t& idx);
 };
 
 
-template <typename T_seq_, bool is_canonical_>
-inline Minimizer_Iterator<T_seq_, is_canonical_>::Minimizer_Iterator(const uint16_t k, const uint16_t l, const uint64_t seed):
-      k(k)
-    , l(l)
+template <typename T_seq_,  uint16_t k, bool is_canonical_>
+inline Minimizer_Iterator<T_seq_, k, is_canonical_>::Minimizer_Iterator(const uint16_t l, const uint64_t seed):
+      l(l)
     , seed(seed)
     , clear_MSN_mask(~(static_cast<minimizer_t>(0b11) << (2 * (l - 1))))
     , dq_f(2 * k - l)
@@ -103,16 +101,16 @@ inline Minimizer_Iterator<T_seq_, is_canonical_>::Minimizer_Iterator(const uint1
 }
 
 
-template <typename T_seq_, bool is_canonical_>
-inline Minimizer_Iterator<T_seq_, is_canonical_>::Minimizer_Iterator(T_seq_ const seq, const std::size_t seq_len, const uint16_t k, const uint16_t l, const uint64_t seed):
-    Minimizer_Iterator(k, l, seed)
+template <typename T_seq_, uint16_t k, bool is_canonical_>
+inline Minimizer_Iterator<T_seq_, k, is_canonical_>::Minimizer_Iterator(T_seq_ const seq, const std::size_t seq_len, const uint16_t l, const uint64_t seed):
+    Minimizer_Iterator(l, seed)
 {
     reset(seq, seq_len);
 }
 
 
-template <typename T_seq_, bool is_canonical_>
-inline void Minimizer_Iterator<T_seq_, is_canonical_>::reset(T_seq_ const seq, const std::size_t seq_len)
+template <typename T_seq_, uint16_t k, bool is_canonical_>
+inline void Minimizer_Iterator<T_seq_, k, is_canonical_>::reset(T_seq_ const seq, const std::size_t seq_len)
 {
     this->seq = seq;
     this->seq_len = seq_len;
@@ -142,8 +140,8 @@ inline void Minimizer_Iterator<T_seq_, is_canonical_>::reset(T_seq_ const seq, c
 }
 
 
-template <typename T_seq_, bool is_canonical_>
-inline void Minimizer_Iterator<T_seq_, is_canonical_>::advance(const char ch)
+template <typename T_seq_, uint16_t k, bool is_canonical_>
+inline void Minimizer_Iterator<T_seq_, k, is_canonical_>::advance(const char ch)
 {
     assert(DNA_Utility::is_DNA_base(ch));
 
@@ -183,8 +181,8 @@ inline void Minimizer_Iterator<T_seq_, is_canonical_>::advance(const char ch)
 }
 
 
-template <typename T_seq_, bool is_canonical_>
-inline bool Minimizer_Iterator<T_seq_, is_canonical_>::operator++()
+template <typename T_seq_, uint16_t k, bool is_canonical_>
+inline bool Minimizer_Iterator<T_seq_, k, is_canonical_>::operator++()
 {
     if(last_lmer_idx + l == seq_len)
         return false;
@@ -194,8 +192,8 @@ inline bool Minimizer_Iterator<T_seq_, is_canonical_>::operator++()
 }
 
 
-template <typename T_seq_, bool is_canonical_>
-inline void Minimizer_Iterator<T_seq_, is_canonical_>::value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index) const
+template <typename T_seq_, uint16_t k, bool is_canonical_>
+inline void Minimizer_Iterator<T_seq_, k, is_canonical_>::value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index) const
 {
     if constexpr(is_canonical_)
     {
@@ -209,8 +207,8 @@ inline void Minimizer_Iterator<T_seq_, is_canonical_>::value_at(cuttlefish::mini
 }
 
 
-template <typename T_seq_, bool is_canonical_>
-inline void Minimizer_Iterator<T_seq_, is_canonical_>::value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index, uint64_t& h) const
+template <typename T_seq_, uint16_t k, bool is_canonical_>
+inline void Minimizer_Iterator<T_seq_, k, is_canonical_>::value_at(cuttlefish::minimizer_t& minimizer, std::size_t& index, uint64_t& h) const
 {
     if constexpr(is_canonical_)
     {
@@ -224,10 +222,10 @@ inline void Minimizer_Iterator<T_seq_, is_canonical_>::value_at(cuttlefish::mini
 }
 
 
-template <typename T_seq_, bool is_canonical_>
-inline void Minimizer_Iterator<T_seq_, is_canonical_>::minimizer(T_seq_ kmer, uint16_t k, uint16_t l, uint64_t seed, minimizer_t& min, std::size_t& idx)
+template <typename T_seq_, uint16_t k, bool is_canonical_>
+inline void Minimizer_Iterator<T_seq_, k, is_canonical_>::minimizer(T_seq_ kmer, uint16_t l, uint64_t seed, minimizer_t& min, std::size_t& idx)
 {
-    Minimizer_Iterator(kmer, k, k, l, seed).value_at(min, idx);
+    Minimizer_Iterator(kmer, k, l, seed).value_at(min, idx);
 }
 
 
