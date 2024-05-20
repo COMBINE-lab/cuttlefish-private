@@ -12,7 +12,6 @@
 #include "xxHash/xxh3.h"
 
 #include <cstdint>
-#include <queue>
 #include <cassert>
 
 
@@ -224,6 +223,157 @@ template <typename T_seq_, uint16_t k, bool is_canonical_>
 inline void Minimizer_Iterator<T_seq_, k, is_canonical_>::minimizer(T_seq_ kmer, uint16_t l, uint64_t seed, minimizer_t& min, std::size_t& idx)
 {
     Minimizer_Iterator(kmer, k, l, seed).value_at(min, idx);
+}
+
+
+
+// A class to iterate over the minimizers of the constituent `k`-mers of a given
+// sequence, computing the minimizer for each `k`-mer in amortized O(1) time.
+// Canonical minimizers are computed, i.e. both strand-forms of the sequence is
+// considered.
+template <uint16_t k>
+class Min_Iterator
+{
+private:
+
+    uint16_t l; // Minimizer size.
+
+    uint64_t last_lmer; // The last l-mer processed from the sequence.
+    uint64_t last_lmer_bar; // Reverse complement of the last l-mer processed.
+    const uint64_t clear_MSN_mask;  // Bitmask to clear the most-significant nucleotide bits of l-mers.
+
+    // The hashes of the l-mers in a k-mer window. The window sits at `H[0..k - l]` (in reversed order relative to
+    // the l-mers' order for implementation concerns), and is conceptually broken into two sub-windows: a prefix and
+    // a suffix one.
+    uint64_t H[k];
+
+    uint64_t M_pre[k];  // Suffix-mins of the prefix window.
+    uint64_t M_suf; // Min of the suffix window.
+
+    std::size_t pivot;  // Pivot-index, inclusive to the prefix window, breaking the window into the two sub-windows.
+
+
+    // Returns the minimum of `x` and `y`.
+    static constexpr auto min = [](const uint64_t x, const uint64_t y){ return x < y ? x : y; };
+
+    // Returns the 64-bit equivalent of `val`.
+    template <typename T_> static constexpr uint64_t as_u64(const T_ val) { return static_cast<uint64_t>(val); }
+
+    // Returns the 64-bit hash value of the canonically equivalent l-mer pair
+    // `(lmer, lmer_bar)`.
+    static uint64_t lmer_hash(uint64_t lmer, uint64_t lmer_bar);
+
+    // Moves the suffix window to the prefix window, and empties it—resetting
+    // them to their default condition. Also recomputes the aggregate minimum
+    // results of the windows.
+    void reset_windows();
+
+
+public:
+
+    // Constructs a minimizer iterator to iterate over `l`-minimizers of
+    // the `k`-mers of a given sequence in a streaming manner.
+    Min_Iterator(uint16_t l);
+
+    // Resets the iterator to the sequence `seq`. The iterator sits at the
+    // first `k`-mer after the construction.
+    void reset(const char* seq);
+
+    // Returns the minimizer's 64-bit hash value.
+    uint64_t hash() const;
+
+    // Moves the iterator to a next k-mer extending it with the character `ch`.
+    void advance(char ch);
+};
+
+
+template <uint16_t k>
+inline uint64_t Min_Iterator<k>::lmer_hash(const uint64_t lmer, const uint64_t lmer_bar)
+{
+    constexpr uint64_t min_seed = 0;
+    return min(Minimizer_Utility::hash(lmer, min_seed), Minimizer_Utility::hash(lmer_bar, min_seed));
+}
+
+
+template <uint16_t k>
+inline Min_Iterator<k>::Min_Iterator(const uint16_t l):
+      l(l)
+    , clear_MSN_mask(~(as_u64(0b11) << (2 * (l - 1))))
+{}
+
+
+template <uint16_t k>
+inline void Min_Iterator<k>::reset(const char* const seq)
+{
+    last_lmer = 0;
+    last_lmer_bar = 0;
+
+    for(std::size_t idx = 0; idx < l; ++idx)
+    {
+        const DNA::Base base = DNA_Utility::map_base(seq[idx]);
+        assert(base != DNA::Base::N);
+        last_lmer |= (as_u64(base) << (2 * (l - 1 - idx)));
+        last_lmer_bar |= (as_u64(DNA_Utility::complement(base)) << (2 * idx));
+    }
+
+    pivot = k - l;
+    H[pivot] = lmer_hash(last_lmer, last_lmer_bar);
+
+    for(std::size_t idx = l; idx < k; ++idx)
+    {
+        const DNA::Base base = DNA_Utility::map_base(seq[idx]);
+        assert(base != DNA::Base::N);
+        last_lmer = ((last_lmer & clear_MSN_mask) << 2) | base;
+        last_lmer_bar = (last_lmer_bar >> 2) | (as_u64(DNA_Utility::complement(base)) << (2 * (l - 1)));
+
+        H[--pivot] = lmer_hash(last_lmer, last_lmer_bar);
+    }
+
+
+    reset_windows();
+}
+
+
+template <uint16_t k>
+inline void Min_Iterator<k>::reset_windows()
+{
+    assert(pivot == 0);
+
+    // TODO: try vectorization.
+
+    const std::size_t ring_sz = k - l;
+    M_pre[0] = H[0];
+    for(std::size_t i = 1; i <= ring_sz; ++i)
+        M_pre[i] = min(M_pre[i - 1], H[i]);
+
+    M_suf = std::numeric_limits<uint64_t>::max();
+    pivot = k - l;
+}
+
+
+template <uint16_t k>
+inline uint64_t Min_Iterator<k>::hash() const
+{
+    return min(M_pre[pivot], M_suf);
+}
+
+
+template <uint16_t k>
+inline void Min_Iterator<k>::advance(const char ch)
+{
+    assert(DNA_Utility::is_DNA_base(ch));
+
+    const DNA::Base base = DNA_Utility::map_base(ch);
+    last_lmer = ((last_lmer & clear_MSN_mask) << 2) | base;
+    last_lmer_bar = (last_lmer_bar >> 2) | (as_u64(DNA_Utility::complement(base)) << (2 * (l - 1)));
+
+    H[pivot] = lmer_hash(last_lmer, last_lmer_bar);
+    M_suf = min(M_suf, H[pivot]);
+
+    if(pivot > 0)
+        pivot--;
+    else
+        reset_windows();
 }
 
 
