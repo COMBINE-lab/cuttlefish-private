@@ -132,14 +132,14 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 }
 
 
-                minimizer_t cur_min;    // Minimizer of the current super (k - 1)-mer in the iteration.
-                minimizer_t next_min;   // Minimizer of the next super (k - 1)-mer in the iteration.
+                // minimizer_t cur_min;    // Minimizer of the current super (k - 1)-mer in the iteration.
+                // minimizer_t next_min;   // Minimizer of the next super (k - 1)-mer in the iteration.
                 uint64_t cur_h; // 64-bit hash of the current super (k - 1)-mer's minimizer.
                 uint64_t next_h;    // 64-bit hash of the next super (k - 1)-mer's minimizer.
                 std::size_t prev_g; // Subgraph ID of the previous super (k - 1)-mer's minimizer.
                 std::size_t cur_g;  // Subgraph ID of the current super (k - 1)-mer's minimizer.
                 std::size_t next_g; // Subgraph ID of the next super (k - 1)-mer's minimizer.
-                std::size_t cur_min_off, next_min_off;  // Relative offsets of the minimizers in the fragment. Used for assertion checks.
+                // std::size_t cur_min_off, next_min_off;  // Relative offsets of the minimizers in the fragment. Used for assertion checks.
                 std::size_t cur_sup_km1_mer_off = 0;    // Relative offset of the current super (k - 1)-mer in the fragment.
                 std::size_t km1_mer_idx = 0;    // Index of the current (k - 1)-mer in the current super (k - 1)-mer.
                 frag_len = k - 1;
@@ -197,8 +197,8 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                         km1_mer_idx = 0;
                     }
 
-                    cur_min = next_min;
-                    cur_min_off = next_min_off; // The minimizer-instance offsets are tracked only for assertion checks.
+                    // cur_min = next_min;
+                    // cur_min_off = next_min_off; // The minimizer-instance offsets are tracked only for assertion checks.
                     cur_h = next_h;
                 }
 

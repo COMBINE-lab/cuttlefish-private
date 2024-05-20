@@ -99,7 +99,7 @@ set(LINK_FLAGS "")
 # Specify the warnings and the extra optimization flags to the compiler for the target library.
 list(APPEND COMPILE_FLAGS ${WARNING_FLAGS} ${SUPPRESS_WARNING_FLAGS} ${OPTIMIZE_FLAGS} ${MISC_FLAGS})
 
-if(DEBUG_INFO)
+if(DEBUG_INFO OR PART_PROFILE)
     list(APPEND COMPILE_FLAGS ${DEBUG_FLAGS})
 endif()
 
