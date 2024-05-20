@@ -52,10 +52,9 @@ private:
     std::atomic_uint64_t super_km1_mers_len_;   // Total length of the super (k - 1)-mers in the sequences.
 
 
-
-    // Parses the provided sequences into chunks from the memory pool
+    // Reads the provided sequences into chunks from the memory pool
     // `chunk_pool` and puts the parsed chunks into the queue `chunk_q`.
-    void parse(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q);
+    void read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q);
 
     // Processes the parsed chunks from the queue `chunk_q` and returns the
     // processed chunks to the memory pool `chunk_pool`.

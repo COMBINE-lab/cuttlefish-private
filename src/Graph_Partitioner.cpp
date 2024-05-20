@@ -39,7 +39,7 @@ void Graph_Partitioner<k, Colored_>::partition()
     chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
     chunk_q_t chunk_q(chunk_count); // Parsed chunks.
 
-    std::thread parser(&Graph_Partitioner::parse, this, std::ref(chunk_pool), std::ref(chunk_q));
+    std::thread parser(&Graph_Partitioner::read_chunks, this, std::ref(chunk_pool), std::ref(chunk_q));
 
     const auto process = [&](std::size_t){ this->process(chunk_q, chunk_pool); };
     parlay::parallel_for(0, parlay::num_workers(), process, 1);
@@ -55,7 +55,7 @@ void Graph_Partitioner<k, Colored_>::partition()
 
 
 template <uint16_t k, bool Colored_>
-void Graph_Partitioner<k, Colored_>::parse(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
+void Graph_Partitioner<k, Colored_>::read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {
     uint64_t chunk_count = 0;   // Number of parsed chunks.
     rabbit::int64 source_id = 0;    // Source (i.e. file) ID of a chunk.
