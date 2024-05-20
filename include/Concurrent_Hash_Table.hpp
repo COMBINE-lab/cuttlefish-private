@@ -333,7 +333,8 @@ inline T_val_* Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(const T_ke
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
         if(T[i].key == key) // TODO: check atomic-read / partial-read guarantees.
         {
-            if constexpr(mt_) lock[i].lock();
+            if constexpr(mt_) lock[i].lock();   // To ensure that some other thread is not updating this val atm—a stable value is guaranteed.
+                                                // This only works correctly because in our use-case of this table, a key is accessed only twice.
             val_add = &T[i].val;
             if constexpr(mt_) lock[i].unlock();
             break;

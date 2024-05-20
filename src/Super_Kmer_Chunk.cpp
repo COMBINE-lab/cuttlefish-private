@@ -51,8 +51,13 @@ void Super_Kmer_Chunk<Colored_>::deserialize(std::ifstream& is, const std::size_
     assert(sz <= cap_);
 
     size_ = sz;
+
     is.read(reinterpret_cast<char*>(att_buf.data()), size() * sizeof(attribute_t));
+    assert(is.gcount() == size() * sizeof(attribute_t));
+
     is.read(reinterpret_cast<char*>(label_buf.data()), label_units() * sizeof(label_unit_t));
+    assert(is.gcount() == label_units() * sizeof(label_unit_t));
+
     if(!is)
     {
         std::cerr << "Deserialization of super k-mer chunk of size " << size() << " failed. Aborting.\n";

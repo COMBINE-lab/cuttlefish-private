@@ -7,6 +7,7 @@
 
 #include <fstream>
 #include <filesystem>
+#include <cstdlib>
 #include <algorithm>
 #include <cassert>
 
@@ -214,7 +215,14 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
     const auto t_s = now();
     std::ifstream input(d_i_path);
     input.read(reinterpret_cast<char*>(D_i.data()), file_sz);
+    assert(input.gcount() == file_sz);
     input.close();
+    if(!input)
+    {
+        std::cerr << "Error reading of contracted edge block from " << d_i_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
     const auto t_e = now();
     edge_read_time += duration(t_e - t_s);
 

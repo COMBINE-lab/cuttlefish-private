@@ -3,7 +3,7 @@
 
 # Specify the minimum version of CMake to use.
 # CMake can have different behaviors (policies) based on its version used.
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.17)
 
 
 # Name the project, its version, and languages used in it.
@@ -83,15 +83,21 @@ set(UBSAN_FLAGS -fsanitize=undefined
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
 set(OPTIMIZE_FLAGS -funroll-loops -march=native)
 
+# Bundle miscellaneous required flags.
+# `-fconstexpr-ops-limit` for compile-time computations in `rapidgzip`.
+if(ASAN OR MSAN OR UBSAN)
+    set(MISC_FLAGS -fconstexpr-steps=99000100)
+else()
+    set(MISC_FLAGS -fconstexpr-ops-limit=99000100)
+endif()
+
 
 # Accumulate the compile- and link-flags.
 set(COMPILE_FLAGS "")
 set(LINK_FLAGS "")
 
 # Specify the warnings and the extra optimization flags to the compiler for the target library.
-# As the flags are specified as `PRIVATE`, they will only be used when compiling this library.
-# These will not be propagated to the targets linking to it.
-list(APPEND COMPILE_FLAGS ${WARNING_FLAGS} ${SUPPRESS_WARNING_FLAGS} ${OPTIMIZE_FLAGS})
+list(APPEND COMPILE_FLAGS ${WARNING_FLAGS} ${SUPPRESS_WARNING_FLAGS} ${OPTIMIZE_FLAGS} ${MISC_FLAGS})
 
 if(DEBUG_INFO)
     list(APPEND COMPILE_FLAGS ${DEBUG_FLAGS})
@@ -119,6 +125,10 @@ add_compile_definitions(__STDC_FORMAT_MACROS SPDLOG_FMT_EXTERNAL_HO FMT_HEADER_O
 
 add_compile_definitions(PROJECT_VERSION=${CMAKE_PROJECT_VERSION})
 
+add_compile_definitions(WITH_ISAL)  # For `rapidgzip`.
+add_compile_definitions(WITH_RPMALLOC)  # For `rapidzip`.
+add_compile_definitions(USE_IGZIP)  # TODO: temporary for `rabbitfx`.
+
 if(INSTANCE_COUNT)
     add_compile_definitions(INSTANCE_COUNT=${INSTANCE_COUNT})
 endif()
@@ -135,9 +145,9 @@ if(CF_DEVELOP_MODE)
     add_compile_definitions(CF_DEVELOP_MODE)
 endif()
 
-if(IGZIP_PREFIX)
-    add_compile_definitions(USE_IGZIP)
-endif()
+# if(IGZIP_PREFIX)
+#     add_compile_definitions(USE_IGZIP)
+# endif()
 
 if(PART_PROFILE)
     add_compile_definitions(PART_PROFILE)
@@ -244,6 +254,7 @@ endif()
 
 # Prepare the `jemalloc` library. It provides scalable concurrency support and better avoidance
 # of fragmentation.
+# TODO: replace with `rpmalloc` or some other more performant library.
 set(MALLOC_LIB "")
 set(JEMALLOC_MIN_VERSION "5.3.0")
 find_package(Jemalloc ${JEMALLOC_MIN_VERSION})
@@ -314,6 +325,33 @@ ExternalProject_Add(prj_parlaylib
     BUILD_COMMAND       ""
     INSTALL_COMMAND     cp -rf include/parlay ${EXT_INCLUDE}
 )
+
+
+# Prepare the `rapidgzip` library—gzip decompressor with multi-cores, and its dependencies.
+set(RAPIDGZIP_VERSION "rapidgzip-v0.13.2")
+message("Build system will fetch and install rapidgzip")
+ExternalProject_Add(prj_rapidgzip
+    DOWNLOAD_DIR        ${CMAKE_SOURCE_DIR}/external
+    DOWNLOAD_COMMAND    git clone --recurse-submodules git@github.com:mxmlnkn/rapidgzip.git --branch ${RAPIDGZIP_VERSION}
+    SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/rapidgzip
+    BUILD_IN_SOURCE     TRUE
+    INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external/
+    CONFIGURE_COMMAND   mkdir -p build && cd build && cmake -DWITH_RPMALLOC=ON -DWITH_ISAL=ON ..
+    BUILD_COMMAND       cd build && make -j
+    INSTALL_COMMAND     mkdir -p ${EXT_INCLUDE}/rapidgzip &&
+                        cp -rf src/core src/huffman src/indexed_bzip2 src/rapidgzip ${EXT_INCLUDE}/rapidgzip/ &&
+                        cp -rf src/external/isa-l/include ${EXT_INCLUDE}/rapidgzip/isa-l &&
+                        cp -rf src/external/rpmalloc/rpmalloc ${EXT_INCLUDE}/rapidgzip/ &&
+                        cp -rf build/src/libisal_inflate.a build/src/librpmalloc.a ${EXT_LIB}/
+)
+
+add_library(isal_inflate STATIC IMPORTED)
+set_target_properties(isal_inflate PROPERTIES IMPORTED_LOCATION ${EXT_LIB}/libisal_inflate.a)
+add_dependencies(isal_inflate prj_rapidgzip)
+
+add_library(rpmalloc STATIC IMPORTED)
+set_target_properties(rpmalloc PROPERTIES IMPORTED_LOCATION ${EXT_LIB}/librpmalloc.a)
+add_dependencies(rpmalloc prj_rapidgzip)
 
 
 # The `Debug` configuration optimizes the program for debugging and enables full debug information.

@@ -11,7 +11,7 @@
 #include <cstddef>
 
 
-template <typename T_seq_, bool is_canonical_> class Minimizer_Iterator;
+template <typename T_seq_, uint16_t k, bool is_canonical_> class Minimizer_Iterator;
 
 
 // =============================================================================
@@ -40,7 +40,7 @@ public:
 class Lmer_Tuple
 {
     friend class Minimizer_Utility;
-    template <typename T_seq_, bool is_canonical_> friend class Minimizer_Iterator;
+    template <typename T_seq_, uint16_t k, bool is_canonical_> friend class Minimizer_Iterator;
 
     typedef cuttlefish::minimizer_t minimizer_t;
 
@@ -52,6 +52,9 @@ private:
 
 
 public:
+
+    Lmer_Tuple()
+    {};
 
     // Constructs a tuple for an l-mer `lmer`, positioned at index `index` of
     // the underlying sequence, and having a hash value `hash`.

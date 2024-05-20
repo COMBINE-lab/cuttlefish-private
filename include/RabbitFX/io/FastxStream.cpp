@@ -667,7 +667,7 @@ namespace rabbit {
             int64 r = mFqReader->Read(data + chunk_->size, toRead);
             //std::cout << "r is :" << r << std::endl;
 
-            //if (r > 0) {
+            if (r > 0) {
             if(!mFqReader->FinishRead())
             {
                 cbufSize = r + chunk_->size;
@@ -683,9 +683,11 @@ namespace rabbit {
                 if (usesCrlf) chunk_->size -= 1;
                 mFqReader->setEof();
             }
-            //}else {
-            //	mFqReader->setEof();
-            //}
+            }else {
+            	mFqReader->setEof();
+                chunk_->size = 0;
+                return false;
+            }
             return true;
         }
 

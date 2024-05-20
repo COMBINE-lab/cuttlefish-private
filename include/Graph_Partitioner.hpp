@@ -4,7 +4,6 @@
 
 
 
-#include "Minimizer_Iterator.hpp"
 #include "Data_Logistics.hpp"
 #include "RabbitFX/io/FastxChunk.h"
 #include "RabbitFX/io/DataQueue.h"
@@ -52,12 +51,10 @@ private:
     std::atomic_uint64_t weak_super_kmers_len_; // Total length of the weak super k-mers in the sequences.
     std::atomic_uint64_t super_km1_mers_len_;   // Total length of the super (k - 1)-mers in the sequences.
 
-    typedef Minimizer_Iterator<const char*, true> min_it_t; // Type of minimizer-iterator.
 
-
-    // Parses the provided sequences into chunks from the memory pool
+    // Reads the provided sequences into chunks from the memory pool
     // `chunk_pool` and puts the parsed chunks into the queue `chunk_q`.
-    void parse(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q);
+    void read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q);
 
     // Processes the parsed chunks from the queue `chunk_q` and returns the
     // processed chunks to the memory pool `chunk_pool`.

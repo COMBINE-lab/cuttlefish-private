@@ -1,6 +1,7 @@
 
 #include "Graph_Partitioner.hpp"
 #include "Subgraphs_Manager.hpp"
+#include "Minimizer_Iterator.hpp"
 #include "DNA_Utility.hpp"
 #include "globals.hpp"
 #include "RabbitFX/io/FastxStream.h"
@@ -34,11 +35,11 @@ Graph_Partitioner<k, Colored_>::Graph_Partitioner(Subgraphs_Manager<k, Colored_>
 template <uint16_t k, bool Colored_>
 void Graph_Partitioner<k, Colored_>::partition()
 {
-    const auto chunk_count = std::ceil(parlay::num_workers() * 1.1);    // Maximum number of chunks. TODO: make a more informed choice.
+    const auto chunk_count = std::ceil(parlay::num_workers() * 2);    // Maximum number of chunks. TODO: make a more informed choice.
     chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
     chunk_q_t chunk_q(chunk_count); // Parsed chunks.
 
-    std::thread parser(&Graph_Partitioner::parse, this, std::ref(chunk_pool), std::ref(chunk_q));
+    std::thread parser(&Graph_Partitioner::read_chunks, this, std::ref(chunk_pool), std::ref(chunk_q));
 
     const auto process = [&](std::size_t){ this->process(chunk_q, chunk_pool); };
     parlay::parallel_for(0, parlay::num_workers(), process, 1);
@@ -54,7 +55,7 @@ void Graph_Partitioner<k, Colored_>::partition()
 
 
 template <uint16_t k, bool Colored_>
-void Graph_Partitioner<k, Colored_>::parse(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
+void Graph_Partitioner<k, Colored_>::read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {
     uint64_t chunk_count = 0;   // Number of parsed chunks.
     rabbit::int64 source_id = 0;    // Source (i.e. file) ID of a chunk.
@@ -91,7 +92,8 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     std::size_t sup_km1_mers_len = 0;   // Total length of the super (k - 1)-mers, in bases.
     std::size_t weak_sup_kmers_len = 0; // Total length of the (weak) super k-mers, in bases.
 
-    min_it_t min_it(k - 1, l_, min_seed);   // `l`-minimizer iterator for `(k - 1)`-mers.
+    // Minimizer_Iterator<const char*, k - 1, true> min_it(l_, min_seed);   // `l`-minimizer iterator for `(k - 1)`-mers.
+    Min_Iterator<k - 1> min_it(l_); // `l`-minimizer iterator for `(k - 1)`-mers.
     while(chunk_q.Pop(source_id, chunk))
     {
         parsed_chunk.clear();
@@ -142,8 +144,10 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 std::size_t km1_mer_idx = 0;    // Index of the current (k - 1)-mer in the current super (k - 1)-mer.
                 frag_len = k - 1;
 
-                min_it.reset(frag, seq_len - frag_beg); // The fragment length is an estimate; upper-bound to be exact.
-                min_it.value_at(cur_min, cur_min_off, cur_h);
+                // min_it.reset(frag, seq_len - frag_beg); // The fragment length is an estimate; upper-bound to be exact.
+                // min_it.value_at(cur_min, cur_min_off, cur_h);
+                min_it.reset(frag);
+                cur_h = min_it.hash();
                 cur_g = subgraphs.graph_ID(cur_h);
                 prev_g = subgraphs.graph_count();   // To deal with false-positive `-Wmaybe-uninitialized` later on.
 
@@ -153,15 +157,16 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                     km1_mer_idx++, frag_len++;
                     const auto len = km1_mer_idx + (k - 2); // Length of the current super (k - 1)-mer.
 
-                    min_it.value_at(next_min, next_min_off, next_h);
+                    // min_it.value_at(next_min, next_min_off, next_h);
+                    next_h = min_it.hash();
                     next_g = subgraphs.graph_ID(next_h);
-                    assert(next_min_off >= cur_sup_km1_mer_off + km1_mer_idx);
+/*                  assert(next_min_off >= cur_sup_km1_mer_off + km1_mer_idx);
 
                     if(next_min_off != cur_min_off)
                         // Either the last minimizer just fell out of the (k - 1)-mer window or the new minimizer sits at the last l-mer.
                         assert( cur_min_off == cur_sup_km1_mer_off + km1_mer_idx - 1 ||
                                 next_min_off == cur_sup_km1_mer_off + km1_mer_idx + (k - 1) - l_);
-
+*/
                     // Either encountered a discontinuity vertex—the k-mer whose suffix is the current (k - 1)-mer, or the super (k - 1)-mer extends too long.
                     if(next_g != cur_g || len == sup_km1_mer_len_th)
                     {
@@ -182,7 +187,8 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                         // const bool r_cont = (next_g == cur_g);  // Whether it's right-continuous.
                         const auto len_weak = l_joined + len + r_joined;    // Length of the weak super k-mer.
                         assert(len_weak >= k);
-                        subgraphs.add_super_kmer(cur_h, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
+                        // TODO: the following add, being to different subgraphs' different worker-buffers, causes lots of cache misses.
+                        subgraphs.add_super_kmer(cur_g, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
                         weak_sup_kmers_len += len_weak;
 
                         cur_sup_km1_mer_off = next_sup_km1_mer_off;
@@ -209,7 +215,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 const auto len_weak = l_joined + len + r_joined;
                 assert(len_weak >= k);
                 // TODO: the following add, being to different subgraphs' different worker-buffers, causes lots of cache misses.
-                subgraphs.add_super_kmer(cur_h, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
+                subgraphs.add_super_kmer(cur_g, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
                 weak_sup_kmers_len += len_weak;
 
                 last_frag_end = frag_beg + frag_len;
@@ -236,8 +242,9 @@ bool Graph_Partitioner<k, Colored_>::is_discontinuity(const char* const seq) con
     minimizer_t min_l, min_r;
     std::size_t idx_l, idx_r;
 
-    min_it_t::minimizer(seq, k - 1, l_, min_seed, min_l, idx_l);
-    min_it_t::minimizer(seq + 1, k - 1, l_, min_seed, min_r, idx_r);
+    typedef Minimizer_Iterator<const char*, k - 1, true> min_it_t;
+    min_it_t::minimizer(seq, l_, min_seed, min_l, idx_l);
+    min_it_t::minimizer(seq + 1, l_, min_seed, min_r, idx_r);
 
     if(subgraphs.graph_ID(min_l) == subgraphs.graph_ID(min_r))
         return false;
