@@ -66,7 +66,7 @@ void Subgraphs_Manager<k, Colored_>::process()
             sub_dBG.construct();
             // sub_dBG.construct_loop_filtered();
             const auto t_1 = timer::now();
-            sub_dBG.contract();
+            // sub_dBG.contract();  // Perf-diagnose.
             const auto t_2 = timer::now();
 
             auto& sz = size[parlay::worker_id()].data();
