@@ -66,6 +66,14 @@ void Subgraph<k, Colored_>::construct()
             edge_c += (succ_base != base_t::E);
 
             // Update hash table with the neighborhood info.
+            M.update(   v.canonical(),
+                        front, back,
+                        kmer_idx == 0 && att.left_discontinuous() ? v.entrance_side() : side_t::unspecified,
+                        kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified);
+
+            if(kmer_idx + k == len)
+                break;
+/*
             auto& st = M[v.canonical()];
             st.update_edges(front, back);
             if(kmer_idx == 0 && att.left_discontinuous())
@@ -78,6 +86,7 @@ void Subgraph<k, Colored_>::construct()
 
                 break;
             }
+*/
 
             if((kmer_idx > 0 || !att.left_discontinuous()) && (kmer_idx + k < len || !att.right_discontinuous()))
                 assert(!st.is_discontinuity());
@@ -88,9 +97,12 @@ void Subgraph<k, Colored_>::construct()
             kmer_idx++;
         }
     }
+
+    M.flush_updates();
 }
 
 
+/*
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::construct_loop_filtered()
 {
@@ -159,8 +171,10 @@ void Subgraph<k, Colored_>::construct_loop_filtered()
         }
     }
 }
+*/
 
 
+/*
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::contract()
 {
@@ -200,6 +214,7 @@ void Subgraph<k, Colored_>::contract()
 
     assert(vertex_count + isolated == M.size());
 }
+*/
 
 
 template <uint16_t k, bool Colored_>
@@ -252,9 +267,12 @@ uint64_t Subgraph<k, Colored_>::isolated_vertex_count() const
 
 
 template <uint16_t k>
-Subgraphs_Scratch_Space<k>::Subgraphs_Scratch_Space():
-      map_(parlay::num_workers())
-{}
+Subgraphs_Scratch_Space<k>::Subgraphs_Scratch_Space()
+{
+    map_.reserve(parlay::num_workers());
+    for(std::size_t i = 0; i < parlay::num_workers(); ++i)
+        map_.emplace_back(10462143);    // Fix `max_n` setting for maps, getting it upstream.
+}
 
 
 template <uint16_t k>

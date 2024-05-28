@@ -9,6 +9,7 @@
 #include "Kmer.hpp"
 #include "DNA.hpp"
 #include "DNA_Utility.hpp"
+#include "Kmer_Hashtable.hpp"
 #include "Unitig_Scratch.hpp"
 #include "Maximal_Unitig_Scratch.hpp"
 #include "Discontinuity_Graph.hpp"
@@ -43,8 +44,10 @@ public:
 
     // typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
     // typedef emhash7::HashMap<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
-    typedef ankerl::unordered_dense::map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
+    // typedef ankerl::unordered_dense::map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
     // TODO: try swiss table.
+
+    typedef Kmer_Hashtable<k> map_t;
 
     Subgraphs_Scratch_Space();
 
@@ -55,6 +58,7 @@ public:
 private:
 
     std::vector<Padded_Data<map_t>> map_;   // Map collection for different workers.
+    // TODO: try thread-local allocation for map-space, e.g. from parlay.
 };
 
 
@@ -182,6 +186,7 @@ inline base_t Subgraph<k, Colored_>::get_base(const label_unit_t* const super_km
 };
 
 
+/*
 template <uint16_t k, bool Colored_>
 inline bool Subgraph<k, Colored_>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Unitig_Scratch<k>& maximal_unitig)
 {
@@ -304,6 +309,7 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
 
     return termination_t::null;
 }
+*/
 
 }
 

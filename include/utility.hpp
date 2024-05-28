@@ -81,6 +81,14 @@ T_* allocate(const std::size_t size)
     return static_cast<T_*>(std::malloc(size * sizeof(T_)));
 }
 
+// Returns pointer to a memory-allocation for `size` elements of type `T_`,
+// whose alignment is specified is `alignment`.
+template <typename T_>
+T_* aligned_allocate(const std::size_t size, const std::size_t alignment = 8)
+{
+    return static_cast<T_*>(std::aligned_alloc(alignment, size * sizeof(T_)));
+}
+
 // Deallocates the pointer `ptr`, allocated with `allocate`.
 template <typename T_>
 void deallocate(T_* const ptr)

@@ -34,6 +34,10 @@ private:
     static constexpr uint8_t visited = 0b0000'0001; // Flag to denote a vertex as visited.
     static constexpr uint8_t discontinuity[2] = {0b0000'0010, 0b0000'0100}; // Flags to denote a vertex's sides as discontinuous.
 
+    // Marks the associated vertex as discontinuous at side `s`, if `s` is a
+    // valid side.
+    void mark_discontinuous_optional(side_t s);
+
 
 public:
 
@@ -55,6 +59,11 @@ public:
 
     // Marks the associated vertex as discontinuous at side `s`.
     void mark_discontinuous(side_t s);
+
+    // Adds the edge-encodings `front` and `back` to the associated sides of a
+    // corresponding vertex, and marks the associated vertex as discontinuous
+    // at sides `s_0` and `s_1`.
+    void update(base_t front, base_t back, side_t s_0, side_t s_1);
 
     // Returns whether the associated vertex is visited.
     bool is_visited() const { return status & visited; }
@@ -127,6 +136,22 @@ inline void State_Config::mark_discontinuous(const side_t s)
 {
     assert(as_int(s) < 2);
     status |= discontinuity[as_int(s)];
+}
+
+
+inline void State_Config::mark_discontinuous_optional(const side_t s)
+{
+    assert(as_int(s) <= 2);
+    status |= (s == side_t::unspecified ? 0 : discontinuity[as_int(s)]);
+}
+
+
+inline void State_Config::update(base_t front, base_t back, side_t s_0, side_t s_1)
+{
+    update_edges(front, back);
+
+    mark_discontinuous_optional(s_0);
+    mark_discontinuous_optional(s_1);
 }
 
 
