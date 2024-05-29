@@ -170,7 +170,7 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 inline Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Concurrent_Hash_Table(const std::size_t max_n, const double load_factor, const T_hasher_ hasher):
       empty_key_()
     , hash(hasher)
-    , capacity_(static_cast<std::size_t>(1) << static_cast<std::size_t>(std::ceil(std::log2(max_n / load_factor))))
+    , capacity_(ceil_pow_2(static_cast<std::size_t>(std::ceil(max_n / load_factor))))
     , idx_wrapper_mask(capacity_ - 1)
     , T(static_cast<Key_Val_Pair*>(std::malloc(capacity_ * sizeof(Key_Val_Pair))))
     , lock(capacity_)
