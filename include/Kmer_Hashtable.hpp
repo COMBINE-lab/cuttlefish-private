@@ -208,9 +208,12 @@ inline void Kmer_Hashtable<k>::flush_updates()
             for(std::size_t j = h_cur[i]; ; j = next_idx(j))
                 if(T[j].timestamp != cur_stamp) // Empty slot as it contains an entry from a previous version of the table.
                 {
+                    assert(size() < capacity());
+
+                    T[j].timestamp = cur_stamp;
+
                     T[j].key = u.kmer;
                     T[j].val = State_Config();
-                    T[j].timestamp = cur_stamp;
                     T[j].val.update(u.front, u.back, u.disc_0, u.disc_1);
                     sz++;
                     break;
