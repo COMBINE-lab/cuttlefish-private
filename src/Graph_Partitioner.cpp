@@ -240,16 +240,16 @@ template <uint16_t k, bool Colored_>
 bool Graph_Partitioner<k, Colored_>::is_discontinuity(const char* const seq) const
 {
     minimizer_t min_l, min_r;
+    uint64_t h_l, h_r;
     std::size_t idx_l, idx_r;
 
     typedef Minimizer_Iterator<const char*, k - 1, true> min_it_t;
-    min_it_t::minimizer(seq, l_, min_seed, min_l, idx_l);
-    min_it_t::minimizer(seq + 1, l_, min_seed, min_r, idx_r);
+    min_it_t::minimizer(seq, l_, min_seed, min_l, h_l, idx_l);
+    min_it_t::minimizer(seq + 1, l_, min_seed, min_r, h_r, idx_r);
 
-    if(subgraphs.graph_ID(min_l) == subgraphs.graph_ID(min_r))
+    if(subgraphs.graph_ID(h_l) == subgraphs.graph_ID(h_r))
         return false;
 
-    assert(idx_l != 1 + idx_r);
     return true;
 }
 
