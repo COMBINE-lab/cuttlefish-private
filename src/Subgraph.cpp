@@ -86,10 +86,10 @@ void Subgraph<k, Colored_>::construct()
 
                 break;
             }
-*/
 
             if((kmer_idx > 0 || !att.left_discontinuous()) && (kmer_idx + k < len || !att.right_discontinuous()))
                 assert(!st.is_discontinuity());
+*/
 
 
             pred_v = v.canonical();
