@@ -16,6 +16,7 @@ template <uint16_t k, bool Colored_>
 Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& G, op_buf_t& op_buf, Subgraphs_Scratch_Space<k>& space):
       B(B)
     , M(space.map())
+    , kmer_count_(0)
     , edge_c(0)
     , label_sz(0)
     , disc_edge_c(0)
@@ -47,6 +48,7 @@ void Subgraph<k, Colored_>::construct()
         const auto len = att.len();
         assert(len >= k);
         assert(len < 2 * (k - 1));
+        kmer_count_ += len - (k - 1);
 
         v.from_super_kmer(label, word_count);
         std::size_t kmer_idx = 0;
@@ -221,6 +223,13 @@ template <uint16_t k, bool Colored_>
 std::size_t Subgraph<k, Colored_>::size() const
 {
     return M.size();
+}
+
+
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::kmer_count() const
+{
+    return kmer_count_;
 }
 
 

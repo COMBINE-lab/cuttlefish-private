@@ -76,6 +76,8 @@ private:
 
     typename Subgraphs_Scratch_Space<k>::map_t& M;  // Map to be used for this subgraph.
 
+    uint64_t kmer_count_;   // Number of k-mer instances (copies) in the graph.
+
     uint64_t edge_c;    // Number of edges in the graph.
     uint64_t label_sz;  // Total number of characters in the literal representations of all the maximal unitigs.
     uint64_t disc_edge_c;   // Number of edges of the discontinuity graph induced from this subgraph.
@@ -143,6 +145,9 @@ public:
 
     // Returns the count of isolated vertices—not part of any edge.
     uint64_t isolated_vertex_count() const;
+
+    // Returns the number of k-mer instances (copies) in the graph.
+    uint64_t kmer_count() const;
 
     // Returns the number of (multi-)edges in the graph.
     uint64_t edge_count() const;
