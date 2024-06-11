@@ -62,6 +62,7 @@ set(PROJECT_SRC
         Graph_Partitioner.cpp
         Super_Kmer_Bucket.cpp
         Super_Kmer_Chunk.cpp
+        HyperLogLog.cpp
         Discontinuity_Graph.cpp
         Edge_Matrix.cpp
         Unitig_File.cpp

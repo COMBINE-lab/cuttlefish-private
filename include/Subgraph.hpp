@@ -49,7 +49,9 @@ public:
 
     typedef Kmer_Hashtable<k> map_t;
 
-    Subgraphs_Scratch_Space();
+    // Constructs working space for workers, supporting capacity of at least
+    // `max_sz` vertices.
+    Subgraphs_Scratch_Space(std::size_t max_sz);
 
     // Returns the appropriate map for a worker.
     map_t& map();

@@ -5,6 +5,9 @@
 
 
 #include "Super_Kmer_Bucket.hpp"
+#include "HyperLogLog.hpp"
+#include "Directed_Vertex.hpp"
+#include "DNA_Utility.hpp"
 #include "Discontinuity_Graph.hpp"
 #include "Async_Logger_Wrapper.hpp"
 #include "Character_Buffer.hpp"
@@ -13,6 +16,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <limits>
 #include <atomic>
 #include <string>
 #include <vector>
@@ -40,6 +44,8 @@ private:
 
     typedef Super_Kmer_Bucket<Colored_> bucket_t;
     std::vector<Padded_Data<bucket_t>> subgraph_bucket; // Super k-mer buckets for the subgraphs.
+
+    std::vector<HyperLogLog> HLL;   // `HLL[g]` is the cardinality-estimator for subgraph `g`.
 
     Discontinuity_Graph<k>& G;  // The discontinuity graph.
 
@@ -77,6 +83,9 @@ public:
     // after this.
     void finalize();
 
+    // Returns the largest estimated size of any subgraph.
+    uint64_t estimate_size_max() const;
+
     // Constructs and contracts each subgraph.
     void process();
 
@@ -100,6 +109,21 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, 
 
     auto& bucket = subgraph_bucket[g].data();
     bucket.add(seq, len, l_disc, r_disc);
+
+    auto& hll = HLL[g];
+    Directed_Vertex<k> v{Kmer<k>(seq)};
+    constexpr auto u32_mask = std::numeric_limits<uint32_t>::max();
+    std::size_t next_idx = k;
+    while(true)
+    {
+        hll.add(v.canonical().to_u64() & u32_mask);
+
+        if(next_idx == len)
+            break;
+
+        v.roll_forward(DNA_Utility::map_base(seq[next_idx]));
+        next_idx++;
+    }
 }
 
 }

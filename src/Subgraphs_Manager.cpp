@@ -10,6 +10,7 @@
 #include <limits>
 #include <iostream>
 #include <cstdlib>
+#include <algorithm>
 
 
 namespace cuttlefish
@@ -20,6 +21,7 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
       path_pref(logistics.subgraphs_path())
     , graph_count_(graph_count_)
     , l(l)
+    , HLL(graph_count_)
     , G(G)
     , trivial_mtig_count_(0)
     , icc_count_(0)
@@ -46,9 +48,24 @@ void Subgraphs_Manager<k, Colored_>::finalize()
 
 
 template <uint16_t k, bool Colored_>
+uint64_t Subgraphs_Manager<k, Colored_>::estimate_size_max() const
+{
+    uint64_t max_est = 0;
+    for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
+        max_est = std::max(max_est, HLL[g_id].estimate());
+
+    return max_est;
+}
+
+
+template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::process()
 {
-    Subgraphs_Scratch_Space<k> subgraphs_space;
+    uint64_t max_sub_g_sz = 0;
+    std::for_each(HLL.cbegin(), HLL.cend(), [&](const auto& hll){ max_sub_g_sz = std::max(max_sub_g_sz, hll.estimate()); });
+    force_free(HLL);
+
+    Subgraphs_Scratch_Space<k> subgraphs_space(max_sub_g_sz * 1.10);
     std::atomic_uint64_t solved = 0;
 
     std::vector<Padded_Data<double>> t_construction(parlay::num_workers(), 0);  // Timer-per-worker for construction work.

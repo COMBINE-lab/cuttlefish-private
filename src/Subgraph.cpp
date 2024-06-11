@@ -276,11 +276,11 @@ uint64_t Subgraph<k, Colored_>::isolated_vertex_count() const
 
 
 template <uint16_t k>
-Subgraphs_Scratch_Space<k>::Subgraphs_Scratch_Space()
+Subgraphs_Scratch_Space<k>::Subgraphs_Scratch_Space(const std::size_t max_sz)
 {
     map_.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
-        map_.emplace_back(10462143);    // Fix `max_n` setting for maps, getting it upstream.
+        map_.emplace_back(max_sz);
 }
 
 
