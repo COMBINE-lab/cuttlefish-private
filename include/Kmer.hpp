@@ -8,7 +8,7 @@
 #include "Kmer_Utility.hpp"
 #include "utility.hpp"
 #include "kmc_api/kmc_file.h"
-#include "xxHash/xxh3.h"
+#include "wyhash/wyhash.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -40,6 +40,9 @@ private:
 
     // Bitmask used to clear the most significant DNA base character, i.e. the first base of the k-mer which is at the bits `2k-1 : 2k-2`.
     static constexpr const uint64_t CLEAR_MSN_MASK = ~(uint64_t(0b11) << (2 * ((k - 1) % 32)));
+
+    // Salt for `wyhash`.
+    static constexpr uint64_t wy_salt[4] = {4167021922371662411llu, 7320285940802167691llu, 14307255741305819987llu, 10859488101230029397llu};
 
     // The underlying k-mer represented with 2-bit encoding, as a collection of 64-bit integers.
     // A k-mer `n_{k - 1} ... n_1 n_0` is stored in the array `kmer_data` such that, `kmer_data[0]`
@@ -290,7 +293,8 @@ template <uint16_t k>
 inline uint64_t Kmer<k>::to_u64(const uint64_t seed) const
 {
     constexpr uint16_t NUM_BYTES = (k + 3) / 4;
-    return XXH3_64bits_withSeed(kmer_data, NUM_BYTES, seed);
+    // return XXH3_64bits_withSeed(kmer_data, NUM_BYTES, seed);
+    return wyhash(kmer_data, NUM_BYTES, seed, wy_salt);
 }
 
 

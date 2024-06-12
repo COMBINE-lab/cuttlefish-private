@@ -6,6 +6,7 @@
 
 #include "Kmer.hpp"
 #include "globals.hpp"
+#include "wyhash/wyhash.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -18,6 +19,12 @@ template <typename T_seq_, uint16_t k, bool is_canonical_> class Minimizer_Itera
 // A class containing various utility methods for k-mer minimizers.
 class Minimizer_Utility
 {
+
+private:
+
+    // Salt for `wyhash`.
+    static constexpr uint64_t wy_salt[4] = {4167021922371662411llu, 7320285940802167691llu, 14307255741305819987llu, 10859488101230029397llu};
+
 public:
 
     // Returns the hash value of the l-mer `lmer`. The seed-value `seed` is used
@@ -93,7 +100,8 @@ inline uint64_t Minimizer_Utility::hash(const cuttlefish::minimizer_t lmer, cons
     return lmer;    // TODO: add as debug option for developer.
 #endif
 
-    return XXH3_64bits_withSeed(&lmer, sizeof(lmer), seed);
+    // return XXH3_64bits_withSeed(&lmer, sizeof(lmer), seed);
+    return wyhash(&lmer, sizeof(lmer), seed, wy_salt);
 }
 
 
