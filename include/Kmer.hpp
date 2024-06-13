@@ -262,12 +262,20 @@ inline void Kmer<k>::left_shift()
     if constexpr(B != 0)
     {
         constexpr uint16_t num_bit_shift = 2 * B;
-        constexpr uint64_t mask_MSNs = ((static_cast<uint64_t>(1) << num_bit_shift) - 1) << (64 - num_bit_shift);
+        // constexpr uint64_t mask_MSNs = ((static_cast<uint64_t>(1) << num_bit_shift) - 1) << (64 - num_bit_shift);
 
-        for(uint16_t idx = NUM_INTS - 1; idx > 0; --idx)
-            kmer_data[idx] = (kmer_data[idx] << num_bit_shift) | ((kmer_data[idx - 1] & mask_MSNs) >> (64 - num_bit_shift));
+        if constexpr(k <= 32)
+            kmer_data[0] <<= num_bit_shift;
+        else
+        {
+            uint64_t temp[NUM_INTS];
+            for(uint16_t idx = NUM_INTS - 1; idx > 0; --idx)
+                temp[idx] = (kmer_data[idx] << num_bit_shift) | (kmer_data[idx - 1] >> (64 - num_bit_shift));
 
-        kmer_data[0] <<= num_bit_shift;
+            temp[0] = (kmer_data[0] << num_bit_shift);
+
+            std::memcpy(kmer_data, &temp, NUM_INTS * sizeof(uint64_t));
+        }
     }
 }
 
@@ -340,7 +348,7 @@ inline Kmer<k>::Kmer(const CKmerAPI& kmer_api)
 template <uint16_t k>
 inline Kmer<k>::Kmer(const Kmer<k>& rhs)
 {
-    std::memcpy(kmer_data, rhs.kmer_data, NUM_INTS * sizeof(uint64_t));
+    *this = rhs;
 }
 
 
@@ -486,16 +494,11 @@ inline void Kmer<k>::as_reverse_complement(const Kmer<k>& other)
     constexpr uint16_t rem_base_count = k % 4;
     if constexpr(rem_base_count == 0)
         return;
-    
+
     rev_compl[packed_byte_count] = 0;
     left_shift<rem_base_count>();
 
-    // TODO: Optimize the following by direct lookups of complements—`rem_base_count` can only be
-    // 1—3 (and may not even be 2 if we never reverse-complement edges).
-
-    for(int i = 0; i < rem_base_count; ++i)
-        rev_compl[0] |= (DNA_Utility::complement(DNA::Base((data[packed_byte_count] & (0b11 << (2 * i))) >> (2 * i)))
-                                        << (2 * (rem_base_count - 1 - i)));
+    rev_compl[0] |= (Kmer_Utility::reverse_complement(data[packed_byte_count]) >> (2 * (4 - rem_base_count)));
 }
 
 
@@ -503,9 +506,15 @@ template <uint16_t k>
 __attribute__((optimize("unroll-loops")))
 inline bool Kmer<k>::operator<(const Kmer<k>& rhs) const
 {
+    if constexpr(k <= 32)
+        return kmer_data[0] < rhs.kmer_data[0];
+
     for(int16_t idx = NUM_INTS - 1; idx >= 0; --idx)
-        if(kmer_data[idx] != rhs.kmer_data[idx])
-            return kmer_data[idx] < rhs.kmer_data[idx];
+    {
+        const auto cmp = (kmer_data[idx] <=> rhs.kmer_data[idx]);
+        if(cmp != 0)
+            return cmp < 0;
+    }
 
     return false;
 }
@@ -515,9 +524,15 @@ template <uint16_t k>
 __attribute__((optimize("unroll-loops")))
 inline bool Kmer<k>::operator>(const Kmer<k>& rhs) const
 {
+    if constexpr(k <= 32)
+        return kmer_data[0] > rhs.kmer_data[0];
+
     for(int16_t idx = NUM_INTS - 1; idx >= 0; --idx)
-        if(kmer_data[idx] != rhs.kmer_data[idx])
-            return kmer_data[idx] > rhs.kmer_data[idx];
+    {
+        const auto cmp = (kmer_data[idx] <=> rhs.kmer_data[idx]);
+        if(cmp != 0)
+            return cmp > 0;
+    }
 
     return false;
 }
@@ -529,11 +544,6 @@ inline bool Kmer<k>::operator==(const Kmer<k>& rhs) const
     if constexpr(k <= 32)
         return kmer_data[0] == rhs.kmer_data[0];
 
-    // if constexpr(k <= 64)
-    //     return kmer_data[0] == rhs.kmer_data[0] && kmer_data[1] == rhs.kmer_data[1];
-
-    // ... and so on.
-
     return std::memcmp(kmer_data, rhs.kmer_data, NUM_INTS * sizeof(uint64_t)) == 0;
 }
 
@@ -541,7 +551,7 @@ inline bool Kmer<k>::operator==(const Kmer<k>& rhs) const
 template <uint16_t k>
 inline bool Kmer<k>::operator!=(const Kmer<k>& rhs) const
 {
-    return !operator==(rhs);
+    return !(*this == rhs);
 }
 
 
@@ -585,7 +595,7 @@ inline uint64_t* Kmer<k>::data()
 template <uint16_t k>
 inline bool Kmer<k>::in_forward(const Kmer<k>& kmer_hat) const
 {
-    return operator==(kmer_hat);
+    return *this == kmer_hat;
 }
 
 
