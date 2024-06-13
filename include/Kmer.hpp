@@ -349,15 +349,10 @@ inline Kmer<k>& Kmer<k>::operator=(const Kmer<k>& rhs)
 {
     static_assert(NUM_INTS <= 4);
 
-    // std::memcpy(kmer_data, rhs.kmer_data, NUM_INTS * sizeof(uint64_t));
-
-    kmer_data[0] = rhs.kmer_data[0];
-    if constexpr(NUM_INTS == 2)
-        kmer_data[1] = rhs.kmer_data[1];
-    if constexpr(NUM_INTS == 3)
-        kmer_data[2] = rhs.kmer_data[2];
-    if constexpr(NUM_INTS == 4)
-        kmer_data[3] = rhs.kmer_data[3];
+    if constexpr(k <= 32)
+        kmer_data[0] = rhs.kmer_data[0];
+    else
+        std::memcpy(kmer_data, rhs.kmer_data, NUM_INTS * sizeof(uint64_t));
 
     return *this;
 }
