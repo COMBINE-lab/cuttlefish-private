@@ -120,11 +120,8 @@ endif()
 
 
 # Add the required preprocessor definitions (`#define`s) to pass on.
-# TODO: find out what are `__STDC_FORMAT_MACROS` and `SPDLOG_FMT_EXTERNAL_HO` for.
-add_compile_definitions(__STDC_FORMAT_MACROS SPDLOG_FMT_EXTERNAL_HO FMT_HEADER_ONLY XXH_INLINE_ALL)
-
 add_compile_definitions(PROJECT_VERSION=${CMAKE_PROJECT_VERSION})
-
+add_compile_definitions(FMT_HEADER_ONLY)    # For `spdlog`.
 add_compile_definitions(WITH_ISAL)  # For `rapidgzip`.
 add_compile_definitions(WITH_RPMALLOC)  # For `rapidzip`.
 add_compile_definitions(USE_IGZIP)  # TODO: temporary for `rabbitfx`.

@@ -153,9 +153,10 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
 
                 while(DNA_Utility::is_DNA_base(frag[frag_len]))
                 {
+                    const auto len = km1_mer_idx + (k - 1); // Length of the current super (k - 1)-mer.
+
                     min_it.advance(frag[frag_len]);
                     km1_mer_idx++, frag_len++;
-                    const auto len = km1_mer_idx + (k - 2); // Length of the current super (k - 1)-mer.
 
                     // min_it.value_at(next_min, next_min_off, next_h);
                     next_h = min_it.hash();

@@ -39,7 +39,7 @@ private:
     typedef Super_Kmer_Chunk<Colored_> chunk_t;
     static constexpr std::size_t chunk_bytes = 4 * 1024;    // 4 KB chunk capacity.
     const std::size_t chunk_cap;    // Capacity (in number of super k-mers) of the chunk of the bucket.
-    mutable chunk_t chunk;  // Super k-mer chunk for the bucket.
+    mutable chunk_t chunk;  // Super k-mer chunk for the bucket.    // TODO: maybe this is not required. `chunk_w[i]` can bypass this to disk.
     mutable std::vector<Padded_Data<chunk_t>> chunk_w;  // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
 
     mutable Spin_Lock lock; // Lock to the chunk and the external-memory bucket.
@@ -136,6 +136,8 @@ inline void Super_Kmer_Bucket<Colored_>::empty_w_local_chunk(const std::size_t w
     auto& c_w = chunk_w[w_id].data();
 
     lock.lock();
+
+    // TODO: do away with `chunk`, and write `c_w` directly.
 
     const auto break_idx = std::min(c_w.size(), chunk.free_capacity());
     chunk.append(c_w, 0, break_idx);

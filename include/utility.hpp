@@ -120,7 +120,8 @@ constexpr T_to_ as_int(const T_ enum_val)
     return static_cast<T_to_>(enum_val);
 }
 
-// Returns the smallest power of 2 at least as large as `x`.
+// Returns the smallest power of 2 at least as large as `x`. `x` must be in
+// `[1, 2^63]`.
 constexpr std::size_t ceil_pow_2(std::size_t x)
 {
     assert(x > 0 && x <= (1lu << 63));

@@ -175,10 +175,6 @@ inline Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Concurrent_Hash_Table(c
     , T(static_cast<Key_Val_Pair*>(std::malloc(capacity_ * sizeof(Key_Val_Pair))))
     , lock(capacity_)
 {
-    constexpr auto key_bytes = sizeof(T_key_);
-    static_assert(  key_bytes == 1 || key_bytes == 2 || key_bytes == 4 || key_bytes == 8 || key_bytes == 16,
-                    "Unsupported-sized keys for CAS in hash-table.");
-
     std::memset(reinterpret_cast<char*>(&empty_key_), -1, sizeof(empty_key_));
 
     clear();
