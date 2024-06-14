@@ -68,31 +68,17 @@ void Subgraph<k, Colored_>::construct()
             edge_c += (succ_base != base_t::E);
 
             // Update hash table with the neighborhood info.
-            M.update(   v.canonical(),
-                        front, back,
-                        kmer_idx == 0 && att.left_discontinuous() ? v.entrance_side() : side_t::unspecified,
-                        kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified);
+            HT_Router<k>::update(M, v.canonical(),
+                                    front, back,
+                                    kmer_idx == 0 && att.left_discontinuous() ? v.entrance_side() : side_t::unspecified,
+                                    kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified);
 
             if(kmer_idx + k == len)
                 break;
 /*
-            auto& st = M[v.canonical()];
-            st.update_edges(front, back);
-            if(kmer_idx == 0 && att.left_discontinuous())
-                st.mark_discontinuous(v.entrance_side());
-
-            if(kmer_idx + k == len)
-            {
-                if(att.right_discontinuous())
-                    st.mark_discontinuous(v.exit_side());
-
-                break;
-            }
-
             if((kmer_idx > 0 || !att.left_discontinuous()) && (kmer_idx + k < len || !att.right_discontinuous()))
                 assert(!st.is_discontinuity());
 */
-
 
             pred_v = v.canonical();
             v.roll_forward(succ_base);
@@ -100,7 +86,7 @@ void Subgraph<k, Colored_>::construct()
         }
     }
 
-    M.flush_updates();
+    HT_Router<k>::flush_updates(M);
 }
 
 
@@ -280,7 +266,7 @@ Subgraphs_Scratch_Space<k>::Subgraphs_Scratch_Space(const std::size_t max_sz)
 {
     map_.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
-        map_.emplace_back(max_sz);
+        HT_Router<k>::add_HT(map_, max_sz);
 }
 
 

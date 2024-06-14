@@ -171,6 +171,26 @@ public:
 };
 
 
+// Router class wrapping some hashtable methods to help switching map types.
+template <uint16_t k>
+class HT_Router
+{
+    template <uint16_t, bool> friend class Subgraph;
+    template <uint16_t> friend class Subgraphs_Scratch_Space;
+
+private:
+
+    template <typename T_ht_> static void flush_updates(T_ht_& HT) { (void)HT; }
+    static void flush_updates(Kmer_Hashtable<k>& HT) { HT.flush_updates(); }
+
+    template <typename T_ht_> static void add_HT(std::vector<Padded_Data<T_ht_>>& vec, std::size_t sz) { vec.emplace_back(); (void)sz; }
+    static void add_HT(std::vector<Padded_Data<Kmer_Hashtable<k>>>& vec, std::size_t sz) { vec.emplace_back(sz); }
+
+    template <typename T_ht_> static void update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
+    static void update(Kmer_Hashtable<k>& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
+};
+
+
 // Type of scenarios how a unitig-walk terminates in the subgraph.
 enum class Walk_Termination
 {
@@ -318,8 +338,28 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
 }
 */
 
+
+template <uint16_t k>
+template <typename T_ht_>
+inline void HT_Router<k>::update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1)
+{
+    auto& st = HT[kmer];
+    st.update_edges(front, back);
+
+    if(disc_0 != side_t::unspecified)
+        st.mark_discontinuous(disc_0);
+    if(disc_1 != side_t::unspecified)
+        st.mark_discontinuous(disc_1);
 }
 
+
+template <uint16_t k>
+inline void HT_Router<k>::update(Kmer_Hashtable<k>& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1)
+{
+    HT.update(kmer, front, back, disc_0, disc_1);
+}
+
+}
 
 
 
