@@ -33,6 +33,8 @@ namespace cuttlefish
 
 template <bool Colored_> class Super_Kmer_Bucket;
 
+template <uint16_t k> class HT_Router;
+
 enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
 
 
@@ -73,6 +75,8 @@ class Subgraph
     typedef Walk_Termination termination_t;
 
 private:
+
+    typedef HT_Router<k> ht_router;
 
     const Super_Kmer_Bucket<Colored_>& B;   // The weak super k-mer bucket inducing this subgraph.
 

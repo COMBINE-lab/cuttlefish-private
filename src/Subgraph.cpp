@@ -68,10 +68,10 @@ void Subgraph<k, Colored_>::construct()
             edge_c += (succ_base != base_t::E);
 
             // Update hash table with the neighborhood info.
-            HT_Router<k>::update(M, v.canonical(),
-                                    front, back,
-                                    kmer_idx == 0 && att.left_discontinuous() ? v.entrance_side() : side_t::unspecified,
-                                    kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified);
+            ht_router::update(M, v.canonical(),
+                                 front, back,
+                                 kmer_idx == 0 && att.left_discontinuous() ? v.entrance_side() : side_t::unspecified,
+                                 kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified);
 
             if(kmer_idx + k == len)
                 break;
@@ -86,7 +86,7 @@ void Subgraph<k, Colored_>::construct()
         }
     }
 
-    HT_Router<k>::flush_updates(M);
+    ht_router::flush_updates(M);
 }
 
 
