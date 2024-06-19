@@ -6,6 +6,7 @@
 
 #include "Spin_Lock.hpp"
 #include "utility.hpp"
+#include "globals.hpp"
 #include "parlay/parallel.h"
 
 #include <cstddef>
@@ -325,6 +326,10 @@ public:
     // not being updated, otherwise runs the risk of data races.
     // TODO: remove this method and support only raw containers, such that user modules are forced to avoid adversarial resizing.
     void load(std::vector<T_>& v) const;
+
+    // Loads the bucket into `b` and returns its size. It is safe only when the
+    // bucket is not being updated, otherwise runs the risk of data races.
+    std::size_t load(T_* b) const;
 };
 
 
@@ -443,10 +448,39 @@ inline void Ext_Mem_Bucket_Concurrent<T_>::load(std::vector<T_>& v) const
     for(const auto& b : buf_w_local)
     {
         const auto buf = b.data();
-        if(!buf.empty())    // Conditional to avoid UB on `nullptr` being passed to `memcpy`.
+        if(CF_LIKELY(!buf.empty())) // Conditional to avoid UB on `nullptr` being passed to `memcpy`.
             std::memcpy(reinterpret_cast<char*>(curr_end), reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
         curr_end += buf.size();
     }
+}
+
+
+template <typename T_>
+inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::load(T_* b) const
+{
+    const auto sz = size();
+
+    // Load from the bucket-file.
+    std::ifstream input(file_path, std::ios::in | std::ios::binary);
+    input.read(reinterpret_cast<char*>(b), flushed * sizeof(T_));
+    if(!input)
+    {
+        std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    // Load the elements pending in the worker-local buffers.
+
+    auto curr_end = b + flushed;
+    for(const auto& buf_w : buf_w_local)
+    {
+        const auto buf = buf_w.data();
+        if(CF_LIKELY(!buf.empty())) // Conditional to avoid UB on `nullptr` being passed to `memcpy`.
+            std::memcpy(reinterpret_cast<char*>(curr_end), reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
+        curr_end += buf.size();
+    }
+
+    return sz;
 }
 
 }

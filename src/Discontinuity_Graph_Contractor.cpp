@@ -14,10 +14,9 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const Data_Logistics& logistics):
+Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const Data_Logistics& logistics):
       G(G)
     , P_v(P_v)
-    , P_v_local(parlay::num_workers())
     , compressed_diagonal_path(logistics.compressed_diagonal_path())
     , M(G.vertex_part_size_upper_bound())
     , D_c(parlay::num_workers())
@@ -51,7 +50,6 @@ void Discontinuity_Graph_Contractor<k>::contract()
         map_clr_time += duration(t_e - t_s);
 
         std::for_each(D_c.begin(), D_c.end(), [](auto& v){ v.data().clear(); });
-        std::for_each(P_v_local.begin(), P_v_local.end(), [](auto& v){ v.data().clear(); });
 
         t_s = now();
         contract_diagonal_block(j);
@@ -160,17 +158,6 @@ void Discontinuity_Graph_Contractor<k>::contract()
             };
 
         parlay::parallel_for(0, parlay::num_workers(), add_false_phantom_edges, 1);
-
-
-        t_s = now();
-        for(const auto& v : P_v_local)
-        {
-            P_v[j].add(v.data().data(), v.data().size());
-            meta_v_c += v.data().size();
-        }
-
-        t_e = now();
-        v_info_cp_time += duration(t_e - t_s);
     }
 
     std::cerr << "\n";

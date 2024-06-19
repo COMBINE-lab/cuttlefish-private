@@ -16,21 +16,16 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics):
+Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics):
       G(G)
     , P_v(P_v)
     , P_e(P_e)
-    , P_v_w(parlay::num_workers())
-    , P_e_w(parlay::num_workers())
     , compressed_diagonal_path(logistics.compressed_diagonal_path())
     , M(G.vertex_part_size_upper_bound())
 #ifndef NDEBUG
     , H_p_e_w(parlay::num_workers(), 0)
 #endif
 {
-    std::for_each(P_v_w.begin(), P_v_w.end(), [&](auto& v){ v.data().resize(P_v.size()); });
-    std::for_each(P_e_w.begin(), P_e_w.end(), [&](auto& v){ v.data().resize(P_e.size()); });
-
     std::cerr << "Hash table capacity during expansion: " << M.capacity() << ".\n";
 }
 
@@ -78,7 +73,7 @@ void Contracted_Graph_Expander<k>::expand()
             {
                 const auto j = G.E().partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
                 assert(j > i);
-                P_v_w[parlay::worker_id()].data()[j].emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
+                P_v[j].emplace(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
             }
 
             if(e.w() == 1)
@@ -94,7 +89,7 @@ void Contracted_Graph_Expander<k>::expand()
             edge_read_time += duration(t_e - t_s);
 
             t_s = now();
-            parlay::parallel_for(0, buf.size(), process_non_diagonal_edge, buf.size() / parlay::num_workers());
+            parlay::parallel_for(0, buf.size(), process_non_diagonal_edge);
             t_e = now();
             edge_proc_time += duration(t_e - t_s);
         }
@@ -141,17 +136,6 @@ void Contracted_Graph_Expander<k>::expand()
 
         t_e = now();
         spec_case_time += duration(t_e - t_s);
-
-
-        t_s = now();
-        v_inf_c += collate_w_local_bufs(P_v_w, i + 1, P_v.size(), P_v);
-        t_e = now();
-        v_inf_cp_time += duration(t_e - t_s);
-
-        t_s = now();
-        e_inf_c += collate_w_local_bufs(P_e_w, 1, P_e.size(), P_e);
-        t_e = now();
-        e_inf_cp_time += duration(t_e - t_s);
     }
 
     std::cerr << "\n";
@@ -197,7 +181,7 @@ void Contracted_Graph_Expander<k>::load_path_info(const std::size_t i)
             assert(*M.find(p_v.obj()) == p_v.path_info());
     };
 
-    parlay::parallel_for(0, p_v_buf.size(), load_vertex_info, p_v_buf.size() / parlay::num_workers());
+    parlay::parallel_for(0, p_v_buf.size(), load_vertex_info);
 
     t_e = now();
     map_fill_time += duration(t_e - t_s);
@@ -251,6 +235,7 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
 }
 
 
+/*
 template <uint16_t k>
 template <typename T_s_, typename T_d_>
 uint64_t Contracted_Graph_Expander<k>::collate_w_local_bufs(T_s_& source, const std::size_t beg, const size_t end, T_d_& dest)
@@ -274,6 +259,7 @@ uint64_t Contracted_Graph_Expander<k>::collate_w_local_bufs(T_s_& source, const 
     std::for_each(C.cbegin(), C.cend(), [&](auto& v){ c += v.data(); });
     return c;
 }
+*/
 
 }
 
