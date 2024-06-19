@@ -132,14 +132,14 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 }
 
 
-                minimizer_t cur_min;    // Minimizer of the current super (k - 1)-mer in the iteration.
-                minimizer_t next_min;   // Minimizer of the next super (k - 1)-mer in the iteration.
+                // minimizer_t cur_min;    // Minimizer of the current super (k - 1)-mer in the iteration.
+                // minimizer_t next_min;   // Minimizer of the next super (k - 1)-mer in the iteration.
                 uint64_t cur_h; // 64-bit hash of the current super (k - 1)-mer's minimizer.
                 uint64_t next_h;    // 64-bit hash of the next super (k - 1)-mer's minimizer.
                 std::size_t prev_g; // Subgraph ID of the previous super (k - 1)-mer's minimizer.
                 std::size_t cur_g;  // Subgraph ID of the current super (k - 1)-mer's minimizer.
                 std::size_t next_g; // Subgraph ID of the next super (k - 1)-mer's minimizer.
-                std::size_t cur_min_off, next_min_off;  // Relative offsets of the minimizers in the fragment. Used for assertion checks.
+                // std::size_t cur_min_off, next_min_off;  // Relative offsets of the minimizers in the fragment. Used for assertion checks.
                 std::size_t cur_sup_km1_mer_off = 0;    // Relative offset of the current super (k - 1)-mer in the fragment.
                 std::size_t km1_mer_idx = 0;    // Index of the current (k - 1)-mer in the current super (k - 1)-mer.
                 frag_len = k - 1;
@@ -153,9 +153,10 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
 
                 while(DNA_Utility::is_DNA_base(frag[frag_len]))
                 {
+                    const auto len = km1_mer_idx + (k - 1); // Length of the current super (k - 1)-mer.
+
                     min_it.advance(frag[frag_len]);
                     km1_mer_idx++, frag_len++;
-                    const auto len = km1_mer_idx + (k - 2); // Length of the current super (k - 1)-mer.
 
                     // min_it.value_at(next_min, next_min_off, next_h);
                     next_h = min_it.hash();
@@ -197,8 +198,8 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                         km1_mer_idx = 0;
                     }
 
-                    cur_min = next_min;
-                    cur_min_off = next_min_off; // The minimizer-instance offsets are tracked only for assertion checks.
+                    // cur_min = next_min;
+                    // cur_min_off = next_min_off; // The minimizer-instance offsets are tracked only for assertion checks.
                     cur_h = next_h;
                 }
 
@@ -240,16 +241,16 @@ template <uint16_t k, bool Colored_>
 bool Graph_Partitioner<k, Colored_>::is_discontinuity(const char* const seq) const
 {
     minimizer_t min_l, min_r;
+    uint64_t h_l, h_r;
     std::size_t idx_l, idx_r;
 
     typedef Minimizer_Iterator<const char*, k - 1, true> min_it_t;
-    min_it_t::minimizer(seq, l_, min_seed, min_l, idx_l);
-    min_it_t::minimizer(seq + 1, l_, min_seed, min_r, idx_r);
+    min_it_t::minimizer(seq, l_, min_seed, min_l, h_l, idx_l);
+    min_it_t::minimizer(seq + 1, l_, min_seed, min_r, h_r, idx_r);
 
-    if(subgraphs.graph_ID(min_l) == subgraphs.graph_ID(min_r))
+    if(subgraphs.graph_ID(h_l) == subgraphs.graph_ID(h_r))
         return false;
 
-    assert(idx_l != 1 + idx_r);
     return true;
 }
 

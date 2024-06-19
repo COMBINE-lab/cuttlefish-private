@@ -16,7 +16,7 @@ project(${PROJECT_NAME}
 
 # Fix language standards, and set hard requirements for such.
 # All targets defined from this point onward will pick up these requirements.
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_C_STANDARD 11)
@@ -99,7 +99,7 @@ set(LINK_FLAGS "")
 # Specify the warnings and the extra optimization flags to the compiler for the target library.
 list(APPEND COMPILE_FLAGS ${WARNING_FLAGS} ${SUPPRESS_WARNING_FLAGS} ${OPTIMIZE_FLAGS} ${MISC_FLAGS})
 
-if(DEBUG_INFO)
+if(DEBUG_INFO OR PART_PROFILE)
     list(APPEND COMPILE_FLAGS ${DEBUG_FLAGS})
 endif()
 
@@ -120,11 +120,8 @@ endif()
 
 
 # Add the required preprocessor definitions (`#define`s) to pass on.
-# TODO: find out what are `__STDC_FORMAT_MACROS` and `SPDLOG_FMT_EXTERNAL_HO` for.
-add_compile_definitions(__STDC_FORMAT_MACROS SPDLOG_FMT_EXTERNAL_HO FMT_HEADER_ONLY XXH_INLINE_ALL)
-
 add_compile_definitions(PROJECT_VERSION=${CMAKE_PROJECT_VERSION})
-
+add_compile_definitions(FMT_HEADER_ONLY)    # For `spdlog`.
 add_compile_definitions(WITH_ISAL)  # For `rapidgzip`.
 add_compile_definitions(WITH_RPMALLOC)  # For `rapidzip`.
 add_compile_definitions(USE_IGZIP)  # TODO: temporary for `rabbitfx`.

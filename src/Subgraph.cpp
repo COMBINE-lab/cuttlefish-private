@@ -16,6 +16,7 @@ template <uint16_t k, bool Colored_>
 Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& G, op_buf_t& op_buf, Subgraphs_Scratch_Space<k>& space):
       B(B)
     , M(space.map())
+    , kmer_count_(0)
     , edge_c(0)
     , label_sz(0)
     , disc_edge_c(0)
@@ -47,6 +48,7 @@ void Subgraph<k, Colored_>::construct()
         const auto len = att.len();
         assert(len >= k);
         assert(len < 2 * (k - 1));
+        kmer_count_ += len - (k - 1);
 
         v.from_super_kmer(label, word_count);
         std::size_t kmer_idx = 0;
@@ -66,31 +68,29 @@ void Subgraph<k, Colored_>::construct()
             edge_c += (succ_base != base_t::E);
 
             // Update hash table with the neighborhood info.
-            auto& st = M[v.canonical()];
-            st.update_edges(front, back);
-            if(kmer_idx == 0 && att.left_discontinuous())
-                st.mark_discontinuous(v.entrance_side());
+            ht_router::update(M, v.canonical(),
+                                 front, back,
+                                 kmer_idx == 0 && att.left_discontinuous() ? v.entrance_side() : side_t::unspecified,
+                                 kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified);
 
             if(kmer_idx + k == len)
-            {
-                if(att.right_discontinuous())
-                    st.mark_discontinuous(v.exit_side());
-
                 break;
-            }
-
+/*
             if((kmer_idx > 0 || !att.left_discontinuous()) && (kmer_idx + k < len || !att.right_discontinuous()))
                 assert(!st.is_discontinuity());
-
+*/
 
             pred_v = v.canonical();
             v.roll_forward(succ_base);
             kmer_idx++;
         }
     }
+
+    ht_router::flush_updates(M);
 }
 
 
+/*
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::construct_loop_filtered()
 {
@@ -159,8 +159,10 @@ void Subgraph<k, Colored_>::construct_loop_filtered()
         }
     }
 }
+*/
 
 
+/*
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::contract()
 {
@@ -200,12 +202,20 @@ void Subgraph<k, Colored_>::contract()
 
     assert(vertex_count + isolated == M.size());
 }
+*/
 
 
 template <uint16_t k, bool Colored_>
 std::size_t Subgraph<k, Colored_>::size() const
 {
     return M.size();
+}
+
+
+template <uint16_t k, bool Colored_>
+uint64_t Subgraph<k, Colored_>::kmer_count() const
+{
+    return kmer_count_;
 }
 
 
@@ -252,9 +262,12 @@ uint64_t Subgraph<k, Colored_>::isolated_vertex_count() const
 
 
 template <uint16_t k>
-Subgraphs_Scratch_Space<k>::Subgraphs_Scratch_Space():
-      map_(parlay::num_workers())
-{}
+Subgraphs_Scratch_Space<k>::Subgraphs_Scratch_Space(const std::size_t max_sz)
+{
+    map_.reserve(parlay::num_workers());
+    for(std::size_t i = 0; i < parlay::num_workers(); ++i)
+        HT_Router<k>::add_HT(map_, max_sz);
+}
 
 
 template <uint16_t k>

@@ -39,14 +39,8 @@ private:
 
     const Discontinuity_Graph<k>& G;    // The (augmented) discontinuity graph.
 
-    // TODO: consider using padding.
-    std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;   // `P_v[i]` contains path-info for vertices in partition `i`.
-    std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e; // `P_e[b]` contains path-info for edges in bucket `b`.
-
-    typedef std::vector<std::vector<Obj_Path_Info_Pair<Kmer<k>, k>>> worker_local_P_v_t;    // `P_v` buffers specific to a worker.
-    typedef std::vector<std::vector<Obj_Path_Info_Pair<uni_idx_t, k>>> worker_local_P_e_t;  // `P_e` buffers specific to a worker.
-    std::vector<Padded_Data<worker_local_P_v_t>> P_v_w; // `P_v_w[w][j]` contains path-info of vertices in partition `j` computed by worker `w`.
-    std::vector<Padded_Data<worker_local_P_e_t>> P_e_w; // `P_e_w[w][b]` contains path-info of edges in bucket `b` computed by worker `w`.
+    std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;    // `P_v[i]` contains path-info for vertices in partition `i`.
+    std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e;  // `P_e[b]` contains path-info for edges in bucket `b`.
 
     const std::string compressed_diagonal_path; // Path-prefix to the edges introduced in contracting diagonal blocks.
 
@@ -55,7 +49,8 @@ private:
 
     Concurrent_Hash_Table<Kmer<k>, Path_Info<k>, Kmer_Hasher<k>> M; // `M[v]` is the path-info for vertex `v`.
 
-    std::vector<Obj_Path_Info_Pair<Kmer<k>, k>> p_v_buf;    // Buffer to read-in path-information of vertices.
+    Obj_Path_Info_Pair<Kmer<k>, k>* p_v_buf;    // Buffer to read-in path-information of vertices.
+    std::size_t p_v_buf_cap;    // Capacity of the vertex path-information buffer.
 
 
     // Loads the available path-info of meta-vertices from partition `i` into
@@ -85,11 +80,7 @@ private:
     // Collates worker local buffers in ID range `[beg, end)` from the
     // collection `source` into the global repository `dest`. Also clears the
     // local buffers.
-    template <typename T_s_, typename T_d_> static uint64_t collate_w_local_bufs(T_s_& source, std::size_t beg, size_t end, T_d_& dest);
-
-#ifndef NDEBUG
-    std::vector<Padded_Data<uint64_t>> H_p_e_w; // `H_p_e_w[w]` contains 64-bit hash of the path-info of edges computed by worker `w`.
-#endif
+    // template <typename T_s_, typename T_d_> static uint64_t collate_w_local_bufs(T_s_& source, std::size_t beg, size_t end, T_d_& dest);
 
     // Debug
     double p_v_load_time = 0;   // Time to load vertices' path-info.
@@ -109,7 +100,9 @@ public:
     // `P_v[i]` is to contain path-information for vertices at partition `i`,
     // and `P_e[b]` is to contain path-information for edges at bucket `b`.
     // `logistics` is the data logistics manager for the algorithm execution.
-    Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics);
+    Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics);
+
+    ~Contracted_Graph_Expander();
 
     // Expands the contracted discontinuity-graph.
     void expand();
@@ -144,11 +137,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));
 
     assert(e.b() > 0 && e.b() < P_e.size());
-    P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), u_inf.p(), r, o, u_inf.is_cycle());
-
-#ifndef NDEBUG
-    H_p_e_w[parlay::worker_id()].data() ^= P_e_w[parlay::worker_id()].data()[e.b()].back().path_info().hash();
-#endif
+    P_e[e.b()].emplace(e.b_idx(), u_inf.p(), r, o, u_inf.is_cycle());
 }
 
 
@@ -163,11 +152,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto o = (r == 0 ? e.o() : inv_side(e.o()));
 
     assert(e.b() > 0 && e.b() < P_e.size());
-    P_e_w[parlay::worker_id()].data()[e.b()].emplace_back(e.b_idx(), v_inf.p(), r, o, v_inf.is_cycle());
-
-#ifndef NDEBUG
-    H_p_e_w[parlay::worker_id()].data() ^= P_e_w[parlay::worker_id()].data()[e.b()].back().path_info().hash();
-#endif
+    P_e[e.b()].emplace(e.b_idx(), v_inf.p(), r, o, v_inf.is_cycle());
 }
 
 

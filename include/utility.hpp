@@ -81,6 +81,14 @@ T_* allocate(const std::size_t size)
     return static_cast<T_*>(std::malloc(size * sizeof(T_)));
 }
 
+// Returns pointer to a memory-allocation for `size` elements of type `T_`,
+// whose alignment is specified is `alignment`.
+template <typename T_>
+T_* aligned_allocate(const std::size_t size, const std::size_t alignment = 8)
+{
+    return static_cast<T_*>(std::aligned_alloc(alignment, size * sizeof(T_)));
+}
+
 // Deallocates the pointer `ptr`, allocated with `allocate`.
 template <typename T_>
 void deallocate(T_* const ptr)
@@ -103,6 +111,26 @@ void resize_geometric(T_& container, const std::size_t sz, const double gf = 2.0
         container.resize(curr_sz);
 }
 
+// Allocates the type-`T_` container `p` that currently has space for `cur_sz`
+// elements geometrically with the growth factor `gf` such that it has enough
+// space for at least `req_sz` elements, and returns the new size.
+template <typename T_>
+std::size_t allocate_geometric(T_*& p, const std::size_t curr_sz, const std::size_t req_sz, const double gf = 2.0)
+{
+    assert(gf > 1.0);
+
+    if(curr_sz >= req_sz)
+        return curr_sz;
+
+    std::size_t new_sz = std::max(curr_sz, 1lu);
+    while(new_sz < req_sz)
+        new_sz *= gf;
+
+    deallocate(p);
+    p = allocate<T_>(new_sz);
+    return new_sz;
+}
+
 // Returns the corresponding integer value of type `T_to_` for a type-`T_`
 // enum-value `enum_val`.
 template <typename T_, typename T_to_ = std::size_t>
@@ -112,7 +140,8 @@ constexpr T_to_ as_int(const T_ enum_val)
     return static_cast<T_to_>(enum_val);
 }
 
-// Returns the smallest power of 2 at least as large as `x`.
+// Returns the smallest power of 2 at least as large as `x`. `x` must be in
+// `[1, 2^63]`.
 constexpr std::size_t ceil_pow_2(std::size_t x)
 {
     assert(x > 0 && x <= (1lu << 63));

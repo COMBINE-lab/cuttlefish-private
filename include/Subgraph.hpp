@@ -9,6 +9,7 @@
 #include "Kmer.hpp"
 #include "DNA.hpp"
 #include "DNA_Utility.hpp"
+#include "Kmer_Hashtable.hpp"
 #include "Unitig_Scratch.hpp"
 #include "Maximal_Unitig_Scratch.hpp"
 #include "Discontinuity_Graph.hpp"
@@ -32,6 +33,8 @@ namespace cuttlefish
 
 template <bool Colored_> class Super_Kmer_Bucket;
 
+template <uint16_t k> class HT_Router;
+
 enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
 
 
@@ -43,10 +46,14 @@ public:
 
     // typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
     // typedef emhash7::HashMap<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
-    typedef ankerl::unordered_dense::map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
+    // typedef ankerl::unordered_dense::map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
     // TODO: try swiss table.
 
-    Subgraphs_Scratch_Space();
+    typedef Kmer_Hashtable<k> map_t;
+
+    // Constructs working space for workers, supporting capacity of at least
+    // `max_sz` vertices.
+    Subgraphs_Scratch_Space(std::size_t max_sz);
 
     // Returns the appropriate map for a worker.
     map_t& map();
@@ -55,6 +62,7 @@ public:
 private:
 
     std::vector<Padded_Data<map_t>> map_;   // Map collection for different workers.
+    // TODO: try thread-local allocation for map-space, e.g. from parlay.
 };
 
 
@@ -68,9 +76,13 @@ class Subgraph
 
 private:
 
+    typedef HT_Router<k> ht_router;
+
     const Super_Kmer_Bucket<Colored_>& B;   // The weak super k-mer bucket inducing this subgraph.
 
     typename Subgraphs_Scratch_Space<k>::map_t& M;  // Map to be used for this subgraph.
+
+    uint64_t kmer_count_;   // Number of k-mer instances (copies) in the graph.
 
     uint64_t edge_c;    // Number of edges in the graph.
     uint64_t label_sz;  // Total number of characters in the literal representations of all the maximal unitigs.
@@ -140,6 +152,9 @@ public:
     // Returns the count of isolated vertices—not part of any edge.
     uint64_t isolated_vertex_count() const;
 
+    // Returns the number of k-mer instances (copies) in the graph.
+    uint64_t kmer_count() const;
+
     // Returns the number of (multi-)edges in the graph.
     uint64_t edge_count() const;
 
@@ -157,6 +172,26 @@ public:
     // Returns the total number of characters in the literal representations of
     // all the maximal unitigs.
     uint64_t label_size() const;
+};
+
+
+// Router class wrapping some hashtable methods to help switching map types.
+template <uint16_t k>
+class HT_Router
+{
+    template <uint16_t, bool> friend class Subgraph;
+    template <uint16_t> friend class Subgraphs_Scratch_Space;
+
+private:
+
+    template <typename T_ht_> static void flush_updates(T_ht_& HT) { (void)HT; }
+    static void flush_updates(Kmer_Hashtable<k>& HT) { HT.flush_updates(); }
+
+    template <typename T_ht_> static void add_HT(std::vector<Padded_Data<T_ht_>>& vec, std::size_t sz) { vec.emplace_back(); (void)sz; }
+    static void add_HT(std::vector<Padded_Data<Kmer_Hashtable<k>>>& vec, std::size_t sz) { vec.emplace_back(sz); }
+
+    template <typename T_ht_> static void update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
+    static void update(Kmer_Hashtable<k>& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
 };
 
 
@@ -182,6 +217,7 @@ inline base_t Subgraph<k, Colored_>::get_base(const label_unit_t* const super_km
 };
 
 
+/*
 template <uint16_t k, bool Colored_>
 inline bool Subgraph<k, Colored_>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Unitig_Scratch<k>& maximal_unitig)
 {
@@ -304,9 +340,30 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
 
     return termination_t::null;
 }
+*/
 
+
+template <uint16_t k>
+template <typename T_ht_>
+inline void HT_Router<k>::update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1)
+{
+    auto& st = HT[kmer];
+    st.update_edges(front, back);
+
+    if(disc_0 != side_t::unspecified)
+        st.mark_discontinuous(disc_0);
+    if(disc_1 != side_t::unspecified)
+        st.mark_discontinuous(disc_1);
 }
 
+
+template <uint16_t k>
+inline void HT_Router<k>::update(Kmer_Hashtable<k>& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1)
+{
+    HT.update(kmer, front, back, disc_0, disc_1);
+}
+
+}
 
 
 

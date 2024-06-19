@@ -27,7 +27,7 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf):
+Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf):
       P_e(P_e)
     , lmtig_buckets_path(logistics.lmtig_buckets_path())
     , unitig_coord_buckets_path(logistics.unitig_coord_buckets_path())
