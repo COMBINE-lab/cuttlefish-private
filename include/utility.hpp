@@ -111,6 +111,26 @@ void resize_geometric(T_& container, const std::size_t sz, const double gf = 2.0
         container.resize(curr_sz);
 }
 
+// Allocates the type-`T_` container `p` that currently has space for `cur_sz`
+// elements geometrically with the growth factor `gf` such that it has enough
+// space for at least `req_sz` elements, and returns the new size.
+template <typename T_>
+std::size_t allocate_geometric(T_*& p, const std::size_t curr_sz, const std::size_t req_sz, const double gf = 2.0)
+{
+    assert(gf > 1.0);
+
+    if(curr_sz >= req_sz)
+        return curr_sz;
+
+    std::size_t new_sz = std::max(curr_sz, 1lu);
+    while(new_sz < req_sz)
+        new_sz *= gf;
+
+    deallocate(p);
+    p = allocate<T_>(new_sz);
+    return new_sz;
+}
+
 // Returns the corresponding integer value of type `T_to_` for a type-`T_`
 // enum-value `enum_val`.
 template <typename T_, typename T_to_ = std::size_t>

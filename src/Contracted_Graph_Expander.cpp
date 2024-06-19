@@ -22,11 +22,17 @@ Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Grap
     , P_e(P_e)
     , compressed_diagonal_path(logistics.compressed_diagonal_path())
     , M(G.vertex_part_size_upper_bound())
-#ifndef NDEBUG
-    , H_p_e_w(parlay::num_workers(), 0)
-#endif
+    , p_v_buf(nullptr)
+    , p_v_buf_cap(0)
 {
     std::cerr << "Hash table capacity during expansion: " << M.capacity() << ".\n";
+}
+
+
+template <uint16_t k>
+Contracted_Graph_Expander<k>::~Contracted_Graph_Expander()
+{
+    deallocate(p_v_buf);
 }
 
 
@@ -167,8 +173,8 @@ template <uint16_t k>
 void Contracted_Graph_Expander<k>::load_path_info(const std::size_t i)
 {
     auto t_s = now();
-    resize_geometric(p_v_buf, P_v[i].size());
-    assert(p_v_buf.size() >= P_v[i].size());
+    p_v_buf_cap = allocate_geometric(p_v_buf, p_v_buf_cap, P_v[i].size());
+    assert(p_v_buf_cap >= P_v[i].size());
     P_v[i].load(p_v_buf);
     auto t_e = now();
     p_v_load_time += duration(t_e - t_s);
@@ -181,7 +187,7 @@ void Contracted_Graph_Expander<k>::load_path_info(const std::size_t i)
             assert(*M.find(p_v.obj()) == p_v.path_info());
     };
 
-    parlay::parallel_for(0, p_v_buf.size(), load_vertex_info);
+    parlay::parallel_for(0, P_v[i].size(), load_vertex_info);
 
     t_e = now();
     map_fill_time += duration(t_e - t_s);

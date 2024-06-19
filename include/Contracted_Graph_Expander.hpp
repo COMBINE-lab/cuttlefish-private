@@ -49,7 +49,8 @@ private:
 
     Concurrent_Hash_Table<Kmer<k>, Path_Info<k>, Kmer_Hasher<k>> M; // `M[v]` is the path-info for vertex `v`.
 
-    std::vector<Obj_Path_Info_Pair<Kmer<k>, k>> p_v_buf;    // Buffer to read-in path-information of vertices.
+    Obj_Path_Info_Pair<Kmer<k>, k>* p_v_buf;    // Buffer to read-in path-information of vertices.
+    std::size_t p_v_buf_cap;    // Capacity of the vertex path-information buffer.
 
 
     // Loads the available path-info of meta-vertices from partition `i` into
@@ -100,6 +101,8 @@ public:
     // and `P_e[b]` is to contain path-information for edges at bucket `b`.
     // `logistics` is the data logistics manager for the algorithm execution.
     Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics);
+
+    ~Contracted_Graph_Expander();
 
     // Expands the contracted discontinuity-graph.
     void expand();
