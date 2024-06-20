@@ -510,11 +510,8 @@ inline bool Kmer<k>::operator<(const Kmer<k>& rhs) const
         return kmer_data[0] < rhs.kmer_data[0];
 
     for(int16_t idx = NUM_INTS - 1; idx >= 0; --idx)
-    {
-        const auto cmp = (kmer_data[idx] <=> rhs.kmer_data[idx]);
-        if(cmp != 0)
-            return cmp < 0;
-    }
+        if(kmer_data[idx] != rhs.kmer_data[idx])
+            return kmer_data[idx] < rhs.kmer_data[idx];
 
     return false;
 }
@@ -528,11 +525,8 @@ inline bool Kmer<k>::operator>(const Kmer<k>& rhs) const
         return kmer_data[0] > rhs.kmer_data[0];
 
     for(int16_t idx = NUM_INTS - 1; idx >= 0; --idx)
-    {
-        const auto cmp = (kmer_data[idx] <=> rhs.kmer_data[idx]);
-        if(cmp != 0)
-            return cmp > 0;
-    }
+        if(kmer_data[idx] != rhs.kmer_data[idx])
+            return kmer_data[idx] > rhs.kmer_data[idx];
 
     return false;
 }

@@ -9,7 +9,6 @@
 
 #include <cstdint>
 #include <cstddef>
-#include <bit>
 #include <vector>
 #include <cmath>
 
@@ -52,8 +51,9 @@ inline void HyperLogLog::add(const uint32_t h)
 
     const auto stream = h & substream_mask;
     const auto h_proxy = h >> log_m;
+    const auto tz = (h_proxy != 0 ? __builtin_ctz(h_proxy) : 32);
     auto& M = M_w[parlay::worker_id()].data();
-    M[stream] = std::max(M[stream], static_cast<uint8_t>(1 + std::countr_zero(h_proxy)));
+    M[stream] = std::max(M[stream], static_cast<uint8_t>(1 + tz));
 }
 
 }
