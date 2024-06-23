@@ -158,12 +158,6 @@ void Contracted_Graph_Expander<k>::expand()
     std::cerr << "Edge path-info copy time: " << e_inf_cp_time << ".\n";
     std::cerr << "Special case time: " << spec_case_time << ".\n";
 
-#ifndef NDEBUG
-    uint64_t e_h = 0;
-    std::for_each(H_p_e_w.cbegin(), H_p_e_w.cend(), [&](const auto& v){ e_h ^= v.data(); });
-    std::cerr << "Collated edge path-info hash: " << e_h << ".\n";
-#endif
-
     std::cerr << "Inferred vertex-information instance: " << v_inf_c << ".\n";
     std::cerr << "Inferred edge-information instance:   " << e_inf_c << ".\n";
 }
