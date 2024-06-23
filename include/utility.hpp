@@ -190,6 +190,46 @@ public:
 };
 
 
+// Wrapper class for a buffer of elements of type `T_`.
+template <typename T_>
+class Buffer
+{
+private:
+
+    T_* buf_;   // The raw buffer.
+    std::size_t sz_;    // Size of the buffer.
+
+
+public:
+
+    // Constructs an empty buffer.
+    Buffer():
+          buf_(nullptr)
+        , sz_(0)
+    {}
+
+    ~Buffer() { deallocate(buf_); }
+
+    Buffer(const Buffer&) = delete;
+    Buffer(Buffer&&) = delete;
+    Buffer& operator=(const Buffer&) = delete;
+    Buffer& operator=(Buffer&&) = delete;
+
+    // Returns the memory region of the buffer.
+    T_* data() { return buf_; }
+
+    // Returns reference to the `idx`'th element of the buffer.
+    T_& operator[](const std::size_t idx) { return buf_[idx]; }
+
+    // Returns the size of the buffer.
+    auto size() const { return sz_; }
+
+    // Ensures that the buffer have space for at least `new_cap` elements. No
+    // guarantees are made for the existing elements.
+    void reserve(const std::size_t new_cap) { sz_ = allocate_geometric(buf_, sz_, new_cap); }
+};
+
+
 namespace timer
 {
     inline auto now() { return std::chrono::high_resolution_clock::now(); }

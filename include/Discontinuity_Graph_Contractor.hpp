@@ -42,7 +42,7 @@ private:
 
     const std::string compressed_diagonal_path; // Path-prefix to the edges introduced in contracting diagonal blocks.
 
-    std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
+    Buffer<Discontinuity_Edge<k>> buf;  // Buffer to read-in edges from the edge-matrix.
 
     class Other_End;
     Concurrent_Hash_Table<Kmer<k>, Other_End, Kmer_Hasher<k>> M;    // `M[v]` is the associated vertex to `v` at a given time.

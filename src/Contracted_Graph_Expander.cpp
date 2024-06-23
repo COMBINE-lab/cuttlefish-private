@@ -22,17 +22,8 @@ Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Grap
     , P_e(P_e)
     , compressed_diagonal_path(logistics.compressed_diagonal_path())
     , M(G.vertex_part_size_upper_bound())
-    , p_v_buf(nullptr)
-    , p_v_buf_cap(0)
 {
     std::cerr << "Hash table capacity during expansion: " << M.capacity() << ".\n";
-}
-
-
-template <uint16_t k>
-Contracted_Graph_Expander<k>::~Contracted_Graph_Expander()
-{
-    deallocate(p_v_buf);
 }
 
 
@@ -49,9 +40,14 @@ void Contracted_Graph_Expander<k>::expand()
     uint64_t v_inf_c = 0;   // Count of vertices whose path-info have been inferred.
     uint64_t e_inf_c = 0;   // Count of edges whose path-info have been inferred.
 
+    // TODO: replace with custom buffer.
     std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
 
+    std::size_t max_p_v_buf_sz = 0;
+    std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& P_v_i){ max_p_v_buf_sz = std::max(max_p_v_buf_sz, P_v_i.size()); });
+    p_v_buf.reserve(max_p_v_buf_sz);
     buf.resize(G.E().max_block_size());
+
     for(std::size_t i = 1; i <= G.E().vertex_part_count(); ++i)
     {
         std::cerr << "\rPart: " << i;
@@ -167,9 +163,8 @@ template <uint16_t k>
 void Contracted_Graph_Expander<k>::load_path_info(const std::size_t i)
 {
     auto t_s = now();
-    p_v_buf_cap = allocate_geometric(p_v_buf, p_v_buf_cap, P_v[i].size());
-    assert(p_v_buf_cap >= P_v[i].size());
-    P_v[i].load(p_v_buf);
+    p_v_buf.reserve(P_v[i].size());
+    P_v[i].load(p_v_buf.data());
     auto t_e = now();
     p_v_load_time += duration(t_e - t_s);
 

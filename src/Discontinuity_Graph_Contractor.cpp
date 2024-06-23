@@ -39,7 +39,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
     // TODO: document the phases.
 
-    buf.resize(G.E().max_block_size());
+    buf.reserve(G.E().max_block_size());
     for(auto j = G.E().vertex_part_count(); j >= 1; --j)
     {
         std::cerr << "\rPart: " << j;
@@ -48,8 +48,6 @@ void Discontinuity_Graph_Contractor<k>::contract()
         M.clear();
         auto t_e = now();
         map_clr_time += duration(t_e - t_s);
-
-        std::for_each(D_c.begin(), D_c.end(), [](auto& v){ v.data().clear(); });
 
         t_s = now();
         contract_diagonal_block(j);
@@ -83,7 +81,6 @@ void Discontinuity_Graph_Contractor<k>::contract()
                 z = Other_End(e.x(), e.s_x(), e.s_y(), e.x_is_phi(), e.w(), false);
             }
             else
-                // TODO: add edges in a lock-free manner, accumulating new edges in thread-local buffers and copying to the global repo afterwards.
                 G.add_edge(e.x(), e.s_x(), z.v(), z.s_v(), e.w() + z.w(), e.x_is_phi(), z.is_phi());
 
             z.process();
@@ -92,13 +89,14 @@ void Discontinuity_Graph_Contractor<k>::contract()
         while(true)
         {
             t_s = now();
-            if(!G.E().read_column_buffered(j, buf)) // TODO: run a background buffered reader, that'll have the next buffer ready in time.
+            const auto edge_c = G.E().read_column_buffered(j, buf);
+            if(edge_c == 0) // TODO: run a background buffered reader, that'll have the next buffer ready in time.
                 break;
             t_e = now();
             edge_read_time += duration(t_e - t_s);
 
             t_s = now();
-            parlay::parallel_for(0, buf.size(), process_non_diagonal_edge, buf.size() / parlay::num_workers());
+            parlay::parallel_for(0, edge_c, process_non_diagonal_edge, edge_c / parlay::num_workers());
             t_e = now();
             edge_proc_time += duration(t_e - t_s);
         }
@@ -180,12 +178,13 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
 {
     D_j.clear();
     const auto t_s = now();
-    G.E().read_diagonal_block(j, buf);
+    const auto edge_c = G.E().read_diagonal_block(j, buf);
     const auto t_e = now();
     edge_read_time += duration(t_e - t_s);
 
-    for(const auto& e : buf)
+    for(std::size_t i = 0; i < edge_c; ++i)
     {
+        const auto& e = buf[i];
         const Other_End* const end_x = M.find(e.x());
         const Other_End* const end_y = M.find(e.y());
 
@@ -251,6 +250,8 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
 
     output.close();
 
+
+    std::for_each(D_c.begin(), D_c.end(), [](auto& v){ v.data().clear(); });
 
     const auto collect_compressed_diagonal_chains =
         [&](const std::size_t w_id)
