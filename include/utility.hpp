@@ -197,7 +197,7 @@ class Buffer
 private:
 
     T_* buf_;   // The raw buffer.
-    std::size_t sz_;    // Size of the buffer.
+    std::size_t cap_;   // Capacity of the buffer.
 
 
 public:
@@ -205,7 +205,7 @@ public:
     // Constructs an empty buffer.
     Buffer():
           buf_(nullptr)
-        , sz_(0)
+        , cap_(0)
     {}
 
     ~Buffer() { deallocate(buf_); }
@@ -222,11 +222,11 @@ public:
     T_& operator[](const std::size_t idx) { return buf_[idx]; }
 
     // Returns the size of the buffer.
-    auto size() const { return sz_; }
+    auto capacity() const { return cap_; }
 
     // Ensures that the buffer have space for at least `new_cap` elements. No
     // guarantees are made for the existing elements.
-    void reserve(const std::size_t new_cap) { sz_ = allocate_geometric(buf_, sz_, new_cap); }
+    void reserve(const std::size_t new_cap) { cap_ = allocate_geometric(buf_, cap_, new_cap); }
 };
 
 
