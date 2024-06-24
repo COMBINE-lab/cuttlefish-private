@@ -40,13 +40,12 @@ void Contracted_Graph_Expander<k>::expand()
     uint64_t v_inf_c = 0;   // Count of vertices whose path-info have been inferred.
     uint64_t e_inf_c = 0;   // Count of edges whose path-info have been inferred.
 
-    // TODO: replace with custom buffer.
-    std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
+    Buffer<Discontinuity_Edge<k>> buf;  // Buffer to read-in edges from the edge-matrix.
 
     std::size_t max_p_v_buf_sz = 0;
     std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& P_v_i){ max_p_v_buf_sz = std::max(max_p_v_buf_sz, P_v_i.size()); });
     p_v_buf.reserve(max_p_v_buf_sz);
-    buf.resize(G.E().max_block_size());
+    buf.reserve(G.E().max_block_size());
 
     for(std::size_t i = 1; i <= G.E().vertex_part_count(); ++i)
     {
@@ -85,13 +84,14 @@ void Contracted_Graph_Expander<k>::expand()
         while(true)
         {
             t_s = now();
-            if(!G.E().read_row_buffered(i, buf))    // TODO: run a background buffered reader, that'll have the next buffer ready in time.
+            const auto edge_c = G.E().read_row_buffered(i, buf);
+            if(edge_c == 0) // TODO: run a background buffered reader, that'll have the next buffer ready in time.
                 break;
             t_e = now();
             edge_read_time += duration(t_e - t_s);
 
             t_s = now();
-            parlay::parallel_for(0, buf.size(), process_non_diagonal_edge);
+            parlay::parallel_for(0, edge_c, process_non_diagonal_edge);
             t_e = now();
             edge_proc_time += duration(t_e - t_s);
         }
@@ -100,12 +100,12 @@ void Contracted_Graph_Expander<k>::expand()
         // TODO: consider making the following two blocks more efficient.
 
         t_s = now();
-        G.E().read_diagonal_block(i, buf);
+        const auto diag_blk_sz = G.E().read_diagonal_block(i, buf);
         t_e = now();
         edge_read_time += duration(t_e - t_s);
 
         t_s = now();
-        parlay::parallel_for(0, buf.size(),
+        parlay::parallel_for(0, diag_blk_sz,
             [&](const std::size_t idx)
             {
                 const auto& e = buf[idx];
@@ -120,12 +120,12 @@ void Contracted_Graph_Expander<k>::expand()
         spec_case_time += duration(t_e - t_s);
 
         t_s = now();
-        G.E().read_block(0, i, buf);
+        const auto top_blk_sz = G.E().read_block(0, i, buf);
         t_e = now();
         edge_read_time += duration(t_e - t_s);
 
         t_s = now();
-        parlay::parallel_for(0, buf.size(),
+        parlay::parallel_for(0, top_blk_sz,
             [&](const std::size_t idx)
             {
                 const auto& e = buf[idx];
