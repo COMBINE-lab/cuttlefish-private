@@ -221,6 +221,9 @@ public:
     // Returns reference to the `idx`'th element of the buffer.
     T_& operator[](const std::size_t idx) { return buf_[idx]; }
 
+    // Returns the `idx`'th element of the buffer.
+    const T_& operator[](const std::size_t idx) const { return buf_[idx]; }
+
     // Returns the size of the buffer.
     auto capacity() const { return cap_; }
 
