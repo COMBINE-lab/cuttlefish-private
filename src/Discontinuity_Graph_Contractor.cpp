@@ -54,9 +54,9 @@ void Discontinuity_Graph_Contractor<k>::contract()
         t_e = now();
         diag_cont_time += duration(t_e - t_s);
 
-        const auto process_non_diagonal_edge = [&](const std::size_t w_id)
+        const auto process_non_diagonal_edge = [&](const std::size_t idx)
         {
-            const auto& e = buf[w_id];
+            const auto& e = buf[idx];
             Other_End* p_z;
 
             assert(G.E().partition(e.y()) == j);
