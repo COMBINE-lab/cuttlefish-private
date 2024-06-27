@@ -33,8 +33,8 @@ void Discontinuity_Graph_Contractor<k>::contract()
     // Debug
     double map_clr_time = 0;    // Time taken to clear the hash map.
     double edge_proc_time = 0;  // Time taken to process the non-diagonal edges.
-    double diag_elim_time = 0;  // Time taken to eliminate the compressed diagonal chains.
-    double diag_cont_time = 0;  // Time taken to compress the diagonal chains.
+    double diag_comp_time = 0;  // Time taken to compute the diagonal chains.
+    double diag_cont_time = 0;  // Time taken to contract the diagonal chains.
 
     // TODO: document the phases.
 
@@ -53,7 +53,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
         t_s = now();
         contract_diagonal_block(j);
         t_e = now();
-        diag_cont_time += duration(t_e - t_s);
+        diag_comp_time += duration(t_e - t_s);
 
         std::size_t batch = 0;  // Batch order of processing non-diagonal edges.
         auto edge_c_curr = G.E().read_column_buffered(j, buf);  // Count of edges to process in the current batch.
@@ -121,9 +121,12 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
 
         t_s = now();
-        for(const auto& v : D_c)
-            for(const auto& e : v.data())
+        const auto contract_diagonal_chain = [&](const std::size_t w_id)
+        {
+            const auto& D = D_c[w_id].data();
+            for(std::size_t i = 0; i < D.size(); ++i)
             {
+                const auto& e = D[i];
                 assert(M.find(e.x()));
                 assert(M.find(e.y()));
                 assert(!e.x_is_phi() && !e.y_is_phi());
@@ -146,9 +149,12 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
                 m_x.process(), m_y.process();
             }
+        };
+
+        parlay::parallel_for(0, parlay::num_workers(), contract_diagonal_chain, 1);
 
         t_e = now();
-        diag_elim_time += duration(t_e - t_s);
+        diag_cont_time += duration(t_e - t_s);
 
 
         const auto add_false_phantom_edges =
@@ -185,8 +191,8 @@ void Discontinuity_Graph_Contractor<k>::contract()
     std::cerr << "Map clearing time: " << map_clr_time << ".\n";
     std::cerr << "Edges reading time: " << edge_read_time << ".\n";
     std::cerr << "Non-diagonal edges contraction time: " << edge_proc_time << ".\n";
-    std::cerr << "Diagonal-contraction time: " << diag_cont_time << ".\n";
-    std::cerr << "Diagonal-elimination time: " << diag_elim_time << ".\n";
+    std::cerr << "Diagonal-chain computation time: " << diag_comp_time << ".\n";
+    std::cerr << "Diagonal-chain contraction time: " << diag_cont_time << ".\n";
 }
 
 
