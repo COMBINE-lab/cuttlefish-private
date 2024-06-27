@@ -45,7 +45,11 @@ void Contracted_Graph_Expander<k>::expand()
     std::size_t max_p_v_buf_sz = 0;
     std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& P_v_i){ max_p_v_buf_sz = std::max(max_p_v_buf_sz, P_v_i.size()); });
     p_v_buf.reserve(max_p_v_buf_sz);
-    buf.reserve(G.E().max_block_size());
+
+    const auto max_blk_sz = G.E().max_block_size();
+    buf.resize(max_blk_sz);
+    Buffer<Discontinuity_Edge<k>> swap_buf; // Buffer to be used in every other iteration to hide edge-read latency.
+    swap_buf.resize(buf.capacity());
 
     for(std::size_t i = 1; i <= G.E().vertex_part_count(); ++i)
     {
@@ -63,37 +67,56 @@ void Contracted_Graph_Expander<k>::expand()
         t_e = now();
         diag_exp_time += duration(t_e - t_s);
 
-        const auto process_non_diagonal_edge = [&](const std::size_t idx)
-        {
-            const auto& e = buf[idx];
 
-            assert(M.find(e.x()));
-            const auto x_inf = *M.find(e.x());  // Path-information of the endpoint of the edge that is in the current partition, `i`.
-            const auto y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
-            if(y_inf.r() > 0)   // `e` is not the back-edge to the rank-1 vertex in an ICC.
-            {
-                const auto j = G.E().partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
-                assert(j > i);
-                P_v[j].emplace(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
-            }
-
-            if(e.w() == 1)
-                add_edge_path_info(e, x_inf, y_inf);
-        };
-
+        std::size_t batch = 0;  // Batch order of processing non-diagonal edges.
+        auto edge_c_curr = G.E().read_row_buffered(i, buf); // Count of edges to process in the current batch.
+        std::size_t edge_c_next;    // Count of edges to process in the next batch.
         while(true)
         {
-            t_s = now();
-            const auto edge_c = G.E().read_row_buffered(i, buf);
-            if(edge_c == 0) // TODO: run a background buffered reader, that'll have the next buffer ready in time.
+            assert(edge_c_curr <= max_blk_sz);
+            if(edge_c_curr == 0)
                 break;
-            t_e = now();
-            edge_read_time += duration(t_e - t_s);
 
-            t_s = now();
-            parlay::parallel_for(0, edge_c, process_non_diagonal_edge);
-            t_e = now();
-            edge_proc_time += duration(t_e - t_s);
+            parlay::par_do(
+                [&]()
+                {
+                    t_s = now();
+                    auto& buf_next = ((batch & 1) == 0 ? swap_buf : buf);   // Buffer for the next batch.
+                    edge_c_next = G.E().read_row_buffered(i, buf_next);
+                    t_e = now();
+                    edge_read_time += duration(t_e - t_s);
+                }
+                ,
+                [&]()
+                {
+                    const auto& buf_cur = ((batch & 1) == 0 ? buf : swap_buf);  // Buffer for the current batch.
+                    const auto process_non_diagonal_edge = [&](const std::size_t idx)
+                    {
+                        const auto& e = buf_cur[idx];
+
+                        assert(M.find(e.x()));
+                        const auto x_inf = *M.find(e.x());  // Path-information of the endpoint of the edge that is in the current partition, `i`.
+                        const auto y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
+                        if(y_inf.r() > 0)   // `e` is not the back-edge to the rank-1 vertex in an ICC.
+                        {
+                            const auto j = G.E().partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
+                            assert(j > i);
+                            P_v[j].emplace(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
+                        }
+
+                        if(e.w() == 1)
+                            add_edge_path_info(e, x_inf, y_inf);
+                    };
+
+                    t_s = now();
+                    parlay::parallel_for(0, edge_c_curr, process_non_diagonal_edge);
+                    t_e = now();
+                    edge_proc_time += duration(t_e - t_s);
+                }
+            );
+
+            batch++;
+            edge_c_curr = edge_c_next;
         }
 
 
