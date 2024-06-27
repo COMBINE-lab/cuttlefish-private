@@ -33,13 +33,15 @@ void Discontinuity_Graph_Contractor<k>::contract()
     // Debug
     double map_clr_time = 0;    // Time taken to clear the hash map.
     double edge_proc_time = 0;  // Time taken to process the non-diagonal edges.
-    double diag_elim_time = 0;  // Time taken to eliminate the compressed diagonal chains.
-    double diag_cont_time = 0;  // Time taken to compress the diagonal chains.
-    double v_info_cp_time = 0;  // Time taken to copy worker-local vertex path-info to global repo.
+    double diag_comp_time = 0;  // Time taken to compute the diagonal chains.
+    double diag_cont_time = 0;  // Time taken to contract the diagonal chains.
+    double phantom_filt_time = 0;   // Time taken to filter in the false-phantom edges.
 
     // TODO: document the phases.
 
-    buf.resize(G.E().max_block_size());
+    buf.reserve(G.E().max_block_size());
+    Buffer<Discontinuity_Edge<k>> swap_buf; // Buffer to be used in every other iteration to hide edge-read latency.
+    swap_buf.reserve(buf.capacity());
     for(auto j = G.E().vertex_part_count(); j >= 1; --j)
     {
         std::cerr << "\rPart: " << j;
@@ -49,65 +51,83 @@ void Discontinuity_Graph_Contractor<k>::contract()
         auto t_e = now();
         map_clr_time += duration(t_e - t_s);
 
-        std::for_each(D_c.begin(), D_c.end(), [](auto& v){ v.data().clear(); });
-
         t_s = now();
         contract_diagonal_block(j);
         t_e = now();
-        diag_cont_time += duration(t_e - t_s);
+        diag_comp_time += duration(t_e - t_s);
 
-        const auto process_non_diagonal_edge = [&](const std::size_t w_id)
-        {
-            const auto& e = buf[w_id];
-            Other_End* p_z;
-
-            assert(G.E().partition(e.y()) == j);
-            assert(e.x_is_phi() || G.E().partition(e.x()) < j);
-
-            if(M.insert(e.y(), Other_End(e.x(), e.s_x(), e.s_y(), e.x_is_phi(), e.w(), false), p_z))
-            {
-                assert(M.find(e.y()));
-                return;
-            }
-
-            assert(M.find(e.y()));
-            auto& z = *p_z;
-            if(z.is_phi() && e.x_is_phi())
-                form_meta_vertex(e.y(), j, e.s_y(), e.w(), z.w(), false);
-            else if(z.in_same_part())    // Corresponds to a compressed diagonal chain.
-            {
-                assert(!z.is_phi());
-                assert(M.find(z.v()));
-                assert(G.E().partition(z.v()) == j);
-
-                z = Other_End(e.x(), e.s_x(), e.s_y(), e.x_is_phi(), e.w(), false);
-            }
-            else
-                // TODO: add edges in a lock-free manner, accumulating new edges in thread-local buffers and copying to the global repo afterwards.
-                G.add_edge(e.x(), e.s_x(), z.v(), z.s_v(), e.w() + z.w(), e.x_is_phi(), z.is_phi());
-
-            z.process();
-        };
-
+        std::size_t batch = 0;  // Batch order of processing non-diagonal edges.
+        auto edge_c_curr = G.E().read_column_buffered(j, buf);  // Count of edges to process in the current batch.
+        std::size_t edge_c_next;    // Count of edges to process in the next batch.
         while(true)
         {
-            t_s = now();
-            if(!G.E().read_column_buffered(j, buf)) // TODO: run a background buffered reader, that'll have the next buffer ready in time.
+            if(edge_c_curr == 0)
                 break;
-            t_e = now();
-            edge_read_time += duration(t_e - t_s);
 
-            t_s = now();
-            parlay::parallel_for(0, buf.size(), process_non_diagonal_edge, buf.size() / parlay::num_workers());
-            t_e = now();
-            edge_proc_time += duration(t_e - t_s);
+            parlay::par_do(
+                [&]()
+                {
+                    t_s = now();
+                    auto& buf_next = ((batch & 1) == 0 ? swap_buf : buf);   // Buffer for the next batch.
+                    edge_c_next = G.E().read_column_buffered(j, buf_next);
+                    t_e = now();
+                    edge_read_time += duration(t_e - t_s);
+                }
+                ,
+                [&]()
+                {
+                    const auto& buf_cur = ((batch & 1) == 0 ? buf : swap_buf);  // Buffer for the current batch.
+                    const auto process_non_diagonal_edge = [&](const std::size_t idx)
+                    {
+                        const auto& e = buf_cur[idx];
+                        Other_End* p_z;
+
+                        assert(G.E().partition(e.y()) == j);
+                        assert(e.x_is_phi() || G.E().partition(e.x()) < j);
+
+                        if(M.insert(e.y(), Other_End(e.x(), e.s_x(), e.s_y(), e.x_is_phi(), e.w(), false), p_z))
+                        {
+                            assert(M.find(e.y()));
+                            return;
+                        }
+
+                        assert(M.find(e.y()));
+                        auto& z = *p_z;
+                        if(z.is_phi() && e.x_is_phi())
+                            form_meta_vertex(e.y(), j, e.s_y(), e.w(), z.w(), false);
+                        else if(z.in_same_part())   // Corresponds to a compressed diagonal chain.
+                        {
+                            assert(!z.is_phi());
+                            assert(M.find(z.v()));
+                            assert(G.E().partition(z.v()) == j);
+
+                            z = Other_End(e.x(), e.s_x(), e.s_y(), e.x_is_phi(), e.w(), false);
+                        }
+                        else
+                            G.add_edge(e.x(), e.s_x(), z.v(), z.s_v(), e.w() + z.w(), e.x_is_phi(), z.is_phi());
+
+                        z.process();
+                    };
+
+                    t_s = now();
+                    parlay::parallel_for(0, edge_c_curr, process_non_diagonal_edge);
+                    t_e = now();
+                    edge_proc_time += duration(t_e - t_s);
+                }
+            );
+
+            batch++;
+            edge_c_curr = edge_c_next;
         }
 
 
         t_s = now();
-        for(const auto& v : D_c)
-            for(const auto& e : v.data())
+        const auto contract_diagonal_chain = [&](const std::size_t w_id)
+        {
+            const auto& D = D_c[w_id].data();
+            for(std::size_t i = 0; i < D.size(); ++i)
             {
+                const auto& e = D[i];
                 assert(M.find(e.x()));
                 assert(M.find(e.y()));
                 assert(!e.x_is_phi() && !e.y_is_phi());
@@ -130,11 +150,15 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
                 m_x.process(), m_y.process();
             }
+        };
+
+        parlay::parallel_for(0, parlay::num_workers(), contract_diagonal_chain, 1);
 
         t_e = now();
-        diag_elim_time += duration(t_e - t_s);
+        diag_cont_time += duration(t_e - t_s);
 
 
+        t_s = now();
         const auto add_false_phantom_edges =
             [&](const std::size_t w_id)
             {
@@ -158,6 +182,8 @@ void Discontinuity_Graph_Contractor<k>::contract()
             };
 
         parlay::parallel_for(0, parlay::num_workers(), add_false_phantom_edges, 1);
+        t_e = now();
+        phantom_filt_time += duration(t_e - t_s);
     }
 
     std::cerr << "\n";
@@ -169,9 +195,9 @@ void Discontinuity_Graph_Contractor<k>::contract()
     std::cerr << "Map clearing time: " << map_clr_time << ".\n";
     std::cerr << "Edges reading time: " << edge_read_time << ".\n";
     std::cerr << "Non-diagonal edges contraction time: " << edge_proc_time << ".\n";
-    std::cerr << "Meta-vertex copy time: " << v_info_cp_time << ".\n";
-    std::cerr << "Diagonal-contraction time: " << diag_cont_time << ".\n";
-    std::cerr << "Diagonal-elimination time: " << diag_elim_time << ".\n";
+    std::cerr << "Diagonal-chain computation time: " << diag_comp_time << ".\n";
+    std::cerr << "Diagonal-chain contraction time: " << diag_cont_time << ".\n";
+    std::cerr << "Filtering in false-phantom edges time: " << phantom_filt_time << ".\n";
 }
 
 
@@ -180,12 +206,13 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
 {
     D_j.clear();
     const auto t_s = now();
-    G.E().read_diagonal_block(j, buf);
+    const auto edge_c = G.E().read_diagonal_block(j, buf);
     const auto t_e = now();
     edge_read_time += duration(t_e - t_s);
 
-    for(const auto& e : buf)
+    for(std::size_t i = 0; i < edge_c; ++i)
     {
+        const auto& e = buf[i];
         const Other_End* const end_x = M.find(e.x());
         const Other_End* const end_y = M.find(e.y());
 
@@ -211,14 +238,14 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
         // the single lm-tig there has to be included in the maximal unitig
         // label. This forms a tricky and cumbersome special case.
 
-        if(u == v)  // The ICC has already been contracted to a single vertex.
+        if(CF_UNLIKELY(u == v)) // The ICC has already been contracted to a single vertex.
         {
             assert(e.x() == e.y() && e.x() == u); assert(e.w() > 1);
             M.insert_overwrite(u, Other_End(Discontinuity_Graph<k>::phi(), side_t::back, side_t::front, true, 1, false, true));
             form_meta_vertex(u, j, side_t::front, 1, w, true);
             icc_count++;
         }
-        else if(u == e.y() && v == e.x())   // The currently contracted form of the actual ICC resides in this diagonal block.
+        else if(CF_UNLIKELY(u == e.y() && v == e.x()))  // The currently contracted form of the actual ICC resides in this diagonal block.
         {
             assert(e.x() != e.y());
             assert(inv_side(s_u) == e.s_y()); assert(inv_side(s_v) == e.s_x());
@@ -251,6 +278,8 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
 
     output.close();
 
+
+    std::for_each(D_c.begin(), D_c.end(), [](auto& v){ v.data().clear(); });
 
     const auto collect_compressed_diagonal_chains =
         [&](const std::size_t w_id)

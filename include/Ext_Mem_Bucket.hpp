@@ -327,7 +327,8 @@ public:
     // TODO: remove this method and support only raw containers, such that user modules are forced to avoid adversarial resizing.
     void load(std::vector<T_>& v) const;
 
-    // Loads the bucket into `b` and returns its size. It is safe only when the
+    // Loads the bucket into `b` and returns its size. `b` must have enough
+    // space allocated for all the bucket elements. It is safe only when the
     // bucket is not being updated, otherwise runs the risk of data races.
     std::size_t load(T_* b) const;
 };
@@ -458,7 +459,7 @@ inline void Ext_Mem_Bucket_Concurrent<T_>::load(std::vector<T_>& v) const
 template <typename T_>
 inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::load(T_* b) const
 {
-    const auto sz = size();
+    std::size_t sz = flushed;
 
     // Load from the bucket-file.
     std::ifstream input(file_path, std::ios::in | std::ios::binary);
@@ -478,6 +479,7 @@ inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::load(T_* b) const
         if(CF_LIKELY(!buf.empty())) // Conditional to avoid UB on `nullptr` being passed to `memcpy`.
             std::memcpy(reinterpret_cast<char*>(curr_end), reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
         curr_end += buf.size();
+        sz += buf.size();
     }
 
     return sz;

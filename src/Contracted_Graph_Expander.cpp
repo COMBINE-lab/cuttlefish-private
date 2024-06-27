@@ -22,17 +22,8 @@ Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Grap
     , P_e(P_e)
     , compressed_diagonal_path(logistics.compressed_diagonal_path())
     , M(G.vertex_part_size_upper_bound())
-    , p_v_buf(nullptr)
-    , p_v_buf_cap(0)
 {
     std::cerr << "Hash table capacity during expansion: " << M.capacity() << ".\n";
-}
-
-
-template <uint16_t k>
-Contracted_Graph_Expander<k>::~Contracted_Graph_Expander()
-{
-    deallocate(p_v_buf);
 }
 
 
@@ -49,9 +40,13 @@ void Contracted_Graph_Expander<k>::expand()
     uint64_t v_inf_c = 0;   // Count of vertices whose path-info have been inferred.
     uint64_t e_inf_c = 0;   // Count of edges whose path-info have been inferred.
 
-    std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
+    Buffer<Discontinuity_Edge<k>> buf;  // Buffer to read-in edges from the edge-matrix.
 
-    buf.resize(G.E().max_block_size());
+    std::size_t max_p_v_buf_sz = 0;
+    std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& P_v_i){ max_p_v_buf_sz = std::max(max_p_v_buf_sz, P_v_i.size()); });
+    p_v_buf.reserve(max_p_v_buf_sz);
+    buf.reserve(G.E().max_block_size());
+
     for(std::size_t i = 1; i <= G.E().vertex_part_count(); ++i)
     {
         std::cerr << "\rPart: " << i;
@@ -89,13 +84,14 @@ void Contracted_Graph_Expander<k>::expand()
         while(true)
         {
             t_s = now();
-            if(!G.E().read_row_buffered(i, buf))    // TODO: run a background buffered reader, that'll have the next buffer ready in time.
+            const auto edge_c = G.E().read_row_buffered(i, buf);
+            if(edge_c == 0) // TODO: run a background buffered reader, that'll have the next buffer ready in time.
                 break;
             t_e = now();
             edge_read_time += duration(t_e - t_s);
 
             t_s = now();
-            parlay::parallel_for(0, buf.size(), process_non_diagonal_edge);
+            parlay::parallel_for(0, edge_c, process_non_diagonal_edge);
             t_e = now();
             edge_proc_time += duration(t_e - t_s);
         }
@@ -104,12 +100,12 @@ void Contracted_Graph_Expander<k>::expand()
         // TODO: consider making the following two blocks more efficient.
 
         t_s = now();
-        G.E().read_diagonal_block(i, buf);
+        const auto diag_blk_sz = G.E().read_diagonal_block(i, buf);
         t_e = now();
         edge_read_time += duration(t_e - t_s);
 
         t_s = now();
-        parlay::parallel_for(0, buf.size(),
+        parlay::parallel_for(0, diag_blk_sz,
             [&](const std::size_t idx)
             {
                 const auto& e = buf[idx];
@@ -124,12 +120,12 @@ void Contracted_Graph_Expander<k>::expand()
         spec_case_time += duration(t_e - t_s);
 
         t_s = now();
-        G.E().read_block(0, i, buf);
+        const auto top_blk_sz = G.E().read_block(0, i, buf);
         t_e = now();
         edge_read_time += duration(t_e - t_s);
 
         t_s = now();
-        parlay::parallel_for(0, buf.size(),
+        parlay::parallel_for(0, top_blk_sz,
             [&](const std::size_t idx)
             {
                 const auto& e = buf[idx];
@@ -158,12 +154,6 @@ void Contracted_Graph_Expander<k>::expand()
     std::cerr << "Edge path-info copy time: " << e_inf_cp_time << ".\n";
     std::cerr << "Special case time: " << spec_case_time << ".\n";
 
-#ifndef NDEBUG
-    uint64_t e_h = 0;
-    std::for_each(H_p_e_w.cbegin(), H_p_e_w.cend(), [&](const auto& v){ e_h ^= v.data(); });
-    std::cerr << "Collated edge path-info hash: " << e_h << ".\n";
-#endif
-
     std::cerr << "Inferred vertex-information instance: " << v_inf_c << ".\n";
     std::cerr << "Inferred edge-information instance:   " << e_inf_c << ".\n";
 }
@@ -173,9 +163,8 @@ template <uint16_t k>
 void Contracted_Graph_Expander<k>::load_path_info(const std::size_t i)
 {
     auto t_s = now();
-    p_v_buf_cap = allocate_geometric(p_v_buf, p_v_buf_cap, P_v[i].size());
-    assert(p_v_buf_cap >= P_v[i].size());
-    P_v[i].load(p_v_buf);
+    p_v_buf.reserve(P_v[i].size());
+    P_v[i].load(p_v_buf.data());
     auto t_e = now();
     p_v_load_time += duration(t_e - t_s);
 

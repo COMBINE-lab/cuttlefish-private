@@ -7,6 +7,7 @@
 #include "Discontinuity_Edge.hpp"
 #include "Ext_Mem_Bucket.hpp"
 #include "Spin_Lock.hpp"
+#include "utility.hpp"
 
 #include <cstdint>
 #include <cstddef>
@@ -63,18 +64,23 @@ public:
     // Reads the edges from the `[j, j]`'th block into `buf`.
     void read_diagonal_block(std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const;
 
-    // Reads a chunk of edges from the column `j` into `buf`. Returns `true` iff
-    // some edges are read, i.e. the column had remaining edges to be read off.
-    // NB: this does not read the blocks in the diagonal.
-    bool read_column_buffered(std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const;
+    // Reads the edges from the `[j, j]`'th block into `buf` and returns the
+    // number of edges read.
+    std::size_t read_diagonal_block(std::size_t j, Buffer<Discontinuity_Edge<k>>& buf) const;
 
-    // Reads a chunk of edges from the row `i` into `buf`. Returns `true` iff
-    // some edges are read, i.e. the row had remaining edges to be read off.
+    // Reads a chunk of edges from the column `j` into `buf`. Returns the count
+    // of edges read. If `0` is returned, then the column has been depleted.
     // NB: this does not read the blocks in the diagonal.
-    bool read_row_buffered(std::size_t i, std::vector<Discontinuity_Edge<k>>& buf) const;
+    std::size_t read_column_buffered(std::size_t j, Buffer<Discontinuity_Edge<k>>& buf) const;
 
-    // Reads the edges from the `[i, j]`'th block into `buf`.
-    void read_block(std::size_t i, std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const;
+    // Reads a chunk of edges from the row `i` into `buf`. Returns the count of
+    // edges read. If `0` is returned, then the column has been depleted.
+    // NB: this does not read the blocks in the diagonal.
+    std::size_t read_row_buffered(std::size_t i, Buffer<Discontinuity_Edge<k>>& buf) const;
+
+    // Reads the edges from the `[i, j]`'th block into `buf`. Returns the count
+    // of edges read.
+    std::size_t read_block(std::size_t i, std::size_t j, Buffer<Discontinuity_Edge<k>>& buf) const;
 
     // Returns the number of edges stored in row `i`.
     std::size_t row_size(std::size_t i) const;

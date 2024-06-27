@@ -78,8 +78,8 @@ void Unitig_Collator<k>::par_collate()
 template <uint16_t k>
 void Unitig_Collator<k>::map()
 {
-    typedef Path_Info<k>* map_t;
-    typedef unitig_path_info_t* buf_t;
+    typedef Path_Info<k>* map_t;    // TODO: replace with `Buffer`.
+    typedef Buffer<unitig_path_info_t> buf_t;
 
     std::vector<Padded_Data<map_t>> M_vec(parlay::num_workers());   // Worker-local DATs of edge-index to edge path-info.
     std::vector<Padded_Data<buf_t>> buf_vec(parlay::num_workers()); // Worker-local buffers to read in edge path-info.
@@ -88,7 +88,6 @@ void Unitig_Collator<k>::map()
         [&](const std::size_t w_id)
         {
             M_vec[w_id] = allocate<Path_Info<k>>(max_bucket_sz);
-            buf_vec[w_id] = allocate<unitig_path_info_t>(max_bucket_sz);
         }, 1);
 
 
@@ -108,7 +107,7 @@ void Unitig_Collator<k>::map()
     {
         const auto w_id = parlay::worker_id();
         auto const M = M_vec[w_id].data();
-        auto const buf = buf_vec[w_id].data();
+        auto& buf = buf_vec[w_id].data();
 
         const auto b_sz = load_path_info(b, M, buf);
         edge_c += b_sz;
@@ -147,7 +146,6 @@ void Unitig_Collator<k>::map()
         [&](const std::size_t w_id)
         {
             deallocate(M_vec[w_id].data());
-            deallocate(buf_vec[w_id].data());
         }, 1);
 
 
@@ -426,9 +424,10 @@ void Unitig_Collator<k>::collate()
 
 
 template <uint16_t k>
-std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>* const M, unitig_path_info_t* const buf)
+std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>* const M, Buffer<unitig_path_info_t>& buf)
 {
-    const std::size_t b_sz = P_e[b].load(buf);
+    buf.reserve(P_e[b].size()); // TODO: perform one fixed resize beforehand, as the `P_e` buckets will not grow anymore.
+    const std::size_t b_sz = P_e[b].load(buf.data());
     assert(b_sz <= max_bucket_sz);
 
     for(std::size_t idx = 0; idx < b_sz; ++idx)
@@ -441,14 +440,6 @@ std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>
 
     return b_sz;
 }
-
-
-template <uint16_t k>
-std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b)
-{
-    return load_path_info(b, M, p_e_buf);
-}
-
 
 
 template <uint16_t k>
