@@ -35,6 +35,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
     double edge_proc_time = 0;  // Time taken to process the non-diagonal edges.
     double diag_comp_time = 0;  // Time taken to compute the diagonal chains.
     double diag_cont_time = 0;  // Time taken to contract the diagonal chains.
+    double phantom_filt_time = 0;   // Time taken to filter in the false-phantom edges.
 
     // TODO: document the phases.
 
@@ -157,6 +158,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
         diag_cont_time += duration(t_e - t_s);
 
 
+        t_s = now();
         const auto add_false_phantom_edges =
             [&](const std::size_t w_id)
             {
@@ -180,6 +182,8 @@ void Discontinuity_Graph_Contractor<k>::contract()
             };
 
         parlay::parallel_for(0, parlay::num_workers(), add_false_phantom_edges, 1);
+        t_e = now();
+        phantom_filt_time += duration(t_e - t_s);
     }
 
     std::cerr << "\n";
@@ -193,6 +197,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
     std::cerr << "Non-diagonal edges contraction time: " << edge_proc_time << ".\n";
     std::cerr << "Diagonal-chain computation time: " << diag_comp_time << ".\n";
     std::cerr << "Diagonal-chain contraction time: " << diag_cont_time << ".\n";
+    std::cerr << "Filtering in false-phantom edges time: " << phantom_filt_time << ".\n";
 }
 
 
@@ -233,14 +238,14 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
         // the single lm-tig there has to be included in the maximal unitig
         // label. This forms a tricky and cumbersome special case.
 
-        if(u == v)  // The ICC has already been contracted to a single vertex.
+        if(CF_UNLIKELY(u == v)) // The ICC has already been contracted to a single vertex.
         {
             assert(e.x() == e.y() && e.x() == u); assert(e.w() > 1);
             M.insert_overwrite(u, Other_End(Discontinuity_Graph<k>::phi(), side_t::back, side_t::front, true, 1, false, true));
             form_meta_vertex(u, j, side_t::front, 1, w, true);
             icc_count++;
         }
-        else if(u == e.y() && v == e.x())   // The currently contracted form of the actual ICC resides in this diagonal block.
+        else if(CF_UNLIKELY(u == e.y() && v == e.x()))  // The currently contracted form of the actual ICC resides in this diagonal block.
         {
             assert(e.x() != e.y());
             assert(inv_side(s_u) == e.s_y()); assert(inv_side(s_v) == e.s_x());
