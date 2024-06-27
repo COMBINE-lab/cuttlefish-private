@@ -45,7 +45,7 @@ private:
     const std::string compressed_diagonal_path; // Path-prefix to the edges introduced in contracting diagonal blocks.
 
     // TODO: remove `D_i` by adopting a more parallelization-amenable algorithm for diagonal contraction-expansion.
-    std::vector<Discontinuity_Edge<k>> D_i; // New edges introduced in contracted diagonal blocks.
+    Buffer<Discontinuity_Edge<k>> D_i;  // New edges introduced in contracted diagonal blocks.
 
     Concurrent_Hash_Table<Kmer<k>, Path_Info<k>, Kmer_Hasher<k>> M; // `M[v]` is the path-info for vertex `v`.
 

@@ -187,9 +187,9 @@ template <uint16_t k>
 void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
 {
     const std::string d_i_path(compressed_diagonal_path + "_" + std::to_string(i));
-    std::error_code ec;
-    const auto file_sz = std::filesystem::file_size(d_i_path, ec);
-    D_i.resize(file_sz / sizeof(Discontinuity_Edge<k>));
+    const auto file_sz = file_size(d_i_path);
+    const auto edge_c = file_sz / sizeof(Discontinuity_Edge<k>);
+    D_i.reserve(edge_c);
 
     const auto t_s = now();
     std::ifstream input(d_i_path);
@@ -206,9 +206,9 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
     edge_read_time += duration(t_e - t_s);
 
     Path_Info<k> x_inf, y_inf;
-    for(auto d_it = D_i.rbegin(); d_it != D_i.rend(); ++d_it)   // In reverse order of the newly introduced diagonal-edges to always ensure one endpoint having path-info ready.
+    for(int64_t idx = edge_c - 1; idx >= 0; --idx)  // In reverse order of the newly introduced diagonal-edges to always ensure one endpoint having path-info ready.
     {
-        const auto& e = *d_it;
+        const auto& e = D_i[idx];
         assert(M.find(e.x()) || M.find(e.y()));
 
         if(!M.find(e.y(), y_inf))
