@@ -49,12 +49,19 @@ private:
 
     Concurrent_Hash_Table<Kmer<k>, Path_Info<k>, Kmer_Hasher<k>> M; // `M[v]` is the path-info for vertex `v`.
 
-    Buffer<Obj_Path_Info_Pair<Kmer<k>, k>> p_v_buf; // Buffer to read-in path-information of vertices.
+    // `P_v_ip1[w]` contains vertex path-info instances inferred by worker `w`
+    // for vertices at partition `i + 1` while processing partition `i`. This
+    // case is specialized to facilitate some non-trivial parallelization.
+    std::vector<Padded_Data<std::vector<Obj_Path_Info_Pair<Kmer<k>, k>>>> P_v_ip1;
 
 
     // Loads the available path-info of meta-vertices from partition `i` into
-    // the hash table `M`.
-    void load_path_info(std::size_t i);
+    // the buffer `p_v_buf`, and returns the number of instances loaded.
+    std::size_t load_path_info(std::size_t i, Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf);
+
+    // Fills the hash table `M` with the available path-information at buffer
+    // `p_v_buf` of size `buf_sz`, and also from `P_v_ip1`.
+    void fill_path_info(const Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf, std::size_t buf_sz);
 
     // Expands the `[i, i]`'th (contracted) edge-block.
     void expand_diagonal_block(std::size_t i);
