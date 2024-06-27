@@ -29,6 +29,18 @@ namespace cuttlefish
 template <uint16_t k>
 class dBG_Contractor
 {
+public:
+
+    typedef Obj_Path_Info_Pair<Kmer<k>, k> vertex_path_info_t;  // A vertex and its path-info.
+    typedef Obj_Path_Info_Pair<uni_idx_t, k> unitig_path_info_t;    // A locally-maximal unitig's index in its bucket and its path-info.
+
+    typedef std::vector<Ext_Mem_Bucket_Concurrent<vertex_path_info_t>> P_v_t;
+    typedef std::vector<Ext_Mem_Bucket_Concurrent<unitig_path_info_t>> P_e_t;
+
+    typedef Async_Logger_Wrapper sink_t;
+    typedef Character_Buffer<sink_t> op_buf_t;
+    typedef std::vector<Padded_Data<op_buf_t>> op_buf_list_t;
+
 private:
 
     const Build_Params params;  // Required parameters (wrapped inside).
@@ -39,15 +51,12 @@ private:
     std::size_t n_disc_v;   // Number of discontinuity-vertices.
 
     // TODO: consider using padding.
-    std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>> P_v; // `P_v[j]` contains path-info for vertices in partition `j`.
-    std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>> P_e;   // `P_e[b]` contains path-info for edges induced by unitigs in bucket `b`.
+    P_v_t P_v;  // `P_v[j]` contains path-info for vertices in partition `j`.
+    P_e_t P_e;  // `P_e[b]` contains path-info for edges induced by unitigs in bucket `b`.
 
-    typedef Async_Logger_Wrapper sink_t;
     Output_Sink<sink_t> output_sink;    // Sink for the output maximal unitigs.
 
     // 100 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory per worker, at most, before flushes.
-    typedef Character_Buffer<sink_t> op_buf_t;
-    typedef std::vector<Padded_Data<op_buf_t>> op_buf_list_t;
     op_buf_list_t op_buf;   // Worker-specific output buffers.
 
 

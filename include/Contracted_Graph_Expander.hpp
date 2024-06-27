@@ -4,10 +4,10 @@
 
 
 
+#include "dBG_Contractor.hpp"
 #include "Discontinuity_Graph.hpp"
 #include "Discontinuity_Edge.hpp"
 #include "Path_Info.hpp"
-#include "Ext_Mem_Bucket.hpp"
 #include "Kmer.hpp"
 #include "Kmer_Hasher.hpp"
 #include "Concurrent_Hash_Table.hpp"
