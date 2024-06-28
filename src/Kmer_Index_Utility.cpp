@@ -2,6 +2,8 @@
 #include "Kmer_Index_Utility.hpp"
 #include "File_Extensions.hpp"
 
+#include <cassert>
+
 
 const std::string Kmer_Index_Utility::index_file_path(const std::string& idx_pref)
 {
@@ -15,6 +17,7 @@ uint16_t Kmer_Index_Utility::kmer_len(const std::string& idx_path)
 
     uint16_t k;
     idx_file.read(reinterpret_cast<char*>(&k), sizeof(k));
+    assert(idx_file.gcount() == sizeof(k));
 
     if(!idx_file)
     {
@@ -36,6 +39,7 @@ uint16_t Kmer_Index_Utility::minimizer_len(const std::string& idx_path)
 
     uint16_t l;
     idx_file.read(reinterpret_cast<char*>(&l), sizeof(l));
+    assert(idx_file.gcount() == sizeof(l));
 
     if(!idx_file)
     {

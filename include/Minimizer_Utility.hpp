@@ -6,18 +6,25 @@
 
 #include "Kmer.hpp"
 #include "globals.hpp"
+#include "wyhash/wyhash.h"
 
 #include <cstdint>
 #include <cstddef>
 
 
-template <typename T_seq_, bool is_canonical_> class Minimizer_Iterator;
+template <typename T_seq_, uint16_t k, bool is_canonical_> class Minimizer_Iterator;
 
 
 // =============================================================================
 // A class containing various utility methods for k-mer minimizers.
 class Minimizer_Utility
 {
+
+private:
+
+    // Salt for `wyhash`.
+    static constexpr uint64_t wy_salt[4] = {4167021922371662411llu, 7320285940802167691llu, 14307255741305819987llu, 10859488101230029397llu};
+
 public:
 
     // Returns the hash value of the l-mer `lmer`. The seed-value `seed` is used
@@ -40,7 +47,7 @@ public:
 class Lmer_Tuple
 {
     friend class Minimizer_Utility;
-    template <typename T_seq_, bool is_canonical_> friend class Minimizer_Iterator;
+    template <typename T_seq_, uint16_t k, bool is_canonical_> friend class Minimizer_Iterator;
 
     typedef cuttlefish::minimizer_t minimizer_t;
 
@@ -52,6 +59,9 @@ private:
 
 
 public:
+
+    Lmer_Tuple()
+    {};
 
     // Constructs a tuple for an l-mer `lmer`, positioned at index `index` of
     // the underlying sequence, and having a hash value `hash`.
@@ -74,17 +84,11 @@ inline Lmer_Tuple::Lmer_Tuple(const minimizer_t lmer, const std::size_t index, c
 
 inline bool Lmer_Tuple::operator<(const Lmer_Tuple& rhs) const
 {
-    if(hash < rhs.hash)
-        return true;
+    if(hash != rhs.hash)
+        return hash < rhs.hash;
 
-    if(hash > rhs.hash)
-        return false;
-
-    if(lmer < rhs.lmer)
-        return true;
-
-    if(lmer > rhs.lmer)
-        return false;
+    if(lmer != rhs.lmer)
+        return lmer < rhs.lmer;
 
     return index < rhs.index;
 }
@@ -96,7 +100,8 @@ inline uint64_t Minimizer_Utility::hash(const cuttlefish::minimizer_t lmer, cons
     return lmer;    // TODO: add as debug option for developer.
 #endif
 
-    return XXH3_64bits_withSeed(&lmer, sizeof(lmer), seed);
+    // return XXH3_64bits_withSeed(&lmer, sizeof(lmer), seed);
+    return wyhash(&lmer, sizeof(lmer), seed, wy_salt);
 }
 
 

@@ -283,7 +283,7 @@ inline void Kmer_Index<k>::deposit(const Producer_Token& token, const char* cons
 
     // Get the minimizers and the path sequence.
 
-    Minimizer_Iterator minimizer_iterator(seq, len, k, l_); // To iterate over each minimizer in `seq`.
+    Minimizer_Iterator<const char*, k> minimizer_iterator(seq, len, l_);    // To iterate over each minimizer in `seq`.
     minimizer_t minimizer;                                  // The minimizer itself.
     std::size_t min_idx;                                    // Index of the minimizer within `seq`.
     std::size_t last_min_idx = len;                         // To track minimizer shifts.

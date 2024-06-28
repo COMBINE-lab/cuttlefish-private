@@ -1,14 +1,15 @@
 
+# =============================================================================
 
 # Specify the minimum version of CMake to use.
 # CMake can have different behaviors (policies) based on its version used.
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.17)
 
 
 # Name the project, its version, and languages used in it.
 set(PROJECT_NAME cuttlefish)
 project(${PROJECT_NAME}
-        VERSION 2.0.0
+        VERSION 2.2.0
         LANGUAGES CXX C
         )
 
@@ -29,15 +30,21 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(GCC_VERSION_MIN "9.1")
 set(CLANG_VERSION_MIN "9.0")
 
+if(ASAN OR MSAN OR UBSAN)
+    set(CMAKE_C_COMPILER clang)
+    set(CMAKE_CXX_COMPILER clang++)
+    # set(CMAKE_LINKER_TYPE LLD)
+endif()
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS GCC_VERSION_MIN)
         message(FATAL_ERROR "${PROJECT_NAME} requires GCC version to be at least ${GCC_VERSION_MIN}."
-                            "Available version is ${CMAKE_CXX_COMPILER_VERSION}.")
+                            " Available version is ${CMAKE_CXX_COMPILER_VERSION}.")
     endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS CLANG_VERSION_MIN)
         message(FATAL_ERROR "${PROJECT_NAME} requires Clang version to be at least ${CLANG_VERSION_MIN}."
-                            "Available version is ${CMAKE_CXX_COMPILER_VERSION}.")
+                            " Available version is ${CMAKE_CXX_COMPILER_VERSION}.")
     endif()
 endif()
 
@@ -45,23 +52,86 @@ endif()
 # Bundle the warning flags that we want to pass on to the compiler.
 # Disable unknown pragmas, b/c bbhash uses them extensively.
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
-set(WARNING_FLAGS -Wall -Wextra)
-set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas)
+set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
+set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas -Wno-pragmas)
+set(CLANG_SUPPRESS_WARNING_FLAGS -Wno-unknown-attributes)   # Warning flags to be suppressed with clang.
+
+if(ASAN OR MSAN OR UBSAN)
+    set(SUPPRESS_WARNING_FLAGS ${SUPPRESS_WARNING_FLAGS} ${CLANG_SUPPRESS_WARNING_FLAGS})
+endif()
+
+# Bundle debugging information flags that we want to conditionally
+# pass on to the compiler.
+set(DEBUG_FLAGS -ggdb)
+
+# Bundle address sanitization flags: https://github.com/google/sanitizers/wiki/AddressSanitizer.
+set(ASAN_FLAGS -fsanitize=address -fno-omit-frame-pointer)
+# set(ASAN_LINK_FLAGS -static-libasan)
+
+# Bundle memory sanitization flags: https://github.com/google/sanitizers/wiki/MemorySanitizer.
+set(MSAN_FLAGS -fsanitize=memory -fPIE -fno-omit-frame-pointer -fsanitize-memory-track-origins)
+set(MSAN_LINK_FLAGS -pie)
+
+# Bundle undefined behavior sanitization flags: https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html.
+set(UBSAN_FLAGS -fsanitize=undefined
+                -fsanitize=float-divide-by-zero #-fsanitize=unsigned-integer-overflow
+                -fsanitize=implicit-conversion -fsanitize=local-bounds -fsanitize=nullability)
+# set(UBSAN_LINK_FLAGS -fuse-ld=lld)
 
 # Bundle the extra optimization flags (not associated with the `-O` levels)
 # that we want to pass on to the compiler.
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
-set(OPTIMIZE_FLAGS -funroll-loops)
+set(OPTIMIZE_FLAGS -funroll-loops -march=native)
+
+# Bundle miscellaneous required flags.
+# `-fconstexpr-ops-limit` for compile-time computations in `rapidgzip`.
+if(ASAN OR MSAN OR UBSAN)
+    set(MISC_FLAGS -fconstexpr-steps=99000100)
+else()
+    set(MISC_FLAGS -fconstexpr-ops-limit=99000100)
+endif()
+
+
+# Accumulate the compile- and link-flags.
+set(COMPILE_FLAGS "")
+set(LINK_FLAGS "")
+
+# Specify the warnings and the extra optimization flags to the compiler for the target library.
+list(APPEND COMPILE_FLAGS ${WARNING_FLAGS} ${SUPPRESS_WARNING_FLAGS} ${OPTIMIZE_FLAGS} ${MISC_FLAGS})
+
+if(DEBUG_INFO OR PART_PROFILE)
+    list(APPEND COMPILE_FLAGS ${DEBUG_FLAGS})
+endif()
+
+if(ASAN)
+    list(APPEND COMPILE_FLAGS ${ASAN_FLAGS} ${DEBUG_FLAGS})
+    list(APPEND LINK_FLAGS ${ASAN_LINK_FLAGS} ${ASAN_FLAGS})
+endif()
+
+if(UBSAN)
+    list(APPEND COMPILE_FLAGS ${UBSAN_FLAGS} ${DEBUG_FLAGS})
+    list(APPEND LINK_FLAGS ${UBSAN_LINK_FLAGS} ${UBSAN_FLAGS})
+endif()
+
+if(MSAN)
+    list(APPEND COMPILE_FLAGS ${MSAN_FLAGS} ${DEBUG_FLAGS})
+    list(APPEND LINK_FLAGS ${MSAN_LINK_FLAGS} ${MSAN_FLAGS})
+endif()
 
 
 # Add the required preprocessor definitions (`#define`s) to pass on.
-# TODO: find out what are `__STDC_FORMAT_MACROS` and `SPDLOG_FMT_EXTERNAL_HO` for.
-add_compile_definitions(__STDC_FORMAT_MACROS SPDLOG_FMT_EXTERNAL_HO FMT_HEADER_ONLY XXH_INLINE_ALL)
-
 add_compile_definitions(PROJECT_VERSION=${CMAKE_PROJECT_VERSION})
+add_compile_definitions(FMT_HEADER_ONLY)    # For `spdlog`.
+add_compile_definitions(WITH_ISAL)  # For `rapidgzip`.
+add_compile_definitions(WITH_RPMALLOC)  # For `rapidzip`.
+add_compile_definitions(USE_IGZIP)  # TODO: temporary for `rabbitfx`.
 
 if(INSTANCE_COUNT)
     add_compile_definitions(INSTANCE_COUNT=${INSTANCE_COUNT})
+endif()
+
+if(FIXED_K)
+    add_compile_definitions(FIXED_K=${FIXED_K})
 endif()
 
 if(CF_VALIDATION_MODE)
@@ -72,9 +142,17 @@ if(CF_DEVELOP_MODE)
     add_compile_definitions(CF_DEVELOP_MODE)
 endif()
 
+# if(IGZIP_PREFIX)
+#     add_compile_definitions(USE_IGZIP)
+# endif()
 
-# Here, we have some platform-specific considerations
-# of which we must take care.
+if(PART_PROFILE)
+    add_compile_definitions(PART_PROFILE)
+endif()
+
+
+# Here, we have some platform-specific considerations of which we must take
+# care.
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     execute_process(
         COMMAND getconf LEVEL1_DCACHE_LINESIZE
@@ -82,17 +160,27 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         OUTPUT_VARIABLE L1_CACHE_LINE_SIZE
     )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    # OSX has `getconf`, but doesn't report `LEVEL1_DCACHE_LINESIZE`;
-    # so we instead use `sysctl` for the corresponding variable.
-    execute_process(
-        COMMAND sysctl machdep.cpu.cache.linesize
-        COMMAND awk "{print $2}"
-        COMMAND tr -d '\n'
-        OUTPUT_VARIABLE L1_CACHE_LINE_SIZE
-    )
+    if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64")
+        # OSX has `getconf`, but doesn't report `LEVEL1_DCACHE_LINESIZE`;
+        # so we instead use `sysctl` for the corresponding variable.
+        execute_process(
+            COMMAND sysctl machdep.cpu.cache.linesize
+            COMMAND awk "{print $2}"
+            COMMAND tr -d '\n'
+            OUTPUT_VARIABLE L1_CACHE_LINE_SIZE
+        )
+    elseif(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
+        execute_process(
+            COMMAND sysctl hw.cachelinesize
+            COMMAND awk "{print $2}"
+            COMMAND tr -d '\n'
+            OUTPUT_VARIABLE L1_CACHE_LINE_SIZE
+        )
+    else()
+        message(FATAL_ERROR "Unable to identify Apple Silicon processor architecture")
+    endif()
 
-    # Later on, jemalloc will complain if the C compiler 
-    # hasn't been properly set.
+    # Later on, jemalloc will complain if the C compiler  hasn't been properly set.
     if(NOT CONDA_BUILD)
         set(CMAKE_C_COMPILER clang)
         set(CMAKE_CXX_COMPILER clang++)
@@ -102,28 +190,21 @@ endif()
 add_compile_definitions(L1_CACHE_LINE_SIZE=${L1_CACHE_LINE_SIZE})
 
 
+# Set path for modules required to search for existing packages in the system.
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
+
 # Search the file system for the appropriate threads package for this platform, and then set
 # the `CMAKE_THREAD_LIBS_INIT` variable (and some other variables as well).
 find_package(Threads REQUIRED)  # The threads package is required for the BBHash library used in the project.
-set(THREADS_PREFER_PTHREAD_FLAG TRUE)   # The BBHash library uses `pthread`.
 
 # Search and load setting for the `zlib` library. The library is required to seamlessly adapt
-# the `kseq` and the `kmc` libraries to gzip-compressed files.
-include(FindZLIB)
-if(NOT ZLIB_FOUND)
-    message(FATAL_ERROR "zlib (https://zlib.net/) is required. Aborting.")
-endif()
+# the `kseq`, the `kmc`, and the `RabbitFX` libraries to gzip-compressed files.
+find_package(ZLIB REQUIRED)
 
-# Search and load setting for the `bzip2` library. It is required to seamlessly adapt the
-# `kmc` library to bzip-compressed files.
-include(FindBZip2)
-if(NOT BZIP2_FOUND)
-    message(FATAL_ERROR "bzip2 (https://sourceware.org/bzip2/) is required. Aborting.")
-endif()
-
-
-# Set path for modules required to search for existing packages in the system.
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+# Prepare the `zstd` library. It provides fast lossless compression, targeting real-time
+# compression scenarios at zlib-level and better compression ratios.
+# find_package(ZSTD REQUIRED)
 
 
 # Module required to download and install external projects.
@@ -135,10 +216,44 @@ set(EXT_INCLUDE ${CMAKE_SOURCE_DIR}/external/include/)
 file(MAKE_DIRECTORY ${EXT_LIB} ${EXT_INCLUDE})
 
 
+# Build instrumented `libc++` to avoid false-positives from memory sanitizers.
+# Ref for some of the fixes: https://github.com/google/sanitizers/issues/1685#issuecomment-1734197581
+if(MSAN)
+    message("Build system will fetch and install instrumented libc++.")
+    set(LLVM_RELEASE llvmorg-17.0.1)
+    set(LLVM_SRC ${CMAKE_SOURCE_DIR}/external/llvm-project-${LLVM_RELEASE})
+    ExternalProject_Add(prj_libcxx
+        DOWNLOAD_DIR        ${CMAKE_SOURCE_DIR}/external
+        DOWNLOAD_COMMAND    curl -k -L https://github.com/llvm/llvm-project/archive/refs/tags/${LLVM_RELEASE}.zip -o llvm.zip &&
+                            unzip -q -o llvm.zip &&
+                            rm llvm.zip
+
+        SOURCE_DIR          ${LLVM_SRC}
+        BUILD_IN_SOURCE     TRUE
+        INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external
+
+        CONFIGURE_COMMAND   cmake -G Ninja -S runtimes -B msan
+                            -DCMAKE_BUILD_TYPE=Release
+                            -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+                            -DLLVM_ENABLE_RUNTIMES=libcxx$<SEMICOLON>libcxxabi
+                            -DLLVM_USE_SANITIZER=MemoryWithOrigins
+        BUILD_COMMAND       ninja -C msan
+        INSTALL_COMMAND     ""
+    )
+
+    set(LIBCXX_INCLUDE ${LLVM_SRC}/msan/include/c++/v1/)
+    set(LIBCXX ${LLVM_SRC}/msan/lib/)
+
+    set(MSAN_FLAGS ${MSAN_FLAGS} -stdlib=libc++)
+    set(MSAN_LINK_FLAGS ${MSAN_LINK_FLAGS} -stdlib=libc++ -lc++abi -lstdc++)
+endif()
+
+
 # Prepare the `jemalloc` library. It provides scalable concurrency support and better avoidance
 # of fragmentation.
+# TODO: replace with `rpmalloc` or some other more performant library.
 set(MALLOC_LIB "")
-set(JEMALLOC_MIN_VERSION "5.2.1")
+set(JEMALLOC_MIN_VERSION "5.3.0")
 find_package(Jemalloc ${JEMALLOC_MIN_VERSION})
 if(JEMALLOC_FOUND)
     message("Found jemalloc (v${JEMALLOC_VERSION}) in the system")
@@ -147,11 +262,11 @@ else()
     message("Build system will fetch and install jemalloc")
     ExternalProject_Add(prj_jemalloc
         DOWNLOAD_DIR        ${CMAKE_SOURCE_DIR}/external
-        DOWNLOAD_COMMAND    curl -k -L https://github.com/jemalloc/jemalloc/archive/5.2.1.tar.gz -o jemalloc-5.2.1.tar.gz &&
-                            tar -xzf jemalloc-5.2.1.tar.gz &&
-                            rm jemalloc-5.2.1.tar.gz
+        DOWNLOAD_COMMAND    curl -k -L https://github.com/jemalloc/jemalloc/archive/${JEMALLOC_MIN_VERSION}.tar.gz -o jemalloc-${JEMALLOC_MIN_VERSION}.tar.gz &&
+                            tar -xzf jemalloc-${JEMALLOC_MIN_VERSION}.tar.gz &&
+                            rm jemalloc-${JEMALLOC_MIN_VERSION}.tar.gz
 
-        SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/jemalloc-5.2.1
+        SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/jemalloc-${JEMALLOC_MIN_VERSION}
         BUILD_IN_SOURCE     TRUE
         INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external
         CONFIGURE_COMMAND   sh -c "CC=${CMAKE_C_COMPILER} ./autogen.sh --disable-debug --enable-static --prefix=<INSTALL_DIR> --silent"
@@ -169,18 +284,19 @@ endif()
 
 
 # Prepare the `kmc` library — required by the Cuttlefish algorithm implementation.
+# NOTE: do something more intelligent below than the -j4
+#[[
+set(KMC_VERSION "v3.2.2")
 message("Build system will fetch and install KMC3")
 ExternalProject_Add(prj_kmc
     DOWNLOAD_DIR        ${CMAKE_SOURCE_DIR}/external
-    DOWNLOAD_COMMAND    curl -k -L https://github.com/refresh-bio/KMC/archive/refs/tags/v3.2.1.tar.gz -o KMC-3.2.1.tar.gz &&
-                        tar -xzf KMC-3.2.1.tar.gz &&
-                        rm KMC-3.2.1.tar.gz
-    PATCH_COMMAND       patch --strip 1 < ${CMAKE_SOURCE_DIR}/patches/kmc_patch.diff
-    SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/KMC-3.2.1
+    DOWNLOAD_COMMAND    git clone --recurse-submodules git@github.com:refresh-bio/KMC.git --branch ${KMC_VERSION}
+    PATCH_COMMAND       patch --strip 1 < ${CMAKE_SOURCE_DIR}/patches/kmc_v3.2.2.patch
+    SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/KMC
     BUILD_IN_SOURCE     TRUE
     INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external/
     CONFIGURE_COMMAND   ""
-    BUILD_COMMAND       make -j CC=${CMAKE_CXX_COMPILER} kmc
+    BUILD_COMMAND       make -j bin/libkmc_core.a
     INSTALL_COMMAND     cp bin/libkmc_core.a ${EXT_LIB} &&
                         cp include/kmc_runner.h ${EXT_INCLUDE}
 )
@@ -188,6 +304,10 @@ ExternalProject_Add(prj_kmc
 add_library(kmc STATIC IMPORTED)
 set_target_properties(kmc PROPERTIES IMPORTED_LOCATION ${EXT_LIB}/libkmc_core.a)
 add_dependencies(kmc prj_kmc)
+]]
+
+
+# Add / install ISA-L.
 
 
 # Prepare the `parlay` library—a parallel algorithms programming toolkit.
@@ -204,17 +324,39 @@ ExternalProject_Add(prj_parlaylib
 )
 
 
+# Prepare the `rapidgzip` library—gzip decompressor with multi-cores, and its dependencies.
+set(RAPIDGZIP_VERSION "rapidgzip-v0.13.2")
+message("Build system will fetch and install rapidgzip")
+ExternalProject_Add(prj_rapidgzip
+    DOWNLOAD_DIR        ${CMAKE_SOURCE_DIR}/external
+    DOWNLOAD_COMMAND    git clone --recurse-submodules git@github.com:mxmlnkn/rapidgzip.git --branch ${RAPIDGZIP_VERSION}
+    SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/rapidgzip
+    BUILD_IN_SOURCE     TRUE
+    INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external/
+    CONFIGURE_COMMAND   mkdir -p build && cd build && cmake -DWITH_RPMALLOC=ON -DWITH_ISAL=ON ..
+    BUILD_COMMAND       cd build && make -j
+    INSTALL_COMMAND     mkdir -p ${EXT_INCLUDE}/rapidgzip &&
+                        cp -rf src/core src/huffman src/indexed_bzip2 src/rapidgzip ${EXT_INCLUDE}/rapidgzip/ &&
+                        cp -rf src/external/isa-l/include ${EXT_INCLUDE}/rapidgzip/isa-l &&
+                        cp -rf src/external/rpmalloc/rpmalloc ${EXT_INCLUDE}/rapidgzip/ &&
+                        cp -rf build/src/libisal_inflate.a build/src/librpmalloc.a ${EXT_LIB}/
+)
+
+add_library(isal_inflate STATIC IMPORTED)
+set_target_properties(isal_inflate PROPERTIES IMPORTED_LOCATION ${EXT_LIB}/libisal_inflate.a)
+add_dependencies(isal_inflate prj_rapidgzip)
+
+add_library(rpmalloc STATIC IMPORTED)
+set_target_properties(rpmalloc PROPERTIES IMPORTED_LOCATION ${EXT_LIB}/librpmalloc.a)
+add_dependencies(rpmalloc prj_rapidgzip)
+
+
 # The `Debug` configuration optimizes the program for debugging and enables full debug information.
 # The `Release` configuration enables most compiler optimizations for speed and defines `NDEBUG`
 # (No Debug) which will remove all traces of the standard library assert calls.
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
-
-#set(CMAKE_CXX_FLAGS_DEBUG "-g")
-#set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-#set(CMAKE_C_FLAGS_DEBUG "-g")
-#set(CMAKE_C_FLAGS_RELEASE "-O3")
 
 
 # Help `conda` build for OSX through circumventing some of its old SDK-based checks.

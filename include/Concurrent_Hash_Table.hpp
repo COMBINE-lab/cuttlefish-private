@@ -14,6 +14,7 @@
 #include <cstring>
 #include <numeric>
 #include <cstdlib>
+#include <algorithm>
 #include <cmath>
 
 namespace cuttlefish
@@ -23,6 +24,9 @@ namespace cuttlefish
 template <typename T_key_, typename T_val_, typename T_hasher_>
 class Concurrent_Hash_Table
 {
+    class Iterator;
+    friend class Iterator;
+
 private:
 
     struct Key_Val_Pair
@@ -77,6 +81,9 @@ public:
 
     // T_key_ empty_key() const { return empty_key_; }
 
+    // Returns the capacity of the hash table.
+    std::size_t capacity() const { return capacity_; }
+
     // Clears the hash table.
     // TODO: consider whether a generic empty-key might be required in our particular use-cases ever or not.
     void clear();
@@ -107,10 +114,22 @@ public:
     // denotes whether multiple threads may be updating the hash table or not.
     template <bool mt_ = true> const T_val_* find(T_key_ key) const;
 
+    // Searches for `key` in the table and returns the address of the value
+    // associated to it iff it is found. Returns `nullptr` otherwise. `mt_`
+    // denotes whether multiple threads may be updating the hash table or not.
+    template <bool mt_ = true> T_val_* find(T_key_ key);
+
     // Searches for `key` in the table and returns `true` iff it is found. If
     // found, the associated value is stored in `val`. `val` remains unchanged
     // otherwise.
     bool find(T_key_ key, T_val_& val) const;
+
+    // Returns an iterator for the key-value pairs in the table.
+    Iterator iterator() { return Iterator(*this, 1, 0); }
+
+    // Returns an iterator for the key-value pairs in the table that belongs to
+    // a group of `it_count` iterators and has an ID `it_id` in the group.
+    Iterator iterator(const std::size_t it_count, const std::size_t it_id) { return Iterator(*this, it_count, it_id); }
 
     // Returns a 64-bit signature of the key-set of the hash table.
     uint64_t signature() const { return signature<true>(); };
@@ -120,19 +139,42 @@ public:
 };
 
 
+// =============================================================================
+template <typename T_key_, typename T_val_, typename T_hasher_>
+class Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Iterator
+{
+    friend class Concurrent_Hash_Table;
+
+private:
+
+    Concurrent_Hash_Table& M;   // The hash table to iterate on.
+    std::size_t idx;    // Current slot-index the iterator is in.
+    std::size_t end;    // End-index of the slot-range for the iterator.
+
+
+    // Constructs an iterator for the hash table `M`, that would belong to a
+    // group of `it_count` iterators and has an ID `it_id` in the group.
+    Iterator(Concurrent_Hash_Table& M, std::size_t it_count, std::size_t it_id);
+
+
+public:
+
+    // Moves the iterator to the next key in the table. Iff some key is found
+    // within its remaining range, the key and the associated value are put at
+    // `key` and `val` respectively, and returns true.
+    bool next(T_key_& key, T_val_& val);
+};
+
+
 template <typename T_key_, typename T_val_, typename T_hasher_>
 inline Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Concurrent_Hash_Table(const std::size_t max_n, const double load_factor, const T_hasher_ hasher):
       empty_key_()
     , hash(hasher)
-    , capacity_(static_cast<std::size_t>(1) << static_cast<std::size_t>(std::ceil(std::log2(max_n / load_factor))))
+    , capacity_(ceil_pow_2(static_cast<std::size_t>(std::ceil(max_n / load_factor))))
     , idx_wrapper_mask(capacity_ - 1)
     , T(static_cast<Key_Val_Pair*>(std::malloc(capacity_ * sizeof(Key_Val_Pair))))
     , lock(capacity_)
 {
-    constexpr auto key_bytes = sizeof(T_key_);
-    static_assert(  key_bytes == 1 || key_bytes == 2 || key_bytes == 4 || key_bytes == 8 || key_bytes == 16,
-                    "Unsupported-sized keys for CAS in hash-table.");
-
     std::memset(reinterpret_cast<char*>(&empty_key_), -1, sizeof(empty_key_));
 
     clear();
@@ -165,10 +207,16 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key_ key, const T_val_ val)
 {
+#ifndef NDEBUG
+    std::size_t tried_slots = 0;
+#endif
+
     bool success = false;
 
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
     {
+        assert(++tried_slots <= capacity_);
+
         if(T[i].key == empty_key_)  // TODO: check atomic-read / partial-read guarantees.
         {
             if constexpr(mt_)   lock[i].lock();
@@ -193,10 +241,16 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key_ key, const T_val_ val, T_val_*& val_add)
 {
+#ifndef NDEBUG
+    std::size_t tried_slots = 0;
+#endif
+
     bool success = false;
 
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
     {
+        assert(++tried_slots <= capacity_);
+
         if(T[i].key == empty_key_)  // TODO: check atomic-read / partial-read guarantees.
         {
             if constexpr(mt_)   lock[i].lock();
@@ -227,10 +281,16 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_overwrite(const T_key_ key, const T_val_ val)
 {
+#ifndef NDEBUG
+    std::size_t tried_slots = 0;
+#endif
+
     bool success = false;
 
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
     {
+        assert(++tried_slots <= capacity_);
+
         if(T[i].key == empty_key_)  // TODO: check atomic-read / partial-read guarantees.
         {
             if constexpr(mt_)   lock[i].lock();
@@ -259,21 +319,36 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_overwrite(c
 
 template <typename T_key_, typename T_val_, typename T_hasher_>
 template <bool mt_>
-inline const T_val_* Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(const T_key_ key) const
+inline T_val_* Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(const T_key_ key)
 {
-    const T_val_* val_add = nullptr;
+#ifndef NDEBUG
+    std::size_t tried_slots = 0;
+#endif
+
+    T_val_* val_add = nullptr;
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
         if(T[i].key == key) // TODO: check atomic-read / partial-read guarantees.
         {
-            if constexpr(mt_) lock[i].lock();
+            if constexpr(mt_) lock[i].lock();   // To ensure that some other thread is not updating this val atm—a stable value is guaranteed.
+                                                // This only works correctly because in our use-case of this table, a key is accessed only twice.
             val_add = &T[i].val;
             if constexpr(mt_) lock[i].unlock();
             break;
         }
         else if(T[i].key == empty_key_) // TODO: check atomic-read / partial-read guarantees.
             break;
+        else
+            assert(++tried_slots <= capacity_);
 
     return val_add;
+}
+
+
+template <typename T_key_, typename T_val_, typename T_hasher_>
+template <bool mt_>
+inline const T_val_* Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(const T_key_ key) const
+{
+    return const_cast<Concurrent_Hash_Table*>(this)->find(key);
 }
 
 
@@ -340,6 +415,30 @@ inline uint64_t Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::signature() co
     return std::accumulate(sign.cbegin(), sign.cend(), 0lu, [](const uint64_t r, const Padded_Data<uint64_t>& p_data){ return r ^ p_data.data(); });
 }
 
+
+template <typename T_key_, typename T_val_, typename T_hasher_>
+inline Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Iterator::Iterator(Concurrent_Hash_Table& M, std::size_t it_count, std::size_t it_id):
+      M(M)
+{
+    const auto range_sz = (M.capacity_ + it_count - 1) / it_count;
+    idx = it_id * range_sz;
+    end = std::min((it_id + 1) * range_sz, M.capacity_);
+}
+
+
+template <typename T_key_, typename T_val_, typename T_hasher_>
+inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Iterator::next(T_key_& key, T_val_& val)
+{
+    for(; idx < end; idx++)
+        if(M.T[idx].key != M.empty_key_)
+        {
+            key = M.T[idx].key, val = M.T[idx].val;
+            idx++;
+            return true;
+        }
+
+    return false;
+}
 
 }
 

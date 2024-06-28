@@ -6,6 +6,7 @@
 #include "dBG_Utilities.hpp"
 #include "Character_Buffer.hpp"
 #include "FASTA_Record.hpp"
+#include "Data_Logistics.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 #include "parlay/parallel.h"
@@ -19,27 +20,30 @@
 #include <cassert>
 
 
+// TODO: use more efficient data structures throughout the collator.
+
+
 namespace cuttlefish
 {
 
 template <uint16_t k>
-Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const std::string& output_path, const std::string& temp_path):
+Unitig_Collator<k>::Unitig_Collator(const P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf):
       P_e(P_e)
-    , output_path(output_path)
-    , work_path(temp_path)
+    , lmtig_buckets_path(logistics.lmtig_buckets_path())
+    , unitig_coord_buckets_path(logistics.unitig_coord_buckets_path())
     , M(nullptr)
     , p_e_buf(nullptr)
+    , op_buf(op_buf)
 {
     assert((max_unitig_bucket_count & (max_unitig_bucket_count - 1)) == 0);
 
     max_bucket_sz = 0;
-    std::for_each(P_e.cbegin(), P_e.cend(), [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.size()); });
+    std::size_t sum_bucket_sz = 0;
+    std::for_each(P_e.cbegin(), P_e.cend(),
+        [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.data().size()); sum_bucket_sz += bucket.data().size(); });
 
+    std::cerr << "Sum edge-bucket size: " << sum_bucket_sz << "\n";
     std::cerr << "Maximum edge-bucket size: " << max_bucket_sz << "\n";
-
-    // Prepare output-logger.
-    remove_file(output_path);
-    output_sink.init_sink(output_path);
 }
 
 
@@ -50,8 +54,10 @@ void Unitig_Collator<k>::par_collate()
 
     reduce();
 
+/*
     std::string max_unitig, max_u_rc;
     std::size_t mu_tig = 0;
+    auto& op = op_buf[parlay::worker_id()].data();
     Unitig_File_Reader mu_tig_reader(work_path + std::string("mutig"));
     while(mu_tig_reader.read_next_unitig(max_unitig))
     {
@@ -60,16 +66,12 @@ void Unitig_Collator<k>::par_collate()
         if(max_unitig > max_u_rc)
             max_unitig = max_u_rc;
 
-        // TODO: do better writing.
-        output_sink.sink().write(">0\n");
-        output_sink.sink().write(max_unitig.data());
-        output_sink.sink().write("\n");
+        op += FASTA_Record(0, max_unitig);
 
         mu_tig++;
     }
 
-    output_sink.close_sink();
-
+*/
     // TODO: print meta-information over the maximal unitigs'.
 }
 
@@ -77,8 +79,8 @@ void Unitig_Collator<k>::par_collate()
 template <uint16_t k>
 void Unitig_Collator<k>::map()
 {
-    typedef Path_Info<k>* map_t;
-    typedef unitig_path_info_t* buf_t;
+    typedef Path_Info<k>* map_t;    // TODO: replace with `Buffer`.
+    typedef Buffer<unitig_path_info_t> buf_t;
 
     std::vector<Padded_Data<map_t>> M_vec(parlay::num_workers());   // Worker-local DATs of edge-index to edge path-info.
     std::vector<Padded_Data<buf_t>> buf_vec(parlay::num_workers()); // Worker-local buffers to read in edge path-info.
@@ -87,14 +89,13 @@ void Unitig_Collator<k>::map()
         [&](const std::size_t w_id)
         {
             M_vec[w_id] = allocate<Path_Info<k>>(max_bucket_sz);
-            buf_vec[w_id] = allocate<unitig_path_info_t>(max_bucket_sz);
         }, 1);
 
 
     std::vector<Spin_Lock> lock(max_unitig_bucket_count);   // Locks for maximal-unitig buckets.
     max_unitig_bucket.reserve(max_unitig_bucket_count);
     for(std::size_t i = 0; i < max_unitig_bucket_count; ++i)
-        max_unitig_bucket.emplace_back(work_path + "U_" + std::to_string(i));
+        max_unitig_bucket.emplace_back(unitig_coord_buckets_path + "_" + std::to_string(i));
 
     std::atomic_uint64_t edge_c = 0;    // Number of edges (i.e. unitigs) found.
 #ifndef NDEBUG
@@ -107,7 +108,7 @@ void Unitig_Collator<k>::map()
     {
         const auto w_id = parlay::worker_id();
         auto const M = M_vec[w_id].data();
-        auto const buf = buf_vec[w_id].data();
+        auto& buf = buf_vec[w_id].data();
 
         const auto b_sz = load_path_info(b, M, buf);
         edge_c += b_sz;
@@ -121,21 +122,20 @@ void Unitig_Collator<k>::map()
 #endif
 
 
-        Unitig_File_Reader unitig_reader(work_path + "lmutig_" + std::to_string(b));    // TODO: centralize file-location.
+        assert(file_exists(lmtig_buckets_path + "_" + std::to_string(b)));
+        Unitig_File_Reader unitig_reader(lmtig_buckets_path + "_" + std::to_string(b));
         std::string unitig; // Read-off unitig. TODO: use better-suited container.
         uni_idx_t idx = 0;  // The unitig's sequential ID in the bucket.
         std::size_t uni_len;    // The unitig's length in bases.
-        while((uni_len = unitig_reader.read_next_unitig(unitig)) > 0)
+        for(; (uni_len = unitig_reader.read_next_unitig(unitig)) > 0; idx++)
         {
             assert(idx < b_sz);
             const auto p = M[idx].p();  // Path-ID of this unitig.
             const auto mapped_b_id = XXH3_64bits(&p, sizeof(p)) & (max_unitig_bucket_count - 1); // Hashed maximal unitig bucket.
 
             lock[mapped_b_id].lock();
-            max_unitig_bucket[mapped_b_id].add(M[idx], unitig.data(), uni_len);
+            max_unitig_bucket[mapped_b_id].data().add(M[idx], unitig.data(), uni_len);
             lock[mapped_b_id].unlock();
-
-            idx++;
         }
 
         assert(idx == b_sz);
@@ -147,7 +147,6 @@ void Unitig_Collator<k>::map()
         [&](const std::size_t w_id)
         {
             deallocate(M_vec[w_id].data());
-            deallocate(buf_vec[w_id].data());
         }, 1);
 
 
@@ -164,8 +163,8 @@ void Unitig_Collator<k>::reduce()
     std::size_t max_max_uni_b_sz = 0;   // Maximum unitig-count in some maximal unitig bucket.
     std::size_t max_max_uni_b_label_len = 0;    // Maximum dump-string length in some maximal unitig bucket.
     for(std::size_t i = 0; i < max_unitig_bucket_count; ++i)
-        max_max_uni_b_sz = std::max(max_max_uni_b_sz, max_unitig_bucket[i].size()),
-        max_max_uni_b_label_len = std::max(max_max_uni_b_label_len, max_unitig_bucket[i].label_len());
+        max_max_uni_b_sz = std::max(max_max_uni_b_sz, max_unitig_bucket[i].data().size()),
+        max_max_uni_b_label_len = std::max(max_max_uni_b_label_len, max_unitig_bucket[i].data().label_len());
 
     std::cerr << "Maximum maximal unitig bucket size:  " << max_max_uni_b_sz << "\n";
     std::cerr << "Maximum maximal unitig label length: " << max_max_uni_b_label_len << "\n";
@@ -186,22 +185,16 @@ void Unitig_Collator<k>::reduce()
 
     // TODO: add per-worker progress tracker.
 
-    // 100 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory per worker, at most, before flushes.
-    constexpr std::size_t BUFF_SZ = 100 * 1024ULL;
-    typedef Character_Buffer<BUFF_SZ, sink_t> op_buf_t;
-    std::vector<Padded_Data<op_buf_t>> output_buf(parlay::num_workers(), Padded_Data(op_buf_t(output_sink.sink())));    // Worker-specific output buffers.
-
-
     const auto collate_max_unitig_bucket =
     [&](const std::size_t b)
     {
         const auto w_id = parlay::worker_id();
         auto const U = U_vec[w_id].data();  // Coordinate info of the unitigs.
         auto const L = L_vec[w_id].data();  // Dump-strings of the unitig labels.
-        auto& output = output_buf[w_id].data(); // Output buffer for the maximal unitigs.
+        auto& output = op_buf[w_id].data(); // Output buffer for the maximal unitigs.
 
-        const auto b_sz = max_unitig_bucket[b].load_coords(U);
-        const auto len = max_unitig_bucket[b].load_labels(L);
+        const auto b_sz = max_unitig_bucket[b].data().load_coords(U);
+        const auto len = max_unitig_bucket[b].data().load_labels(L);
         (void)len;
 
         std::sort(U, U + b_sz);
@@ -213,12 +206,21 @@ void Unitig_Collator<k>::reduce()
         {
             max_unitig.clear();
 
+            const bool is_cycle = U[i].is_cycle();
             const std::size_t s = i;
-            std::size_t e;
-            for(e = s + 1; e < b_sz && U[e].p() == U[s].p(); ++e);  // Find the current maximal unitig's stretch in the bucket.
+            std::size_t e = s + 1;
 
-            if(e - s == 2)  // Special case for handling orientation of path-traversals in the discontinuity graph.
+            // Find the current maximal unitig's stretch in the bucket.
+            while(e < b_sz && U[e].p() == U[s].p())
             {
+                assert(U[e].o() != side_t::unspecified); assert(U[e].is_cycle() == is_cycle);
+                e++;
+            }
+
+            if(e - s == 2 && !is_cycle) // Special case for handling orientation of path-traversals in the discontinuity graph.
+            {
+                assert(U[s].r() == 0); assert(U[s + 1].r() == 0);
+
                 std::string u0(L + U[s].label_idx(), U[s].label_len());
                 std::string u1(L + U[s + 1].label_idx(), U[s + 1].label_len());
 
@@ -242,9 +244,23 @@ void Unitig_Collator<k>::reduce()
                 }
 
 
+            if(is_cycle)
+                max_unitig.pop_back();  // Cyclic maximal unitig traversals start and end at the same vertex, so one copy needs to be removed.
+
+
             max_u_rc = max_unitig;
             reverse_complement(max_u_rc);
-            if(max_unitig > max_u_rc)
+            if(is_cycle)
+            {
+                Kmer<k> min_f, min_r;
+                const auto min_idx_f = min_kmer(max_unitig, min_f);
+                const auto min_idx_r = min_kmer(max_u_rc, min_r);
+                if(min_f < min_r)
+                    max_unitig = std::string(max_unitig.cbegin() + min_idx_f, max_unitig.cend()) + std::string(max_unitig.cbegin() + k - 1, max_unitig.cbegin() + min_idx_f + k - 1);
+                else
+                    max_unitig = std::string(max_u_rc.cbegin() + min_idx_r, max_u_rc.cend()) + std::string(max_u_rc.cbegin() + k - 1, max_u_rc.cbegin() + min_idx_r + k - 1);
+            }
+            else if(max_unitig > max_u_rc)
                 max_unitig = max_u_rc;
 
             // TODO: decide record-ID choice.
@@ -267,6 +283,7 @@ void Unitig_Collator<k>::reduce()
 }
 
 
+/*
 template <uint16_t k>
 void Unitig_Collator<k>::collate()
 {
@@ -404,12 +421,14 @@ void Unitig_Collator<k>::collate()
     std::cerr << "Maximum maximal-unitig size: " << max_sz << "\n";
     std::cerr << "Maximum locally-maximal unitig size: " << max_lmtig_sz << "\n";
 }
+*/
 
 
 template <uint16_t k>
-std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>* const M, unitig_path_info_t* const buf)
+std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>* const M, Buffer<unitig_path_info_t>& buf)
 {
-    const std::size_t b_sz = P_e[b].load(buf);
+    buf.reserve(P_e[b].data().size());  // TODO: perform one fixed resize beforehand, as the `P_e` buckets will not grow anymore.
+    const std::size_t b_sz = P_e[b].data().load(buf.data());
     assert(b_sz <= max_bucket_sz);
 
     for(std::size_t idx = 0; idx < b_sz; ++idx)
@@ -425,9 +444,23 @@ std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>
 
 
 template <uint16_t k>
-std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b)
+std::size_t Unitig_Collator<k>::min_kmer(const std::string& s, Kmer<k>& min)
 {
-    return load_path_info(b, M, p_e_buf);
+    Kmer<k> kmer(s), dummy;
+    std::size_t min_idx = 0;
+    min = kmer;
+
+    std::size_t curr_idx = 1;
+    while(curr_idx + k <= s.length())
+    {
+        kmer.roll_to_next_kmer(s[curr_idx + k - 1], dummy);
+        if(min > kmer)
+            min = kmer, min_idx = curr_idx;
+
+        curr_idx++;
+    }
+
+    return min_idx;
 }
 
 }

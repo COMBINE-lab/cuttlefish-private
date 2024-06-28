@@ -12,7 +12,7 @@ namespace cuttlefish
 template <uint16_t k> const std::string Edge_Matrix<k>::edge_block_ext(".blk");
 
 template <uint16_t k>
-Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path, const bool append):
+Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
       vertex_part_count_(part_count)
     , path(path)
     , row_to_read(part_count + 1, 0)
@@ -31,9 +31,9 @@ Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path, con
     {
         for(std::size_t j = 0; j <= part_count; ++j)
             j < i ? edge_matrix[i].emplace_back() :
-                    edge_matrix[i].emplace_back(bucket_file_path(i, j), append);
+                    edge_matrix[i].emplace_back(bucket_file_path(i, j));
 
-        lock[i] = new Spin_Lock[part_count + 1];
+        std::vector<Spin_Lock>(part_count + 1).swap(lock[i]);
     }
 
     for(std::size_t i = 1; i <= part_count; ++i)
@@ -42,26 +42,9 @@ Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path, con
 
 
 template <uint16_t k>
-Edge_Matrix<k>::~Edge_Matrix()
-{
-    for(auto lck : lock)
-        delete[] lck;
-}
-
-
-template <uint16_t k>
 const std::string Edge_Matrix<k>::bucket_file_path(const std::size_t i, const std::size_t j) const
 {
-    return path + std::to_string(i) + "-" + std::to_string(j) + edge_block_ext;
-}
-
-
-template <uint16_t k>
-void Edge_Matrix<k>::serialize()
-{
-    for(std::size_t i = 0; i <= vertex_part_count_; ++i)
-        for(std::size_t j = 0; j <= vertex_part_count_; ++j)
-            edge_matrix[i][j].close();
+    return path +  "_" + std::to_string(i) + "-" + std::to_string(j) + edge_block_ext;
 }
 
 
@@ -73,36 +56,51 @@ void Edge_Matrix<k>::read_diagonal_block(const std::size_t j, std::vector<Discon
 
 
 template <uint16_t k>
-bool Edge_Matrix<k>::read_column_buffered(const std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const
+std::size_t Edge_Matrix<k>::read_diagonal_block(const std::size_t j, Buffer<Discontinuity_Edge<k>>& buf) const
+{
+    buf.reserve(edge_matrix[j][j].size());
+    return edge_matrix[j][j].load(buf.data());
+}
+
+
+template <uint16_t k>
+std::size_t Edge_Matrix<k>::read_column_buffered(const std::size_t j, Buffer<Discontinuity_Edge<k>>& buf) const
 {
     if(row_to_read[j] >= j)
-        return false;
+        return 0;
 
-    edge_matrix[row_to_read[j]][j].load(buf);
+    const auto to_read = edge_matrix[row_to_read[j]][j].size();
+    buf.reserve(to_read);
+    const auto read = edge_matrix[row_to_read[j]][j].load(buf.data());
+    assert(read == to_read);
     row_to_read[j]++;
 
-    return true;
+    return read;
 }
 
 
 template <uint16_t k>
-bool Edge_Matrix<k>::read_row_buffered(const std::size_t i, std::vector<Discontinuity_Edge<k>>& buf) const
+std::size_t Edge_Matrix<k>::read_row_buffered(const std::size_t i, Buffer<Discontinuity_Edge<k>>& buf) const
 {
     if(col_to_read[i] > vertex_part_count_)
-        return false;
+        return 0;
 
-    edge_matrix[i][col_to_read[i]].load(buf);
+    const auto to_read = edge_matrix[i][col_to_read[i]].size();
+    buf.reserve(to_read);
+    const auto read = edge_matrix[i][col_to_read[i]].load(buf.data());
+    assert(read == to_read);
     col_to_read[i]++;
 
-    return true;
+    return read;
 }
 
 
 template <uint16_t k>
-void Edge_Matrix<k>::read_block(std::size_t i, std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const
+std::size_t Edge_Matrix<k>::read_block(std::size_t i, std::size_t j, Buffer<Discontinuity_Edge<k>>& buf) const
 {
     assert(i <= vertex_part_count_ && j <= vertex_part_count_);
-    edge_matrix[i][j].load(buf);
+    buf.reserve(edge_matrix[i][j].size());
+    return edge_matrix[i][j].load(buf.data());
 }
 
 
@@ -116,6 +114,26 @@ std::size_t Edge_Matrix<k>::row_size(const std::size_t i) const
         sz += edge_matrix[i][j].size();
 
     return sz;
+}
+
+
+template <uint16_t k>
+std::size_t Edge_Matrix<k>::col_size(const std::size_t j) const
+{
+    assert(j <= vertex_part_count_);
+
+    std::size_t sz = 0;
+    for(std::size_t i = 0; i <= j; ++i)
+        sz += edge_matrix[i][j].size();
+
+    return sz;
+}
+
+
+template <uint16_t k>
+std::size_t Edge_Matrix<k>::block_size(const std::size_t i, const std::size_t j) const
+{
+    return edge_matrix[i][j].size();
 }
 
 

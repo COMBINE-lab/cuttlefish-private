@@ -120,9 +120,9 @@ template <typename T_seq_, typename T_id_>
 inline void FASTA_Record<T_seq_, T_id_>::append_seq(std::vector<char>& buffer) const
 {
     // `std::memcpy` at the end of `buffer` does not update the size of the vector `buffer`.
-    buffer.insert(buffer.end(), seq_->begin() + offset_, seq_->end());
+    buffer.insert(buffer.end(), seq_->cbegin() + offset_, seq_->cend());
     if(seq_add_ != nullptr)
-        buffer.insert(buffer.end(), seq_add_->begin() + offset_add_, seq_add_->end());
+        buffer.insert(buffer.end(), seq_add_->cbegin() + offset_add_, seq_add_->cend());
 }
 
 
@@ -130,8 +130,8 @@ template <typename T_seq_, typename T_id_>
 template <uint16_t k>
 inline void FASTA_Record<T_seq_, T_id_>::append_rotated_cycle(std::vector<char>& buffer, const std::size_t pivot) const
 {
-    buffer.insert(buffer.end(), seq_->begin() + pivot, seq_->end());
-    buffer.insert(buffer.end(), seq_->begin() + k - 1, seq_->begin() + k - 1 + pivot);
+    buffer.insert(buffer.end(), seq_->cbegin() + pivot, seq_->cend());
+    buffer.insert(buffer.end(), seq_->cbegin() + k - 1, seq_->cbegin() + k - 1 + pivot);
 }
 
 

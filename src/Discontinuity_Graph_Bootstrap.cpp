@@ -1,8 +1,8 @@
 
 #include "Discontinuity_Graph_Bootstrap.hpp"
+#include "Discontinuity_Graph.hpp"
 #include "Kmer.hpp"
 #include "Minimizer_Iterator.hpp"
-#include "Discontinuity_Edge.hpp"
 #include "Unitig_File.hpp"
 #include "Ref_Parser.hpp"
 #include "globals.hpp"
@@ -19,7 +19,6 @@ Discontinuity_Graph_Bootstrap<k>::Discontinuity_Graph_Bootstrap(const std::strin
       cdbg_path(cdbg_path)
     , l(l)
     , minimizer_seed(seed)
-    , phi(phi_label)
     , E(E)
     , unitigs_path(unitigs_path)
     , unitig_buckets(unitig_buckets)
@@ -37,24 +36,23 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
     uint64_t trivial_unitig_count = 0;  // Number of maximal unitigs in the dBG without a discontinuity k-mer.
     std::size_t max_trivial_len = 0;    // Length of the longest maximal unitig without a discontinuity k-mer.
 
-    Unitig_File_Writer m_utig_file(unitigs_path + std::string("mutig"));
-    std::vector<Unitig_File_Writer> lm_utig_file;
+    Unitig_File_Writer m_utig_file(unitigs_path + std::string("mutig"));    // File-manager for trivially maximal unitigs.
+    std::vector<Unitig_File_Writer> lm_utig_file;   // File-managers for locally maximal unitigs.
     for(std::size_t b = 0; b <= unitig_buckets; ++b)
-        lm_utig_file.emplace_back(unitigs_path + std::string("lmutig_") + std::to_string(b));
+        lm_utig_file.emplace_back(unitigs_path + std::string("lmtig_") + std::to_string(b));
 
-    std::size_t bucket_idx = 1;
+    std::size_t bucket_idx = 1; // Unitig-bucket ID to put the next lm-tig into.
 
     Ref_Parser parser(cdbg_path);
     while(parser.read_next_seq())
     {
         const auto seq = parser.seq();
         const auto seq_len = parser.seq_len();
-        Minimizer_Iterator<decltype(seq), true> min_it(seq, parser.seq_len(), k - 1, l, minimizer_seed);
+        Minimizer_Iterator<const char*, k - 1, true> min_it(seq, parser.seq_len(), l, minimizer_seed);
         minimizer_t last_min, last_min_idx, min, min_idx;
 
         Kmer<k> first_vertex;   // First discontinuity k-mer in the sequence.
         Kmer<k> last_vertex;    // Last discontinuity k-mer preceding the current k-mer.
-        Kmer<k> p = phi;
 
         std::size_t first_v_idx;    // Index of the first discontinuity k-mer in the sequence.
         std::size_t last_v_idx = 0; // Index of the last discontinuity k-mer in the sequence.
@@ -77,16 +75,19 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
 
                 if(on_chain)
                 {
-                    const Kmer<k>& x = last_vertex;
-                    const Kmer<k>& y = kmer;
-                    Kmer<k> x_hat = x.canonical();
-                    Kmer<k> y_hat = y.canonical();
+                    const auto& x = last_vertex;
+                    const auto& y = kmer;
+                    const auto x_hat = x.canonical();
+                    const auto y_hat = y.canonical();
                     s_x = (x == x_hat ? side_t::back : side_t::front);
                     s_y = (y == y_hat ? side_t::front : side_t::back);
 
                     edge_count++;
 
-                    E.add(x_hat, s_x, y_hat, s_y, 1, bucket_idx, lm_utig_file[bucket_idx].unitig_count(), false, false);
+                    E.add(  x_hat, s_x,
+                            y_hat, s_y,
+                            1, bucket_idx, lm_utig_file[bucket_idx].unitig_count(),
+                            false, false);
                     lm_utig_file[bucket_idx].add(seq + last_v_idx, seq + kmer_idx + k);
                     bucket_idx = (bucket_idx == unitig_buckets ? 1 : bucket_idx + 1);
 
@@ -114,15 +115,17 @@ void Discontinuity_Graph_Bootstrap<k>::generate()
         {
             edge_count += 2;
 
-            E.add(  p, side_t::back,
+            E.add(  Discontinuity_Graph<k>::phi(), side_t::back,
                     first_vertex.canonical(), first_vertex == first_vertex.canonical() ? side_t::front : side_t::back,
-                    1, bucket_idx, lm_utig_file[bucket_idx].unitig_count(), true, false);
+                    1, bucket_idx, lm_utig_file[bucket_idx].unitig_count(),
+                    true, false);
             lm_utig_file[bucket_idx].add(seq + 0, seq + first_v_idx + k);
             bucket_idx = (bucket_idx == unitig_buckets ? 1 : bucket_idx + 1);
 
             E.add(  last_vertex.canonical(), last_vertex == last_vertex.canonical() ? side_t::back : side_t::front,
-                    p, side_t::back,
-                    1, bucket_idx, lm_utig_file[bucket_idx].unitig_count(), false, true);
+                    Discontinuity_Graph<k>::phi(), side_t::back,
+                    1, bucket_idx, lm_utig_file[bucket_idx].unitig_count(),
+                    false, true);
             lm_utig_file[bucket_idx].add(seq + last_v_idx, seq + seq_len);
             bucket_idx = (bucket_idx == unitig_buckets ? 1 : bucket_idx + 1);
 

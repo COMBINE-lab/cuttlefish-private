@@ -4,9 +4,15 @@
 
 
 
-#include "Edge_Matrix.hpp"
+#include "Discontinuity_Graph.hpp"
 #include "Path_Info.hpp"
 #include "Ext_Mem_Bucket.hpp"
+#include "Async_Logger_Wrapper.hpp"
+#include "Output_Sink.hpp"
+#include "Character_Buffer.hpp"
+#include "Build_Params.hpp"
+#include "Data_Logistics.hpp"
+#include "utility.hpp"
 #include "globals.hpp"
 
 #include <cstdint>
@@ -23,21 +29,38 @@ namespace cuttlefish
 template <uint16_t k>
 class dBG_Contractor
 {
+public:
+
+    typedef Obj_Path_Info_Pair<Kmer<k>, k> vertex_path_info_t;  // A vertex and its path-info.
+    typedef Obj_Path_Info_Pair<uni_idx_t, k> unitig_path_info_t;    // A locally-maximal unitig's index in its bucket and its path-info.
+
+    typedef Ext_Mem_Bucket_Concurrent<vertex_path_info_t> p_v_bucket_t;
+    typedef Ext_Mem_Bucket_Concurrent<unitig_path_info_t> p_e_bucket_t;
+
+    typedef std::vector<Padded_Data<p_v_bucket_t>> P_v_t;
+    typedef std::vector<Padded_Data<p_e_bucket_t>> P_e_t;
+
+    typedef Async_Logger_Wrapper sink_t;
+    typedef Character_Buffer<sink_t> op_buf_t;
+    typedef std::vector<Padded_Data<op_buf_t>> op_buf_list_t;
+
 private:
 
-    // TODO: wrap the following primitive fields in `Build_Params`.
-    const std::size_t part_count;   // Number of vertex-partitions in the discontinuity graph; needs to be a power of 2.
-    const std::size_t unitig_bucket_count;  // Number of buckets storing literal unitigs.
+    const Build_Params params;  // Required parameters (wrapped inside).
+    const Data_Logistics logistics; // Data logistics manager for the algorithm execution.
 
-    const std::string output_path;  // Path-prefix to output files.
-    const std::string work_path;    // Path-prefix for temporary working files.
+    Discontinuity_Graph<k> G;   // The discontinuity graph.
 
-    Edge_Matrix<k> E;  // Edge-matrix of the discontinuity graph.
+    std::size_t n_disc_v;   // Number of discontinuity-vertices.
 
-    const std::size_t n_disc_v; // Number of discontinuity-vertices.
+    // TODO: consider using padding.
+    P_v_t P_v;  // `P_v[j]` contains path-info for vertices in partition `j`.
+    P_e_t P_e;  // `P_e[b]` contains path-info for edges induced by unitigs in bucket `b`.
 
-    std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>> P_v;    // `P_v[j]` contains path-info for vertices in partition `j`.
-    std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<uni_idx_t, k>>> P_e;  // `P_e[b]` contains path-info for edges induced by unitigs in bucket `b`.
+    Output_Sink<sink_t> output_sink;    // Sink for the output maximal unitigs.
+
+    // 100 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory per worker, at most, before flushes.
+    op_buf_list_t op_buf;   // Worker-specific output buffers.
 
 
 public:
@@ -45,17 +68,14 @@ public:
     dBG_Contractor(const dBG_Contractor&) = delete;
     dBG_Contractor& operator=(const dBG_Contractor&) = delete;
 
-    // Constructs a compacted de Bruijn graph constructor that operates with
-    // `part_count` vertex-partitions in its discontinuity graph, and stores the
-    // locally-maximal unitigs from the partitioned subgraphs of the dBG into
-    // `unitig_bucket_count` buckets. Output files are stored at the path-prefix
-    // `output_path`, and temporary working files at path-prefix `temp_path`.
-    dBG_Contractor(std::size_t part_count, std::size_t unitig_bucket_count, const std::string& output_path, const std::string& temp_path);
+    // Constructs a compacted de Bruijn graph constructor with the parameters
+    // required for the construction wrapped in `params`.
+    dBG_Contractor(const Build_Params& params);
 
     // Contracts the bootstrapped discontinuity graph generated from the
     // compacted dBG at path `cdbg_path`. `l`-minimizers are used in generating
     // the discontinuity graph.
-    void contract(uint16_t l, const std::string& cdbg_path);
+    void construct();
 };
 
 }

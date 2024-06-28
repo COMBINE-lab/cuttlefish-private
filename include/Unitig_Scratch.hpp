@@ -51,6 +51,9 @@ public:
     // not render itself a cycle.
     bool extend(const Directed_Vertex<k>& v, char b);
 
+    // Marks the unitig as a cycle.
+    void mark_cycle();
+
     // Reverse complements the unitig.
     void reverse_complement();
 

@@ -4,13 +4,12 @@
 
 
 
+#include "dBG_Contractor.hpp"
 #include "Kmer.hpp"
 #include "Kmer_Hasher.hpp"
 #include "Discontinuity_Edge.hpp"
-#include "Edge_Matrix.hpp"
+#include "Discontinuity_Graph.hpp"
 #include "Path_Info.hpp"
-#include "Ext_Mem_Bucket.hpp"
-#include "Spin_Lock.hpp"
 #include "Concurrent_Hash_Table.hpp"
 #include "utility.hpp"
 
@@ -19,8 +18,11 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
-#include <tuple>
+#include <atomic>
 #include <cassert>
+
+
+class Data_Logistics;
 
 
 namespace cuttlefish
@@ -33,23 +35,24 @@ class Discontinuity_Graph_Contractor
 {
 private:
 
-    Edge_Matrix<k>& E;  // Edge matrix of the discontinuity-graph.
-    const std::size_t n_;   // Number of discontinuity-vertices.
+    Discontinuity_Graph<k>& G;  // The discontinuity-graph.
 
-    typedef Obj_Path_Info_Pair<Kmer<k>, k> kmer_path_info_t;
-    std::vector<Ext_Mem_Bucket<kmer_path_info_t>>& P_v; // `P_v[j]` contains path-info for vertices in partition `j`—specifically, the meta-vertices.
-    std::vector<Padded_Data<std::vector<kmer_path_info_t>>> P_v_local;  // `P_v_local[t]` contains information of the meta-vertices formed by worker `t`.
+    typedef typename dBG_Contractor<k>::P_v_t P_v_t;
+    P_v_t& P_v; // `P_v[j]` contains path-info for vertices in partition `j`—specifically, the meta-vertices.
 
-    const std::string work_path;    // Path-prefix to temporary working files.
+    const std::string compressed_diagonal_path; // Path-prefix to the edges introduced in contracting diagonal blocks.
 
-    std::vector<Discontinuity_Edge<k>> buf; // Buffer to read-in edges from the edge-matrix.
+    Buffer<Discontinuity_Edge<k>> buf;  // Buffer to read-in edges from the edge-matrix.
 
     class Other_End;
     Concurrent_Hash_Table<Kmer<k>, Other_End, Kmer_Hasher<k>> M;    // `M[v]` is the associated vertex to `v` at a given time.
 
     // TODO: remove `D_j` by adopting a more parallelization-amenable algorithm for diagonal contraction-expansion.
-    std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block.
+    std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block. TODO: remove `D_j` by adding these edges to the diagonal block.
     std::vector<Padded_Data<std::vector<Discontinuity_Edge<k>>>> D_c;   // `D_c[t]` contains the edges corresponding to compressed diagonal chains by worker `t`.
+
+    std::atomic_uint64_t phantom_count_;    // Number of phantom edges.
+    std::atomic_uint64_t icc_count; // Number of ICCs.
 
 
     // Contracts the `[j, j]`'th edge-block.
@@ -58,8 +61,15 @@ private:
     // Forms a meta-vertex in the contracted graph with the vertex `v` belonging
     // to the vertex-partition `part`. In the contracted graph, `v` has a `w_1`
     // weighted edge incident to its side `s_1` and a `w_2` weighted edge
-    // incident to the other side.
-    void form_meta_vertex(Kmer<k> v, std::size_t part, side_t s_1, weight_t w_1, weight_t w_2);
+    // incident to the other side. `is_cycle` denotes whether the meta-vertex
+    // corresponds to a cycle.
+    void form_meta_vertex(Kmer<k> v, std::size_t part, side_t s_1, weight_t w_1, weight_t w_2, bool is_cycle = false);
+
+    // Forms a meta-vertex in the contracted graph with the vertex `v` belonging
+    // to the vertex-partition `part`. In the contracted graph, `v` has a `w`-
+    // weighted edge incident to its side `s`. `is_cycle` denotes whether the
+    // meta-vertex corresponds to a cycle.
+    void form_meta_vertex(Kmer<k> v, std::size_t part, side_t s, weight_t w, bool is_cycle = false);
 
     // Debug
     std::size_t meta_v_c = 0;
@@ -73,27 +83,30 @@ private:
 
 public:
 
-    // Constructs a contractor for the discontinuity-graph with edge-matrix `E`
-    // and `n` vertices. `P_v[j]` is to contain path-information for vertices at
-    // partition `j`. Temporary files are stored at path-prefix `temp_path`.
-    Discontinuity_Graph_Contractor(Edge_Matrix<k>& E, std::size_t n, std::vector<Ext_Mem_Bucket<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const std::string& temp_path);
+    // Constructs a contractor for the discontinuity-graph `G`. `P_v[j]` is to
+    // contain path-information for vertices at partition `j`. `logistics` is
+    // the data logistics manager for the algorithm execution.
+    Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, P_v_t& P_v, const Data_Logistics& logistics);
 
     // Contracts the discontinuity-graph.
     void contract();
 };
 
 
-// Other endpoint associated to a vertex through an edge.
+// =============================================================================
+// Other endpoint `v` associated to a current vertex `u` through an edge.
 template <uint16_t k>
 class Discontinuity_Graph_Contractor<k>::Other_End
 {
 private:
 
-    Kmer<k> v_; // The endpoint vertex.
-    side_t s_v_;    // Side of the endpoint to which the associated edge is incident to.
+    Kmer<k> v_; // The other endpoint vertex `v`.
+    side_t s_v_;    // Side of the endpoint `v` to which the associated edge is incident to.
+    side_t s_u_;    // Side of the current vertex `u` to which the associated edge is incident to.
     bool is_phi_;   // Whether the endpoint is a ϕ vertex.
     weight_t w_;    // Weight of the associated edge.
     bool in_same_part_; // Whether the endpoints belong to the same partition.
+    bool processed_; // Whether the endpoint has been processed, defined by the context.
 
 
 public:
@@ -103,16 +116,22 @@ public:
     {}
 
     // Constructs an endpoint with the vertex `v`, connected through its side
-    // `s_v` to the corresponding edge. `is_phi` should be `true` iff `v` is the
-    // ϕ vertex. The connecting edge has weight `w`, and `in_same_part` should
-    // be `true` iff the endpoints of the edge belong to the same partition.
-    Other_End(const Kmer<k>& v, const side_t s_v, const bool is_phi, const weight_t w, const std::size_t in_same_part):
+    // `s_v` to the current vertex's side `s_u`. `is_phi` should be `true` iff
+    // `v` is the ϕ vertex. The connecting edge has weight `w`, and
+    // `in_same_part` should be `true` iff the endpoints of the edge belong to
+    // the same partition.
+    Other_End(const Kmer<k>& v, const side_t s_v, const side_t s_u, const bool is_phi, const weight_t w, const std::size_t in_same_part, const bool processed = false):
           v_(v)
         , s_v_(s_v)
+        , s_u_(s_u)
         , is_phi_(is_phi)
         , w_(w)
         , in_same_part_(in_same_part)
+        , processed_(processed)
     {}
+
+    // Mark the endpoint as processed, defined by the context.
+    void process() { processed_ = true; }
 
     // Returns the endpoint vertex.
     auto v() const { return v_; }
@@ -120,6 +139,10 @@ public:
     // Returns the side of the endpoint to which the associated edge is incident
     // to.
     auto s_v() const { return s_v_; }
+
+    // Returns the side of the current vertex `u` to which the associated edge
+    // is incident to.
+    auto s_u() const { return s_u_; }
 
     // Returns whether the endpoint is a ϕ vertex.
     auto is_phi() const { return is_phi_; }
@@ -129,16 +152,26 @@ public:
 
     // Returns whether the endpoints belong to the same partition.
     auto in_same_part() const { return in_same_part_; }
+
+    // Returns whether the endpoint has been processed, defined by the context.
+    auto processed() const { return processed_; }
 };
 
 
 template <uint16_t k>
-inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s_1, const weight_t w_1, const weight_t w_2)
+inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s_1, const weight_t w_1, const weight_t w_2, const bool is_cycle)
 {
-    assert(part < P_v.size());
+    assert(w_1 > 0); assert(w_2 > 0);
+    form_meta_vertex(v, part, side_t::front, s_1 == side_t::front ? w_1 : w_2, is_cycle);
+}
 
-    (void)part;
-    P_v_local[parlay::worker_id()].data().emplace_back(v, v, (s_1 == side_t::back ? w_2 : w_1), side_t::back);  // The path-traversal exits `v` through its back.
+
+template <uint16_t k>
+inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s, const weight_t w, const bool is_cycle)
+{
+    assert(w > 0);
+    assert(part < P_v.size());
+    P_v[part].data().emplace(v, v, w, inv_side(s), is_cycle);   // The path-traversal enters `v` through its the side `s`.
 }
 
 }

@@ -7,9 +7,14 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <type_traits>
 #include <cstdlib>
+#include <algorithm>
+#include <cassert>
+#include <chrono>
 
 // TODO: wrap everything here in some namespaces.
+// =============================================================================
 
 // Returns a random string of length `len`, using characters from `alphabet`.
 std::string get_random_string(size_t len, const char* alphabet =    "0123456789"
@@ -71,9 +76,17 @@ void force_free(T_container_& container)
 
 // Returns pointer to a memory-allocation for `size` elements of type `T_`.
 template <typename T_>
-static T_* allocate(std::size_t size)
+T_* allocate(const std::size_t size)
 {
     return static_cast<T_*>(std::malloc(size * sizeof(T_)));
+}
+
+// Returns pointer to a memory-allocation for `size` elements of type `T_`,
+// whose alignment is specified is `alignment`.
+template <typename T_>
+T_* aligned_allocate(const std::size_t size, const std::size_t alignment = 8)
+{
+    return static_cast<T_*>(std::aligned_alloc(alignment, size * sizeof(T_)));
 }
 
 // Deallocates the pointer `ptr`, allocated with `allocate`.
@@ -83,7 +96,68 @@ void deallocate(T_* const ptr)
     std::free(ptr);
 }
 
-// TODO: Add thread-joiner wrapper.
+// Resizes the type-`T_` container `container` geometrically with the growth
+// factor `gf` such that it has a size of at least `sz`.
+template <typename T_>
+void resize_geometric(T_& container, const std::size_t sz, const double gf = 2.0)
+{
+    assert(gf > 1.0);
+
+    std::size_t curr_sz = std::max(container.size(), 1lu);
+    while(curr_sz < sz)
+        curr_sz *= gf;
+
+    if(container.size() < curr_sz)
+        container.resize(curr_sz);
+}
+
+// Allocates the type-`T_` container `p` that currently has space for `cur_sz`
+// elements geometrically with the growth factor `gf` such that it has enough
+// space for at least `req_sz` elements, and returns the new size.
+template <typename T_>
+std::size_t allocate_geometric(T_*& p, const std::size_t curr_sz, const std::size_t req_sz, const double gf = 2.0)
+{
+    assert(gf > 1.0);
+
+    if(curr_sz >= req_sz)
+        return curr_sz;
+
+    std::size_t new_sz = std::max(curr_sz, 1lu);
+    while(new_sz < req_sz)
+        new_sz *= gf;
+
+    deallocate(p);
+    p = allocate<T_>(new_sz);
+    return new_sz;
+}
+
+// Returns the corresponding integer value of type `T_to_` for a type-`T_`
+// enum-value `enum_val`.
+template <typename T_, typename T_to_ = std::size_t>
+constexpr T_to_ as_int(const T_ enum_val)
+{
+    static_assert(std::is_enum_v<T_>);
+    return static_cast<T_to_>(enum_val);
+}
+
+// Returns the smallest power of 2 at least as large as `x`. `x` must be in
+// `[1, 2^63]`.
+constexpr std::size_t ceil_pow_2(std::size_t x)
+{
+    assert(x > 0 && x <= (1lu << 63));
+
+    if((x & (x - 1)) == 0)
+        return x;
+
+    x |= (x >> 1);
+    x |= (x >> 2);
+    x |= (x >> 4);
+    x |= (x >> 8);
+    x |= (x >> 16);
+    x |= (x >> 32);
+
+    return x + 1;
+}
 
 
 // Wrapper class for a data-element of type `T_` to ensure that in a linear
@@ -114,6 +188,60 @@ public:
 
     const T_& data() const { return data_; }
 };
+
+
+// Wrapper class for a buffer of elements of type `T_`.
+template <typename T_>
+class Buffer
+{
+private:
+
+    T_* buf_;   // The raw buffer.
+    std::size_t cap_;   // Capacity of the buffer.
+
+
+public:
+
+    // Constructs an empty buffer.
+    Buffer():
+          buf_(nullptr)
+        , cap_(0)
+    {}
+
+    ~Buffer() { deallocate(buf_); }
+
+    Buffer(const Buffer&) = delete;
+    Buffer(Buffer&&) = delete;
+    Buffer& operator=(const Buffer&) = delete;
+    Buffer& operator=(Buffer&&) = delete;
+
+    // Returns the memory region of the buffer.
+    T_* data() { return buf_; }
+
+    // Returns reference to the `idx`'th element of the buffer.
+    T_& operator[](const std::size_t idx) { return buf_[idx]; }
+
+    // Returns the `idx`'th element of the buffer.
+    const T_& operator[](const std::size_t idx) const { return buf_[idx]; }
+
+    // Returns the capacity of the buffer.
+    auto capacity() const { return cap_; }
+
+    // Ensures that the buffer have space for at least `new_cap` elements. No
+    // guarantees are made for the existing elements.
+    void reserve(const std::size_t new_cap) { cap_ = allocate_geometric(buf_, cap_, new_cap); }
+
+    // Resizes the buffer to have capacity `cap`.
+    void resize(const std::size_t cap) { deallocate(buf_); buf_ = allocate<T_>(cap); cap_ = cap; }
+};
+
+
+namespace timer
+{
+    inline auto now() { return std::chrono::high_resolution_clock::now(); }
+
+    inline auto duration(const std::chrono::nanoseconds& d) { return std::chrono::duration_cast<std::chrono::duration<double>>(d).count(); };
+}
 
 
 

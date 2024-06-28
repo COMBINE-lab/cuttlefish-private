@@ -12,6 +12,7 @@
 #include <string>
 
 
+
 namespace cuttlefish
 {
 
@@ -26,13 +27,6 @@ private:
     const std::string cdbg_path;    // Path to the compacted de Bruijn graph FASTA file.
     const uint16_t l;   // Minimizer size.
     const uint64_t minimizer_seed;  // Seed used in computing minimizer-hashes.
-
-    // k-mer (super-)label of the ϕ-vertex in the discontinuity graph.  // TODO: do better.
-    static constexpr const char phi_label[] =   "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
-                                                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
-                                                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
-                                                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
-    const Kmer<k> phi;  // ϕ k-mer connected to each chain-end in the discontinuity graph.
 
     Edge_Matrix<k>& E;  // The edge-matrix of the discontinuity-graph.
 
@@ -51,9 +45,6 @@ public:
 
     // Generates the discontinuity-graph
     void generate();
-
-    // Returns the edge-matrix of the discontinuity-graph.
-    Edge_Matrix<k>& edge_matrix() { return E; }
 };
 
 }

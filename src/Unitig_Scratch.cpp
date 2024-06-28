@@ -10,6 +10,13 @@ Unitig_Scratch<k>::Unitig_Scratch()
 }
 
 
+template <uint16_t k>
+void Unitig_Scratch<k>::mark_cycle()
+{
+    is_cycle_ = true;
+}
+
+
 
 // Template instantiations for the required instances.
 ENUMERATE(INSTANCE_COUNT, INSTANTIATE, Unitig_Scratch)

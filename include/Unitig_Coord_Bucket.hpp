@@ -48,6 +48,9 @@ public:
     // traversal exits the object through the side `o`.
     auto o() const { return path_info.o(); }
 
+    // Returns whether the unitig is a cycle (abusing notation).
+    auto is_cycle() const { return path_info.is_cycle(); }
+
     // Returns the index of the label of the unitig into the dump-string of the
     // bucket.
     auto label_idx() const { return label_idx_; }
