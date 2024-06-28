@@ -75,6 +75,8 @@ int cf_build(int argc, char** argv)
             cxxopts::value<std::size_t>()->default_value(std::to_string(cuttlefish::_default::VERTEX_PART_COUNT)))
         ("lmtig-bucket-count", "number of buckets storing literal locally-maximal unitigs",
             cxxopts::value<std::size_t>()->default_value(std::to_string(cuttlefish::_default::LMTIG_BUCKET_COUNT)))
+        ("gmtig-bucket-count", "number of buckets for global maximal unitigs",
+            cxxopts::value<std::size_t>()->default_value(std::to_string(cuttlefish::_default::GMTIG_BUCKET_COUNT)))
         ;
 
     std::optional<uint16_t> format_code;
@@ -117,6 +119,7 @@ int cf_build(int argc, char** argv)
         const auto subgraph_count = result["subgraph-count"].as<std::size_t>();
         const auto vertex_part_count = result["vertex-part-count"].as<std::size_t>();
         const auto lmtig_bucket_count = result["lmtig-bucket-count"].as<std::size_t>();
+        const auto gmtig_bucket_count = result["gmtig-bucket-count"].as<std::size_t>();
         const auto vertex_db = result["vertex-set"].as<std::string>();
         const auto edge_db = result["edge-set"].as<std::string>();
         const auto thread_count = result["threads"].as<uint16_t>();
@@ -140,7 +143,7 @@ int cf_build(int argc, char** argv)
         const Build_Params params(  is_read_graph, is_ref_graph,
                                     seqs, lists, dirs,
                                     k, cutoff,
-                                    subgraph_count, vertex_part_count, lmtig_bucket_count,
+                                    subgraph_count, vertex_part_count, lmtig_bucket_count, gmtig_bucket_count,
                                     vertex_db, edge_db, thread_count, max_memory, strict_memory,
                                     idx, min_len,
                                     output_file, format, track_short_seqs, poly_n_stretch, working_dir,

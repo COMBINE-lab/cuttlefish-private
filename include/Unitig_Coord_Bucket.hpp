@@ -78,6 +78,7 @@ private:
 
     const std::string path_pref;    // Path-prefix to the file(s) storing the bucket.
 
+    // TODO: use concurrent buckets.
     Ext_Mem_Bucket<Unitig_Coord<k>> coord_bucket;   // External-memory bucket of the unitig-coordinates.
     Ext_Mem_Bucket<char> label_bucket;  // External-memory bucket of the unitig-labels.
 
