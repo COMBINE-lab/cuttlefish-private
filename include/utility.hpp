@@ -224,12 +224,15 @@ public:
     // Returns the `idx`'th element of the buffer.
     const T_& operator[](const std::size_t idx) const { return buf_[idx]; }
 
-    // Returns the size of the buffer.
+    // Returns the capacity of the buffer.
     auto capacity() const { return cap_; }
 
     // Ensures that the buffer have space for at least `new_cap` elements. No
     // guarantees are made for the existing elements.
     void reserve(const std::size_t new_cap) { cap_ = allocate_geometric(buf_, cap_, new_cap); }
+
+    // Resizes the buffer to have capacity `cap`.
+    void resize(const std::size_t cap) { deallocate(buf_); buf_ = allocate<T_>(cap); cap_ = cap; }
 };
 
 

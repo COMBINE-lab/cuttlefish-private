@@ -4,7 +4,7 @@
 
 
 
-#include "Ext_Mem_Bucket.hpp"
+#include "dBG_Contractor.hpp"
 #include "Path_Info.hpp"
 #include "Unitig_Coord_Bucket.hpp"
 #include "Output_Sink.hpp"
@@ -33,9 +33,10 @@ class Unitig_Collator
 {
 private:
 
-    typedef Obj_Path_Info_Pair<uni_idx_t, k> unitig_path_info_t;    // A locally-maximal unitig's index in its bucket and its path-info.
+    typedef typename dBG_Contractor<k>::unitig_path_info_t unitig_path_info_t;
 
-    const std::vector<Ext_Mem_Bucket_Concurrent<unitig_path_info_t>>& P_e;  // `P_e[b]` contains path-info for edges in bucket `b`.
+    typedef typename dBG_Contractor<k>::P_e_t P_e_t;
+    const P_e_t& P_e;   // `P_e[b]` contains path-info for edges in bucket `b`.
 
     const std::string lmtig_buckets_path;   // Path-prefix to the lm-tig buckets.
     const std::string unitig_coord_buckets_path;    // Path-prefix to the unitig-coordinate buckets produced in map-reduce.
@@ -83,7 +84,7 @@ public:
     // corresponding edges at bucket `b`. `logistics` is the data logistics
     // manager for the algorithm execution. Worker-specific maximal unitigs are
     // written to the buffers in `op_buf`.
-    Unitig_Collator(const std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf);
+    Unitig_Collator(const P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf);
 
     // Collates the locally-maximal unitigs into global ones.
     // void collate();

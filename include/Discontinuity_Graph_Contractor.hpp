@@ -4,12 +4,12 @@
 
 
 
+#include "dBG_Contractor.hpp"
 #include "Kmer.hpp"
 #include "Kmer_Hasher.hpp"
 #include "Discontinuity_Edge.hpp"
 #include "Discontinuity_Graph.hpp"
 #include "Path_Info.hpp"
-#include "Ext_Mem_Bucket.hpp"
 #include "Concurrent_Hash_Table.hpp"
 #include "utility.hpp"
 
@@ -37,8 +37,8 @@ private:
 
     Discontinuity_Graph<k>& G;  // The discontinuity-graph.
 
-    typedef Obj_Path_Info_Pair<Kmer<k>, k> kmer_path_info_t;
-    std::vector<Ext_Mem_Bucket_Concurrent<kmer_path_info_t>>& P_v;  // `P_v[j]` contains path-info for vertices in partition `j`—specifically, the meta-vertices.
+    typedef typename dBG_Contractor<k>::P_v_t P_v_t;
+    P_v_t& P_v; // `P_v[j]` contains path-info for vertices in partition `j`—specifically, the meta-vertices.
 
     const std::string compressed_diagonal_path; // Path-prefix to the edges introduced in contracting diagonal blocks.
 
@@ -86,7 +86,7 @@ public:
     // Constructs a contractor for the discontinuity-graph `G`. `P_v[j]` is to
     // contain path-information for vertices at partition `j`. `logistics` is
     // the data logistics manager for the algorithm execution.
-    Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, const Data_Logistics& logistics);
+    Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, P_v_t& P_v, const Data_Logistics& logistics);
 
     // Contracts the discontinuity-graph.
     void contract();
@@ -171,7 +171,7 @@ inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v,
 {
     assert(w > 0);
     assert(part < P_v.size());
-    P_v[part].emplace(v, v, w, inv_side(s), is_cycle);  // The path-traversal enters `v` through its the side `s`.
+    P_v[part].data().emplace(v, v, w, inv_side(s), is_cycle);   // The path-traversal enters `v` through its the side `s`.
 }
 
 }

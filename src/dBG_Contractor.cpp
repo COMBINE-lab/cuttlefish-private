@@ -32,13 +32,13 @@ dBG_Contractor<k>::dBG_Contractor(const Build_Params& params):
     P_v.reserve(params.vertex_part_count() + 1);
     P_v.emplace_back(); // No vertex other than the ϕ-vertex belongs to partition 0.
     for(std::size_t j = 1; j <= params.vertex_part_count(); ++j)
-        P_v.emplace_back(p_v_path_pref + "_" + std::to_string(j), 128 * 1024);  // 128 KB for `P_v` buffers.
+        P_v.emplace_back(p_v_bucket_t(p_v_path_pref + "_" + std::to_string(j), 128 * 1024));    // 128 KB for `P_v` buffers.
 
     const auto p_e_path_pref = logistics.edge_path_info_buckets_path();
     P_e.reserve(params.lmtig_bucket_count() + 1);
     P_e.emplace_back(); // Using edge-partition 0 with edges that do not have any associated lm-tig (i.e. has weight > 1).
     for(std::size_t b = 1; b <= params.lmtig_bucket_count(); ++b)
-        P_e.emplace_back(p_e_path_pref + "_" + std::to_string(b), 128 * 1024);  // 128 KB for `P_e` buffers.
+        P_e.emplace_back(p_e_bucket_t(p_e_path_pref + "_" + std::to_string(b), 128 * 1024));    // 128 KB for `P_e` buffers.
 }
 
 

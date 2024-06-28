@@ -27,7 +27,7 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf):
+Unitig_Collator<k>::Unitig_Collator(const P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf):
       P_e(P_e)
     , lmtig_buckets_path(logistics.lmtig_buckets_path())
     , unitig_coord_buckets_path(logistics.unitig_coord_buckets_path())
@@ -39,7 +39,8 @@ Unitig_Collator<k>::Unitig_Collator(const std::vector<Ext_Mem_Bucket_Concurrent<
 
     max_bucket_sz = 0;
     std::size_t sum_bucket_sz = 0;
-    std::for_each(P_e.cbegin(), P_e.cend(), [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.size()); sum_bucket_sz += bucket.size(); });
+    std::for_each(P_e.cbegin(), P_e.cend(),
+        [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.data().size()); sum_bucket_sz += bucket.data().size(); });
 
     std::cerr << "Sum edge-bucket size: " << sum_bucket_sz << "\n";
     std::cerr << "Maximum edge-bucket size: " << max_bucket_sz << "\n";
@@ -426,8 +427,8 @@ void Unitig_Collator<k>::collate()
 template <uint16_t k>
 std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>* const M, Buffer<unitig_path_info_t>& buf)
 {
-    buf.reserve(P_e[b].size()); // TODO: perform one fixed resize beforehand, as the `P_e` buckets will not grow anymore.
-    const std::size_t b_sz = P_e[b].load(buf.data());
+    buf.reserve(P_e[b].data().size());  // TODO: perform one fixed resize beforehand, as the `P_e` buckets will not grow anymore.
+    const std::size_t b_sz = P_e[b].data().load(buf.data());
     assert(b_sz <= max_bucket_sz);
 
     for(std::size_t idx = 0; idx < b_sz; ++idx)

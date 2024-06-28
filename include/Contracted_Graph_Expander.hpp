@@ -4,10 +4,10 @@
 
 
 
+#include "dBG_Contractor.hpp"
 #include "Discontinuity_Graph.hpp"
 #include "Discontinuity_Edge.hpp"
 #include "Path_Info.hpp"
-#include "Ext_Mem_Bucket.hpp"
 #include "Kmer.hpp"
 #include "Kmer_Hasher.hpp"
 #include "Concurrent_Hash_Table.hpp"
@@ -39,22 +39,31 @@ private:
 
     const Discontinuity_Graph<k>& G;    // The (augmented) discontinuity graph.
 
-    std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;    // `P_v[i]` contains path-info for vertices in partition `i`.
-    std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e;  // `P_e[b]` contains path-info for edges in bucket `b`.
+    typedef typename dBG_Contractor<k>::P_v_t P_v_t;
+    typedef typename dBG_Contractor<k>::P_e_t P_e_t;
+    P_v_t& P_v; // `P_v[i]` contains path-info for vertices in partition `i`.
+    P_e_t& P_e; // `P_e[b]` contains path-info for edges in bucket `b`.
 
     const std::string compressed_diagonal_path; // Path-prefix to the edges introduced in contracting diagonal blocks.
 
     // TODO: remove `D_i` by adopting a more parallelization-amenable algorithm for diagonal contraction-expansion.
-    std::vector<Discontinuity_Edge<k>> D_i; // New edges introduced in contracted diagonal blocks.
+    Buffer<Discontinuity_Edge<k>> D_i;  // New edges introduced in contracted diagonal blocks.
 
     Concurrent_Hash_Table<Kmer<k>, Path_Info<k>, Kmer_Hasher<k>> M; // `M[v]` is the path-info for vertex `v`.
 
-    Buffer<Obj_Path_Info_Pair<Kmer<k>, k>> p_v_buf; // Buffer to read-in path-information of vertices.
+    // `P_v_ip1[w]` contains vertex path-info instances inferred by worker `w`
+    // for vertices at partition `i + 1` while processing partition `i`. This
+    // case is specialized to facilitate some non-trivial parallelization.
+    std::vector<Padded_Data<std::vector<Obj_Path_Info_Pair<Kmer<k>, k>>>> P_v_ip1;
 
 
     // Loads the available path-info of meta-vertices from partition `i` into
-    // the hash table `M`.
-    void load_path_info(std::size_t i);
+    // the buffer `p_v_buf`, and returns the number of instances loaded.
+    std::size_t load_path_info(std::size_t i, Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf);
+
+    // Fills the hash table `M` with the available path-information at buffer
+    // `p_v_buf` of size `buf_sz`, and also from `P_v_ip1`.
+    void fill_path_info(const Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf, std::size_t buf_sz);
 
     // Expands the `[i, i]`'th (contracted) edge-block.
     void expand_diagonal_block(std::size_t i);
@@ -99,7 +108,7 @@ public:
     // `P_v[i]` is to contain path-information for vertices at partition `i`,
     // and `P_e[b]` is to contain path-information for edges at bucket `b`.
     // `logistics` is the data logistics manager for the algorithm execution.
-    Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics);
+    Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, P_v_t& P_v, P_e_t& P_e, const Data_Logistics& logistics);
 
     // Expands the contracted discontinuity-graph.
     void expand();
@@ -134,7 +143,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));
 
     assert(e.b() > 0 && e.b() < P_e.size());
-    P_e[e.b()].emplace(e.b_idx(), u_inf.p(), r, o, u_inf.is_cycle());
+    P_e[e.b()].data().emplace(e.b_idx(), u_inf.p(), r, o, u_inf.is_cycle());
 }
 
 
@@ -149,7 +158,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto o = (r == 0 ? e.o() : inv_side(e.o()));
 
     assert(e.b() > 0 && e.b() < P_e.size());
-    P_e[e.b()].emplace(e.b_idx(), v_inf.p(), r, o, v_inf.is_cycle());
+    P_e[e.b()].data().emplace(e.b_idx(), v_inf.p(), r, o, v_inf.is_cycle());
 }
 
 

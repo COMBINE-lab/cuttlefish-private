@@ -4,6 +4,7 @@
 
 
 
+#include "dBG_Contractor.hpp"
 #include "State_Config.hpp"
 #include "Directed_Vertex.hpp"
 #include "Kmer.hpp"
@@ -14,8 +15,6 @@
 #include "Maximal_Unitig_Scratch.hpp"
 #include "Discontinuity_Graph.hpp"
 #include "dBG_Utilities.hpp"
-#include "Character_Buffer.hpp"
-#include "Async_Logger_Wrapper.hpp"
 #include "utility.hpp"
 #include "globals.hpp"
 #include "emhash/hash_table7.hpp"
@@ -99,8 +98,7 @@ private:
 
     typedef uint64_t label_unit_t;
 
-    typedef Async_Logger_Wrapper sink_t;
-    typedef Character_Buffer<sink_t> op_buf_t;
+    typedef typename dBG_Contractor<k>::op_buf_t op_buf_t;
     op_buf_t& op_buf;   // Output buffer for trivially maximal unitigs of the underlying dBG.
 
 

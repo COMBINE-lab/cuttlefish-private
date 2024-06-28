@@ -16,12 +16,13 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics):
+Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, P_v_t& P_v, P_e_t& P_e, const Data_Logistics& logistics):
       G(G)
     , P_v(P_v)
     , P_e(P_e)
     , compressed_diagonal_path(logistics.compressed_diagonal_path())
     , M(G.vertex_part_size_upper_bound())
+    , P_v_ip1(parlay::num_workers())
 {
     std::cerr << "Hash table capacity during expansion: " << M.capacity() << ".\n";
 }
@@ -35,73 +36,117 @@ void Contracted_Graph_Expander<k>::expand()
     double diag_exp_time = 0;   // Time taken to expand the compressed diagonal chains.
     double edge_proc_time = 0;  // Time taken to process the non-diagonal edges.
     double spec_case_time = 0;  // Time taken to process the special edge-blocks.
-    double v_inf_cp_time = 0;   // Time taken to copy worker-local vertex path-info to global repo.
-    double e_inf_cp_time = 0;   // Time taken to copy worker-local edge path-info to global repo.
-    uint64_t v_inf_c = 0;   // Count of vertices whose path-info have been inferred.
-    uint64_t e_inf_c = 0;   // Count of edges whose path-info have been inferred.
 
     Buffer<Discontinuity_Edge<k>> buf;  // Buffer to read-in edges from the edge-matrix.
 
+    Buffer<Obj_Path_Info_Pair<Kmer<k>, k>> p_v_buf; // Buffer to read-in path-information of vertices.
+    Buffer<Obj_Path_Info_Pair<Kmer<k>, k>> swap_p_v_buf;    // Path-info buffer to be used in every other iteration.
     std::size_t max_p_v_buf_sz = 0;
-    std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& P_v_i){ max_p_v_buf_sz = std::max(max_p_v_buf_sz, P_v_i.size()); });
+    std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& P_v_i){ max_p_v_buf_sz = std::max(max_p_v_buf_sz, P_v_i.data().size()); });
     p_v_buf.reserve(max_p_v_buf_sz);
-    buf.reserve(G.E().max_block_size());
+    swap_p_v_buf.reserve(max_p_v_buf_sz);
 
+    const auto max_blk_sz = G.E().max_block_size();
+    buf.resize(max_blk_sz);
+    Buffer<Discontinuity_Edge<k>> swap_buf; // Buffer to be used in every other iteration to hide edge-read latency.
+    swap_buf.resize(buf.capacity());
+
+    auto p_v_c_curr = load_path_info(1, p_v_buf);   // Count of vertex path-information instances to process in the current batch.
+    std::size_t p_v_c_next = 0; // Count of vertex path-information instances to process in the next batch.
     for(std::size_t i = 1; i <= G.E().vertex_part_count(); ++i)
     {
         std::cerr << "\rPart: " << i;
 
-        auto t_s = now();
-        M.clear();
-        auto t_e = now();
-        map_clr_time += duration(t_e - t_s);
-
-        load_path_info(i);
-
-        t_s = now();
-        expand_diagonal_block(i);
-        t_e = now();
-        diag_exp_time += duration(t_e - t_s);
-
-        const auto process_non_diagonal_edge = [&](const std::size_t idx)
-        {
-            const auto& e = buf[idx];
-
-            assert(M.find(e.x()));
-            const auto x_inf = *M.find(e.x());  // Path-information of the endpoint of the edge that is in the current partition, `i`.
-            const auto y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
-            if(y_inf.r() > 0)   // `e` is not the back-edge to the rank-1 vertex in an ICC.
+        parlay::par_do(
+            [&]()
             {
-                const auto j = G.E().partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
-                assert(j > i);
-                P_v[j].emplace(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
+                if(i == G.E().vertex_part_count())
+                    return;
+
+                auto& p_v_buf_next = ((i & 1) == 1 ? swap_p_v_buf : p_v_buf);
+                p_v_c_next = load_path_info(i + 1, p_v_buf_next);
             }
+            ,
+            [&]()
+            {
+                auto t_s = now();
+                M.clear();
+                auto t_e = now();
+                map_clr_time += duration(t_e - t_s);
 
-            if(e.w() == 1)
-                add_edge_path_info(e, x_inf, y_inf);
-        };
+                const auto& p_v_buf_cur = ((i & 1) == 1 ? p_v_buf : swap_p_v_buf);
+                fill_path_info(p_v_buf_cur, p_v_c_curr);
+                std::for_each(P_v_ip1.begin(), P_v_ip1.end(), [](auto& v){ v.data().clear(); });
 
-        while(true)
-        {
-            t_s = now();
-            const auto edge_c = G.E().read_row_buffered(i, buf);
-            if(edge_c == 0) // TODO: run a background buffered reader, that'll have the next buffer ready in time.
-                break;
-            t_e = now();
-            edge_read_time += duration(t_e - t_s);
+                t_s = now();
+                expand_diagonal_block(i);
+                t_e = now();
+                diag_exp_time += duration(t_e - t_s);
 
-            t_s = now();
-            parlay::parallel_for(0, edge_c, process_non_diagonal_edge);
-            t_e = now();
-            edge_proc_time += duration(t_e - t_s);
-        }
 
+                std::size_t batch = 0;  // Batch order of processing non-diagonal edges.
+                auto edge_c_curr = G.E().read_row_buffered(i, buf); // Count of edges to process in the current batch.
+                std::size_t edge_c_next;    // Count of edges to process in the next batch.
+                while(true)
+                {
+                    assert(edge_c_curr <= max_blk_sz);
+                    if(edge_c_curr == 0)
+                        break;
+
+                    parlay::par_do(
+                        [&]()
+                        {
+                            t_s = now();
+                            auto& buf_next = ((batch & 1) == 0 ? swap_buf : buf);   // Buffer for the next batch.
+                            edge_c_next = G.E().read_row_buffered(i, buf_next);
+                            t_e = now();
+                            edge_read_time += duration(t_e - t_s);
+                        }
+                        ,
+                        [&]()
+                        {
+                            const auto& buf_cur = ((batch & 1) == 0 ? buf : swap_buf);  // Buffer for the current batch.
+                            const auto process_non_diagonal_edge = [&](const std::size_t idx)
+                            {
+                                const auto& e = buf_cur[idx];
+
+                                assert(M.find(e.x()));
+                                const auto x_inf = *M.find(e.x());  // Path-information of the endpoint of the edge that is in the current partition, `i`.
+                                const auto y_inf = infer(x_inf, e.s_x(), e.s_y(), e.w());
+                                if(y_inf.r() > 0)   // `e` is not the back-edge to the rank-1 vertex in an ICC.
+                                {
+                                    const auto j = G.E().partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
+                                    assert(j > i);
+                                    if(j > i + 1)
+                                        P_v[j].data().emplace(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
+                                    else
+                                        P_v_ip1[parlay::worker_id()].data().emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
+                                }
+
+                                if(e.w() == 1)
+                                    add_edge_path_info(e, x_inf, y_inf);
+                            };
+
+                            t_s = now();
+                            parlay::parallel_for(0, edge_c_curr, process_non_diagonal_edge);
+                            t_e = now();
+                            edge_proc_time += duration(t_e - t_s);
+                        }
+                    );
+
+                    batch++;
+                    edge_c_curr = edge_c_next;
+                }
+            }
+        );
+
+        p_v_c_curr = p_v_c_next;
 
         // TODO: consider making the following two blocks more efficient.
 
-        t_s = now();
+        auto t_s = now();
         const auto diag_blk_sz = G.E().read_diagonal_block(i, buf);
-        t_e = now();
+        auto t_e = now();
         edge_read_time += duration(t_e - t_s);
 
         t_s = now();
@@ -150,25 +195,28 @@ void Contracted_Graph_Expander<k>::expand()
     std::cerr << "Map filling time: " << map_fill_time << ".\n";
     std::cerr << "Non-diagonal blocks expansion time: " << edge_proc_time << ".\n";
     std::cerr << "Diagonal block expansion time: " << diag_exp_time << ".\n";
-    std::cerr << "Vertex path-info copy time: " << v_inf_cp_time << ".\n";
-    std::cerr << "Edge path-info copy time: " << e_inf_cp_time << ".\n";
     std::cerr << "Special case time: " << spec_case_time << ".\n";
-
-    std::cerr << "Inferred vertex-information instance: " << v_inf_c << ".\n";
-    std::cerr << "Inferred edge-information instance:   " << e_inf_c << ".\n";
 }
 
 
 template <uint16_t k>
-void Contracted_Graph_Expander<k>::load_path_info(const std::size_t i)
+std::size_t Contracted_Graph_Expander<k>::load_path_info(const std::size_t i, Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf)
 {
-    auto t_s = now();
-    p_v_buf.reserve(P_v[i].size());
-    P_v[i].load(p_v_buf.data());
-    auto t_e = now();
+    const auto t_s = now();
+    const auto sz = P_v[i].data().size();
+    p_v_buf.reserve(sz);
+    P_v[i].data().load(p_v_buf.data());
+    const auto t_e = now();
     p_v_load_time += duration(t_e - t_s);
 
-    t_s = now();
+    return sz;
+}
+
+
+template <uint16_t k>
+void Contracted_Graph_Expander<k>::fill_path_info(const Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf, const std::size_t buf_sz)
+{
+    const auto t_s = now();
     const auto load_vertex_info = [&](const std::size_t idx)
     {
         const auto& p_v = p_v_buf[idx];
@@ -176,9 +224,18 @@ void Contracted_Graph_Expander<k>::load_path_info(const std::size_t i)
             assert(*M.find(p_v.obj()) == p_v.path_info());
     };
 
-    parlay::parallel_for(0, P_v[i].size(), load_vertex_info);
+    parlay::parallel_for(0, buf_sz, load_vertex_info);
 
-    t_e = now();
+    parlay::parallel_for(0, parlay::num_workers(),
+        [&](const std::size_t w_id)
+        {
+            for(const auto& p_v : P_v_ip1[w_id].data())
+                if(!M.insert(p_v.obj(), p_v.path_info()))
+                    assert(*M.find(p_v.obj()) == p_v.path_info());
+        }
+    );
+
+    const auto t_e = now();
     map_fill_time += duration(t_e - t_s);
 }
 
@@ -187,9 +244,9 @@ template <uint16_t k>
 void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
 {
     const std::string d_i_path(compressed_diagonal_path + "_" + std::to_string(i));
-    std::error_code ec;
-    const auto file_sz = std::filesystem::file_size(d_i_path, ec);
-    D_i.resize(file_sz / sizeof(Discontinuity_Edge<k>));
+    const auto file_sz = file_size(d_i_path);
+    const auto edge_c = file_sz / sizeof(Discontinuity_Edge<k>);
+    D_i.reserve(edge_c);
 
     const auto t_s = now();
     std::ifstream input(d_i_path);
@@ -206,9 +263,9 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
     edge_read_time += duration(t_e - t_s);
 
     Path_Info<k> x_inf, y_inf;
-    for(auto d_it = D_i.rbegin(); d_it != D_i.rend(); ++d_it)   // In reverse order of the newly introduced diagonal-edges to always ensure one endpoint having path-info ready.
+    for(int64_t idx = edge_c - 1; idx >= 0; --idx)  // In reverse order of the newly introduced diagonal-edges to always ensure one endpoint having path-info ready.
     {
-        const auto& e = *d_it;
+        const auto& e = D_i[idx];
         assert(M.find(e.x()) || M.find(e.y()));
 
         if(!M.find(e.y(), y_inf))
