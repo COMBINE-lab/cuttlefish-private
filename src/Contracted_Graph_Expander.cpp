@@ -16,7 +16,7 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics):
+Contracted_Graph_Expander<k>::Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, P_v_t& P_v, P_e_t& P_e, const Data_Logistics& logistics):
       G(G)
     , P_v(P_v)
     , P_e(P_e)
@@ -36,17 +36,13 @@ void Contracted_Graph_Expander<k>::expand()
     double diag_exp_time = 0;   // Time taken to expand the compressed diagonal chains.
     double edge_proc_time = 0;  // Time taken to process the non-diagonal edges.
     double spec_case_time = 0;  // Time taken to process the special edge-blocks.
-    double v_inf_cp_time = 0;   // Time taken to copy worker-local vertex path-info to global repo.
-    double e_inf_cp_time = 0;   // Time taken to copy worker-local edge path-info to global repo.
-    uint64_t v_inf_c = 0;   // Count of vertices whose path-info have been inferred.
-    uint64_t e_inf_c = 0;   // Count of edges whose path-info have been inferred.
 
     Buffer<Discontinuity_Edge<k>> buf;  // Buffer to read-in edges from the edge-matrix.
 
     Buffer<Obj_Path_Info_Pair<Kmer<k>, k>> p_v_buf; // Buffer to read-in path-information of vertices.
     Buffer<Obj_Path_Info_Pair<Kmer<k>, k>> swap_p_v_buf;    // Path-info buffer to be used in every other iteration.
     std::size_t max_p_v_buf_sz = 0;
-    std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& P_v_i){ max_p_v_buf_sz = std::max(max_p_v_buf_sz, P_v_i.size()); });
+    std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& P_v_i){ max_p_v_buf_sz = std::max(max_p_v_buf_sz, P_v_i.data().size()); });
     p_v_buf.reserve(max_p_v_buf_sz);
     swap_p_v_buf.reserve(max_p_v_buf_sz);
 
@@ -122,7 +118,7 @@ void Contracted_Graph_Expander<k>::expand()
                                     const auto j = G.E().partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
                                     assert(j > i);
                                     if(j > i + 1)
-                                        P_v[j].emplace(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
+                                        P_v[j].data().emplace(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
                                     else
                                         P_v_ip1[parlay::worker_id()].data().emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
                                 }
@@ -199,12 +195,7 @@ void Contracted_Graph_Expander<k>::expand()
     std::cerr << "Map filling time: " << map_fill_time << ".\n";
     std::cerr << "Non-diagonal blocks expansion time: " << edge_proc_time << ".\n";
     std::cerr << "Diagonal block expansion time: " << diag_exp_time << ".\n";
-    std::cerr << "Vertex path-info copy time: " << v_inf_cp_time << ".\n";
-    std::cerr << "Edge path-info copy time: " << e_inf_cp_time << ".\n";
     std::cerr << "Special case time: " << spec_case_time << ".\n";
-
-    std::cerr << "Inferred vertex-information instance: " << v_inf_c << ".\n";
-    std::cerr << "Inferred edge-information instance:   " << e_inf_c << ".\n";
 }
 
 
@@ -212,9 +203,9 @@ template <uint16_t k>
 std::size_t Contracted_Graph_Expander<k>::load_path_info(const std::size_t i, Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf)
 {
     const auto t_s = now();
-    const auto sz = P_v[i].size();
+    const auto sz = P_v[i].data().size();
     p_v_buf.reserve(sz);
-    P_v[i].load(p_v_buf.data());
+    P_v[i].data().load(p_v_buf.data());
     const auto t_e = now();
     p_v_load_time += duration(t_e - t_s);
 

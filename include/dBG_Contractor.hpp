@@ -34,8 +34,11 @@ public:
     typedef Obj_Path_Info_Pair<Kmer<k>, k> vertex_path_info_t;  // A vertex and its path-info.
     typedef Obj_Path_Info_Pair<uni_idx_t, k> unitig_path_info_t;    // A locally-maximal unitig's index in its bucket and its path-info.
 
-    typedef std::vector<Ext_Mem_Bucket_Concurrent<vertex_path_info_t>> P_v_t;
-    typedef std::vector<Ext_Mem_Bucket_Concurrent<unitig_path_info_t>> P_e_t;
+    typedef Ext_Mem_Bucket_Concurrent<vertex_path_info_t> p_v_bucket_t;
+    typedef Ext_Mem_Bucket_Concurrent<unitig_path_info_t> p_e_bucket_t;
+
+    typedef std::vector<Padded_Data<p_v_bucket_t>> P_v_t;
+    typedef std::vector<Padded_Data<p_e_bucket_t>> P_e_t;
 
     typedef Async_Logger_Wrapper sink_t;
     typedef Character_Buffer<sink_t> op_buf_t;

@@ -39,8 +39,10 @@ private:
 
     const Discontinuity_Graph<k>& G;    // The (augmented) discontinuity graph.
 
-    std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v;    // `P_v[i]` contains path-info for vertices in partition `i`.
-    std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e;  // `P_e[b]` contains path-info for edges in bucket `b`.
+    typedef typename dBG_Contractor<k>::P_v_t P_v_t;
+    typedef typename dBG_Contractor<k>::P_e_t P_e_t;
+    P_v_t& P_v; // `P_v[i]` contains path-info for vertices in partition `i`.
+    P_e_t& P_e; // `P_e[b]` contains path-info for edges in bucket `b`.
 
     const std::string compressed_diagonal_path; // Path-prefix to the edges introduced in contracting diagonal blocks.
 
@@ -106,7 +108,7 @@ public:
     // `P_v[i]` is to contain path-information for vertices at partition `i`,
     // and `P_e[b]` is to contain path-information for edges at bucket `b`.
     // `logistics` is the data logistics manager for the algorithm execution.
-    Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<Kmer<k>, k>>>& P_v, std::vector<Ext_Mem_Bucket_Concurrent<Obj_Path_Info_Pair<uni_idx_t, k>>>& P_e, const Data_Logistics& logistics);
+    Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, P_v_t& P_v, P_e_t& P_e, const Data_Logistics& logistics);
 
     // Expands the contracted discontinuity-graph.
     void expand();
@@ -141,7 +143,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));
 
     assert(e.b() > 0 && e.b() < P_e.size());
-    P_e[e.b()].emplace(e.b_idx(), u_inf.p(), r, o, u_inf.is_cycle());
+    P_e[e.b()].data().emplace(e.b_idx(), u_inf.p(), r, o, u_inf.is_cycle());
 }
 
 
@@ -156,7 +158,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto o = (r == 0 ? e.o() : inv_side(e.o()));
 
     assert(e.b() > 0 && e.b() < P_e.size());
-    P_e[e.b()].emplace(e.b_idx(), v_inf.p(), r, o, v_inf.is_cycle());
+    P_e[e.b()].data().emplace(e.b_idx(), v_inf.p(), r, o, v_inf.is_cycle());
 }
 
 

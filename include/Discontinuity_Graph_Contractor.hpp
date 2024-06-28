@@ -171,7 +171,7 @@ inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v,
 {
     assert(w > 0);
     assert(part < P_v.size());
-    P_v[part].emplace(v, v, w, inv_side(s), is_cycle);  // The path-traversal enters `v` through its the side `s`.
+    P_v[part].data().emplace(v, v, w, inv_side(s), is_cycle);   // The path-traversal enters `v` through its the side `s`.
 }
 
 }
