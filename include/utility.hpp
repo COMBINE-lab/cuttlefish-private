@@ -40,6 +40,12 @@ std::size_t file_size(const std::string& file_path);
 // `path` with its name being prefixed by `prefix`.
 bool file_prefix_exists(const std::string& path, const std::string& prefix);
 
+// Loads the binary file at path `file_path` and returns its size in bytes.
+std::size_t load_file(const char* file_path, char* buf);
+
+// Loads the binary file at path `file_path` and returns its size in bytes.
+std::size_t load_file(const std::string& file_path, char* buf);
+
 // Returns a string that is a copy of `s` but has all the whitespaces removed.
 std::string remove_whitespaces(const char* s);
 

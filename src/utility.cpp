@@ -69,6 +69,29 @@ bool file_prefix_exists(const std::string& path, const std::string& prefix)
 }
 
 
+std::size_t load_file(const char* const file_path, char* const buf)
+{
+    std::ifstream input(file_path, std::ios::in | std::ios::binary);
+    const auto sz = file_size(file_path);
+    input.read(buf, sz);
+    input.close();
+
+    if(!input)
+    {
+        std::cerr << "Error reading of from file at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    return sz;
+}
+
+
+std::size_t load_file(const std::string& file_path, char* const buf)
+{
+    return load_file(file_path.data(), buf);
+}
+
+
 std::string remove_whitespaces(const char* s)
 {
     std::string str;

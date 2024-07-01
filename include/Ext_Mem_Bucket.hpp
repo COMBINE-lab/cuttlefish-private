@@ -15,7 +15,6 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <filesystem>
 #include <utility>
 #include <cstdlib>
 #include <algorithm>
@@ -217,24 +216,12 @@ inline void Ext_Mem_Bucket<T_>::serialize()
 template <typename T_>
 inline void Ext_Mem_Bucket<T_>::load(std::vector<T_>& v) const
 {
-    std::error_code ec;
-    const auto file_sz = std::filesystem::file_size(file_path, ec);
-
+    const auto file_sz = file_size(file_path);
     assert(file_sz % sizeof(T_) == 0);
     assert(file_sz / sizeof(T_) + in_mem_size == size_);
 
     v.resize(size_);
-
-    std::ifstream input(file_path);
-    input.read(reinterpret_cast<char*>(v.data()), file_sz);
-    input.close();
-
-    if(ec || !input)
-    {
-        std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-
+    load_file(file_path, v.data());
 
     assert(in_mem_size < max_buf_elems);
     std::memcpy(reinterpret_cast<char*>(v.data()) + file_sz, reinterpret_cast<const char*>(buf), in_mem_size * sizeof(T_));
@@ -244,21 +231,7 @@ inline void Ext_Mem_Bucket<T_>::load(std::vector<T_>& v) const
 template <typename T_>
 inline std::size_t Ext_Mem_Bucket<T_>::load(T_* b) const
 {
-    std::error_code ec;
-    const auto file_sz = std::filesystem::file_size(file_path);
-
-    assert(file_sz % sizeof(T_) == 0);
-    assert(file_sz / sizeof(T_) + in_mem_size == size_);
-
-    std::ifstream input(file_path);
-    input.read(reinterpret_cast<char*>(b), file_sz);
-    input.close();
-
-    if(ec || !input)
-    {
-        std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
+    const auto file_sz = load_file(file_path, reinterpret_cast<char*>(b));
 
     assert(in_mem_size < max_buf_elems);
     std::memcpy(reinterpret_cast<char*>(b) + file_sz, reinterpret_cast<const char*>(buf), in_mem_size * sizeof(T_));
@@ -435,13 +408,10 @@ inline void Ext_Mem_Bucket_Concurrent<T_>::load(std::vector<T_>& v) const
     v.resize(sz);
 
     // Load from the bucket-file.
-    std::ifstream input(file_path, std::ios::in | std::ios::binary);
-    input.read(reinterpret_cast<char*>(v.data()), flushed * sizeof(T_));
-    if(!input)
-    {
-        std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
+
+    const auto file_sz = load_file(file_path, reinterpret_cast<char*>(v.data()));
+    assert(file_sz == flushed * sizeof(T_));
+    (void)file_sz;
 
     // Load the elements pending in the worker-local buffers.
 
@@ -462,13 +432,10 @@ inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::load(T_* b) const
     std::size_t sz = flushed;
 
     // Load from the bucket-file.
-    std::ifstream input(file_path, std::ios::in | std::ios::binary);
-    input.read(reinterpret_cast<char*>(b), flushed * sizeof(T_));
-    if(!input)
-    {
-        std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
+
+    const auto file_sz = load_file(file_path, reinterpret_cast<char*>(b));
+    assert(file_sz == flushed * sizeof(T_));
+    (void)file_sz;
 
     // Load the elements pending in the worker-local buffers.
 
