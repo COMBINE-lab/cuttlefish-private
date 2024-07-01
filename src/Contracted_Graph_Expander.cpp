@@ -251,7 +251,7 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
     const auto t_s = now();
     std::ifstream input(d_i_path);
     input.read(reinterpret_cast<char*>(D_i.data()), file_sz);
-    assert(input.gcount() == file_sz);
+    assert(static_cast<std::size_t>(input.gcount()) == file_sz);
     input.close();
     if(!input)
     {
