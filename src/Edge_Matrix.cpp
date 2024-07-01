@@ -26,15 +26,10 @@ Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
     }
 
     edge_matrix.resize(part_count + 1);
-    lock.resize(part_count + 1);
     for(std::size_t i = 0; i <= part_count; ++i)
-    {
         for(std::size_t j = 0; j <= part_count; ++j)
             j < i ? edge_matrix[i].emplace_back() :
                     edge_matrix[i].emplace_back(bucket_file_path(i, j));
-
-        std::vector<Spin_Lock>(part_count + 1).swap(lock[i]);
-    }
 
     for(std::size_t i = 1; i <= part_count; ++i)
         col_to_read[i] = i + 1;
