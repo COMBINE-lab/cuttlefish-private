@@ -55,9 +55,15 @@ Unitig_Collator<k>::Unitig_Collator(const P_e_t& P_e, const Data_Logistics& logi
 template <uint16_t k>
 void Unitig_Collator<k>::collate()
 {
+    const auto t_0 = timer::now();
     map();
 
+    const auto t_1 = timer::now();
+    std::cerr << "Time taken in mapping: " << timer::duration(t_1 - t_0) << "s.\n";
+
     reduce();
+    const auto t_2 = timer::now();
+    std::cerr << "Time taken in reduction: " << timer::duration(t_2 - t_1) << "s.\n";
 
     // TODO: print meta-information over the maximal unitigs'.
 }
