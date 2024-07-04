@@ -118,7 +118,8 @@ const std::string concat_strings(const std::vector<std::string>& s, const std::s
 
 bool remove_file(const std::string& file_path)
 {
-    return std::filesystem::remove(file_path);
+    std::error_code ec;
+    return std::filesystem::remove(file_path, ec);
 }
 
 
