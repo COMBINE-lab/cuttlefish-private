@@ -120,7 +120,7 @@ void Unitig_Collator<k>::map()
         const auto bucket_path = lmtig_buckets_path + "_" + std::to_string(b);
         assert(file_exists(bucket_path));
         Unitig_File_Reader unitig_reader(bucket_path);
-        std::string unitig; // Read-off unitig. TODO: use better-suited container.
+        Buffer<char> unitig;    // Read-off unitig.
         uni_idx_t idx = 0;  // The unitig's sequential ID in the bucket.
         std::size_t uni_len;    // The unitig's length in bases.
         for(; (uni_len = unitig_reader.read_next_unitig(unitig)) > 0; idx++)
@@ -130,9 +130,7 @@ void Unitig_Collator<k>::map()
             const auto mapped_b_id = XXH3_64bits(&p, sizeof(p)) & (max_unitig_bucket_count - 1); // Hashed maximal unitig bucket.
             // TODO: use `wyhash`.
 
-            lock[mapped_b_id].lock();
             max_unitig_bucket[mapped_b_id].data().add(M[idx], unitig.data(), uni_len);
-            lock[mapped_b_id].unlock();
         }
 
         assert(idx == b_sz);
@@ -189,6 +187,7 @@ void Unitig_Collator<k>::reduce()
 
         const auto b_sz = max_unitig_bucket[b].data().load_coords(U);
         const auto len = max_unitig_bucket[b].data().load_labels(L);
+        max_unitig_bucket[b].data().remove();
         (void)len;
 
         std::sort(U, U + b_sz);
