@@ -95,6 +95,9 @@ public:
 
     // Returns the maximum block-size of the matrix.
     std::size_t max_block_size() const;
+
+    // Removes the `[i, j]`'th block.
+    void remove_block(std::size_t i, std::size_t j);
 };
 
 

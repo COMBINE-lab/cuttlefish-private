@@ -43,7 +43,7 @@ template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::finalize()
 {
     const auto close_bucket = [&B = subgraph_bucket](const std::size_t g_id) { B[g_id].data().close(); };
-    parlay::parallel_for(0, graph_count_, close_bucket, 1);
+    parlay::parallel_for(0, graph_count_, close_bucket);
 }
 
 
@@ -70,6 +70,7 @@ void Subgraphs_Manager<k, Colored_>::process()
 
     std::vector<Padded_Data<double>> t_construction(parlay::num_workers(), 0);  // Timer-per-worker for construction work.
     std::vector<Padded_Data<double>> t_contraction(parlay::num_workers(), 0);   // Timer-per-worker for contraction work.
+    std::vector<Padded_Data<double>> t_bucket_rm(parlay::num_workers(), 0); // Timer-per-worker for super k-mer bucket removal.
     std::vector<Padded_Data<uint64_t>> max_kmer_count(parlay::num_workers(), 0);    // Largest k-mer bucket size per worker.
     std::vector<Padded_Data<uint64_t>> min_kmer_count(parlay::num_workers(), std::numeric_limits<uint64_t>::max()); // Smallest k-mer bucket size per worker.
     std::vector<Padded_Data<std::size_t>> size(parlay::num_workers(), 0);   // Sum graph size processed per worker.
@@ -79,14 +80,17 @@ void Subgraphs_Manager<k, Colored_>::process()
     const auto process_subgraph =
         [&](const std::size_t graph_id)
         {
-            const auto t_0 = timer::now();
-            Subgraph<k, false> sub_dBG(subgraph_bucket[graph_id].data(), G, op_buf[parlay::worker_id()].data(), subgraphs_space);
+            auto& b = subgraph_bucket[graph_id].data();
 
+            const auto t_0 = timer::now();
+            Subgraph<k, false> sub_dBG(b, G, op_buf[parlay::worker_id()].data(), subgraphs_space);
             sub_dBG.construct();
             // sub_dBG.construct_loop_filtered();
             const auto t_1 = timer::now();
-            // sub_dBG.contract();  // Perf-diagnose.
+            b.remove();
             const auto t_2 = timer::now();
+            // sub_dBG.contract();  // Perf-diagnose.
+            const auto t_3 = timer::now();
 
             auto& max_kmer_c = max_kmer_count[parlay::worker_id()].data();
             auto& min_kmer_c = min_kmer_count[parlay::worker_id()].data();
@@ -106,7 +110,8 @@ void Subgraphs_Manager<k, Colored_>::process()
                 std::cerr << "\rSolved " << solved << " subgraphs.";
 
             t_construction[parlay::worker_id()].data() += timer::duration(t_1 - t_0);
-            t_contraction[parlay::worker_id()].data()  += timer::duration(t_2 - t_1);
+            t_bucket_rm[parlay::worker_id()].data() += timer::duration(t_2 - t_1);
+            t_contraction[parlay::worker_id()].data()  += timer::duration(t_3 - t_2);
         };
 
     parlay::parallel_for(0, graph_count_, process_subgraph, 1);
@@ -116,6 +121,7 @@ void Subgraphs_Manager<k, Colored_>::process()
         { double t = 0; std::for_each(T.cbegin(), T.cend(), [&t](const auto& v){ t += v.data(); }); return t; };
     std::cerr << "Total work in graph construction: " << sum_time(t_construction) << " (s).\n";
     std::cerr << "Total work in graph contraction:  " << sum_time(t_contraction) << " (s).\n";
+    std::cerr << "Total work in bucket removal:     " << sum_time(t_bucket_rm) << " (s).\n";
 
     std::cerr << "Maximum k-mer count in bucket: " <<
         [&](){  std::size_t max_sz = 0;

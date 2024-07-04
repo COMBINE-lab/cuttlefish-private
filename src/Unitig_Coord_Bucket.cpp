@@ -35,6 +35,14 @@ std::size_t Unitig_Coord_Bucket<k>::load_labels(char* const buf) const
     return len;
 }
 
+
+template <uint16_t k>
+void Unitig_Coord_Bucket<k>::remove()
+{
+    coord_bucket.remove();
+    label_bucket.remove();
+}
+
 }
 
 

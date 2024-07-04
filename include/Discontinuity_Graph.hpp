@@ -57,6 +57,9 @@ public:
     // Returns the edge-matrix of the graph.
     const Edge_Matrix<k>& E() const { return E_; }
 
+    // Returns the edge-matrix of the graph.
+    Edge_Matrix<k>& E() { return E_; }
+
     // Returns the number of potential phantom edges identified.
     uint64_t phantom_edge_upper_bound() const;
 

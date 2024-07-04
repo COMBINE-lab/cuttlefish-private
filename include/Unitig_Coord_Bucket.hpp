@@ -109,6 +109,9 @@ public:
     // Loads the concatenated label string of the entire bucket into `buf`, and
     // returns its length.
     std::size_t load_labels(char* buf) const;
+
+    // Removes the bucket.
+    void remove();
 };
 
 

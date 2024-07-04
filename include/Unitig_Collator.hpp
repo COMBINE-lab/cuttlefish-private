@@ -33,7 +33,7 @@ private:
     typedef typename dBG_Contractor<k>::unitig_path_info_t unitig_path_info_t;
 
     typedef typename dBG_Contractor<k>::P_e_t P_e_t;
-    const P_e_t& P_e;   // `P_e[b]` contains path-info for edges in bucket `b`.
+    P_e_t& P_e; // `P_e[b]` contains path-info for edges in bucket `b`.
 
     const std::string lmtig_buckets_path;   // Path-prefix to the lm-tig buckets.
     const std::string unitig_coord_buckets_path;    // Path-prefix to the unitig-coordinate buckets produced in map-reduce.
@@ -72,7 +72,7 @@ public:
     // manager for the algorithm execution. Worker-specific maximal unitigs are
     // written to the buffers in `op_buf`. `gmtig_bucket_count` many buckets
     // are used to partition the lm-tigs to their maximal unitigs.
-    Unitig_Collator(const P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf, std::size_t gmtig_bucket_count);
+    Unitig_Collator(P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf, std::size_t gmtig_bucket_count);
 
     // Collates the locally-maximal unitigs into global ones.
     void collate();

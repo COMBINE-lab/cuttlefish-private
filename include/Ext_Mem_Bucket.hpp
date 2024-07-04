@@ -37,7 +37,7 @@ public:
     const std::size_t max_buf_bytes;    // Maximum size of the in-memory write-buffer in bytes.
     const std::size_t max_buf_elems;    // Maximum size of the in-memory write-buffer in elements.
 
-    T_* const buf;  // In-memory buffer of the bucket-elements.
+    T_* buf;    // In-memory buffer of the bucket-elements.
     std::size_t size_;  // Number of elements added to the bucket.
 
     std::size_t in_mem_size;    // Number of elements in the in-memory buffer.
@@ -96,6 +96,9 @@ public:
 
     // Loads the bucket into `b` and returns its size.
     std::size_t load(T_* b) const;
+
+    // Removes the bucket.
+    void remove();
 };
 
 
@@ -132,7 +135,7 @@ inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(Ext_Mem_Bucket&& rhs):
     , file(std::move(rhs.file))
 {
     // Moved objects are not really moved in C++.
-    const_cast<T_*&>(rhs.buf) = nullptr;    // NOLINT(cppcoreguidelines-pro-type-const-cast)
+    rhs.buf = nullptr;
 }
 
 
@@ -240,6 +243,24 @@ inline std::size_t Ext_Mem_Bucket<T_>::load(T_* b) const
 }
 
 
+template <typename T_>
+inline void Ext_Mem_Bucket<T_>::remove()
+{
+    if(!file_path.empty())
+    {
+        file.close();
+        if(!file || !remove_file(file_path))
+        {
+            std::cerr << "Error removing file at " << file_path << ". Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+    }
+
+    deallocate(buf);
+    buf = nullptr;
+}
+
+
 
 // A concurrent external-memory bucket for elements of type `T_`.
 template <typename T_>
@@ -304,6 +325,9 @@ public:
     // space allocated for all the bucket elements. It is safe only when the
     // bucket is not being updated, otherwise runs the risk of data races.
     std::size_t load(T_* b) const;
+
+    // Removes the bucket.
+    void remove();
 };
 
 
@@ -450,6 +474,24 @@ inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::load(T_* b) const
     }
 
     return sz;
+}
+
+
+template <typename T_>
+inline void Ext_Mem_Bucket_Concurrent<T_>::remove()
+{
+    if(!file_path.empty())
+    {
+        file.close();
+        if(!file || !remove_file(file_path))
+        {
+            std::cerr << "Error removing file at " << file_path << ". Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+    }
+
+
+    std::for_each(buf_w_local.begin(), buf_w_local.end(), [](auto& w_buf){ force_free(w_buf.data()); });
 }
 
 }

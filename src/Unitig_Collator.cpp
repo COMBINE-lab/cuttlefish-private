@@ -28,7 +28,7 @@ namespace cuttlefish
 {
 
 template <uint16_t k>
-Unitig_Collator<k>::Unitig_Collator(const P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf, const std::size_t gmtig_bucket_count):
+Unitig_Collator<k>::Unitig_Collator(P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf, const std::size_t gmtig_bucket_count):
       P_e(P_e)
     , lmtig_buckets_path(logistics.lmtig_buckets_path())
     , unitig_coord_buckets_path(logistics.unitig_coord_buckets_path())
@@ -106,6 +106,7 @@ void Unitig_Collator<k>::map()
 
         const auto b_sz = load_path_info(b, M, buf);
         edge_c += b_sz;
+        P_e[b].data().remove();
 
 #ifndef NDEBUG
         uint64_t h = 0;
@@ -116,8 +117,9 @@ void Unitig_Collator<k>::map()
 #endif
 
 
-        assert(file_exists(lmtig_buckets_path + "_" + std::to_string(b)));
-        Unitig_File_Reader unitig_reader(lmtig_buckets_path + "_" + std::to_string(b));
+        const auto bucket_path = lmtig_buckets_path + "_" + std::to_string(b);
+        assert(file_exists(bucket_path));
+        Unitig_File_Reader unitig_reader(bucket_path);
         std::string unitig; // Read-off unitig. TODO: use better-suited container.
         uni_idx_t idx = 0;  // The unitig's sequential ID in the bucket.
         std::size_t uni_len;    // The unitig's length in bases.
@@ -134,6 +136,7 @@ void Unitig_Collator<k>::map()
         }
 
         assert(idx == b_sz);
+        unitig_reader.remove_files();
     };
 
     parlay::parallel_for(1, P_e.size(), map_to_max_unitig_bucket, 1);

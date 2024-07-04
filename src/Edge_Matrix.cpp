@@ -154,6 +154,13 @@ std::size_t Edge_Matrix<k>::max_block_size() const
     return max_sz;
 }
 
+
+template <uint16_t k>
+void Edge_Matrix<k>::remove_block(const std::size_t i, const std::size_t j)
+{
+    edge_matrix[i][j].remove();
+}
+
 }
 
 

@@ -26,7 +26,7 @@ dBG_Contractor<k>::dBG_Contractor(const Build_Params& params):
     cuttlefish::State_Config::set_edge_threshold(params.cutoff());
     std::cerr << "Edge frequency cutoff: " << params.cutoff() << ".\n";
 
-    // TODO: no need to instantiate `P_v` and `P_e` right away—waste of working memory.
+    // TODO: no need to instantiate `G`, `P_v`, and `P_e` right away—waste of working memory.
 
     const auto p_v_path_pref = logistics.vertex_path_info_buckets_path();
     P_v.reserve(params.vertex_part_count() + 1);

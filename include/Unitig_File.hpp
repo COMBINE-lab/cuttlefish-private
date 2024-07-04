@@ -120,6 +120,9 @@ public:
     // Reads the next unitig into `unitig` and returns its length iff there were
     // unitigs remaining to be read. Returns 0 otherwise.
     template <typename T_> std::size_t read_next_unitig(T_& unitig);
+
+    // Removes the unitig-files.
+    void remove_files();
 };
 
 
