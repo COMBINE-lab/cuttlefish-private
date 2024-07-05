@@ -9,7 +9,6 @@
 #include "Kmer_Hasher.hpp"
 #include "Discontinuity_Edge.hpp"
 #include "Discontinuity_Graph.hpp"
-#include "Path_Info.hpp"
 #include "Concurrent_Hash_Table.hpp"
 #include "utility.hpp"
 
@@ -17,7 +16,6 @@
 #include <cstddef>
 #include <vector>
 #include <string>
-#include <unordered_map>
 #include <atomic>
 #include <cassert>
 
@@ -72,7 +70,6 @@ private:
     void form_meta_vertex(Kmer<k> v, std::size_t part, side_t s, weight_t w, bool is_cycle = false);
 
     // Debug
-    std::size_t meta_v_c = 0;
     double edge_read_time = 0;  // Time taken to read the edges.
 
     static constexpr auto now = std::chrono::high_resolution_clock::now;    // Current time-point in nanoseconds.

@@ -189,6 +189,8 @@ void Discontinuity_Graph_Contractor<k>::contract()
     std::cerr << "\n";
 
 
+    uint64_t meta_v_c = 0;
+    std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& b){ meta_v_c += b.data().size(); });
     std::cerr << "Formed " << meta_v_c << " meta-vertices.\n";
     std::cerr << "Found " << icc_count << " ICCs.\n";
     std::cerr << "Found " << phantom_count_ << " phantoms.\n";
