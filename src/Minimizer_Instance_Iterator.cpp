@@ -36,7 +36,7 @@ Minimizer_Instance_Iterator<std::FILE*>::Minimizer_Instance_Iterator(const Minim
 
     if(other.buffer != nullptr)
     {
-        buffer = static_cast<Minimizer_Instance*>(std::malloc(buf_sz * sizeof(Minimizer_Instance)));
+        buffer = allocate<Minimizer_Instance>(buf_sz);
         std::memcpy(buffer, other.buffer, buf_sz * sizeof(Minimizer_Instance));
     }
 }
@@ -44,7 +44,7 @@ Minimizer_Instance_Iterator<std::FILE*>::Minimizer_Instance_Iterator(const Minim
 
 Minimizer_Instance_Iterator<std::FILE*>::~Minimizer_Instance_Iterator()
 {
-    std::free(buffer);
+    deallocate(buffer);
 }
 
 
