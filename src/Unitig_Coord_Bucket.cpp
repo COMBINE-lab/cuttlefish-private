@@ -165,3 +165,4 @@ void Unitig_Coord_Bucket_Concurrent<k>::remove()
 
 // Template-instantiations for the required instances.
 ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Unitig_Coord_Bucket)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Unitig_Coord_Bucket_Concurrent)

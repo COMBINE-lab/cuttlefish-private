@@ -261,7 +261,7 @@ inline std::size_t Unitig_File_Reader::read_next_unitig(T_& unitig)
 
 
     const auto len = uni_len[uni_idx_in_mem];
-    unitig.resize(len);
+    unitig.reserve(len);
     std::memcpy(unitig.data(), buf.data() + buf_idx, len * sizeof(decltype(buf)::value_type));
 
     buf_idx += len;

@@ -2,7 +2,6 @@
 #include "Unitig_Collator.hpp"
 #include "Unitig_File.hpp"
 #include "Kmer.hpp"
-#include "Spin_Lock.hpp"
 #include "dBG_Utilities.hpp"
 #include "Character_Buffer.hpp"
 #include "FASTA_Record.hpp"
@@ -14,8 +13,6 @@
 
 #include <vector>
 #include <string>
-#include <tuple>
-#include <utility>
 #include <cstdlib>
 #include <algorithm>
 #include <cassert>
@@ -85,8 +82,6 @@ void Unitig_Collator<k>::map()
         }, 1);
 
 
-    // TODO: remove locks from here and just reuse concurrent ext-mem buckets.
-    std::vector<Spin_Lock> lock(max_unitig_bucket_count);   // Locks for maximal-unitig buckets.
     max_unitig_bucket.reserve(max_unitig_bucket_count);
     for(std::size_t i = 0; i < max_unitig_bucket_count; ++i)
         max_unitig_bucket.emplace_back(unitig_coord_buckets_path + "_" + std::to_string(i));
