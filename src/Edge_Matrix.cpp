@@ -58,7 +58,7 @@ void Edge_Matrix<k>::read_diagonal_block(const std::size_t j, std::vector<Discon
 template <uint16_t k>
 std::size_t Edge_Matrix<k>::read_diagonal_block(const std::size_t j, Buffer<Discontinuity_Edge<k>>& buf) const
 {
-    buf.reserve(edge_matrix[j][j].size());
+    buf.reserve_uninit(edge_matrix[j][j].size());
     return edge_matrix[j][j].load(buf.data());
 }
 
@@ -70,7 +70,7 @@ std::size_t Edge_Matrix<k>::read_column_buffered(const std::size_t j, Buffer<Dis
         return 0;
 
     const auto to_read = edge_matrix[row_to_read[j]][j].size();
-    buf.reserve(to_read);
+    buf.reserve_uninit(to_read);
     const auto read = edge_matrix[row_to_read[j]][j].load(buf.data());
     assert(read == to_read);
     row_to_read[j]++;
@@ -86,7 +86,7 @@ std::size_t Edge_Matrix<k>::read_row_buffered(const std::size_t i, Buffer<Discon
         return 0;
 
     const auto to_read = edge_matrix[i][col_to_read[i]].size();
-    buf.reserve(to_read);
+    buf.reserve_uninit(to_read);
     const auto read = edge_matrix[i][col_to_read[i]].load(buf.data());
     assert(read == to_read);
     col_to_read[i]++;
@@ -99,7 +99,7 @@ template <uint16_t k>
 std::size_t Edge_Matrix<k>::read_block(std::size_t i, std::size_t j, Buffer<Discontinuity_Edge<k>>& buf) const
 {
     assert(i <= vertex_part_count_ && j <= vertex_part_count_);
-    buf.reserve(edge_matrix[i][j].size());
+    buf.reserve_uninit(edge_matrix[i][j].size());
     return edge_matrix[i][j].load(buf.data());
 }
 

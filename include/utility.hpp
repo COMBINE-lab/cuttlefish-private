@@ -235,10 +235,11 @@ public:
 
     // Ensures that the buffer have space for at least `new_cap` elements. No
     // guarantees are made for the existing elements.
-    void reserve(const std::size_t new_cap) { cap_ = allocate_geometric(buf_, cap_, new_cap); }
+    void reserve_uninit(const std::size_t new_cap) { cap_ = allocate_geometric(buf_, cap_, new_cap); }
 
-    // Resizes the buffer to have capacity `cap`.
-    void resize(const std::size_t cap) { deallocate(buf_); buf_ = allocate<T_>(cap); cap_ = cap; }
+    // Resizes the buffer to have capacity `cap`. No guarantees are made for
+    // the existing elements.
+    void resize_uninit(const std::size_t cap) { deallocate(buf_); buf_ = allocate<T_>(cap); cap_ = cap; }
 };
 
 

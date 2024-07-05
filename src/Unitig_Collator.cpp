@@ -78,7 +78,7 @@ void Unitig_Collator<k>::map()
     parlay::parallel_for(0, parlay::num_workers(),
         [&](const std::size_t w_id)
         {
-            M_vec[w_id].data().resize(max_bucket_sz);   // TODO: thread-local allocation suits best here.
+            M_vec[w_id].data().resize_uninit(max_bucket_sz);   // TODO: thread-local allocation suits best here.
         }, 1);
 
 
@@ -166,8 +166,8 @@ void Unitig_Collator<k>::reduce()
         [&](const std::size_t w_id)
         {
             // TODO: thread-local allocations here suit best.
-            U_vec[w_id].data().resize(max_max_uni_b_sz);
-            L_vec[w_id].data().resize(max_max_uni_b_label_len);
+            U_vec[w_id].data().resize_uninit(max_max_uni_b_sz);
+            L_vec[w_id].data().resize_uninit(max_max_uni_b_label_len);
         }, 1);
 
     // TODO: add per-worker progress tracker.
@@ -267,7 +267,7 @@ void Unitig_Collator<k>::reduce()
 template <uint16_t k>
 std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>* const M, Buffer<unitig_path_info_t>& buf)
 {
-    buf.reserve(P_e[b].data().size());  // TODO: perform one fixed resize beforehand, as the `P_e` buckets will not grow anymore.
+    buf.reserve_uninit(P_e[b].data().size());  // TODO: perform one fixed resize beforehand, as the `P_e` buckets will not grow anymore.
     const std::size_t b_sz = P_e[b].data().load(buf.data());
     assert(b_sz <= max_bucket_sz);
 

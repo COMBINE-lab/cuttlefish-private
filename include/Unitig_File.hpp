@@ -119,7 +119,7 @@ public:
 
     // Reads the next unitig into `unitig` and returns its length iff there were
     // unitigs remaining to be read. Returns 0 otherwise.
-    template <typename T_> std::size_t read_next_unitig(T_& unitig);
+    std::size_t read_next_unitig(Buffer<char>& unitig);
 
     // Removes the unitig-files.
     void remove_files();
@@ -224,8 +224,7 @@ inline void Unitig_File_Writer::flush_lengths()
 }
 
 
-template <typename T_>
-inline std::size_t Unitig_File_Reader::read_next_unitig(T_& unitig)
+inline std::size_t Unitig_File_Reader::read_next_unitig(Buffer<char>& unitig)
 {
     if(buf_idx == buf.size())   // Buffer has been parsed completely; try a re-read.
     {
@@ -261,7 +260,7 @@ inline std::size_t Unitig_File_Reader::read_next_unitig(T_& unitig)
 
 
     const auto len = uni_len[uni_idx_in_mem];
-    unitig.reserve(len);
+    unitig.reserve_uninit(len);
     std::memcpy(unitig.data(), buf.data() + buf_idx, len * sizeof(decltype(buf)::value_type));
 
     buf_idx += len;

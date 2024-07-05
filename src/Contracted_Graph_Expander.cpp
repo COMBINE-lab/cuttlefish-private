@@ -42,13 +42,13 @@ void Contracted_Graph_Expander<k>::expand()
     Buffer<Obj_Path_Info_Pair<Kmer<k>, k>> swap_p_v_buf;    // Path-info buffer to be used in every other iteration.
     std::size_t max_p_v_buf_sz = 0;
     std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& P_v_i){ max_p_v_buf_sz = std::max(max_p_v_buf_sz, P_v_i.data().size()); });
-    p_v_buf.reserve(max_p_v_buf_sz);
-    swap_p_v_buf.reserve(max_p_v_buf_sz);
+    p_v_buf.reserve_uninit(max_p_v_buf_sz);
+    swap_p_v_buf.reserve_uninit(max_p_v_buf_sz);
 
     const auto max_blk_sz = G.E().max_block_size();
-    buf.resize(max_blk_sz);
+    buf.resize_uninit(max_blk_sz);
     Buffer<Discontinuity_Edge<k>> swap_buf; // Buffer to be used in every other iteration to hide edge-read latency.
-    swap_buf.resize(buf.capacity());
+    swap_buf.resize_uninit(buf.capacity());
 
     const auto v_part_c = G.E().vertex_part_count();    // Number of vertex-partitions.
     auto p_v_c_curr = load_path_info(1, p_v_buf);   // Count of vertex path-information instances to process in the current batch.
@@ -239,7 +239,7 @@ std::size_t Contracted_Graph_Expander<k>::load_path_info(const std::size_t i, Bu
 {
     const auto t_s = now();
     const auto sz = P_v[i].data().size();
-    p_v_buf.reserve(sz);
+    p_v_buf.reserve_uninit(sz);
     P_v[i].data().load(p_v_buf.data());
     const auto t_e = now();
     p_v_load_time += duration(t_e - t_s);
@@ -281,7 +281,7 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
     const std::string d_i_path(compressed_diagonal_path + "_" + std::to_string(i));
     const auto file_sz = file_size(d_i_path);
     const auto edge_c = file_sz / sizeof(Discontinuity_Edge<k>);
-    D_i.reserve(edge_c);
+    D_i.reserve_uninit(edge_c);
 
     const auto t_s = now();
     std::ifstream input(d_i_path);
