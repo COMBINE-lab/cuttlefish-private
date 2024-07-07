@@ -10,7 +10,7 @@
 
 #include <cstdint>
 #include <cstddef>
-#include <vector>
+#include <string>
 #include <fstream>
 #include <iostream>
 #include <cstdlib>
@@ -28,13 +28,12 @@ private:
     // binding when a string with length  larger than that is added).
     static constexpr std::size_t cap_ = 100 * 1024ULL;
 
-    // TODO: replace with a custom-container.
-    std::vector<char> buffer;   // The character buffer.
+    std::string buf;    // The character buffer.
     T_sink_& sink;  // Reference to the sink to flush the buffer content to.
 
 
-    // Ensures that `buffer` has enough space for additional `append_size`
-    // number of bytes, using flush and allocation as necessary.
+    // Ensures that the buffer has enough space for additional `append_size`
+    // number of bytes, using flush if required.
     void ensure_space(std::size_t append_size);
 
     // Flushes the buffer content to the sink, and clears the buffer.
@@ -88,6 +87,8 @@ public:
 // Since the sole purpose of the class is to support the `Character_Buffer` class
 // circumvent some contraint, everything is encapsulated in its specializations
 // as private, with `Character_Buffer` as friend.
+// TODO: remove this entire class as multi-specializations are not used, which
+// was its sole purpose.
 template <typename T_sink_>
 class Character_Buffer_Flusher
 {};
@@ -106,8 +107,8 @@ private:
     static Spin_Lock lock;
 
 
-    // Writes the content of the vector `buf` to the sink `sink`.
-    static void write(std::vector<char>& buf, std::ofstream& sink);
+    // Writes the content of `buf` to the sink `sink`.
+    static void write(const std::string& buf, std::ofstream& sink);
 };
 
 
@@ -118,11 +119,11 @@ class Character_Buffer_Flusher<Async_Logger_Wrapper>
 
 private:
 
-    // Writes the content of the vector `buf` to the sink `sink`. Note that the vector
+    // Writes the content of `buf` to the sink `sink`. Note that
     // `buf` is modified in the process — a null-terminator (`\0`) is appended at the
     // end — which is expected to be not problematic under the assumption that the
     // buffer is cleared after the write (i.e. flush).
-    static void write(std::vector<char>& buf, const Async_Logger_Wrapper& sink);
+    static void write(std::string& buf, const Async_Logger_Wrapper& sink);
 };
 
 
@@ -130,7 +131,7 @@ template <typename T_sink_>
 inline Character_Buffer<T_sink_>::Character_Buffer(T_sink_& sink):
     sink(sink)
 {
-    buffer.reserve(cap_);
+    buf.reserve(cap_);
 }
 
 
@@ -139,10 +140,7 @@ template <typename T_container_>
 inline void Character_Buffer<T_sink_>::operator+=(const T_container_& str)
 {
     ensure_space(str.size());
-
-    // `std::memcpy` at the end of `buffer` does not update the size of the vector `buffer`.
-    // TODO: this generates `memmove` under the hood, which is ~2x slower to `memcpy`.
-    buffer.insert(buffer.end(), str.begin(), str.end());
+    buf.append(str.begin(), str.end());
 }
 
 
@@ -152,10 +150,10 @@ inline void Character_Buffer<T_sink_>::operator+=(const FASTA_Record<T_container
 {
     ensure_space(fasta_rec.header_size() + 1 + fasta_rec.seq_size() + 1);   // Two extra bytes for the line-breaks.
 
-    fasta_rec.append_header(buffer);    // Append the header.
-    buffer.emplace_back('\n');  // Break line.
-    fasta_rec.append_seq(buffer);   // Append the sequence.
-    buffer.emplace_back('\n');  // Break line.
+    fasta_rec.append_header(buf);   // Append the header.
+    buf.push_back('\n');    // Break line.
+    fasta_rec.append_seq(buf);  // Append the sequence.
+    buf.push_back('\n');    // Break line.
 }
 
 
@@ -165,52 +163,41 @@ inline void Character_Buffer<T_sink_>::rotate_append_cycle(const FASTA_Record<T_
 {
     ensure_space(fasta_rec.header_size() + 1 + fasta_rec.seq_size() + 1);   // Two extra bytes for two line-breaks.
 
-    fasta_rec.append_header(buffer);    // Append the header.
-    buffer.emplace_back('\n');  // Break line.
-    fasta_rec.template append_rotated_cycle<k>(buffer, pivot);  // Append the sequence right-rotated around index `pivot`.
-    buffer.emplace_back('\n');  // End the sequence.
-}
-
-
-template <typename T_sink_>
-inline const char* Character_Buffer<T_sink_>::suffix(const std::size_t len) const
-{
-    return buffer.data() + (buffer.size() - len);
+    fasta_rec.append_header(buf);   // Append the header.
+    buf.push_back('\n');    // Break line.
+    fasta_rec.template append_rotated_cycle<k>(buf, pivot); // Append the sequence right-rotated around index `pivot`.
+    buf.push_back('\n');    // End the sequence.
 }
 
 
 template <typename T_sink_>
 inline void Character_Buffer<T_sink_>::ensure_space(const std::size_t append_size)
 {
-    if(buffer.size() + append_size >= cap_) // Using `>=` since for async logging, a `\0` is inserted at the end of `buffer`.
-    {
+    if(buf.size() + append_size >= cap_)    // Using `>=` since for async logging, a `\0` is inserted at the end of `buffer`.
         flush();
-        
-        if(append_size >= cap_)
-        {
-            // std::cerr <<    "A single output string overflows the string-buffer capacity.\n"
-            //                 "Output string length: " << str.size() << ", string-buffer capacity: " << CAPACITY << ".\n"
-            //                 "Please consider increasing the buffer capacity parameter in build for future use.\n";
-            
-            buffer.reserve(append_size);    // TODO: fix it—thrashing possible with adversarial `append_size` sequence.
-        }
-    }
+}
+
+
+template <typename T_sink_>
+inline const char* Character_Buffer<T_sink_>::suffix(const std::size_t len) const
+{
+    return buf.data() + (buf.size() - len);
 }
 
 
 template <typename T_sink_>
 inline void Character_Buffer<T_sink_>::flush()
 {
-    Character_Buffer_Flusher<T_sink_>::write(buffer, sink);
+    Character_Buffer_Flusher<T_sink_>::write(buf, sink);
 
-    buffer.clear();
+    buf.clear();
 }
 
 
 template <typename T_sink_>
 inline void Character_Buffer<T_sink_>::close()
 {
-    if(!buffer.empty())
+    if(!buf.empty())
         flush();
 }
 
@@ -222,7 +209,7 @@ inline Character_Buffer<T_sink_>::~Character_Buffer()
 }
 
 
-inline void Character_Buffer_Flusher<std::ofstream>::write(std::vector<char>& buf, std::ofstream& output)
+inline void Character_Buffer_Flusher<std::ofstream>::write(const std::string& buf, std::ofstream& output)
 {
     lock.lock();
 
@@ -237,9 +224,9 @@ inline void Character_Buffer_Flusher<std::ofstream>::write(std::vector<char>& bu
 }
 
 
-inline void Character_Buffer_Flusher<Async_Logger_Wrapper>::write(std::vector<char>& buf, const Async_Logger_Wrapper& sink)
+inline void Character_Buffer_Flusher<Async_Logger_Wrapper>::write(std::string& buf, const Async_Logger_Wrapper& sink)
 {
-    buf.emplace_back('\0');
+    buf.push_back('\0');
 
     sink.write(buf.data());
 }
