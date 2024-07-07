@@ -100,7 +100,7 @@ public:
     const FASTA_Record<std::vector<char>> fasta_rec() const;
 
     // Adds a corresponding FASTA record for the maximal unitig into `buffer`.
-    template <typename T_sink_, std::size_t CAPACITY> void add_fasta_rec_to_buffer(Character_Buffer<T_sink_, CAPACITY>& buffer) const;
+    template <typename T_sink_> void add_fasta_rec_to_buffer(Character_Buffer<T_sink_>& buffer) const;
 
     // Gets the literal label of the maximal unitig (in canonical form) into
     // `label`.
@@ -239,8 +239,8 @@ inline const FASTA_Record<std::vector<char>> Maximal_Unitig_Scratch<k>::fasta_re
 
 
 template <uint16_t k>
-template <typename T_sink_, std::size_t CAPACITY>
-inline void Maximal_Unitig_Scratch<k>::add_fasta_rec_to_buffer(Character_Buffer<T_sink_, CAPACITY>& buffer) const
+template <typename T_sink_>
+inline void Maximal_Unitig_Scratch<k>::add_fasta_rec_to_buffer(Character_Buffer<T_sink_>& buffer) const
 {
     if(is_linear())
         buffer += fasta_rec();
