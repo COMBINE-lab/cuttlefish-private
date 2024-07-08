@@ -1,9 +1,6 @@
 
 #include "Unitig_Collator.hpp"
 #include "Unitig_File.hpp"
-#include "Kmer.hpp"
-#include "dBG_Utilities.hpp"
-#include "Character_Buffer.hpp"
 #include "FASTA_Record.hpp"
 #include "Data_Logistics.hpp"
 #include "globals.hpp"
@@ -11,8 +8,10 @@
 #include "parlay/parallel.h"
 #include "xxHash/xxh3.h"
 
+#include <iostream>
 #include <vector>
 #include <string>
+#include <string_view>
 #include <cstdlib>
 #include <algorithm>
 #include <cassert>
@@ -123,7 +122,7 @@ void Unitig_Collator<k>::map()
             assert(idx < b_sz);
             const auto p = M[idx].p();  // Path-ID of this unitig.
             const auto mapped_b_id = XXH3_64bits(&p, sizeof(p)) & (max_unitig_bucket_count - 1); // Hashed maximal unitig bucket.
-            // TODO: use `wyhash`.
+            // TODO: use `wyhash`. Result: buckets mapped with wyhash (seed = 0) is unbalanced af. Unreliable.
 
             max_unitig_bucket[mapped_b_id].data().add(M[idx], unitig.data(), uni_len);
         }
@@ -187,12 +186,11 @@ void Unitig_Collator<k>::reduce()
 
         std::sort(U, U + b_sz);
 
-
-        std::string max_unitig, max_u_rc;
+        Maximal_Unitig_Label m_tig;
         std::size_t i, j;
         for(i = 0; i < b_sz; i = j)
         {
-            max_unitig.clear();
+            m_tig.clear();
 
             const bool is_cycle = U[i].is_cycle();
             const std::size_t s = i;
@@ -209,50 +207,36 @@ void Unitig_Collator<k>::reduce()
             {
                 assert(U[s].r() == 0); assert(U[s + 1].r() == 0);
 
-                std::string u0(L + U[s].label_idx(), U[s].label_len());
-                std::string u1(L + U[s + 1].label_idx(), U[s + 1].label_len());
+                const std::string_view u0(L + U[s].label_idx(), U[s].label_len());
+                const std::string_view u1(L + U[s + 1].label_idx(), U[s + 1].label_len());
 
-                if(U[s].o() == side_t::front)
-                    reverse_complement(u0);
+                const bool rc_0 = (U[s].o() == side_t::front);
+                bool rc_1 = (U[s + 1].o() == side_t::front);
 
-                if(U[s + 1].o() == side_t::front)
-                    reverse_complement(u1);
+                rc_1 = !rc_1;
 
-                reverse_complement(u1);
-                max_unitig = u0 + std::string(u1.begin() + k, u1.end());
+                m_tig.init(u0, rc_0);
+                m_tig.append(u1, rc_1);
             }
             else
                 for(j = s; j < e; ++j)
                 {
-                    std::string u_label(L + U[j].label_idx(), U[j].label_len());
-                    if(U[j].o() == side_t::front)
-                        reverse_complement(u_label);
+                    const std::string_view u(L + U[j].label_idx(), U[j].label_len());
+                    const bool rc = (U[j].o() == side_t::front);
 
-                    max_unitig += (max_unitig.empty() ? u_label : std::string(u_label.begin() + k, u_label.end()));
+                    m_tig.empty() ? m_tig.init(u, rc) : m_tig.append(u, rc);
                 }
 
 
+            // Cyclic maximal unitig traversals start and end at the same vertex, so one copy needs to be removed.
             if(is_cycle)
-                max_unitig.pop_back();  // Cyclic maximal unitig traversals start and end at the same vertex, so one copy needs to be removed.
+                m_tig.pop_back();
 
 
-            max_u_rc = max_unitig;
-            reverse_complement(max_u_rc);
-            if(is_cycle)
-            {
-                Kmer<k> min_f, min_r;
-                const auto min_idx_f = min_kmer(max_unitig, min_f);
-                const auto min_idx_r = min_kmer(max_u_rc, min_r);
-                if(min_f < min_r)
-                    max_unitig = std::string(max_unitig.cbegin() + min_idx_f, max_unitig.cend()) + std::string(max_unitig.cbegin() + k - 1, max_unitig.cbegin() + min_idx_f + k - 1);
-                else
-                    max_unitig = std::string(max_u_rc.cbegin() + min_idx_r, max_u_rc.cend()) + std::string(max_u_rc.cbegin() + k - 1, max_u_rc.cbegin() + min_idx_r + k - 1);
-            }
-            else if(max_unitig > max_u_rc)
-                max_unitig = max_u_rc;
+            is_cycle ? m_tig.canonicalize_cycle(): m_tig.canonicalize();
 
             // TODO: decide record-ID choice.
-            output += FASTA_Record(0, max_unitig);
+            output += FASTA_Record(0, std::string_view(m_tig.data(), m_tig.size()));
 
             j = e;
         }
@@ -280,27 +264,6 @@ std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>
     }
 
     return b_sz;
-}
-
-
-template <uint16_t k>
-std::size_t Unitig_Collator<k>::min_kmer(const std::string& s, Kmer<k>& min)
-{
-    Kmer<k> kmer(s), dummy;
-    std::size_t min_idx = 0;
-    min = kmer;
-
-    std::size_t curr_idx = 1;
-    while(curr_idx + k <= s.length())
-    {
-        kmer.roll_to_next_kmer(s[curr_idx + k - 1], dummy);
-        if(min > kmer)
-            min = kmer, min_idx = curr_idx;
-
-        curr_idx++;
-    }
-
-    return min_idx;
 }
 
 }
