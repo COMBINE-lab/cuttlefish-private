@@ -15,7 +15,6 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include <filesystem>
 #include <utility>
 #include <cstdlib>
 #include <algorithm>
@@ -38,7 +37,7 @@ public:
     const std::size_t max_buf_bytes;    // Maximum size of the in-memory write-buffer in bytes.
     const std::size_t max_buf_elems;    // Maximum size of the in-memory write-buffer in elements.
 
-    T_* const buf;  // In-memory buffer of the bucket-elements.
+    T_* buf;    // In-memory buffer of the bucket-elements.
     std::size_t size_;  // Number of elements added to the bucket.
 
     std::size_t in_mem_size;    // Number of elements in the in-memory buffer.
@@ -97,6 +96,9 @@ public:
 
     // Loads the bucket into `b` and returns its size.
     std::size_t load(T_* b) const;
+
+    // Removes the bucket.
+    void remove();
 };
 
 
@@ -133,7 +135,7 @@ inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(Ext_Mem_Bucket&& rhs):
     , file(std::move(rhs.file))
 {
     // Moved objects are not really moved in C++.
-    const_cast<T_*&>(rhs.buf) = nullptr;    // NOLINT(cppcoreguidelines-pro-type-const-cast)
+    rhs.buf = nullptr;
 }
 
 
@@ -217,24 +219,12 @@ inline void Ext_Mem_Bucket<T_>::serialize()
 template <typename T_>
 inline void Ext_Mem_Bucket<T_>::load(std::vector<T_>& v) const
 {
-    std::error_code ec;
-    const auto file_sz = std::filesystem::file_size(file_path, ec);
-
+    const auto file_sz = file_size(file_path);
     assert(file_sz % sizeof(T_) == 0);
     assert(file_sz / sizeof(T_) + in_mem_size == size_);
 
     v.resize(size_);
-
-    std::ifstream input(file_path);
-    input.read(reinterpret_cast<char*>(v.data()), file_sz);
-    input.close();
-
-    if(ec || !input)
-    {
-        std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-
+    load_file(file_path, v.data());
 
     assert(in_mem_size < max_buf_elems);
     std::memcpy(reinterpret_cast<char*>(v.data()) + file_sz, reinterpret_cast<const char*>(buf), in_mem_size * sizeof(T_));
@@ -244,26 +234,30 @@ inline void Ext_Mem_Bucket<T_>::load(std::vector<T_>& v) const
 template <typename T_>
 inline std::size_t Ext_Mem_Bucket<T_>::load(T_* b) const
 {
-    std::error_code ec;
-    const auto file_sz = std::filesystem::file_size(file_path);
-
-    assert(file_sz % sizeof(T_) == 0);
-    assert(file_sz / sizeof(T_) + in_mem_size == size_);
-
-    std::ifstream input(file_path);
-    input.read(reinterpret_cast<char*>(b), file_sz);
-    input.close();
-
-    if(ec || !input)
-    {
-        std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
+    const auto file_sz = load_file(file_path, reinterpret_cast<char*>(b));
 
     assert(in_mem_size < max_buf_elems);
     std::memcpy(reinterpret_cast<char*>(b) + file_sz, reinterpret_cast<const char*>(buf), in_mem_size * sizeof(T_));
 
     return size_;
+}
+
+
+template <typename T_>
+inline void Ext_Mem_Bucket<T_>::remove()
+{
+    if(!file_path.empty())
+    {
+        file.close();
+        if(!file || !remove_file(file_path))
+        {
+            std::cerr << "Error removing file at " << file_path << ". Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+    }
+
+    deallocate(buf);
+    buf = nullptr;
 }
 
 
@@ -331,6 +325,9 @@ public:
     // space allocated for all the bucket elements. It is safe only when the
     // bucket is not being updated, otherwise runs the risk of data races.
     std::size_t load(T_* b) const;
+
+    // Removes the bucket.
+    void remove();
 };
 
 
@@ -435,13 +432,10 @@ inline void Ext_Mem_Bucket_Concurrent<T_>::load(std::vector<T_>& v) const
     v.resize(sz);
 
     // Load from the bucket-file.
-    std::ifstream input(file_path, std::ios::in | std::ios::binary);
-    input.read(reinterpret_cast<char*>(v.data()), flushed * sizeof(T_));
-    if(!input)
-    {
-        std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
+
+    const auto file_sz = load_file(file_path, reinterpret_cast<char*>(v.data()));
+    assert(file_sz == flushed * sizeof(T_));
+    (void)file_sz;
 
     // Load the elements pending in the worker-local buffers.
 
@@ -462,13 +456,10 @@ inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::load(T_* b) const
     std::size_t sz = flushed;
 
     // Load from the bucket-file.
-    std::ifstream input(file_path, std::ios::in | std::ios::binary);
-    input.read(reinterpret_cast<char*>(b), flushed * sizeof(T_));
-    if(!input)
-    {
-        std::cerr << "Error reading of external-memory bucket at " << file_path << ". Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
+
+    const auto file_sz = load_file(file_path, reinterpret_cast<char*>(b));
+    assert(file_sz == flushed * sizeof(T_));
+    (void)file_sz;
 
     // Load the elements pending in the worker-local buffers.
 
@@ -483,6 +474,24 @@ inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::load(T_* b) const
     }
 
     return sz;
+}
+
+
+template <typename T_>
+inline void Ext_Mem_Bucket_Concurrent<T_>::remove()
+{
+    if(!file_path.empty())
+    {
+        file.close();
+        if(!file || !remove_file(file_path))
+        {
+            std::cerr << "Error removing file at " << file_path << ". Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+    }
+
+
+    std::for_each(buf_w_local.begin(), buf_w_local.end(), [](auto& w_buf){ force_free(w_buf.data()); });
 }
 
 }

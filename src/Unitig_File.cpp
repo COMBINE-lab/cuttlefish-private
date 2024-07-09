@@ -1,6 +1,8 @@
 
 #include "Unitig_File.hpp"
 
+#include <cstdlib>
+
 
 namespace cuttlefish
 {
@@ -9,9 +11,11 @@ Unitig_File_Writer::Unitig_File_Writer(const std::string& file_path):
       file_path(file_path)
     , total_sz(0)
     , unitig_c(0)
-    , output(file_path)
-    , output_len(length_file_path())
-{}
+{
+    if(!file_path.empty())
+        output.open(file_path, std::ios::out | std::ios::binary),
+        output_len.open(length_file_path(), std::ios::out | std::ios::binary);
+}
 
 
 void Unitig_File_Writer::close()
@@ -40,6 +44,16 @@ Unitig_File_Reader::Unitig_File_Reader(const std::string& file_path):
 {}
 
 
+void Unitig_File_Reader::remove_files()
+{
+    if(!remove_file(file_path) || !remove_file(length_file_path()))
+    {
+        std::cerr << "Error removing file(s) at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+}
+
+
 Unitig_Write_Distributor::Unitig_Write_Distributor(const std::string& path_pref, const std::size_t writer_count, const std::size_t worker_count):
       writer_count(writer_count)
     , worker_count(worker_count)
@@ -47,7 +61,8 @@ Unitig_Write_Distributor::Unitig_Write_Distributor(const std::string& path_pref,
     , next_writer(worker_count, 0)
 {
     assert(writer_count >= worker_count);
-    for(std::size_t b = 0; b <= writer_count; ++b)
+    writer.emplace_back(std::string()); // Edge-partition 0 is symbolic, for edges that do not have any associated lm-tig (i.e. has weight > 1).
+    for(std::size_t b = 1; b <= writer_count; ++b)
         writer.emplace_back(path_pref + "_" + std::to_string(b));
 }
 

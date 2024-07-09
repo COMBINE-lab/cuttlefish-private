@@ -86,7 +86,7 @@ public:
     Kmer_Hashtable& operator=(const Kmer_Hashtable&) = delete;
     Kmer_Hashtable& operator=(Kmer_Hashtable&&) = delete;
 
-    ~Kmer_Hashtable() { std::free(T); }
+    ~Kmer_Hashtable() { deallocate(T); }
 
     // Returns the size of the hashtable.
     auto size() const { return sz; }

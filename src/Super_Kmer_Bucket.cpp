@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <utility>
+#include <cstdlib>
 
 
 namespace cuttlefish
@@ -39,6 +40,9 @@ Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs):
 template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::close()
 {
+    // TODO: no need to empty or serialize the chunks—the subsequent iteration over the bucket should
+    // handle the buffered in-memory content. This would skip #buckets many syscalls.
+
     for(std::size_t w_id = 0; w_id < parlay::num_workers(); ++w_id)
         empty_w_local_chunk(w_id);
 
@@ -49,6 +53,20 @@ void Super_Kmer_Bucket<Colored_>::close()
     }
 
     output.close();
+}
+
+
+template <bool Colored_>
+void Super_Kmer_Bucket<Colored_>::remove()
+{
+    if(output.is_open())
+        output.close();
+
+    if(!output || !remove_file(path_))
+    {
+        std::cerr << "Error removing file at " << path_ << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 

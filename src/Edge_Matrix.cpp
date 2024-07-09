@@ -26,15 +26,15 @@ Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
     }
 
     edge_matrix.resize(part_count + 1);
-    lock.resize(part_count + 1);
-    for(std::size_t i = 0; i <= part_count; ++i)
-    {
+
+    edge_matrix[0].emplace_back();
+    for(std::size_t j = 1; j <= part_count; ++j)
+        edge_matrix[0].emplace_back(bucket_file_path(0, j));
+
+    for(std::size_t i = 1; i <= part_count; ++i)
         for(std::size_t j = 0; j <= part_count; ++j)
             j < i ? edge_matrix[i].emplace_back() :
                     edge_matrix[i].emplace_back(bucket_file_path(i, j));
-
-        std::vector<Spin_Lock>(part_count + 1).swap(lock[i]);
-    }
 
     for(std::size_t i = 1; i <= part_count; ++i)
         col_to_read[i] = i + 1;
@@ -58,7 +58,7 @@ void Edge_Matrix<k>::read_diagonal_block(const std::size_t j, std::vector<Discon
 template <uint16_t k>
 std::size_t Edge_Matrix<k>::read_diagonal_block(const std::size_t j, Buffer<Discontinuity_Edge<k>>& buf) const
 {
-    buf.reserve(edge_matrix[j][j].size());
+    buf.reserve_uninit(edge_matrix[j][j].size());
     return edge_matrix[j][j].load(buf.data());
 }
 
@@ -70,7 +70,7 @@ std::size_t Edge_Matrix<k>::read_column_buffered(const std::size_t j, Buffer<Dis
         return 0;
 
     const auto to_read = edge_matrix[row_to_read[j]][j].size();
-    buf.reserve(to_read);
+    buf.reserve_uninit(to_read);
     const auto read = edge_matrix[row_to_read[j]][j].load(buf.data());
     assert(read == to_read);
     row_to_read[j]++;
@@ -86,7 +86,7 @@ std::size_t Edge_Matrix<k>::read_row_buffered(const std::size_t i, Buffer<Discon
         return 0;
 
     const auto to_read = edge_matrix[i][col_to_read[i]].size();
-    buf.reserve(to_read);
+    buf.reserve_uninit(to_read);
     const auto read = edge_matrix[i][col_to_read[i]].load(buf.data());
     assert(read == to_read);
     col_to_read[i]++;
@@ -99,7 +99,7 @@ template <uint16_t k>
 std::size_t Edge_Matrix<k>::read_block(std::size_t i, std::size_t j, Buffer<Discontinuity_Edge<k>>& buf) const
 {
     assert(i <= vertex_part_count_ && j <= vertex_part_count_);
-    buf.reserve(edge_matrix[i][j].size());
+    buf.reserve_uninit(edge_matrix[i][j].size());
     return edge_matrix[i][j].load(buf.data());
 }
 
@@ -157,6 +157,13 @@ std::size_t Edge_Matrix<k>::max_block_size() const
             max_sz = std::max(max_sz, edge_matrix[i][j].size());
 
     return max_sz;
+}
+
+
+template <uint16_t k>
+void Edge_Matrix<k>::remove_block(const std::size_t i, const std::size_t j)
+{
+    edge_matrix[i][j].remove();
 }
 
 }

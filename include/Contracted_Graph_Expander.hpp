@@ -37,7 +37,7 @@ class Contracted_Graph_Expander
 {
 private:
 
-    const Discontinuity_Graph<k>& G;    // The (augmented) discontinuity graph.
+    Discontinuity_Graph<k>& G;  // The (augmented) discontinuity graph.
 
     typedef typename dBG_Contractor<k>::P_v_t P_v_t;
     typedef typename dBG_Contractor<k>::P_e_t P_e_t;
@@ -95,6 +95,7 @@ private:
     double edge_read_time = 0;  // Time taken to read the edges.
     double map_fill_time = 0;   // Time taken to fill the hash map with already inferred vertices' path-info for a partition.
 
+    // TODO: replace w/ the general timer.
     static constexpr auto now = std::chrono::high_resolution_clock::now;    // Current time-point in nanoseconds.
 
     // Returns the equivalent time-duration in seconds from `d` nanoseconds.
@@ -108,7 +109,7 @@ public:
     // `P_v[i]` is to contain path-information for vertices at partition `i`,
     // and `P_e[b]` is to contain path-information for edges at bucket `b`.
     // `logistics` is the data logistics manager for the algorithm execution.
-    Contracted_Graph_Expander(const Discontinuity_Graph<k>& G, P_v_t& P_v, P_e_t& P_e, const Data_Logistics& logistics);
+    Contracted_Graph_Expander(Discontinuity_Graph<k>& G, P_v_t& P_v, P_e_t& P_e, const Data_Logistics& logistics);
 
     // Expands the contracted discontinuity-graph.
     void expand();

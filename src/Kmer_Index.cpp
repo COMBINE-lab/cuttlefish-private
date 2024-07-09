@@ -274,7 +274,7 @@ void Kmer_Index<k>::count_minimizer_instances()
         worker.emplace_back(
             [this, &min_inst_iter, &idx_lock]()
             {
-                min_inst_t* const min_chunk = static_cast<min_inst_t*>(std::malloc(min_buf_sz * sizeof(min_inst_t)));
+                min_inst_t* const min_chunk = allocate<min_inst_t>(min_buf_sz);
                 std::size_t buf_elem_count;
                 uint64_t h;
                 auto& mi_count = *min_inst_count_bv;
@@ -289,7 +289,7 @@ void Kmer_Index<k>::count_minimizer_instances()
                         idx_lock.unlock(h);
                     }
 
-                std::free(min_chunk);
+                deallocate(min_chunk);
             }
             );
 
@@ -333,7 +333,7 @@ void Kmer_Index<k>::get_minimizer_offsets()
         worker.emplace_back(
             [this, &min_inst_iter, &idx_lock]()
             {
-                min_inst_t* const min_chunk = static_cast<min_inst_t*>(std::malloc(min_buf_sz * sizeof(min_inst_t)));
+                min_inst_t* const min_chunk = allocate<min_inst_t>(min_buf_sz);
                 std::size_t buf_elem_count;
                 uint64_t h;
                 std::size_t offset;
@@ -355,6 +355,8 @@ void Kmer_Index<k>::get_minimizer_offsets()
 
                         m_offset[offset] = min_chunk[idx].second;
                     }
+
+                deallocate(min_chunk);
             }
         );
 
@@ -569,8 +571,8 @@ void Kmer_Index<k>::map_overflown_kmers()
             [this, kmer_file, inst_id_file]()
             {
                 auto& kmer_map = *overflow_kmer_map;
-                Kmer<k>* const kmer_buf = static_cast<Kmer<k>*>(std::malloc(buf_elem_count * sizeof(Kmer<k>)));
-                std::size_t* const inst_id_buf = static_cast<std::size_t*>(std::malloc(buf_elem_count * sizeof(std::size_t)));
+                Kmer<k>* const kmer_buf = allocate<Kmer<k>>(buf_elem_count);
+                std::size_t* const inst_id_buf = allocate<std::size_t>(buf_elem_count);
 
                 while(true)
                 {
@@ -593,8 +595,8 @@ void Kmer_Index<k>::map_overflown_kmers()
                         kmer_map[kmer_mphf->lookup(kmer_buf[i])] = inst_id_buf[i];
                 }
 
-                std::free(kmer_buf);
-                std::free(inst_id_buf);
+                deallocate(kmer_buf);
+                deallocate(inst_id_buf);
             }
         );
 

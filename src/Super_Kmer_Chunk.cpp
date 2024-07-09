@@ -53,10 +53,10 @@ void Super_Kmer_Chunk<Colored_>::deserialize(std::ifstream& is, const std::size_
     size_ = sz;
 
     is.read(reinterpret_cast<char*>(att_buf.data()), size() * sizeof(attribute_t));
-    assert(is.gcount() == size() * sizeof(attribute_t));
+    assert(static_cast<std::size_t>(is.gcount()) == size() * sizeof(attribute_t));
 
     is.read(reinterpret_cast<char*>(label_buf.data()), label_units() * sizeof(label_unit_t));
-    assert(is.gcount() == label_units() * sizeof(label_unit_t));
+    assert(static_cast<std::size_t>(is.gcount()) == label_units() * sizeof(label_unit_t));
 
     if(!is)
     {

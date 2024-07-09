@@ -50,11 +50,15 @@ endif()
 
 
 # Bundle the warning flags that we want to pass on to the compiler.
-# Disable unknown pragmas, b/c bbhash uses them extensively.
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
 set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
 set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas -Wno-pragmas)
-set(CLANG_SUPPRESS_WARNING_FLAGS -Wno-unknown-attributes)   # Warning flags to be suppressed with clang.
+
+# Warning flags to be suppressed with clang.
+set(CLANG_SUPPRESS_WARNING_FLAGS    -Wno-unknown-attributes
+                                    -Wno-nested-anon-types -Wno-gnu-anonymous-struct
+                                    -Wno-c++20-attribute-extensions
+                                    -Wno-gnu-zero-variadic-macro-arguments)
 
 if(ASAN OR MSAN OR UBSAN)
     set(SUPPRESS_WARNING_FLAGS ${SUPPRESS_WARNING_FLAGS} ${CLANG_SUPPRESS_WARNING_FLAGS})

@@ -4,6 +4,8 @@
 
 
 
+#include "utility.hpp"
+
 #include <cstddef>
 #include <cstdio>
 #include <filesystem>
@@ -72,7 +74,7 @@ inline Virtual_File<T_>::Virtual_File(const char* const file_path, const std::si
       buf_sz(buf_bytes)
     , buf_elem_count(buf_sz / sizeof(T_))
     , file_elem_count(std::filesystem::file_size(file_path) / sizeof(T_))
-    , buf(reinterpret_cast<T_*>(std::malloc(buf_sz)))
+    , buf(allocate<T_>(buf_sz))
     , chunk_start_idx(0)
     , chunk_end_idx(0)
     , fp(std::fopen(file_path, "rb"))
@@ -86,7 +88,7 @@ inline Virtual_File<T_>::Virtual_File(const char* const file_path, const std::si
 template <typename T_>
 inline Virtual_File<T_>::~Virtual_File()
 {
-    std::free(buf);
+    deallocate(buf);
 
     std::fclose(fp);
 }

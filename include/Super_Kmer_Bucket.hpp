@@ -71,6 +71,9 @@ public:
     // Closes the bucket—no more content should be added afterwards.
     void close();
 
+    // Removes the bucket.
+    void remove();
+
     // Returns an iterator over the super k-mers in the bucket. The bucket
     // should be closed before iteration.
     Iterator iterator() const;

@@ -77,7 +77,7 @@ public:
     // hash the keys in the table.
     Concurrent_Hash_Table(std::size_t max_n, double load_factor = lf_default, T_hasher_ hasher = T_hasher_());
 
-    ~Concurrent_Hash_Table() { std::free(T); }
+    ~Concurrent_Hash_Table() { deallocate(T); }
 
     // T_key_ empty_key() const { return empty_key_; }
 
@@ -172,7 +172,7 @@ inline Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Concurrent_Hash_Table(c
     , hash(hasher)
     , capacity_(ceil_pow_2(static_cast<std::size_t>(std::ceil(max_n / load_factor))))
     , idx_wrapper_mask(capacity_ - 1)
-    , T(static_cast<Key_Val_Pair*>(std::malloc(capacity_ * sizeof(Key_Val_Pair))))
+    , T(allocate<Key_Val_Pair>(capacity_))
     , lock(capacity_)
 {
     std::memset(reinterpret_cast<char*>(&empty_key_), -1, sizeof(empty_key_));

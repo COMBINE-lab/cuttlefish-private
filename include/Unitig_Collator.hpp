@@ -7,16 +7,18 @@
 #include "dBG_Contractor.hpp"
 #include "Path_Info.hpp"
 #include "Unitig_Coord_Bucket.hpp"
-#include "Output_Sink.hpp"
-#include "Async_Logger_Wrapper.hpp"
-#include "Character_Buffer.hpp"
-#include "utility"
+#include "DNA_Utility.hpp"
+#include "Directed_Vertex.hpp"
 #include "globals.hpp"
+#include "utility.hpp"
 
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <string_view>
 #include <vector>
 #include <string>
-#include <unordered_map>
+#include <cassert>
 
 
 class Data_Logistics;
@@ -36,28 +38,21 @@ private:
     typedef typename dBG_Contractor<k>::unitig_path_info_t unitig_path_info_t;
 
     typedef typename dBG_Contractor<k>::P_e_t P_e_t;
-    const P_e_t& P_e;   // `P_e[b]` contains path-info for edges in bucket `b`.
+    P_e_t& P_e; // `P_e[b]` contains path-info for edges in bucket `b`.
 
     const std::string lmtig_buckets_path;   // Path-prefix to the lm-tig buckets.
     const std::string unitig_coord_buckets_path;    // Path-prefix to the unitig-coordinate buckets produced in map-reduce.
 
-    std::size_t max_bucket_sz;  // Maximum size of the locally-maximal unitigs' buckets.
+    std::size_t max_bucket_sz;  // Maximum size of the edge-buckets.
 
-    static constexpr std::size_t max_unitig_bucket_count = 1024;    // Must be a power-of-2.
-    std::vector<Padded_Data<Unitig_Coord_Bucket<k>>> max_unitig_bucket; // Key-value collation buckets for lm-unitigs.
+    const std::size_t max_unitig_bucket_count;  // Number of buckets storing literal globally-maximal unitigs.
+    // std::vector<Padded_Data<Unitig_Coord_Bucket<k>>> max_unitig_bucket; // Key-value collation buckets for lm-unitigs.
+    std::vector<Padded_Data<Unitig_Coord_Bucket_Concurrent<k>>> max_unitig_bucket;  // Key-value collation buckets for lm-unitigs.
 
-    // TODO: remove? This is for the naive-collator.
-    Path_Info<k>* M;    // `M[idx]` is the path-info for the `idx`'th edge in some bucket.
-
-    // TODO: remove?  This is for the naive-collator.
-    unitig_path_info_t* p_e_buf;    // Buffer to read-in path-information of edges.
-
-    // TODO: move the following to some CF3-centralized location.
-
-    typedef Async_Logger_Wrapper sink_t;
-    typedef Character_Buffer<sink_t> op_buf_t;
-    typedef std::vector<Padded_Data<op_buf_t>> op_buf_list_t;
+    typedef typename dBG_Contractor<k>::op_buf_list_t op_buf_list_t;
     op_buf_list_t& op_buf;  // Worker-specific output buffers.
+
+    class Maximal_Unitig_Label;
 
 
     // Maps each locally-maximal unitig to its maximal unitig's corresponding
@@ -72,10 +67,6 @@ private:
     // information from the bucket to the table.
     std::size_t load_path_info(std::size_t b, Path_Info<k>* M, Buffer<unitig_path_info_t>& buf);
 
-    // Returns the index of the lexicographically minimum k-mer in the `s`, and
-    // puts the k-mer in `min`.
-    static std::size_t min_kmer(const std::string& s, Kmer<k>& min);
-
 
 public:
 
@@ -83,15 +74,179 @@ public:
     // at `P_e`, i.e. `P_e[b]` contains path-information of the unitigs'
     // corresponding edges at bucket `b`. `logistics` is the data logistics
     // manager for the algorithm execution. Worker-specific maximal unitigs are
-    // written to the buffers in `op_buf`.
-    Unitig_Collator(const P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf);
+    // written to the buffers in `op_buf`. `gmtig_bucket_count` many buckets
+    // are used to partition the lm-tigs to their maximal unitigs.
+    Unitig_Collator(P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf, std::size_t gmtig_bucket_count);
 
     // Collates the locally-maximal unitigs into global ones.
-    // void collate();
-
-    // Collates the locally-maximal unitigs into global ones.
-    void par_collate();
+    void collate();
 };
+
+
+// Label of a maximal unitig.
+template  <uint16_t k>
+class Unitig_Collator<k>::Maximal_Unitig_Label
+{
+private:
+
+    Buffer<char> label_;    // Label-sequence.
+    std::size_t sz; // Size of the label.
+
+    Buffer<char> cycle_buf; // Working-space to process cyclic maximal unitigs.
+
+
+    // Appends the `len_s`-length sequence `s` to the label. `RC_` specifies
+    // whether `s` needs to be reverse-complemented or not.
+    template <bool RC_> void append(const char* s, std::size_t len_s);
+
+
+public:
+
+    // Returns the label sequence.
+    auto data() const { return label_.data(); }
+
+    // Returns the size of the label.
+    auto size() const { return  sz; }
+
+    // Clears the label.
+    auto clear() { sz = 0; }
+
+    // Returns `true` iff the label is empty.
+    auto empty() const { return sz == 0; }
+
+    // Initializes the label with the sequence `unitig`. `rc` specifies whether
+    // `unitig` needs to be put in its reverse-complemented form.
+    void init(const std::string_view& unitig, bool rc);
+
+    // Appends the `k`-overlapping sequence `unitig` to the label. `rc`
+    // specifies whether `unitig` needs to be added in its reverse-
+    // complemented form.
+    void append(const std::string_view& unitig, bool rc);
+
+    // Removes the last character of the label.
+    void pop_back() { assert(sz > 0); sz--; }
+
+    // Transforms the label to its canonical form.
+    void canonicalize();
+
+    // Transforms the label to its canonical form given that the maximal unitig
+    // is a cycle.
+    void canonicalize_cycle();
+};
+
+
+template <uint16_t k>
+template <bool RC_>
+inline void Unitig_Collator<k>::Maximal_Unitig_Label::append(const char* const s, const std::size_t len_s)
+{
+    if constexpr(!RC_)
+        std::memcpy(label_.data() + sz, s, len_s);
+    else
+        for(std::size_t i = 0; i < len_s; ++i)
+            label_[sz + i] = DNA_Utility::complement(s[len_s - 1 - i]);
+
+    sz += len_s;
+}
+
+
+template <uint16_t k>
+inline void Unitig_Collator<k>::Maximal_Unitig_Label::init(const std::string_view& unitig, const bool rc)
+{
+    clear();
+
+    label_.reserve_uninit(unitig.length());
+    rc ?    append<true>(unitig.data(), unitig.length()) :
+            append<false>(unitig.data(), unitig.length());
+
+    sz = unitig.length();
+}
+
+
+template <uint16_t k>
+inline void Unitig_Collator<k>::Maximal_Unitig_Label::append(const std::string_view& unitig, const bool rc)
+{
+    label_.reserve(sz + unitig.length() - k);
+    if(!rc)
+        append<false>(unitig.data() + k, unitig.length() - k);
+    else
+        append<true>(unitig.data(), unitig.length() - k);
+}
+
+
+template <uint16_t k>
+inline void Unitig_Collator<k>::Maximal_Unitig_Label::canonicalize()
+{
+    for(std::size_t i = 0; i < k; ++i)
+    {
+        const auto b_fw = label_[i];
+        const auto b_bw = DNA_Utility::complement(label_[sz - 1 - i]);
+
+        if(b_fw < b_bw) // Already in canonical form.
+            return;
+
+        if(b_fw > b_bw) // Reverse-complement is the canonical form.
+        {
+            for(std::size_t j = 0; j < sz / 2; ++j)
+            {
+                const auto b_l = label_[j];
+                const auto b_r = label_[sz - 1 - j];
+                label_[j] = DNA_Utility::complement(b_r),
+                label_[sz - 1 - j] = DNA_Utility::complement(b_l);
+            }
+
+            if(sz & 1)
+                label_[sz / 2] = DNA_Utility::complement(label_[sz / 2]);
+
+            return;
+        }
+    }
+}
+
+
+template <uint16_t k>
+inline void Unitig_Collator<k>::Maximal_Unitig_Label::canonicalize_cycle()
+{
+    Directed_Vertex<k> v(label_.data());
+    Kmer<k> min_fw(v.kmer());   // Minimum k-mer in the forward strand.
+    Kmer<k> min_bw(v.kmer_bar());   // Minimum k-mer in the backward strand.
+    std::size_t min_idx_fw = 0;
+    std::size_t min_idx_bw = k - 1;
+
+    for(std::size_t i = 1; i + k <= sz; ++i)
+    {
+        v.roll_forward(DNA_Utility::map_base(label_[i + k - 1]));
+
+        if(min_fw > v.kmer())
+            min_fw = v.kmer(), min_idx_fw = i;
+
+        if(min_bw > v.kmer_bar())
+            min_bw = v.kmer_bar(), min_idx_bw = i + k - 1;
+    }
+
+
+    cycle_buf.reserve_uninit(sz);
+    if(min_fw < min_bw)
+    {
+        const auto len_r = sz - min_idx_fw;
+        const auto len_l = sz - len_r;
+        std::memcpy(cycle_buf.data(), label_.data() + len_l, len_r);
+        std::memcpy(cycle_buf.data() + len_r, label_.data() + k - 1, len_l);
+    }
+    else
+    {
+        const int64_t len_l = min_idx_bw + 1;
+        const int64_t len_r = sz - len_l;
+        std::size_t p = 0;
+
+        for(int64_t i = len_l - 1; i >= 0; --i)
+            cycle_buf[p++] = DNA_Utility::complement(label_[i]);
+
+        for(int64_t i = len_r - 1; i >= 0; --i)
+            cycle_buf[p++] = DNA_Utility::complement(label_[len_l + i - (k - 1)]);
+    }
+
+    std::memcpy(label_.data(), cycle_buf.data(), sz);
+}
 
 }
 

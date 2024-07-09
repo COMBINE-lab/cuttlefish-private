@@ -6,6 +6,7 @@
 
 #include "Minimizer_Instance.hpp"
 #include "Spin_Lock.hpp"
+#include "utility.hpp"
 
 #include <cstddef>
 #include <cstring>
@@ -243,7 +244,7 @@ inline std::size_t Minimizer_Instance_Iterator<std::FILE*>::next(Minimizer_Insta
 inline void Minimizer_Instance_Iterator<std::FILE*>::advance()
 {
     if(buffer == nullptr)
-        buffer = static_cast<Minimizer_Instance*>(std::malloc(buf_sz * sizeof(Minimizer_Instance)));
+        buffer = allocate<Minimizer_Instance>(buf_sz);
 
     if(buf_idx >= buf_elem_count)
     {

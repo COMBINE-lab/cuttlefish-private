@@ -40,6 +40,12 @@ std::size_t file_size(const std::string& file_path);
 // `path` with its name being prefixed by `prefix`.
 bool file_prefix_exists(const std::string& path, const std::string& prefix);
 
+// Loads the binary file at path `file_path` and returns its size in bytes.
+std::size_t load_file(const char* file_path, char* buf);
+
+// Loads the binary file at path `file_path` and returns its size in bytes.
+std::size_t load_file(const std::string& file_path, char* buf);
+
 // Returns a string that is a copy of `s` but has all the whitespaces removed.
 std::string remove_whitespaces(const char* s);
 
@@ -89,6 +95,13 @@ T_* aligned_allocate(const std::size_t size, const std::size_t alignment = 8)
     return static_cast<T_*>(std::aligned_alloc(alignment, size * sizeof(T_)));
 }
 
+// Returns pointer to a memory-reallocation for `size` elements of type `T_`.
+template <typename T_>
+T_* reallocate(T_* const ptr, const std::size_t size)
+{
+    return static_cast<T_*>(std::realloc(ptr, size * sizeof(T_)));
+}
+
 // Deallocates the pointer `ptr`, allocated with `allocate`.
 template <typename T_>
 void deallocate(T_* const ptr)
@@ -113,9 +126,10 @@ void resize_geometric(T_& container, const std::size_t sz, const double gf = 2.0
 
 // Allocates the type-`T_` container `p` that currently has space for `cur_sz`
 // elements geometrically with the growth factor `gf` such that it has enough
-// space for at least `req_sz` elements, and returns the new size.
-template <typename T_>
-std::size_t allocate_geometric(T_*& p, const std::size_t curr_sz, const std::size_t req_sz, const double gf = 2.0)
+// space for at least `req_sz` elements, and returns the new size. If `keep_`
+// is `true`, then the existing elements are kept.
+template <typename T_, bool keep_ = false>
+std::size_t reserve_geometric(T_*& p, const std::size_t curr_sz, const std::size_t req_sz, const double gf = 2.0)
 {
     assert(gf > 1.0);
 
@@ -126,8 +140,14 @@ std::size_t allocate_geometric(T_*& p, const std::size_t curr_sz, const std::siz
     while(new_sz < req_sz)
         new_sz *= gf;
 
-    deallocate(p);
-    p = allocate<T_>(new_sz);
+    if constexpr(keep_)
+        p = reallocate(p, new_sz);
+    else
+    {
+        deallocate(p);
+        p = allocate<T_>(new_sz);
+    }
+
     return new_sz;
 }
 
@@ -218,6 +238,9 @@ public:
     // Returns the memory region of the buffer.
     T_* data() { return buf_; }
 
+    // Returns the memory region of the buffer.
+    const T_* data() const { return buf_; }
+
     // Returns reference to the `idx`'th element of the buffer.
     T_& operator[](const std::size_t idx) { return buf_[idx]; }
 
@@ -229,10 +252,14 @@ public:
 
     // Ensures that the buffer have space for at least `new_cap` elements. No
     // guarantees are made for the existing elements.
-    void reserve(const std::size_t new_cap) { cap_ = allocate_geometric(buf_, cap_, new_cap); }
+    void reserve_uninit(const std::size_t new_cap) { cap_ = reserve_geometric(buf_, cap_, new_cap); }
 
-    // Resizes the buffer to have capacity `cap`.
-    void resize(const std::size_t cap) { deallocate(buf_); buf_ = allocate<T_>(cap); cap_ = cap; }
+    // Ensures that the buffer have space for at least `new_cap` elements.
+    void reserve(const std::size_t new_cap) { cap_ = reserve_geometric<T_, true>(buf_, cap_, new_cap); }
+
+    // Resizes the buffer to have capacity `cap`. No guarantees are made for
+    // the existing elements.
+    void resize_uninit(const std::size_t cap) { deallocate(buf_); buf_ = allocate<T_>(cap); cap_ = cap; }
 };
 
 

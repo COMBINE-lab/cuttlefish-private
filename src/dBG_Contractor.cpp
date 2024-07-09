@@ -26,7 +26,7 @@ dBG_Contractor<k>::dBG_Contractor(const Build_Params& params):
     cuttlefish::State_Config::set_edge_threshold(params.cutoff());
     std::cerr << "Edge frequency cutoff: " << params.cutoff() << ".\n";
 
-    // TODO: no need to instantiate `P_v` and `P_e` right away—waste of working memory.
+    // TODO: no need to instantiate `G`, `P_v`, and `P_e` right away—waste of working memory.
 
     const auto p_v_path_pref = logistics.vertex_path_info_buckets_path();
     P_v.reserve(params.vertex_part_count() + 1);
@@ -88,8 +88,8 @@ void dBG_Contractor<k>::construct()
     const auto t_e = timer::now();
     std::cerr << "Expansion of contracted graph completed. Time taken: " << timer::duration(t_e - t_c) << " seconds.\n";
 
-    Unitig_Collator<k> collator(P_e, logistics, op_buf);
-    EXECUTE("collate", collator.par_collate);
+    Unitig_Collator<k> collator(P_e, logistics, op_buf, params.gmtig_bucket_count());
+    EXECUTE("collate", collator.collate);
 
     // Flush data and close the output sink.
     parlay::parallel_for(0, parlay::num_workers(),

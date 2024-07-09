@@ -39,9 +39,9 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
     // TODO: document the phases.
 
-    buf.reserve(G.E().max_block_size());
+    buf.reserve_uninit(G.E().max_block_size());
     Buffer<Discontinuity_Edge<k>> swap_buf; // Buffer to be used in every other iteration to hide edge-read latency.
-    swap_buf.reserve(buf.capacity());
+    swap_buf.reserve_uninit(buf.capacity());
     for(auto j = G.E().vertex_part_count(); j >= 1; --j)
     {
         std::cerr << "\rPart: " << j;
@@ -189,6 +189,8 @@ void Discontinuity_Graph_Contractor<k>::contract()
     std::cerr << "\n";
 
 
+    uint64_t meta_v_c = 0;
+    std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& b){ meta_v_c += b.data().size(); });
     std::cerr << "Formed " << meta_v_c << " meta-vertices.\n";
     std::cerr << "Found " << icc_count << " ICCs.\n";
     std::cerr << "Found " << phantom_count_ << " phantoms.\n";
