@@ -37,12 +37,12 @@ public:
     typedef Ext_Mem_Bucket_Concurrent<vertex_path_info_t> p_v_bucket_t;
     typedef Ext_Mem_Bucket_Concurrent<unitig_path_info_t> p_e_bucket_t;
 
-    typedef std::vector<Padded_Data<p_v_bucket_t>> P_v_t;
-    typedef std::vector<Padded_Data<p_e_bucket_t>> P_e_t;
+    typedef std::vector<Padded<p_v_bucket_t>> P_v_t;
+    typedef std::vector<Padded<p_e_bucket_t>> P_e_t;
 
     typedef Async_Logger_Wrapper sink_t;
     typedef Character_Buffer<sink_t> op_buf_t;
-    typedef std::vector<Padded_Data<op_buf_t>> op_buf_list_t;
+    typedef std::vector<Padded<op_buf_t>> op_buf_list_t;
 
 private:
 

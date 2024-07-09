@@ -14,7 +14,7 @@ HyperLogLog::HyperLogLog():
     static_assert((1lu << log_m) == m);
 
     for(auto& M : M_w)
-        std::memset(M.data(), 0, m);
+        std::memset(M.unwrap(), 0, m);
 }
 
 
@@ -25,7 +25,7 @@ uint64_t HyperLogLog::estimate() const
 
     for(std::size_t i = 0; i < m; ++i)
         for(std::size_t w_id = 0; w_id < parlay::num_workers(); ++w_id)
-            M[i] = std::max(M[i], M_w[w_id].data()[i]);
+            M[i] = std::max(M[i], M_w[w_id].unwrap()[i]);
 
 
     double est = 0;

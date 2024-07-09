@@ -184,7 +184,7 @@ constexpr std::size_t ceil_pow_2(std::size_t x)
 // collection of `T_`'s, each element is aligned to a cache-line boundary.
 template <typename T_>
 class alignas(2 * L1_CACHE_LINE_SIZE)
-    Padded_Data
+    Padded
 {
 private:
 
@@ -193,20 +193,20 @@ private:
 
 public:
 
-    Padded_Data()
+    Padded()
     {}
 
-    Padded_Data(const T_& data):
+    Padded(const T_& data):
       data_(data)
     {}
 
-    Padded_Data(T_&& data):
+    Padded(T_&& data):
         data_(std::move(data))
     {}
 
-    T_& data() { return data_; }
+    T_& unwrap() { return data_; }
 
-    const T_& data() const { return data_; }
+    const T_& unwrap() const { return data_; }
 };
 
 

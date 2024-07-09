@@ -93,7 +93,7 @@ void dBG_Contractor<k>::construct()
 
     // Flush data and close the output sink.
     parlay::parallel_for(0, parlay::num_workers(),
-                        [&](const std::size_t idx){ op_buf[idx].data().close(); }, 1);
+                        [&](const std::size_t idx){ op_buf[idx].unwrap().close(); }, 1);
     output_sink.close_sink();
 
     const auto t_uc = timer::now();

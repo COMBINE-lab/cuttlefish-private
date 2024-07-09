@@ -47,7 +47,7 @@ private:
 
     // TODO: remove `D_j` by adopting a more parallelization-amenable algorithm for diagonal contraction-expansion.
     std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block. TODO: remove `D_j` by adding these edges to the diagonal block.
-    std::vector<Padded_Data<std::vector<Discontinuity_Edge<k>>>> D_c;   // `D_c[t]` contains the edges corresponding to compressed diagonal chains by worker `t`.
+    std::vector<Padded<std::vector<Discontinuity_Edge<k>>>> D_c;    // `D_c[t]` contains the edges corresponding to compressed diagonal chains by worker `t`.
 
     std::atomic_uint64_t phantom_count_;    // Number of phantom edges.
     std::atomic_uint64_t icc_count; // Number of ICCs.
@@ -168,7 +168,7 @@ inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v,
 {
     assert(w > 0);
     assert(part < P_v.size());
-    P_v[part].data().emplace(v, v, w, inv_side(s), is_cycle);   // The path-traversal enters `v` through its the side `s`.
+    P_v[part].unwrap().emplace(v, v, w, inv_side(s), is_cycle);   // The path-traversal enters `v` through its the side `s`.
 }
 
 }

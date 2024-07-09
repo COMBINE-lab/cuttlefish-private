@@ -397,7 +397,7 @@ template <typename T_key_, typename T_val_, typename T_hasher_>
 template <bool hash_key_set_>
 inline uint64_t Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::signature() const
 {
-    std::vector<Padded_Data<uint64_t>> sign(parlay::num_workers(), 0);
+    std::vector<Padded<uint64_t>> sign(parlay::num_workers(), 0);
 
     const auto hash =
         [&](const std::size_t idx)
@@ -405,15 +405,15 @@ inline uint64_t Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::signature() co
             if(T[idx].key != empty_key_)
             {
                 if constexpr(hash_key_set_)
-                    sign[parlay::worker_id()].data() ^= XXH3_64bits(&T[idx].key, sizeof(T[idx].key));
+                    sign[parlay::worker_id()].unwrap() ^= XXH3_64bits(&T[idx].key, sizeof(T[idx].key));
                 else
-                    sign[parlay::worker_id()].data() ^= XXH3_64bits(&T[idx].val, sizeof(T[idx].val));
+                    sign[parlay::worker_id()].unwrap() ^= XXH3_64bits(&T[idx].val, sizeof(T[idx].val));
             }
         };
 
     parlay::parallel_for(0, capacity_, hash, capacity_ / parlay::num_workers());
 
-    return std::accumulate(sign.cbegin(), sign.cend(), 0lu, [](const uint64_t r, const Padded_Data<uint64_t>& p_data){ return r ^ p_data.data(); });
+    return std::accumulate(sign.cbegin(), sign.cend(), 0lu, [](const uint64_t r, const Padded<uint64_t>& p_data){ return r ^ p_data.unwrap(); });
 }
 
 

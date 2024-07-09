@@ -43,7 +43,7 @@ private:
     const uint16_t l;   // `l`-minimizer size to partition the graph.
 
     typedef Super_Kmer_Bucket<Colored_> bucket_t;
-    std::vector<Padded_Data<bucket_t>> subgraph_bucket; // Super k-mer buckets for the subgraphs.
+    std::vector<Padded<bucket_t>> subgraph_bucket;  // Super k-mer buckets for the subgraphs.
 
     std::vector<HyperLogLog> HLL;   // `HLL[g]` is the cardinality-estimator for subgraph `g`.
 
@@ -56,7 +56,7 @@ private:
 
     typedef Async_Logger_Wrapper sink_t;
     typedef Character_Buffer<sink_t> op_buf_t;
-    typedef std::vector<Padded_Data<op_buf_t>> op_buf_list_t;
+    typedef std::vector<Padded<op_buf_t>> op_buf_list_t;
     op_buf_list_t& op_buf; // Worker-specific output buffers.
 
 
@@ -107,7 +107,7 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, 
 {
     assert(len >= k);
 
-    auto& bucket = subgraph_bucket[g].data();
+    auto& bucket = subgraph_bucket[g].unwrap();
     bucket.add(seq, len, l_disc, r_disc);
 
     auto& hll = HLL[g];

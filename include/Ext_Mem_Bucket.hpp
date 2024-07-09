@@ -276,7 +276,7 @@ private:
 
     std::size_t flushed;    // Number of elements added to the bucket and flushed to external-memory.
 
-    std::vector<Padded_Data<std::vector<T_>>> buf_w_local;  // In-memory worker-local buffers of the bucket-elements.
+    std::vector<Padded<std::vector<T_>>> buf_w_local;   // In-memory worker-local buffers of the bucket-elements.
 
     std::ofstream file; // The bucket-file.
     Spin_Lock lock_;    // Lock to the bucket-file.
@@ -351,7 +351,7 @@ inline Ext_Mem_Bucket_Concurrent<T_>::Ext_Mem_Bucket_Concurrent(const std::strin
     }
 
 
-    std::for_each(buf_w_local.begin(), buf_w_local.end(), [&](auto& v){ v.data().reserve(max_buf_elems); });
+    std::for_each(buf_w_local.begin(), buf_w_local.end(), [&](auto& v){ v.unwrap().reserve(max_buf_elems); });
 }
 
 
@@ -370,7 +370,7 @@ template <typename T_>
 inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::size() const
 {
     std::size_t in_buf_sz = 0;
-    std::for_each(buf_w_local.cbegin(), buf_w_local.cend(), [&](const auto& b){ in_buf_sz += b.data().size(); });
+    std::for_each(buf_w_local.cbegin(), buf_w_local.cend(), [&](const auto& b){ in_buf_sz += b.unwrap().size(); });
 
     return flushed + in_buf_sz;
 }
@@ -379,7 +379,7 @@ inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::size() const
 template <typename T_>
 inline void Ext_Mem_Bucket_Concurrent<T_>::add(const T_& elem)
 {
-    auto& buf = buf_w_local[parlay::worker_id()].data();
+    auto& buf = buf_w_local[parlay::worker_id()].unwrap();
     buf.push_back(elem);
 
     assert(buf.size() <= max_buf_elems);
@@ -392,7 +392,7 @@ template <typename T_>
 template <typename... Args>
 inline void Ext_Mem_Bucket_Concurrent<T_>::emplace(Args&&... args)
 {
-    auto& buf = buf_w_local[parlay::worker_id()].data();
+    auto& buf = buf_w_local[parlay::worker_id()].unwrap();
     buf.emplace_back(args...);
 
     assert(buf.size() <= max_buf_elems);
@@ -404,7 +404,7 @@ inline void Ext_Mem_Bucket_Concurrent<T_>::emplace(Args&&... args)
 template <typename T_>
 inline void Ext_Mem_Bucket_Concurrent<T_>::flush()
 {
-    auto& buf = buf_w_local[parlay::worker_id()].data();
+    auto& buf = buf_w_local[parlay::worker_id()].unwrap();
     assert(buf.size() <= max_buf_elems);
 
     lock_.lock();
@@ -442,7 +442,7 @@ inline void Ext_Mem_Bucket_Concurrent<T_>::load(std::vector<T_>& v) const
     auto curr_end = v.data() + flushed;
     for(const auto& b : buf_w_local)
     {
-        const auto buf = b.data();
+        const auto buf = b.unwrap();
         if(CF_LIKELY(!buf.empty())) // Conditional to avoid UB on `nullptr` being passed to `memcpy`.
             std::memcpy(reinterpret_cast<char*>(curr_end), reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
         curr_end += buf.size();
@@ -466,7 +466,7 @@ inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::load(T_* b) const
     auto curr_end = b + flushed;
     for(const auto& buf_w : buf_w_local)
     {
-        const auto buf = buf_w.data();
+        const auto buf = buf_w.unwrap();
         if(CF_LIKELY(!buf.empty())) // Conditional to avoid UB on `nullptr` being passed to `memcpy`.
             std::memcpy(reinterpret_cast<char*>(curr_end), reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
         curr_end += buf.size();
@@ -491,7 +491,7 @@ inline void Ext_Mem_Bucket_Concurrent<T_>::remove()
     }
 
 
-    std::for_each(buf_w_local.begin(), buf_w_local.end(), [](auto& w_buf){ force_free(w_buf.data()); });
+    std::for_each(buf_w_local.begin(), buf_w_local.end(), [](auto& w_buf){ force_free(w_buf.unwrap()); });
 }
 
 }

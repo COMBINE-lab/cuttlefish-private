@@ -54,7 +54,7 @@ private:
     // `P_v_ip1[w]` contains vertex path-info instances inferred by worker `w`
     // for vertices at partition `i + 1` while processing partition `i`. This
     // case is specialized to facilitate some non-trivial parallelization.
-    std::vector<Padded_Data<std::vector<Obj_Path_Info_Pair<Kmer<k>, k>>>> P_v_ip1;
+    std::vector<Padded<std::vector<Obj_Path_Info_Pair<Kmer<k>, k>>>> P_v_ip1;
 
 
     // Loads the available path-info of meta-vertices from partition `i` into
@@ -144,7 +144,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto o = (r == u_inf.r() ? e.o() : inv_side(e.o()));
 
     assert(e.b() > 0 && e.b() < P_e.size());
-    P_e[e.b()].data().emplace(e.b_idx(), u_inf.p(), r, o, u_inf.is_cycle());
+    P_e[e.b()].unwrap().emplace(e.b_idx(), u_inf.p(), r, o, u_inf.is_cycle());
 }
 
 
@@ -159,7 +159,7 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
     const auto o = (r == 0 ? e.o() : inv_side(e.o()));
 
     assert(e.b() > 0 && e.b() < P_e.size());
-    P_e[e.b()].data().emplace(e.b_idx(), v_inf.p(), r, o, v_inf.is_cycle());
+    P_e[e.b()].unwrap().emplace(e.b_idx(), v_inf.p(), r, o, v_inf.is_cycle());
 }
 
 

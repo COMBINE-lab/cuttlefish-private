@@ -37,13 +37,13 @@ void Parser::parse()
     // std::vector<std::atomic_uint64_t> count(5);
     std::atomic_uint64_t count(0);
     for(uint64_t t = 0; t < consumer_count; ++t)
-        consumer.emplace_back(&Parser::consume_split_super_kmers, this, std::ref(fq_chunk_pool), std::ref(fq_chunk_q), std::ref(count), std::ref(T[t].data()));
+        consumer.emplace_back(&Parser::consume_split_super_kmers, this, std::ref(fq_chunk_pool), std::ref(fq_chunk_q), std::ref(count), std::ref(T[t].unwrap()));
 
     producer.join();
     std::for_each(consumer.begin(), consumer.end(), [](auto& t){ t.join(); });
 
     timing_info t;
-    std::for_each(T.cbegin(), T.cend(), [&t](const auto& v){ t += v.data(); });
+    std::for_each(T.cbegin(), T.cend(), [&t](const auto& v){ t += v.unwrap(); });
 
     std::cerr << "Number of records: " << record_count << ".\n";
     std::cerr << "Count of super k-mers: " << count << ".\n";

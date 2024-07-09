@@ -158,7 +158,7 @@ private:
         std::string label_buf;  // Unitig-label buffer.
     } worker_buf_t;
 
-    std::vector<Padded_Data<worker_buf_t>> worker_buf;  // Buffers for unitig-coordinates and -labels from workers.
+    std::vector<Padded<worker_buf_t>> worker_buf;   // Buffers for unitig-coordinates and -labels from workers.
     static constexpr std::size_t buf_sz_th = 4 * 1024;  // Size threshold of each buffer in bytes: 4KB.
 
     std::ofstream coord_os; // External-memory output stream of the unitig-coordinates.
@@ -217,7 +217,7 @@ inline void Unitig_Coord_Bucket_Concurrent<k>::add(const Path_Info<k>& path_info
     constexpr auto max_coord_buf_elems = buf_sz_th / sizeof(Unitig_Coord<k>);
     constexpr auto max_label_buf_elems = buf_sz_th;
 
-    auto& w_buf = worker_buf[parlay::worker_id()].data();
+    auto& w_buf = worker_buf[parlay::worker_id()].unwrap();
     auto& coord_buf = w_buf.coord_buf;
     auto& label_buf = w_buf.label_buf;
 

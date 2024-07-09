@@ -41,7 +41,7 @@ Unitig_Collator<k>::Unitig_Collator(P_e_t& P_e, const Data_Logistics& logistics,
     max_bucket_sz = 0;
     std::size_t sum_bucket_sz = 0;
     std::for_each(P_e.cbegin(), P_e.cend(),
-        [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.data().size()); sum_bucket_sz += bucket.data().size(); });
+        [&](const auto& bucket){ max_bucket_sz = std::max(max_bucket_sz, bucket.unwrap().size()); sum_bucket_sz += bucket.unwrap().size(); });
 
     std::cerr << "Sum edge-bucket size: " << sum_bucket_sz << "\n";
     std::cerr << "Maximum edge-bucket size: " << max_bucket_sz << "\n";
@@ -71,13 +71,13 @@ void Unitig_Collator<k>::map()
     typedef Buffer<Path_Info<k>> map_t;
     typedef Buffer<unitig_path_info_t> buf_t;
 
-    std::vector<Padded_Data<map_t>> M_vec(parlay::num_workers());   // Worker-local DATs of edge-index to edge path-info.
-    std::vector<Padded_Data<buf_t>> buf_vec(parlay::num_workers()); // Worker-local buffers to read in edge path-info.
+    std::vector<Padded<map_t>> M_vec(parlay::num_workers());   // Worker-local DATs of edge-index to edge path-info.
+    std::vector<Padded<buf_t>> buf_vec(parlay::num_workers()); // Worker-local buffers to read in edge path-info.
 
     parlay::parallel_for(0, parlay::num_workers(),
         [&](const std::size_t w_id)
         {
-            M_vec[w_id].data().resize_uninit(max_bucket_sz);   // TODO: thread-local allocation suits best here.
+            M_vec[w_id].unwrap().resize_uninit(max_bucket_sz);   // TODO: thread-local allocation suits best here.
         }, 1);
 
 
@@ -95,12 +95,12 @@ void Unitig_Collator<k>::map()
     [&](const std::size_t b)
     {
         const auto w_id = parlay::worker_id();
-        auto const M = M_vec[w_id].data().data();
-        auto& buf = buf_vec[w_id].data();
+        auto const M = M_vec[w_id].unwrap().data();
+        auto& buf = buf_vec[w_id].unwrap();
 
         const auto b_sz = load_path_info(b, M, buf);
         edge_c += b_sz;
-        P_e[b].data().remove();
+        P_e[b].unwrap().remove();
 
 #ifndef NDEBUG
         uint64_t h = 0;
@@ -124,7 +124,7 @@ void Unitig_Collator<k>::map()
             const auto mapped_b_id = XXH3_64bits(&p, sizeof(p)) & (max_unitig_bucket_count - 1); // Hashed maximal unitig bucket.
             // TODO: use `wyhash`. Result: buckets mapped with wyhash (seed = 0) is unbalanced af. Unreliable.
 
-            max_unitig_bucket[mapped_b_id].data().add(M[idx], unitig.data(), uni_len);
+            max_unitig_bucket[mapped_b_id].unwrap().add(M[idx], unitig.data(), uni_len);
         }
 
         assert(idx == b_sz);
@@ -148,8 +148,8 @@ void Unitig_Collator<k>::reduce()
     std::for_each(max_unitig_bucket.cbegin(), max_unitig_bucket.cend(),
         [&](const auto& b)
         {
-            max_max_uni_b_sz = std::max(max_max_uni_b_sz, b.data().size()),
-            max_max_uni_b_label_len = std::max(max_max_uni_b_label_len, b.data().label_len());
+            max_max_uni_b_sz = std::max(max_max_uni_b_sz, b.unwrap().size()),
+            max_max_uni_b_label_len = std::max(max_max_uni_b_label_len, b.unwrap().label_len());
         });
 
     std::cerr << "Maximum maximal unitig bucket size:  " << max_max_uni_b_sz << "\n";
@@ -158,15 +158,15 @@ void Unitig_Collator<k>::reduce()
 
     typedef Buffer<Unitig_Coord<k>> coord_buf_t;
     typedef Buffer<char> label_buf_t;
-    std::vector<Padded_Data<coord_buf_t>> U_vec(parlay::num_workers()); // Worker-local buffers for unitig coordinate information.
-    std::vector<Padded_Data<label_buf_t>> L_vec(parlay::num_workers()); // Worker-local buffers for dump-strings in buckets.
+    std::vector<Padded<coord_buf_t>> U_vec(parlay::num_workers()); // Worker-local buffers for unitig coordinate information.
+    std::vector<Padded<label_buf_t>> L_vec(parlay::num_workers()); // Worker-local buffers for dump-strings in buckets.
 
     parlay::parallel_for(0, parlay::num_workers(),
         [&](const std::size_t w_id)
         {
             // TODO: thread-local allocations here suit best.
-            U_vec[w_id].data().resize_uninit(max_max_uni_b_sz);
-            L_vec[w_id].data().resize_uninit(max_max_uni_b_label_len);
+            U_vec[w_id].unwrap().resize_uninit(max_max_uni_b_sz);
+            L_vec[w_id].unwrap().resize_uninit(max_max_uni_b_label_len);
         }, 1);
 
     // TODO: add per-worker progress tracker.
@@ -175,13 +175,13 @@ void Unitig_Collator<k>::reduce()
     [&](const std::size_t b)
     {
         const auto w_id = parlay::worker_id();
-        auto const U = U_vec[w_id].data().data();   // Coordinate info of the unitigs.
-        auto const L = L_vec[w_id].data().data();   // Dump-strings of the unitig labels.
-        auto& output = op_buf[w_id].data(); // Output buffer for the maximal unitigs.
+        auto const U = U_vec[w_id].unwrap().data(); // Coordinate info of the unitigs.
+        auto const L = L_vec[w_id].unwrap().data();   // Dump-strings of the unitig labels.
+        auto& output = op_buf[w_id].unwrap();   // Output buffer for the maximal unitigs.
 
-        const auto b_sz = max_unitig_bucket[b].data().load_coords(U);
-        const auto len = max_unitig_bucket[b].data().load_labels(L);
-        max_unitig_bucket[b].data().remove();
+        const auto b_sz = max_unitig_bucket[b].unwrap().load_coords(U);
+        const auto len = max_unitig_bucket[b].unwrap().load_labels(L);
+        max_unitig_bucket[b].unwrap().remove();
         (void)len;
 
         std::sort(U, U + b_sz);
@@ -251,8 +251,8 @@ void Unitig_Collator<k>::reduce()
 template <uint16_t k>
 std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>* const M, Buffer<unitig_path_info_t>& buf)
 {
-    buf.reserve_uninit(P_e[b].data().size());  // TODO: perform one fixed resize beforehand, as the `P_e` buckets will not grow anymore.
-    const std::size_t b_sz = P_e[b].data().load(buf.data());
+    buf.reserve_uninit(P_e[b].unwrap().size());  // TODO: perform one fixed resize beforehand, as the `P_e` buckets will not grow anymore.
+    const std::size_t b_sz = P_e[b].unwrap().load(buf.data());
     assert(b_sz <= max_bucket_sz);
 
     for(std::size_t idx = 0; idx < b_sz; ++idx)

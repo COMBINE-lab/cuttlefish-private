@@ -60,7 +60,7 @@ public:
 
 private:
 
-    std::vector<Padded_Data<map_t>> map_;   // Map collection for different workers.
+    std::vector<Padded<map_t>> map_;   // Map collection for different workers.
     // TODO: try thread-local allocation for map-space, e.g. from parlay.
 };
 
@@ -185,8 +185,8 @@ private:
     template <typename T_ht_> static void flush_updates(T_ht_& HT) { (void)HT; }
     static void flush_updates(Kmer_Hashtable<k>& HT) { HT.flush_updates(); }
 
-    template <typename T_ht_> static void add_HT(std::vector<Padded_Data<T_ht_>>& vec, std::size_t sz) { vec.emplace_back(); (void)sz; }
-    static void add_HT(std::vector<Padded_Data<Kmer_Hashtable<k>>>& vec, std::size_t sz) { vec.emplace_back(sz); }
+    template <typename T_ht_> static void add_HT(std::vector<Padded<T_ht_>>& vec, std::size_t sz) { vec.emplace_back(); (void)sz; }
+    static void add_HT(std::vector<Padded<Kmer_Hashtable<k>>>& vec, std::size_t sz) { vec.emplace_back(sz); }
 
     template <typename T_ht_> static void update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
     static void update(Kmer_Hashtable<k>& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);

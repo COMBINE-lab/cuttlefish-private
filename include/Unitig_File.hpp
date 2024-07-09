@@ -133,10 +133,10 @@ class Unitig_Write_Distributor
 private:
 
     const std::size_t writer_count; // Number of write-managers.
-    std::vector<Padded_Data<Unitig_File_Writer>> writer;    // Collection of the different write-managers.
+    std::vector<Padded<Unitig_File_Writer>> writer; // Collection of the different write-managers.
     const std::size_t worker_count; // Number of workers doing the writings.
     const std::size_t writer_per_worker;    // Number of write-managers dedicated to a worker.
-    std::vector<Padded_Data<std::size_t>> next_writer;  // `next_writer[w]` contains the relative-ID of the next writer-manager to be used by worker `w`.
+    std::vector<Padded<std::size_t>> next_writer;   // `next_writer[w]` contains the relative-ID of the next writer-manager to be used by worker `w`.
 
 public:
 
@@ -276,7 +276,7 @@ inline std::size_t Unitig_File_Reader::read_next_unitig(Buffer<char>& unitig)
 template <uint16_t k>
 inline void Unitig_Write_Distributor::add(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
 {
-    auto& next = next_writer[w_id].data();
+    auto& next = next_writer[w_id].unwrap();
     const auto writer_id = w_id * writer_per_worker + next + 1; // +1 as edge-partition 0 conceptually contains edges without any associated lm-tig (i.e. with weight > 1)
     const auto range_size = (w_id < worker_count - 1 ? writer_per_worker : writer_count - (w_id * writer_per_worker));
     assert(range_size > 0);
@@ -288,14 +288,14 @@ inline void Unitig_Write_Distributor::add(std::size_t w_id, const Maximal_Unitig
     const auto& u_f = maximal_unitig.unitig_label(side_t::front);
     const auto& u_b = maximal_unitig.unitig_label(side_t::back);
     assert(writer_id < writer.size());
-    writer[writer_id].data().add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
+    writer[writer_id].unwrap().add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
 }
 
 
 template <uint16_t k>
 inline void Unitig_Write_Distributor::add(std::size_t w_id, const Kmer<k>& kmer)
 {
-    auto& next = next_writer[w_id].data();
+    auto& next = next_writer[w_id].unwrap();
     const auto writer_id = w_id * writer_per_worker + next + 1; // +1 as edge-partition 0 conceptually contains edges without any associated lm-tig (i.e. with weight > 1)
     const auto range_size = (w_id < worker_count - 1 ? writer_per_worker : writer_count - (w_id * writer_per_worker));
     assert(range_size > 0);
@@ -308,19 +308,19 @@ inline void Unitig_Write_Distributor::add(std::size_t w_id, const Kmer<k>& kmer)
     std::string label;
     kmer.get_label(label);
     assert(writer_id < writer.size());
-    writer[writer_id].data().add(label.cbegin(), label.cend());
+    writer[writer_id].unwrap().add(label.cbegin(), label.cend());
 }
 
 
 inline std::size_t Unitig_Write_Distributor::file_idx(const std::size_t w_id) const
 {
-    return w_id * writer_per_worker + next_writer[w_id].data() + 1;
+    return w_id * writer_per_worker + next_writer[w_id].unwrap() + 1;
 }
 
 
 inline std::size_t Unitig_Write_Distributor::unitig_count(const std::size_t b_id) const
 {
-    return writer[b_id].data().unitig_count();
+    return writer[b_id].unwrap().unitig_count();
 }
 
 }

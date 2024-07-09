@@ -46,8 +46,8 @@ private:
     std::size_t max_bucket_sz;  // Maximum size of the edge-buckets.
 
     const std::size_t max_unitig_bucket_count;  // Number of buckets storing literal globally-maximal unitigs.
-    // std::vector<Padded_Data<Unitig_Coord_Bucket<k>>> max_unitig_bucket; // Key-value collation buckets for lm-unitigs.
-    std::vector<Padded_Data<Unitig_Coord_Bucket_Concurrent<k>>> max_unitig_bucket;  // Key-value collation buckets for lm-unitigs.
+    // std::vector<Padded<Unitig_Coord_Bucket<k>>> max_unitig_bucket; // Key-value collation buckets for lm-unitigs.
+    std::vector<Padded<Unitig_Coord_Bucket_Concurrent<k>>> max_unitig_bucket;  // Key-value collation buckets for lm-unitigs.
 
     typedef typename dBG_Contractor<k>::op_buf_list_t op_buf_list_t;
     op_buf_list_t& op_buf;  // Worker-specific output buffers.

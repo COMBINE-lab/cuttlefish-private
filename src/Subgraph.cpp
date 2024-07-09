@@ -274,7 +274,7 @@ template <uint16_t k>
 typename Subgraphs_Scratch_Space<k>::map_t& Subgraphs_Scratch_Space<k>::map()
 {
     assert(map_.size() == parlay::num_workers());
-    return map_[parlay::worker_id()].data();
+    return map_[parlay::worker_id()].unwrap();
 }
 
 }

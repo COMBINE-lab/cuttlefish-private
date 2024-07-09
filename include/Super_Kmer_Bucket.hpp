@@ -40,7 +40,7 @@ private:
     static constexpr std::size_t chunk_bytes = 4 * 1024;    // 4 KB chunk capacity.
     const std::size_t chunk_cap;    // Capacity (in number of super k-mers) of the chunk of the bucket.
     mutable chunk_t chunk;  // Super k-mer chunk for the bucket.    // TODO: maybe this is not required. `chunk_w[i]` can bypass this to disk.
-    mutable std::vector<Padded_Data<chunk_t>> chunk_w;  // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
+    mutable std::vector<Padded<chunk_t>> chunk_w;   // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
 
     mutable Spin_Lock lock; // Lock to the chunk and the external-memory bucket.
 
@@ -123,7 +123,7 @@ template <bool Colored_>
 inline void Super_Kmer_Bucket<Colored_>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
 {
     const auto w_id = parlay::worker_id();
-    auto& c_w = chunk_w[w_id].data();   // Worker-specific chunk.
+    auto& c_w = chunk_w[w_id].unwrap();   // Worker-specific chunk.
 
     assert(c_w.size() < c_w.capacity());
     c_w.add(seq, len, l_disc, r_disc);
@@ -136,7 +136,7 @@ inline void Super_Kmer_Bucket<Colored_>::add(const char* const seq, const std::s
 template <bool Colored_>
 inline void Super_Kmer_Bucket<Colored_>::empty_w_local_chunk(const std::size_t w_id)
 {
-    auto& c_w = chunk_w[w_id].data();
+    auto& c_w = chunk_w[w_id].unwrap();
 
     lock.lock();
 

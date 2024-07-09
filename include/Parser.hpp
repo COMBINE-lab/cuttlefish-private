@@ -60,7 +60,7 @@ private:
         }
     };
 
-    std::vector<Padded_Data<timing_info>> T;
+    std::vector<Padded<timing_info>> T;
 
 
     // Proof-of-concept production method of parsed sequences.

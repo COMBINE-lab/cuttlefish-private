@@ -59,8 +59,8 @@ Unitig_Coord_Bucket_Concurrent<k>::Unitig_Coord_Bucket_Concurrent(const std::str
     std::for_each(worker_buf.begin(), worker_buf.end(),
         [](auto& w_buf)
         {
-            w_buf.data().coord_buf.reserve(buf_sz_th / sizeof(Unitig_Coord<k>));
-            w_buf.data().label_buf.reserve(buf_sz_th);
+            w_buf.unwrap().coord_buf.reserve(buf_sz_th / sizeof(Unitig_Coord<k>));
+            w_buf.unwrap().label_buf.reserve(buf_sz_th);
         });
 }
 
@@ -80,7 +80,7 @@ template <uint16_t k>
 std::size_t Unitig_Coord_Bucket_Concurrent<k>::size() const
 {
     auto sz = flushed;
-    std::for_each(worker_buf.cbegin(), worker_buf.cend(), [&](const auto& w_buf){ sz += w_buf.data().coord_buf.size(); });
+    std::for_each(worker_buf.cbegin(), worker_buf.cend(), [&](const auto& w_buf){ sz += w_buf.unwrap().coord_buf.size(); });
 
     return sz;
 }
@@ -90,7 +90,7 @@ template <uint16_t k>
 std::size_t Unitig_Coord_Bucket_Concurrent<k>::label_len() const
 {
     auto len = flushed_len;
-    std::for_each(worker_buf.cbegin(), worker_buf.cend(), [&](const auto& w_buf){ len += w_buf.data().label_buf.size(); });
+    std::for_each(worker_buf.cbegin(), worker_buf.cend(), [&](const auto& w_buf){ len += w_buf.unwrap().label_buf.size(); });
 
     return len;
 }
@@ -107,7 +107,7 @@ std::size_t Unitig_Coord_Bucket_Concurrent<k>::load_coords(Unitig_Coord<k>* cons
     std::size_t off_correct = flushed_len;  // Offset-correction factor for the in-memory coordinates.
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
     {
-        const auto& w_buf = worker_buf[i].data();
+        const auto& w_buf = worker_buf[i].unwrap();
         const auto& coord_buf = w_buf.coord_buf;
         if(CF_LIKELY(!coord_buf.empty()))   // Conditional to avoid UB on `nullptr` being passed to `memcpy`.
         {
@@ -135,7 +135,7 @@ std::size_t Unitig_Coord_Bucket_Concurrent<k>::load_labels(char* const buf) cons
     std::for_each(worker_buf.cbegin(), worker_buf.cend(),
         [&](const auto& w_buf)
         {
-            const auto& label_buf = w_buf.data().label_buf;
+            const auto& label_buf = w_buf.unwrap().label_buf;
             if(CF_LIKELY(!label_buf.empty()))
                 std::memcpy(buf + len, label_buf.data(), label_buf.size());
 

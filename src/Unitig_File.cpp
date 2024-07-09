@@ -70,7 +70,7 @@ Unitig_Write_Distributor::Unitig_Write_Distributor(const std::string& path_pref,
 void Unitig_Write_Distributor::close()
 {
     for(auto& w : writer)
-        w.data().close();
+        w.unwrap().close();
 }
 
 }

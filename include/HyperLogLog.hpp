@@ -29,7 +29,7 @@ private:
     static constexpr uint32_t m = 512;
     static constexpr uint32_t log_m = 9;
 
-    std::vector<Padded_Data<uint8_t[m]>> M_w;   // `M_w[i]` contains the 'log'-registers for worker `i`.
+    std::vector<Padded<uint8_t[m]>> M_w;    // `M_w[i]` contains the 'log'-registers for worker `i`.
 
 
 public:
@@ -52,7 +52,7 @@ inline void HyperLogLog::add(const uint32_t h)
     const auto stream = h & substream_mask;
     const auto h_proxy = h >> log_m;
     const auto tz = (h_proxy != 0 ? __builtin_ctz(h_proxy) : 32);
-    auto& M = M_w[parlay::worker_id()].data();
+    auto& M = M_w[parlay::worker_id()].unwrap();
     M[stream] = std::max(M[stream], static_cast<uint8_t>(1 + tz));
 }
 

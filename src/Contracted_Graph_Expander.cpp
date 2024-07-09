@@ -41,7 +41,7 @@ void Contracted_Graph_Expander<k>::expand()
     Buffer<Obj_Path_Info_Pair<Kmer<k>, k>> p_v_buf; // Buffer to read-in path-information of vertices.
     Buffer<Obj_Path_Info_Pair<Kmer<k>, k>> swap_p_v_buf;    // Path-info buffer to be used in every other iteration.
     std::size_t max_p_v_buf_sz = 0;
-    std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& P_v_i){ max_p_v_buf_sz = std::max(max_p_v_buf_sz, P_v_i.data().size()); });
+    std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& P_v_i){ max_p_v_buf_sz = std::max(max_p_v_buf_sz, P_v_i.unwrap().size()); });
     p_v_buf.reserve_uninit(max_p_v_buf_sz);
     swap_p_v_buf.reserve_uninit(max_p_v_buf_sz);
 
@@ -60,7 +60,7 @@ void Contracted_Graph_Expander<k>::expand()
         parlay::par_do3(
             [&]()
             {
-                P_v[i].data().remove();
+                P_v[i].unwrap().remove();
             },
             [&]()
             {
@@ -80,7 +80,7 @@ void Contracted_Graph_Expander<k>::expand()
 
                 const auto& p_v_buf_cur = ((i & 1) == 1 ? p_v_buf : swap_p_v_buf);
                 fill_path_info(p_v_buf_cur, p_v_c_curr);
-                std::for_each(P_v_ip1.begin(), P_v_ip1.end(), [](auto& v){ v.data().clear(); });
+                std::for_each(P_v_ip1.begin(), P_v_ip1.end(), [](auto& v){ v.unwrap().clear(); });
 
                 t_s = now();
                 expand_diagonal_block(i);
@@ -127,9 +127,9 @@ void Contracted_Graph_Expander<k>::expand()
                                     const auto j = G.E().partition(e.y());  // TODO: consider obtaining this info during the edge-reading process.
                                     assert(j > i);
                                     if(j > i + 1)
-                                        P_v[j].data().emplace(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
+                                        P_v[j].unwrap().emplace(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
                                     else
-                                        P_v_ip1[parlay::worker_id()].data().emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
+                                        P_v_ip1[parlay::worker_id()].unwrap().emplace_back(e.y(), y_inf.p(), y_inf.r(), y_inf.o(), y_inf.is_cycle());
                                 }
 
                                 if(e.w() == 1)
@@ -238,9 +238,9 @@ template <uint16_t k>
 std::size_t Contracted_Graph_Expander<k>::load_path_info(const std::size_t i, Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf)
 {
     const auto t_s = now();
-    const auto sz = P_v[i].data().size();
+    const auto sz = P_v[i].unwrap().size();
     p_v_buf.reserve_uninit(sz);
-    P_v[i].data().load(p_v_buf.data());
+    P_v[i].unwrap().load(p_v_buf.data());
     const auto t_e = now();
     p_v_load_time += duration(t_e - t_s);
 
@@ -264,7 +264,7 @@ void Contracted_Graph_Expander<k>::fill_path_info(const Buffer<Obj_Path_Info_Pai
     parlay::parallel_for(0, parlay::num_workers(),
         [&](const std::size_t w_id)
         {
-            for(const auto& p_v : P_v_ip1[w_id].data())
+            for(const auto& p_v : P_v_ip1[w_id].unwrap())
                 if(!M.insert(p_v.obj(), p_v.path_info()))
                     assert(*M.find(p_v.obj()) == p_v.path_info());
         },

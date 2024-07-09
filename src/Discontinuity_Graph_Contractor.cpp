@@ -124,7 +124,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
         t_s = now();
         const auto contract_diagonal_chain = [&](const std::size_t w_id)
         {
-            const auto& D = D_c[w_id].data();
+            const auto& D = D_c[w_id].unwrap();
             for(std::size_t i = 0; i < D.size(); ++i)
             {
                 const auto& e = D[i];
@@ -190,7 +190,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
 
     uint64_t meta_v_c = 0;
-    std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& b){ meta_v_c += b.data().size(); });
+    std::for_each(P_v.cbegin(), P_v.cend(), [&](const auto& b){ meta_v_c += b.unwrap().size(); });
     std::cerr << "Formed " << meta_v_c << " meta-vertices.\n";
     std::cerr << "Found " << icc_count << " ICCs.\n";
     std::cerr << "Found " << phantom_count_ << " phantoms.\n";
@@ -281,7 +281,7 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
     output.close();
 
 
-    std::for_each(D_c.begin(), D_c.end(), [](auto& v){ v.data().clear(); });
+    std::for_each(D_c.begin(), D_c.end(), [](auto& v){ v.unwrap().clear(); });
 
     const auto collect_compressed_diagonal_chains =
         [&](const std::size_t w_id)
@@ -294,7 +294,7 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
                 {
                     assert(M.find(end.v()));
                     if(u < end.v() && M.find(end.v())->v() == u)
-                        D_c[w_id].data().emplace_back(u, end.s_u(), end.v(), end.s_v(), end.w(), 0, 0, false, false, side_t::unspecified);
+                        D_c[w_id].unwrap().emplace_back(u, end.s_u(), end.v(), end.s_v(), end.w(), 0, 0, false, false, side_t::unspecified);
                 }
         };
 
