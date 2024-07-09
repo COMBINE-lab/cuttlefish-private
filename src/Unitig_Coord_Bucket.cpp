@@ -157,6 +157,8 @@ void Unitig_Coord_Bucket_Concurrent<k>::remove()
         std::cerr << "Error removing files at path-prefix " << path_pref << ". Aborting.\n";
         std::exit(EXIT_FAILURE);
     }
+
+    force_free(worker_buf);
 }
 
 }

@@ -183,6 +183,7 @@ inline Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::Concurrent_Hash_Table(c
 template <typename T_key_, typename T_val_, typename T_hasher_>
 inline void Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::clear()
 {
+    // TODO: try version-stamping.
     // Straightforward way.
     // parlay::parallel_for(0, capacity_, [&](std::size_t idx){ T[idx].key = empty_key_; });
 

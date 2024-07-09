@@ -23,6 +23,7 @@
 
 
 // Likely/unlikely conditions.
+// TODO: move to `utilities`.
 #define CF_LIKELY(condition)    __builtin_expect(condition, 1)
 #define CF_UNLIKELY(condition)  __builtin_expect(condition, 0)
 
