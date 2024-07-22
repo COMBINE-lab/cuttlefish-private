@@ -23,7 +23,6 @@ namespace cuttlefish
 template <bool Colored_>
 class Super_Kmer_Chunk
 {
-
 public:
 
     typedef Super_Kmer_Attributes<Colored_> attribute_t;
@@ -31,17 +30,14 @@ public:
 
 private:
 
-    typedef std::vector<attribute_t> attribute_buf_t;
-    typedef std::vector<label_unit_t> label_buf_t;
-
     const std::size_t max_sup_kmer_len; // Maximum length of the (weak) super k-mers.
     const std::size_t sup_kmer_word_c;  // Number of 64-bit words in super k-mer encodings.
 
     const std::size_t cap_; // Maximum capacity of the chunk in number of super k-mers.
     std::size_t size_;  // Size of the chunk in number of super k-mers.
 
-    attribute_buf_t att_buf;    // Buffer of attributes of the super k-mers.
-    label_buf_t label_buf;  // Buffer of concatenated labels of the super k-mers.
+    attribute_t* att_buf;    // Buffer of attributes of the super k-mers.
+    label_unit_t* label_buf;  // Buffer of concatenated labels of the super k-mers.
 
 
 public:
@@ -50,9 +46,12 @@ public:
     // maximum capacity `cap` in number of super k-mers.
     Super_Kmer_Chunk(uint16_t k, uint16_t l, std::size_t cap);
 
-    Super_Kmer_Chunk(const Super_Kmer_Chunk&) = delete;
+    ~Super_Kmer_Chunk();
 
-    Super_Kmer_Chunk(Super_Kmer_Chunk&&) = default;
+    Super_Kmer_Chunk(const Super_Kmer_Chunk&) = delete;
+    Super_Kmer_Chunk(Super_Kmer_Chunk&&);
+    Super_Kmer_Chunk& operator=(const Super_Kmer_Chunk&) = delete;
+    Super_Kmer_Chunk& operator=(Super_Kmer_Chunk&&) = delete;
 
     // Returns the number of 64-bit words in super k-mer encodings.
     auto super_kmer_word_count() const { return sup_kmer_word_c; }
@@ -134,8 +133,8 @@ inline void Super_Kmer_Chunk<Colored_>::append(const Super_Kmer_Chunk& c, const 
     const auto n = r - l;
     assert(size() + n <= cap_);
 
-    std::memcpy(att_buf.data() + size(), c.att_buf.data() + l, n * sizeof(attribute_t));
-    std::memcpy(label_buf.data() + label_units(), c.label_buf.data() + l * sup_kmer_word_c, n * sup_kmer_word_c * sizeof(label_unit_t));
+    std::memcpy(att_buf + size(), c.att_buf + l, n * sizeof(attribute_t));
+    std::memcpy(label_buf + label_units(), c.label_buf + l * sup_kmer_word_c, n * sup_kmer_word_c * sizeof(label_unit_t));
 
     size_ += n;
 }
@@ -154,7 +153,7 @@ inline void Super_Kmer_Chunk<Colored_>::get_super_kmer(std::size_t idx, attribut
     assert(idx < size());
 
     att = att_buf[idx];
-    label = label_buf.data() + idx * sup_kmer_word_c;
+    label = label_buf + idx * sup_kmer_word_c;
 }
 
 }

@@ -24,7 +24,6 @@ class Super_Kmer_Attributes
 template <>
 class Super_Kmer_Attributes<false>
 {
-
 private:
 
     uint16_t bit_pack;  // Packed attribute collection of a super k-mer.
@@ -39,6 +38,7 @@ private:
 
 public:
 
+    // Constructs an empty attribute object.
     Super_Kmer_Attributes() {}
 
     // Constructs an attribute object with length (in bases) `len` and left /
