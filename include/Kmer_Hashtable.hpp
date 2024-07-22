@@ -14,8 +14,8 @@
 #include <limits>
 #include <cstring>
 #include <vector>
-#include <tuple>
 #include <cmath>
+#include <algorithm>
 #include <cassert>
 
 
@@ -27,6 +27,8 @@ namespace cuttlefish
 template <uint16_t k>
 class Kmer_Hashtable
 {
+public:
+
     class Iterator;
     friend class Iterator;
 
@@ -104,6 +106,52 @@ public:
 
     // Flushes all buffered pending updates in the hashtable.
     void flush_updates();
+
+    // Returns an iterator pointing to the table-slot containing the key `key`.
+    // Returns `end()` if `key` is not found.
+    Iterator find(const Kmer<k>& key);
+
+    // Returns an iterator pointing to the first key-value pair in the table.
+    Iterator begin() { return Iterator(*this, 0); }
+
+    // Returns an iterator pointing to the end of the table.
+    Iterator end() { return Iterator(*this, capacity()); }
+};
+
+
+// Iterator over `k`-mer hashtables.
+template <uint16_t k>
+class Kmer_Hashtable<k>::Iterator
+{
+    friend class Kmer_Hashtable<k>;
+
+private:
+
+    Kmer_Hashtable<k>* HT;  // The hashtable to iterate on.
+    std::size_t idx;    // Current slot-index the iterator is in.
+
+
+    // Constructs an iterator for the k-mer hashtable `HT` pointing to the
+    // first occupied slot onward from `i` (inclusive), if exists. Otherwise
+    // the iterator points to the end of the `HT`.
+    Iterator(Kmer_Hashtable<k>& HT, std::size_t i);
+
+public:
+
+    // Returns `true` iff `rhs` points to the same slot as this iterator. Wrong
+    // results are possible if comparing iterators from different hashtables.
+    auto operator==(const Iterator& rhs) const { return /* HT == rhs.HT && */ idx == rhs.idx; }
+
+    // Returns `true` iff `rhs` does not point to the same slot as this
+    // iterator. Wrong results are possible if comparing iterators from
+    // different hashtables.
+    auto operator!=(const Iterator& rhs) const { return !(*this == rhs); }
+
+    // Advances the iterator to the next key, if not at the end.
+    void operator++();
+
+    // Returns pointer to the current slot.
+    auto operator->() const { assert(idx < HT->capacity()); return HT->T + idx; }
 };
 
 
@@ -149,7 +197,7 @@ template <uint16_t k>
 inline void Kmer_Hashtable<k>::clear()
 {
     sz = 0;
-    cur_stamp++;
+    cur_stamp = (cur_stamp + 1u) & 255u;
     if(cur_stamp == 0)
     {
         std::memset(reinterpret_cast<char*>(T), 0, capacity_ * sizeof(Key_Val_Entry));
@@ -229,6 +277,46 @@ inline void Kmer_Hashtable<k>::flush_updates()
 
     U.clear();
 }
+
+
+template <uint16_t k>
+inline typename Kmer_Hashtable<k>::Iterator Kmer_Hashtable<k>::find(const Kmer<k>& key)
+{
+#ifndef NDEBUG
+    std::size_t tried_slots = 0;
+#endif
+
+    for(std::size_t i = hash_to_idx(key.to_u64()); ; i = next_idx(i))
+        if(T[i].timestamp != cur_stamp)
+            return end();
+        else if(T[i].key == key)
+            return Iterator(*this, i);
+        else
+            assert(++tried_slots <= capacity());
+
+    return end();
+}
+
+
+template <uint16_t k>
+inline Kmer_Hashtable<k>::Iterator::Iterator(Kmer_Hashtable<k>& HT, std::size_t i):
+      HT(&HT)
+    , idx(i)
+{
+    for(; idx < HT.capacity(); ++idx)
+        if(HT.T[idx].timestamp == HT.cur_stamp) // Currently occupied slot.
+            break;
+}
+
+
+template <uint16_t k>
+inline void Kmer_Hashtable<k>::Iterator::operator++()
+{
+    for(idx++; idx < HT->capacity(); ++idx)
+        if(HT->T[idx].timestamp == HT->cur_stamp) // Empty slot as it contains an entry from a previous version of the table.
+            break;
+}
+
 
 }
 

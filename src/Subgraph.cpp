@@ -174,7 +174,6 @@ void Subgraph<k, Colored_>::construct_loop_filtered()
 */
 
 
-/*
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::contract()
 {
@@ -183,10 +182,10 @@ void Subgraph<k, Colored_>::contract()
     uint64_t unitig_count = 0;  // Count of maximal unitigs.
     uint64_t non_isolated = 0;  // Count of non-isolated vertices.
 
-    for(const auto& p : M)
+    for(auto p = M.begin(); p != M.end(); ++p)
     {
-        const auto& v = p.first;
-        const auto& v_st = p.second;
+        const auto& v = ht_router::get_key(p);
+        const auto& v_st = ht_router::get_val(p);
         assert(!v_st.is_discontinuous(side_t::front) || !v_st.is_discontinuous(side_t::back));
 
         if(v_st.is_visited())   // The containing maximal unitig has already been outputted.
@@ -214,7 +213,6 @@ void Subgraph<k, Colored_>::contract()
 
     assert(vertex_count + isolated == M.size());
 }
-*/
 
 
 template <uint16_t k, bool Colored_>
