@@ -181,9 +181,6 @@ if(MSAN)
     add_dependencies(cfcore_static prj_libcxx)
 endif()
 
-# Link the executable to the required libraries.
-target_link_libraries(${PROJECT_NAME} PRIVATE cfcore_static)
-
 
 # Set the installation directory. The parent directory is `/usr/local/` by default, and the
 # user may set it to a different path by passing a value for `CMAKE_INSTALL_PREFIX`. The target

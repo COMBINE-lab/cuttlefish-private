@@ -66,6 +66,7 @@ endif()
 
 # Bundle debugging information flags that we want to conditionally
 # pass on to the compiler.
+# Reference: https://gcc.gnu.org/onlinedocs/gcc/Debugging-Options.html.
 set(DEBUG_FLAGS -ggdb)
 
 # Bundle address sanitization flags: https://github.com/google/sanitizers/wiki/AddressSanitizer.
@@ -200,7 +201,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 # Search the file system for the appropriate threads package for this platform, and then set
 # the `CMAKE_THREAD_LIBS_INIT` variable (and some other variables as well).
-find_package(Threads REQUIRED)  # The threads package is required for the BBHash library used in the project.
+find_package(Threads REQUIRED)
 
 # Search and load setting for the `zlib` library. The library is required to seamlessly adapt
 # the `kseq`, the `kmc`, and the `RabbitFX` libraries to gzip-compressed files.

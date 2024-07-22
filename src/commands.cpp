@@ -191,7 +191,7 @@ int cf_build(int argc, char** argv)
         std::cerr << options.help() << std::endl;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }
 
 

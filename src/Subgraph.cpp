@@ -33,6 +33,18 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::construct()
 {
+    // Returns the `idx`'th base of the super k-mer label encoding `super_kmer`
+    // that has `word_count` words.
+    const auto get_base = [](const label_unit_t* const super_kmer, const std::size_t word_count, const std::size_t idx)
+    {
+        assert(idx / 32 < word_count);
+
+        const auto word_idx = idx >> 5;
+        const auto bit_idx  = (idx & 31) << 1;
+        return base_t((super_kmer[(word_count - 1) - word_idx] >> (62 - bit_idx)) & 0b11lu);
+    };
+
+
     auto super_kmer_it = B.iterator();  // Iterator over the weak super k-mers inducing this graph.
 
     typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;

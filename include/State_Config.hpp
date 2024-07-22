@@ -146,7 +146,6 @@ template <side_t s>
 inline void Edge_Frequency::add_edge(const base_t e)
 {
     static_assert(s != side_t::unspecified);
-
     assert(base_t::A <= e && e <= base_t::T);
 
     const uint32_t off = (s == side_t::front ? 0 : 16) + 4 * e;

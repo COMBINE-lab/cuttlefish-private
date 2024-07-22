@@ -101,6 +101,8 @@ inline uint64_t Minimizer_Utility::hash(const cuttlefish::minimizer_t lmer, cons
 #endif
 
     // return XXH3_64bits_withSeed(&lmer, sizeof(lmer), seed);
+    // TODO: the entropy of the minimizer-hash is getting diluted by considering all the leading 0 bits (64 - 2l bits, specifically.)
+    // return wyhash(&lmer, (2 * l + 7) / 8, seed, wy_salt);
     return wyhash(&lmer, sizeof(lmer), seed, wy_salt);
 }
 

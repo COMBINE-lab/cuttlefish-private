@@ -101,11 +101,6 @@ private:
     typedef typename dBG_Contractor<k>::op_buf_t op_buf_t;
     op_buf_t& op_buf;   // Output buffer for trivially maximal unitigs of the underlying dBG.
 
-
-    // Returns the `idx`'th base of the super k-mer label encoding `super_kmer`
-    // that has `word_count` words.
-    static base_t get_base(const label_unit_t* super_kmer, std::size_t word_count, std::size_t idx);
-
     // Extracts the maximal unitig containing the vertex `v_hat`, and
     // `maximal_unitig` is used as the working scratch for the extraction, i.e.
     // to build and store two unitigs connecting to the two sides of `v_hat`.
