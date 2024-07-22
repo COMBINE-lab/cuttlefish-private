@@ -89,7 +89,7 @@ void Subgraphs_Manager<k, Colored_>::process()
             const auto t_1 = timer::now();
             b.remove();
             const auto t_2 = timer::now();
-            // sub_dBG.contract();  // Perf-diagnose.
+            sub_dBG.contract();  // Perf-diagnose.
             const auto t_3 = timer::now();
 
             auto& max_kmer_c = max_kmer_count[parlay::worker_id()].unwrap();

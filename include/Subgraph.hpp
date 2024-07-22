@@ -134,7 +134,7 @@ public:
     // Constructs the subgraph from the provided weak super k-mer bucket into
     // an internal navigable and membership data structure. Addresses "exact"
     // loop-filtering opposed to `construct`.
-    void construct_loop_filtered();
+    // void construct_loop_filtered();
 
     // Builds the compacted graph from the original graph.
     void contract();
@@ -185,6 +185,12 @@ private:
 
     template <typename T_ht_> static void update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
     static void update(Kmer_Hashtable<k>& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
+
+    template <typename T_iter_> static const Kmer<k>& get_key(const T_iter_& it) { return it->first; }
+    static const Kmer<k>& get_key(const typename Kmer_Hashtable<k>::Iterator& it) { return it->key; }
+
+    template <typename T_iter_> static State_Config& get_val(const T_iter_& it) { return it->second; }
+    static State_Config& get_val(const typename Kmer_Hashtable<k>::Iterator& it) { return it->val; }
 };
 
 
@@ -199,18 +205,6 @@ enum class Walk_Termination
 };
 
 
-template <uint16_t k, bool Colored_>
-inline base_t Subgraph<k, Colored_>::get_base(const label_unit_t* const super_kmer, const std::size_t word_count, const std::size_t idx)
-{
-    assert(idx / 32 < word_count);
-
-    const auto word_idx = idx >> 5;
-    const auto bit_idx  = (idx & 31) << 1;
-    return base_t((super_kmer[(word_count - 1) - word_idx] >> (62 - bit_idx)) & 0b11lu);
-};
-
-
-/*
 template <uint16_t k, bool Colored_>
 inline bool Subgraph<k, Colored_>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Unitig_Scratch<k>& maximal_unitig)
 {
@@ -273,10 +267,10 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
     auto it = M.find(v.canonical());
     // auto it = M.find_positive(v.canonical());
     assert(it != M.end());
-    State_Config state = it->second;    // State of `v`.
+    State_Config state = ht_router::get_val(it);    // State of `v`.
     while(true)
     {
-        it->second.mark_visited();
+        ht_router::get_val(it).mark_visited();
 
         b_ext = state.edge_at(s_v);
         assert(!state.is_discontinuous(s_v) || b_ext == base_t::E); // If a side is discontinuous, it must be empty.
@@ -301,7 +295,7 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
         it = M.find(v.canonical());
         // it = M.find_positive(v.canonical());
         assert(it != M.end());
-        state = it->second;
+        state = ht_router::get_val(it);
 
         s_v = v.entrance_side();
         assert(!state.is_empty_side(s_v));
@@ -333,7 +327,6 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
 
     return termination_t::null;
 }
-*/
 
 
 template <uint16_t k>
