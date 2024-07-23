@@ -1,6 +1,5 @@
 
 #include "dBG_Contractor.hpp"
-#include "Discontinuity_Graph_Bootstrap.hpp"
 #include "Graph_Partitioner.hpp"
 #include "State_Config.hpp"
 #include "Subgraphs_Manager.hpp"
@@ -8,7 +7,6 @@
 #include "Contracted_Graph_Expander.hpp"
 #include "Unitig_Collator.hpp"
 #include "globals.hpp"
-#include "utility.hpp"
 #include "profile.hpp"
 #include "parlay/parallel.h"
 
@@ -43,6 +41,7 @@ dBG_Contractor<k>::dBG_Contractor(const Build_Params& params):
 
 
 template <uint16_t k>
+template <bool Colored_>
 void dBG_Contractor<k>::construct()
 {
     // Clear the output file and initialize the output sink.
@@ -52,9 +51,9 @@ void dBG_Contractor<k>::construct()
 
     const auto t_0 = timer::now();
 
-    Subgraphs_Manager<k, false> subgraphs(logistics, params.subgraph_count(), params.min_len(), G, op_buf);
+    Subgraphs_Manager<k, Colored_> subgraphs(logistics, params.subgraph_count(), params.min_len(), G, op_buf);
 
-    Graph_Partitioner<k, false> super_kmer_splitter(subgraphs, logistics, params.min_len());
+    Graph_Partitioner<k, Colored_> super_kmer_splitter(subgraphs, logistics, params.min_len());
     EXECUTE("partition", super_kmer_splitter.partition);
     subgraphs.finalize();
 
@@ -72,7 +71,6 @@ void dBG_Contractor<k>::construct()
     std::cerr << "Edge-matrix size: " << G.E().size() << "\n";
     std::cerr << "Phantom edge upper-bound: " << G.phantom_edge_upper_bound() << "\n";
     std::cerr << "Expecting at most " << ((G.E().row_size(0) + G.phantom_edge_upper_bound()) / 2) << " more non-DCC maximal unitigs\n";
-    return; // Perf-diagnose
 
     Discontinuity_Graph_Contractor<k> contractor(G, P_v, logistics);
     EXECUTE("contract", contractor.contract)
@@ -98,6 +96,13 @@ void dBG_Contractor<k>::construct()
 
     const auto t_uc = timer::now();
     std::cerr << "Unitigs-collation completed. Time taken: " << timer::duration(t_uc - t_e) << " seconds.\n";
+}
+
+
+template <uint16_t k>
+void dBG_Contractor<k>::construct()
+{
+    params.color() ? construct<true>() : construct<false>();
 }
 
 }
