@@ -56,42 +56,71 @@ public:
 
 
 // =============================================================================
+// Neighborhood information of a vertex in a de Bruijn graph.
+class Neighborhood
+{
+private:
+
+    Edge_Frequency e_f; // Frequency of the vertex's edges.
+
+
+public:
+
+    Neighborhood(): e_f() {}
+
+    // Adds the edge-encodings `front` and `back` to the associated sides of a
+    // corresponding vertex.
+    void update_edges(base_t front, base_t back);
+
+    // Returns the `Base`-encoding of the edge(s) incident to the side `s` of a
+    // vertex having this neighborhood.
+    base_t edge_at(side_t s) const { return e_f.edge_at(s); }
+
+    // Returns `true` iff some vertex having this neighborhood is branching
+    // (i.e. has multiple incident edges) at its side `s`.
+    bool is_branching_side(side_t s) const { return e_f.edge_count(s) > 1; }
+
+    // Returns `true` iff some vertex having this neighborhood is empty (i.e.
+    // no incident edges) at its side `s`.
+    bool is_empty_side(side_t s) const { return e_f.edge_count(s) == 0; }
+
+    // Returns `true` iff some vertex having this neighborhood is isolated off
+    // the rest of the graph.
+    bool is_isolated() const { return is_empty_side(side_t::back) && is_empty_side(side_t::front); }
+};
+
+
+// =============================================================================
 // Class for a full state-configuration of a vertex in a de Bruijn graph: this
 // is a configuration attached to vertices in subgraphs. `Colored_` denotes
 // whether the state has color / annotation metadata associated to it.
 template <bool Colored_>
-class State_Config
+class State_Config: public Neighborhood
 {
 private:
 
-    // uint64_t color_hash;        // Hash of the vertex's color-set.
-    Edge_Frequency e_f; // Frequency of the vertex's edges.
-    // uint32_t last_color_ID;     // Last color-ID added to the color-hash; to encounter multi-set hashing problem for color-sets.
-    uint8_t status;             // Some status information of the vertex, bit-packed:
-                                    // whether it is a discontinuity vertex, whether it's been visited.
+    uint8_t status; // Some status information of the vertex, bit-packed:
+                        // whether it is a discontinuity vertex, whether it's been visited.
 
     static constexpr uint8_t visited = 0b0000'0001; // Flag to denote a vertex as visited.
     static constexpr uint8_t discontinuity[2] = {0b0000'0010, 0b0000'0100}; // Flags to denote a vertex's sides as discontinuous.
 
     // Marks the associated vertex as discontinuous at side `s`, if `s` is a
     // valid side.
-    void mark_discontinuous_optional(side_t s);
+    void mark_discontinuous_optional(side_t s) { assert(as_int(s) <= 2); status |= (s == side_t::unspecified ? 0 : discontinuity[as_int(s)]); }
 
 
 public:
 
     // Constructs an empty state.
-    State_Config();
-
-    // Adds the edge-encodings `front` and `back` to the associated sides of a
-    // corresponding vertex.
-    void update_edges(base_t front, base_t back);
+    State_Config(): Neighborhood(), status(0)
+    {}
 
     // Marks the associated vertex as visited.
     void mark_visited() { status |= visited; }
 
     // Marks the associated vertex as discontinuous at side `s`.
-    void mark_discontinuous(side_t s);
+    void mark_discontinuous(side_t s) { assert(as_int(s) < 2); status |= discontinuity[as_int(s)]; }
 
     // Adds the edge-encodings `front` and `back` to the associated sides of a
     // corresponding vertex, and marks the associated vertex as discontinuous
@@ -102,36 +131,11 @@ public:
     bool is_visited() const { return status & visited; }
 
     // Returns whether the associated vertex is discontinuous at side `s`.
-    bool is_discontinuous(const side_t s) const;
+    bool is_discontinuous(const side_t s) const { assert(as_int(s) < 2); return status & discontinuity[as_int(s)]; }
 
     // Returns whether the associated vertex has any discontinuous side.
     bool is_discontinuity() const;
-
-    // Returns the `Base`-encoding of the edge(s) incident to the side `s` of a
-    // vertex having this state.
-    base_t edge_at(side_t s) const;
-
-    // Returns `true` iff some vertex having this state is branching (i.e. has
-    // multiple incident edges) at its side `s`.
-    bool is_branching_side(side_t s) const;
-
-    // Returns `true` iff some vertex having this state is empty (i.e. no
-    // incident edges) at its side `s`.
-    bool is_empty_side(side_t s) const;
-
-    // Returns `true` iff some vertex having this state is isolated off the rest
-    // of the underlying graph.
-    bool is_isolated() const;
 };
-
-
-template <bool Colored_>
-inline State_Config<Colored_>::State_Config():
-    //   color_hash(0)
-      e_f()
-    // , last_color_ID(0)
-    , status(0)
-{}
 
 
 inline uint32_t Edge_Frequency::f_at(const uint32_t off) const
@@ -190,8 +194,7 @@ inline base_t Edge_Frequency::edge_at(const side_t s) const
 }
 
 
-template <bool Colored_>
-inline void State_Config<Colored_>::update_edges(const base_t front, const base_t back)
+inline void Neighborhood::update_edges(const base_t front, const base_t back)
 {
     constexpr auto E = base_t::E;
     constexpr auto T = base_t::T;
@@ -208,36 +211,12 @@ inline void State_Config<Colored_>::update_edges(const base_t front, const base_
 
 
 template <bool Colored_>
-inline void State_Config<Colored_>::mark_discontinuous(const side_t s)
-{
-    assert(as_int(s) < 2);
-    status |= discontinuity[as_int(s)];
-}
-
-
-template <bool Colored_>
-inline void State_Config<Colored_>::mark_discontinuous_optional(const side_t s)
-{
-    assert(as_int(s) <= 2);
-    status |= (s == side_t::unspecified ? 0 : discontinuity[as_int(s)]);
-}
-
-
-template <bool Colored_>
 inline void State_Config<Colored_>::update(base_t front, base_t back, side_t s_0, side_t s_1)
 {
     update_edges(front, back);
 
     mark_discontinuous_optional(s_0);
     mark_discontinuous_optional(s_1);
-}
-
-
-template <bool Colored_>
-inline bool State_Config<Colored_>::is_discontinuous(const side_t s) const
-{
-    assert(as_int(s) < 2);
-    return status & discontinuity[as_int(s)];
 }
 
 
@@ -250,34 +229,6 @@ inline bool State_Config<Colored_>::is_discontinuity() const
     return is_discontinuous(side_t::front) | is_discontinuous(side_t::back);
 
 #pragma GCC diagnostic pop
-}
-
-
-template <bool Colored_>
-inline base_t State_Config<Colored_>::edge_at(const side_t s) const
-{
-    return e_f.edge_at(s);
-}
-
-
-template <bool Colored_>
-inline bool State_Config<Colored_>::is_branching_side(const side_t s) const
-{
-    return e_f.edge_count(s) > 1;
-}
-
-
-template <bool Colored_>
-inline bool State_Config<Colored_>::is_empty_side(const side_t s) const
-{
-    return e_f.edge_count(s) == 0;
-}
-
-
-template <bool Colored_>
-inline bool State_Config<Colored_>::is_isolated() const
-{
-    return is_empty_side(side_t::back) && is_empty_side(side_t::front);
 }
 
 }
