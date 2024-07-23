@@ -8,7 +8,6 @@
 #include "State_Config.hpp"
 #include "Directed_Vertex.hpp"
 #include "Kmer.hpp"
-#include "DNA.hpp"
 #include "DNA_Utility.hpp"
 #include "Kmer_Hashtable.hpp"
 #include "Unitig_Scratch.hpp"
@@ -17,13 +16,11 @@
 #include "dBG_Utilities.hpp"
 #include "utility.hpp"
 #include "globals.hpp"
-#include "emhash/hash_table7.hpp"
 #include "unordered_dense/unordered_dense.h"
 
 #include <cstdint>
 #include <cstddef>
 #include <vector>
-#include <string>
 #include <unordered_map>
 
 
@@ -32,23 +29,22 @@ namespace cuttlefish
 
 template <bool Colored_> class Super_Kmer_Bucket;
 
-template <uint16_t k> class HT_Router;
+template <uint16_t k, bool Colored_> class HT_Router;
 
 enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
 
 
 // Working space for workers processing different subgraphs.
-template <uint16_t k>
+template <uint16_t k, bool Colored_>
 class Subgraphs_Scratch_Space
 {
 public:
 
     // typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
-    // typedef emhash7::HashMap<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
-    // typedef ankerl::unordered_dense::map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
+    // typedef ankerl::unordered_dense::map<Kmer<k>, State_Config<Colored_>, Kmer_Hasher<k>> map_t;
     // TODO: try swiss table.
 
-    typedef Kmer_Hashtable<k> map_t;
+    typedef Kmer_Hashtable<k, Colored_> map_t;
 
     // Constructs working space for workers, supporting capacity of at least
     // `max_sz` vertices.
@@ -75,11 +71,11 @@ class Subgraph
 
 private:
 
-    typedef HT_Router<k> ht_router;
+    typedef HT_Router<k, Colored_> ht_router;
 
     const Super_Kmer_Bucket<Colored_>& B;   // The weak super k-mer bucket inducing this subgraph.
 
-    typename Subgraphs_Scratch_Space<k>::map_t& M;  // Map to be used for this subgraph.
+    typename Subgraphs_Scratch_Space<k, Colored_>::map_t& M;    // Map to be used for this subgraph.
 
     uint64_t kmer_count_;   // Number of k-mer instances (copies) in the graph.
 
@@ -122,7 +118,7 @@ public:
     // its edges observed from this subgraph and writes the trivially maximal
     // unitigs to `op_buf`. Uses scratch space for internal data structures
     // from `space`.
-    Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& d_graph, op_buf_t& op_buf, Subgraphs_Scratch_Space<k>& space);
+    Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& d_graph, op_buf_t& op_buf, Subgraphs_Scratch_Space<k, Colored_>& space);
 
     Subgraph(const Subgraph&) = delete;
     Subgraph(Subgraph&&) = delete;
@@ -169,28 +165,28 @@ public:
 
 
 // Router class wrapping some hashtable methods to help switching map types.
-template <uint16_t k>
+template <uint16_t k, bool Colored_>
 class HT_Router
 {
     template <uint16_t, bool> friend class Subgraph;
-    template <uint16_t> friend class Subgraphs_Scratch_Space;
+    template <uint16_t, bool> friend class Subgraphs_Scratch_Space;
 
 private:
 
     template <typename T_ht_> static void flush_updates(T_ht_& HT) { (void)HT; }
-    static void flush_updates(Kmer_Hashtable<k>& HT) { HT.flush_updates(); }
+    static void flush_updates(Kmer_Hashtable<k, Colored_>& HT) { HT.flush_updates(); }
 
     template <typename T_ht_> static void add_HT(std::vector<Padded<T_ht_>>& vec, std::size_t sz) { vec.emplace_back(); (void)sz; }
-    static void add_HT(std::vector<Padded<Kmer_Hashtable<k>>>& vec, std::size_t sz) { vec.emplace_back(sz); }
+    static void add_HT(std::vector<Padded<Kmer_Hashtable<k, Colored_>>>& vec, std::size_t sz) { vec.emplace_back(sz); }
 
     template <typename T_ht_> static void update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
-    static void update(Kmer_Hashtable<k>& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
+    static void update(Kmer_Hashtable<k, Colored_>& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
 
     template <typename T_iter_> static const Kmer<k>& get_key(const T_iter_& it) { return it->first; }
-    static const Kmer<k>& get_key(const typename Kmer_Hashtable<k>::Iterator& it) { return it->key; }
+    static const Kmer<k>& get_key(const typename Kmer_Hashtable<k, Colored_>::Iterator& it) { return it->key; }
 
-    template <typename T_iter_> static State_Config& get_val(const T_iter_& it) { return it->second; }
-    static State_Config& get_val(const typename Kmer_Hashtable<k>::Iterator& it) { return it->val; }
+    template <typename T_iter_> static State_Config<Colored_>& get_val(const T_iter_& it) { return it->second; }
+    static State_Config<Colored_>& get_val(const typename Kmer_Hashtable<k, Colored_>::Iterator& it) { return it->val; }
 };
 
 
@@ -329,9 +325,9 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
 }
 
 
-template <uint16_t k>
+template <uint16_t k, bool Colored_>
 template <typename T_ht_>
-inline void HT_Router<k>::update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1)
+inline void HT_Router<k, Colored_>::update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1)
 {
     auto& st = HT[kmer];
     st.update_edges(front, back);
@@ -343,8 +339,8 @@ inline void HT_Router<k>::update(T_ht_& HT, const Kmer<k>& kmer, base_t front, b
 }
 
 
-template <uint16_t k>
-inline void HT_Router<k>::update(Kmer_Hashtable<k>& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1)
+template <uint16_t k, bool Colored_>
+inline void HT_Router<k, Colored_>::update(Kmer_Hashtable<k, Colored_>& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1)
 {
     HT.update(kmer, front, back, disc_0, disc_1);
 }

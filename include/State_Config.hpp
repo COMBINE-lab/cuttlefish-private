@@ -57,7 +57,9 @@ public:
 
 // =============================================================================
 // Class for a full state-configuration of a vertex in a de Bruijn graph: this
-// is a configuration attached to vertices in subgraphs.
+// is a configuration attached to vertices in subgraphs. `Colored_` denotes
+// whether the state has color / annotation metadata associated to it.
+template <bool Colored_>
 class State_Config
 {
 private:
@@ -80,9 +82,6 @@ public:
 
     // Constructs an empty state.
     State_Config();
-
-    // Sets the edge-frequency threshold to `f_th`.
-    static void set_edge_threshold(uint8_t f_th);
 
     // Adds the edge-encodings `front` and `back` to the associated sides of a
     // corresponding vertex.
@@ -126,7 +125,8 @@ public:
 };
 
 
-inline State_Config::State_Config():
+template <bool Colored_>
+inline State_Config<Colored_>::State_Config():
     //   color_hash(0)
       e_f()
     // , last_color_ID(0)
@@ -190,7 +190,8 @@ inline base_t Edge_Frequency::edge_at(const side_t s) const
 }
 
 
-inline void State_Config::update_edges(const base_t front, const base_t back)
+template <bool Colored_>
+inline void State_Config<Colored_>::update_edges(const base_t front, const base_t back)
 {
     constexpr auto E = base_t::E;
     constexpr auto T = base_t::T;
@@ -206,21 +207,24 @@ inline void State_Config::update_edges(const base_t front, const base_t back)
 }
 
 
-inline void State_Config::mark_discontinuous(const side_t s)
+template <bool Colored_>
+inline void State_Config<Colored_>::mark_discontinuous(const side_t s)
 {
     assert(as_int(s) < 2);
     status |= discontinuity[as_int(s)];
 }
 
 
-inline void State_Config::mark_discontinuous_optional(const side_t s)
+template <bool Colored_>
+inline void State_Config<Colored_>::mark_discontinuous_optional(const side_t s)
 {
     assert(as_int(s) <= 2);
     status |= (s == side_t::unspecified ? 0 : discontinuity[as_int(s)]);
 }
 
 
-inline void State_Config::update(base_t front, base_t back, side_t s_0, side_t s_1)
+template <bool Colored_>
+inline void State_Config<Colored_>::update(base_t front, base_t back, side_t s_0, side_t s_1)
 {
     update_edges(front, back);
 
@@ -229,14 +233,16 @@ inline void State_Config::update(base_t front, base_t back, side_t s_0, side_t s
 }
 
 
-inline bool State_Config::is_discontinuous(const side_t s) const
+template <bool Colored_>
+inline bool State_Config<Colored_>::is_discontinuous(const side_t s) const
 {
     assert(as_int(s) < 2);
     return status & discontinuity[as_int(s)];
 }
 
 
-inline bool State_Config::is_discontinuity() const
+template <bool Colored_>
+inline bool State_Config<Colored_>::is_discontinuity() const
 {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wbitwise-instead-of-logical"
@@ -247,25 +253,29 @@ inline bool State_Config::is_discontinuity() const
 }
 
 
-inline base_t State_Config::edge_at(const side_t s) const
+template <bool Colored_>
+inline base_t State_Config<Colored_>::edge_at(const side_t s) const
 {
     return e_f.edge_at(s);
 }
 
 
-inline bool State_Config::is_branching_side(const side_t s) const
+template <bool Colored_>
+inline bool State_Config<Colored_>::is_branching_side(const side_t s) const
 {
     return e_f.edge_count(s) > 1;
 }
 
 
-inline bool State_Config::is_empty_side(const side_t s) const
+template <bool Colored_>
+inline bool State_Config<Colored_>::is_empty_side(const side_t s) const
 {
     return e_f.edge_count(s) == 0;
 }
 
 
-inline bool State_Config::is_isolated() const
+template <bool Colored_>
+inline bool State_Config<Colored_>::is_isolated() const
 {
     return is_empty_side(side_t::back) && is_empty_side(side_t::front);
 }

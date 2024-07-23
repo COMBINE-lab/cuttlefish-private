@@ -1,7 +1,6 @@
 
 #include "Subgraph.hpp"
 #include "Super_Kmer_Bucket.hpp"
-#include "DNA.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
 
@@ -13,7 +12,7 @@ namespace cuttlefish
 
 
 template <uint16_t k, bool Colored_>
-Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& G, op_buf_t& op_buf, Subgraphs_Scratch_Space<k>& space):
+Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& G, op_buf_t& op_buf, Subgraphs_Scratch_Space<k, Colored_>& space):
       B(B)
     , M(space.map())
     , kmer_count_(0)
@@ -271,17 +270,17 @@ uint64_t Subgraph<k, Colored_>::isolated_vertex_count() const
 }
 
 
-template <uint16_t k>
-Subgraphs_Scratch_Space<k>::Subgraphs_Scratch_Space(const std::size_t max_sz)
+template <uint16_t k, bool Colored_>
+Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t max_sz)
 {
     map_.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
-        HT_Router<k>::add_HT(map_, max_sz);
+        HT_Router<k, Colored_>::add_HT(map_, max_sz);
 }
 
 
-template <uint16_t k>
-typename Subgraphs_Scratch_Space<k>::map_t& Subgraphs_Scratch_Space<k>::map()
+template <uint16_t k, bool Colored_>
+typename Subgraphs_Scratch_Space<k, Colored_>::map_t& Subgraphs_Scratch_Space<k, Colored_>::map()
 {
     assert(map_.size() == parlay::num_workers());
     return map_[parlay::worker_id()].unwrap();
@@ -309,4 +308,4 @@ for b in B:    // B: collection of buckets
 
 // Template instantiations for the required instances.
 ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Subgraph)
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Subgraphs_Scratch_Space)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Subgraphs_Scratch_Space)

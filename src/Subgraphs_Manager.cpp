@@ -65,7 +65,7 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::for_each(HLL.cbegin(), HLL.cend(), [&](const auto& hll){ max_sub_g_sz = std::max(max_sub_g_sz, hll.estimate()); });
     force_free(HLL);
 
-    Subgraphs_Scratch_Space<k> subgraphs_space(max_sub_g_sz * 1.10);
+    Subgraphs_Scratch_Space<k, Colored_> subgraphs_space(max_sub_g_sz * 1.10);
     std::atomic_uint64_t solved = 0;
 
     std::vector<Padded<double>> t_construction(parlay::num_workers(), 0);  // Timer-per-worker for construction work.

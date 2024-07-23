@@ -13,10 +13,4 @@ void Edge_Frequency::set_edge_threshold(const uint8_t f_th)
     Edge_Frequency::f_th = f_th;
 }
 
-
-void State_Config::set_edge_threshold(const uint8_t f_th)
-{
-    Edge_Frequency::set_edge_threshold(f_th);
-}
-
 }

@@ -21,7 +21,7 @@ dBG_Contractor<k>::dBG_Contractor(const Build_Params& params):
     , G(params.vertex_part_count(), params.lmtig_bucket_count(), logistics)
     , op_buf(parlay::num_workers(), op_buf_t(output_sink.sink()))
 {
-    cuttlefish::State_Config::set_edge_threshold(params.cutoff());
+    Edge_Frequency::set_edge_threshold(params.cutoff());
     std::cerr << "Edge frequency cutoff: " << params.cutoff() << ".\n";
 
     // TODO: no need to instantiate `G`, `P_v`, and `P_e` right away—waste of working memory.

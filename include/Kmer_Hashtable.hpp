@@ -11,11 +11,9 @@
 
 #include <cstdint>
 #include <cstddef>
-#include <limits>
 #include <cstring>
 #include <vector>
 #include <cmath>
-#include <algorithm>
 #include <cassert>
 
 
@@ -24,7 +22,7 @@ namespace cuttlefish
 
 
 // A fixed-sized hashtable for (k-mer, state) key-value pairs.
-template <uint16_t k>
+template <uint16_t k, bool Colored_>
 class Kmer_Hashtable
 {
 public:
@@ -38,7 +36,7 @@ private:
     struct Key_Val_Entry
     {
         Kmer<k> key;
-        State_Config val;
+        State_Config<Colored_> val;
         uint8_t timestamp;  // Timestamp of the table version this entry belongs to.
     };
 
@@ -120,21 +118,21 @@ public:
 
 
 // Iterator over `k`-mer hashtables.
-template <uint16_t k>
-class Kmer_Hashtable<k>::Iterator
+template <uint16_t k, bool Colored_>
+class Kmer_Hashtable<k, Colored_>::Iterator
 {
-    friend class Kmer_Hashtable<k>;
+    friend class Kmer_Hashtable<k, Colored_>;
 
 private:
 
-    Kmer_Hashtable<k>* HT;  // The hashtable to iterate on.
+    Kmer_Hashtable<k, Colored_>* HT;    // The hashtable to iterate on.
     std::size_t idx;    // Current slot-index the iterator is in.
 
 
     // Constructs an iterator for the k-mer hashtable `HT` pointing to the
     // first occupied slot onward from `i` (inclusive), if exists. Otherwise
     // the iterator points to the end of the `HT`.
-    Iterator(Kmer_Hashtable<k>& HT, std::size_t i);
+    Iterator(Kmer_Hashtable<k, Colored_>& HT, std::size_t i);
 
 public:
 
@@ -155,8 +153,8 @@ public:
 };
 
 
-template <uint16_t k>
-inline Kmer_Hashtable<k>::Kmer_Hashtable(const std::size_t max_n, const double lf):
+template <uint16_t k, bool Colored_>
+inline Kmer_Hashtable<k, Colored_>::Kmer_Hashtable(const std::size_t max_n, const double lf):
       capacity_(ceil_pow_2(static_cast<std::size_t>(std::ceil(max_n / lf))))
     , wrapper_mask(capacity_ - 1)
     , T(aligned_allocate<Key_Val_Entry>(capacity_))
@@ -170,8 +168,8 @@ inline Kmer_Hashtable<k>::Kmer_Hashtable(const std::size_t max_n, const double l
 }
 
 
-template <uint16_t k>
-inline Kmer_Hashtable<k>::Kmer_Hashtable(Kmer_Hashtable&& rhs):
+template <uint16_t k, bool Colored_>
+inline Kmer_Hashtable<k, Colored_>::Kmer_Hashtable(Kmer_Hashtable&& rhs):
       capacity_(rhs.capacity_)
     , wrapper_mask(rhs.wrapper_mask)
     , T(rhs.T)
@@ -183,8 +181,8 @@ inline Kmer_Hashtable<k>::Kmer_Hashtable(Kmer_Hashtable&& rhs):
 }
 
 
-template <uint16_t k>
-inline Kmer_Hashtable<k>::Update_Entry::Update_Entry(const Kmer<k>& kmer, const base_t front, const base_t back, const side_t disc_0, const side_t disc_1):
+template <uint16_t k, bool Colored_>
+inline Kmer_Hashtable<k, Colored_>::Update_Entry::Update_Entry(const Kmer<k>& kmer, const base_t front, const base_t back, const side_t disc_0, const side_t disc_1):
       kmer(kmer)
     , front(front)
     , back(back)
@@ -193,8 +191,8 @@ inline Kmer_Hashtable<k>::Update_Entry::Update_Entry(const Kmer<k>& kmer, const 
 {}
 
 
-template <uint16_t k>
-inline void Kmer_Hashtable<k>::clear()
+template <uint16_t k, bool Colored_>
+inline void Kmer_Hashtable<k, Colored_>::clear()
 {
     sz = 0;
     cur_stamp = (cur_stamp + 1u) & 255u;
@@ -206,8 +204,8 @@ inline void Kmer_Hashtable<k>::clear()
 }
 
 
-template <uint16_t k>
-inline void Kmer_Hashtable<k>::update(const Kmer<k>& kmer, const base_t front, const base_t back, const side_t disc_0, const side_t disc_1)
+template <uint16_t k, bool Colored_>
+inline void Kmer_Hashtable<k, Colored_>::update(const Kmer<k>& kmer, const base_t front, const base_t back, const side_t disc_0, const side_t disc_1)
 {
     U.emplace_back(kmer, front, back, disc_0, disc_1);
 
@@ -216,8 +214,8 @@ inline void Kmer_Hashtable<k>::update(const Kmer<k>& kmer, const base_t front, c
 }
 
 
-template <uint16_t k>
-inline void Kmer_Hashtable<k>::flush_updates()
+template <uint16_t k, bool Colored_>
+inline void Kmer_Hashtable<k, Colored_>::flush_updates()
 {
     constexpr std::size_t batch_size = 64;
 
@@ -261,7 +259,7 @@ inline void Kmer_Hashtable<k>::flush_updates()
                     T[j].timestamp = cur_stamp;
 
                     T[j].key = u.kmer;
-                    T[j].val = State_Config();
+                    T[j].val = State_Config<Colored_>();
                     T[j].val.update(u.front, u.back, u.disc_0, u.disc_1);
                     sz++;
                     break;
@@ -279,8 +277,8 @@ inline void Kmer_Hashtable<k>::flush_updates()
 }
 
 
-template <uint16_t k>
-inline typename Kmer_Hashtable<k>::Iterator Kmer_Hashtable<k>::find(const Kmer<k>& key)
+template <uint16_t k, bool Colored_>
+inline typename Kmer_Hashtable<k, Colored_>::Iterator Kmer_Hashtable<k, Colored_>::find(const Kmer<k>& key)
 {
 #ifndef NDEBUG
     std::size_t tried_slots = 0;
@@ -298,8 +296,8 @@ inline typename Kmer_Hashtable<k>::Iterator Kmer_Hashtable<k>::find(const Kmer<k
 }
 
 
-template <uint16_t k>
-inline Kmer_Hashtable<k>::Iterator::Iterator(Kmer_Hashtable<k>& HT, std::size_t i):
+template <uint16_t k, bool Colored_>
+inline Kmer_Hashtable<k, Colored_>::Iterator::Iterator(Kmer_Hashtable<k, Colored_>& HT, std::size_t i):
       HT(&HT)
     , idx(i)
 {
@@ -309,8 +307,8 @@ inline Kmer_Hashtable<k>::Iterator::Iterator(Kmer_Hashtable<k>& HT, std::size_t 
 }
 
 
-template <uint16_t k>
-inline void Kmer_Hashtable<k>::Iterator::operator++()
+template <uint16_t k, bool Colored_>
+inline void Kmer_Hashtable<k, Colored_>::Iterator::operator++()
 {
     for(idx++; idx < HT->capacity(); ++idx)
         if(HT->T[idx].timestamp == HT->cur_stamp) // Empty slot as it contains an entry from a previous version of the table.
