@@ -83,7 +83,7 @@ void Subgraphs_Manager<k, Colored_>::process()
             auto& b = subgraph_bucket[graph_id].unwrap();
 
             const auto t_0 = timer::now();
-            Subgraph<k, false> sub_dBG(b, G, op_buf[parlay::worker_id()].unwrap(), subgraphs_space);
+            Subgraph<k, Colored_> sub_dBG(b, G, op_buf[parlay::worker_id()].unwrap(), subgraphs_space);
             sub_dBG.construct();
             // sub_dBG.construct_loop_filtered();
             const auto t_1 = timer::now();

@@ -95,3 +95,4 @@ void Super_Kmer_Chunk<Colored_>::deserialize(std::ifstream& is, const std::size_
 
 // Template-instantiations for the required instances.
 template class cuttlefish::Super_Kmer_Chunk<false>;
+template class cuttlefish::Super_Kmer_Chunk<true>;

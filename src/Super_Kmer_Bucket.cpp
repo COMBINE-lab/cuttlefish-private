@@ -104,3 +104,4 @@ std::size_t Super_Kmer_Bucket<Colored_>::Iterator::read_chunk()
 
 // Template-instantiations for the required instances.
 template class cuttlefish::Super_Kmer_Bucket<false>;
+template class cuttlefish::Super_Kmer_Bucket<true>;

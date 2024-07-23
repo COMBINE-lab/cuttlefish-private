@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
-#include <vector>
 #include <fstream>
 
 
@@ -38,6 +37,11 @@ private:
 
     attribute_t* att_buf;    // Buffer of attributes of the super k-mers.
     label_unit_t* label_buf;  // Buffer of concatenated labels of the super k-mers.
+
+
+    // Adds the 2-bit encoded form of the label `seq` with length `len` to the
+    // chunk.
+    void add_encoded_label(const char* seq, std::size_t len);
 
 
 public:
@@ -92,6 +96,12 @@ public:
     // of the (weak) super k-mer are discontinuous or not.
     void add(const char* seq, std::size_t len, bool l_disc, bool r_disc);
 
+    // Adds a super k-mer to the chunk with label `seq` and length `len` from
+    // source-ID `source`. The markers `l_disc` and `r_disc` denote whether the
+    // left and the right ends of the (weak) super k-mer are discontinuous or
+    // not.
+    void add(const char* seq, std::size_t len, uint32_t source, bool l_disc, bool r_disc);
+
     // Appends the chunk `c`'s contents in the indices `[l, r)` to this chunk.
     void append(const Super_Kmer_Chunk& c, std::size_t l, std::size_t r);
 
@@ -104,14 +114,33 @@ public:
 };
 
 
-template <bool Colored_>
-inline void Super_Kmer_Chunk<Colored_>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
+template <>
+inline void Super_Kmer_Chunk<false>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
 {
     assert(len <= max_sup_kmer_len);
     assert(size() < cap_);
 
-    att_buf[size()] = Super_Kmer_Attributes<Colored_>(len, l_disc, r_disc);
+    att_buf[size()] = Super_Kmer_Attributes<false>(len, l_disc, r_disc);
+    add_encoded_label(seq, len);
+    size_++;
+}
 
+
+template <>
+inline void Super_Kmer_Chunk<true>::add(const char* const seq, const std::size_t len, const uint32_t source, const bool l_disc, const bool r_disc)
+{
+    assert(len <= max_sup_kmer_len);
+    assert(size() < cap_);
+
+    att_buf[size()] = Super_Kmer_Attributes<true>(len, source, l_disc, r_disc);
+    add_encoded_label(seq, len);
+    size_++;
+}
+
+
+template <bool Colored_>
+inline void Super_Kmer_Chunk<Colored_>::add_encoded_label(const char* const seq, const std::size_t len)
+{
     const auto label_off = label_units();   // Offset into the packed-encoding concatenation where to put the label.
     int64_t word_idx = sup_kmer_word_c - 1; // Index of the current word being encoded from the label; the encoding is MSB-boundary aligned for now.
     // TODO: use vectorized encoding.
@@ -120,8 +149,6 @@ inline void Super_Kmer_Chunk<Colored_>::add(const char* const seq, const std::si
         label_buf[label_off + word_idx] = Kmer_Utility::encode_checked<32>(seq + b_idx);
         word_idx--;
     }
-
-    size_++;
 }
 
 

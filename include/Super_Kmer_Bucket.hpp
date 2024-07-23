@@ -11,6 +11,7 @@
 #include "parlay/parallel.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <fstream>
@@ -68,6 +69,12 @@ public:
     // of the (weak) super k-mer are discontinuous or not.
     void add(const char* seq, std::size_t len, bool l_disc, bool r_disc);
 
+    // Adds a super k-mer to the bucket with label `seq` and length `len` from
+    // source-ID `source`. The markers `l_disc` and `r_disc` denote whether the
+    // left and the right ends of the (weak) super k-mer are discontinuous or
+    // not.
+    void add(const char* seq, std::size_t len, uint32_t source, bool l_disc, bool r_disc);
+
     // Closes the bucket—no more content should be added afterwards.
     void close();
 
@@ -119,14 +126,28 @@ public:
 };
 
 
-template <bool Colored_>
-inline void Super_Kmer_Bucket<Colored_>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
+template <>
+inline void Super_Kmer_Bucket<false>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
 {
     const auto w_id = parlay::worker_id();
     auto& c_w = chunk_w[w_id].unwrap();   // Worker-specific chunk.
 
     assert(c_w.size() < c_w.capacity());
     c_w.add(seq, len, l_disc, r_disc);
+
+    if(c_w.full())
+        empty_w_local_chunk(w_id);
+}
+
+
+template <>
+inline void Super_Kmer_Bucket<true>::add(const char* const seq, const std::size_t len, const uint32_t source, const bool l_disc, const bool r_disc)
+{
+    const auto w_id = parlay::worker_id();
+    auto& c_w = chunk_w[w_id].unwrap();   // Worker-specific chunk.
+
+    assert(c_w.size() < c_w.capacity());
+    c_w.add(seq, len, source, l_disc, r_disc);
 
     if(c_w.full())
         empty_w_local_chunk(w_id);

@@ -189,7 +189,10 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                         const auto len_weak = l_joined + len + r_joined;    // Length of the weak super k-mer.
                         assert(len_weak >= k);
                         // TODO: the following add, being to different subgraphs' different worker-buffers, causes lots of cache misses.
-                        subgraphs.add_super_kmer(cur_g, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
+                        if constexpr(!Colored_)
+                            subgraphs.add_super_kmer(cur_g, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
+                        else
+                            subgraphs.add_super_kmer(cur_g, frag + cur_sup_km1_mer_off - l_joined, len_weak, source_id, l_disc, r_disc);
                         weak_sup_kmers_len += len_weak;
 
                         cur_sup_km1_mer_off = next_sup_km1_mer_off;
@@ -216,7 +219,10 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
                 const auto len_weak = l_joined + len + r_joined;
                 assert(len_weak >= k);
                 // TODO: the following add, being to different subgraphs' different worker-buffers, causes lots of cache misses.
-                subgraphs.add_super_kmer(cur_g, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
+                if constexpr(!Colored_)
+                    subgraphs.add_super_kmer(cur_g, frag + cur_sup_km1_mer_off - l_joined, len_weak, l_disc, r_disc);
+                else
+                    subgraphs.add_super_kmer(cur_g, frag + cur_sup_km1_mer_off - l_joined, len_weak, source_id, l_disc, r_disc);
                 weak_sup_kmers_len += len_weak;
 
                 last_frag_end = frag_beg + frag_len;
