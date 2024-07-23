@@ -20,6 +20,7 @@
 #include <atomic>
 #include <string>
 #include <vector>
+#include <type_traits>
 
 
 class Data_Logistics;
@@ -82,12 +83,14 @@ public:
     // with label `seq` and length `len`. The markers `l_disc` and `r_disc`
     // denote whether the left and the right ends of the (weak) super k-mer are
     // discontinuous or not.
+    template <bool C_ = Colored_, std::enable_if_t<!C_, int> = 0>
     void add_super_kmer(std::size_t g, const char* seq, std::size_t len, bool l_disc, bool r_disc);
 
     // Adds a (weak) super k-mer to the subgraph `g` of the de Bruijn graph
     // with label `seq` and length `len` from source-ID `source`. The markers
     // `l_disc` and `r_disc` denote whether the left and the right ends of the
     // (weak) super k-mer are discontinuous or not.
+    template <bool C_ = Colored_, std::enable_if_t<C_, int> = 0>
     void add_super_kmer(std::size_t g, const char* seq, std::size_t len, uint32_t source, bool l_disc, bool r_disc);
 
     // Finalizes the subgraphs for iteration—no more content should be added
@@ -114,6 +117,7 @@ public:
 
 
 template <uint16_t k, bool Colored_>
+template <bool C_, std::enable_if_t<!C_, int>>
 inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
 {
     assert(len >= k);
@@ -126,6 +130,7 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, 
 
 
 template <uint16_t k, bool Colored_>
+template <bool C_, std::enable_if_t<C_, int>>
 inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, const char* const seq, const std::size_t len, const uint32_t source, const bool l_disc, const bool r_disc)
 {
     assert(len >= k);
