@@ -36,8 +36,7 @@ private:
 public:
 
     // Constructs an empty counter.
-    Edge_Frequency(): e_f(0)
-    {}
+    Edge_Frequency(): e_f(0) {}
 
     // Sets the edge-frequency threshold to `f_th`.
     static void set_edge_threshold(uint8_t f_th);
@@ -57,16 +56,18 @@ public:
 
 // =============================================================================
 // Neighborhood information of a vertex in a de Bruijn graph.
-class Neighborhood
+class Vertex_Neighborhood
 {
 private:
 
     Edge_Frequency e_f; // Frequency of the vertex's edges.
 
+protected:
+
+    // Constructs an empty neighborhood.
+    Vertex_Neighborhood(): e_f() {}
 
 public:
-
-    Neighborhood(): e_f() {}
 
     // Adds the edge-encodings `front` and `back` to the associated sides of a
     // corresponding vertex.
@@ -91,41 +92,35 @@ public:
 
 
 // =============================================================================
-// Class for a full state-configuration of a vertex in a de Bruijn graph: this
-// is a configuration attached to vertices in subgraphs. `Colored_` denotes
-// whether the state has color / annotation metadata associated to it.
-template <bool Colored_>
-class State_Config: public Neighborhood
+// Status information of a vertex in a de Bruijn graph.
+template <typename T_status_>
+class Vertex_Status
 {
 private:
 
-    uint8_t status; // Some status information of the vertex, bit-packed:
-                        // whether it is a discontinuity vertex, whether it's been visited.
+    static constexpr T_status_ visited = 0b0000'0001;   // Flag to denote a vertex as visited.
+    static constexpr T_status_ discontinuity[2] = {0b0000'0010, 0b0000'0100};   // Flags to denote a vertex's sides as discontinuous.
 
-    static constexpr uint8_t visited = 0b0000'0001; // Flag to denote a vertex as visited.
-    static constexpr uint8_t discontinuity[2] = {0b0000'0010, 0b0000'0100}; // Flags to denote a vertex's sides as discontinuous.
+protected:
+
+    T_status_ status;   // Some status information of the vertex, bit-packed:
+                            // whether it has discontinuous sides, whether it's been visited.
+
+
+    // Constructs a clear status.
+    Vertex_Status(): status(0) {}
 
     // Marks the associated vertex as discontinuous at side `s`, if `s` is a
     // valid side.
     void mark_discontinuous_optional(side_t s) { assert(as_int(s) <= 2); status |= (s == side_t::unspecified ? 0 : discontinuity[as_int(s)]); }
 
-
 public:
-
-    // Constructs an empty state.
-    State_Config(): Neighborhood(), status(0)
-    {}
 
     // Marks the associated vertex as visited.
     void mark_visited() { status |= visited; }
 
     // Marks the associated vertex as discontinuous at side `s`.
     void mark_discontinuous(side_t s) { assert(as_int(s) < 2); status |= discontinuity[as_int(s)]; }
-
-    // Adds the edge-encodings `front` and `back` to the associated sides of a
-    // corresponding vertex, and marks the associated vertex as discontinuous
-    // at sides `s_0` and `s_1`.
-    void update(base_t front, base_t back, side_t s_0, side_t s_1);
 
     // Returns whether the associated vertex is visited.
     bool is_visited() const { return status & visited; }
@@ -135,6 +130,26 @@ public:
 
     // Returns whether the associated vertex has any discontinuous side.
     bool is_discontinuity() const;
+};
+
+
+// =============================================================================
+// Class for a full state-configuration of a vertex in a de Bruijn graph: this
+// is a configuration attached to vertices in subgraphs. `Colored_` denotes
+// whether the state has color / annotation metadata associated to it.
+template <bool Colored_>
+class State_Config: public Vertex_Neighborhood, public Vertex_Status<uint8_t>
+{
+public:
+
+    // Constructs an empty state.
+    State_Config(): Vertex_Neighborhood(), Vertex_Status()
+    {}
+
+    // Adds the edge-encodings `front` and `back` to the associated sides of a
+    // corresponding vertex, and marks the associated vertex as discontinuous
+    // at sides `s_0` and `s_1`.
+    void update(base_t front, base_t back, side_t s_0, side_t s_1);
 };
 
 
@@ -194,7 +209,7 @@ inline base_t Edge_Frequency::edge_at(const side_t s) const
 }
 
 
-inline void Neighborhood::update_edges(const base_t front, const base_t back)
+inline void Vertex_Neighborhood::update_edges(const base_t front, const base_t back)
 {
     constexpr auto E = base_t::E;
     constexpr auto T = base_t::T;
@@ -210,18 +225,8 @@ inline void Neighborhood::update_edges(const base_t front, const base_t back)
 }
 
 
-template <bool Colored_>
-inline void State_Config<Colored_>::update(base_t front, base_t back, side_t s_0, side_t s_1)
-{
-    update_edges(front, back);
-
-    mark_discontinuous_optional(s_0);
-    mark_discontinuous_optional(s_1);
-}
-
-
-template <bool Colored_>
-inline bool State_Config<Colored_>::is_discontinuity() const
+template <typename T_status_>
+inline bool Vertex_Status<T_status_>::is_discontinuity() const
 {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wbitwise-instead-of-logical"
@@ -229,6 +234,16 @@ inline bool State_Config<Colored_>::is_discontinuity() const
     return is_discontinuous(side_t::front) | is_discontinuous(side_t::back);
 
 #pragma GCC diagnostic pop
+}
+
+
+template <bool Colored_>
+inline void State_Config<Colored_>::update(base_t front, base_t back, side_t s_0, side_t s_1)
+{
+    update_edges(front, back);
+
+    mark_discontinuous_optional(s_0);
+    mark_discontinuous_optional(s_1);
 }
 
 }
