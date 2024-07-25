@@ -258,12 +258,14 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
     side_t s_v = s_v_hat;   // The side of the current vertex `v_hat` through which to extend the unitig, i.e. to exit `v`.
     base_t b_ext;   // The nucleobase encoding the edge(s) incident to the side `s_v` of `v`.
 
-    unitig.template init<Colored_>(v);
-
     auto it = M.find(v.canonical());
     // auto it = M.find_positive(v.canonical());
     assert(it != M.end());
     State_Config state = ht_router::get_val(it);    // State of `v`.
+
+    if constexpr(!Colored_) unitig.init(v);
+    else                    unitig.init(v, state.color_hash());
+
     while(true)
     {
         ht_router::get_val(it).mark_visited();
@@ -315,7 +317,9 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
 
 
         // Still within the unitig.
-        const bool e = unitig.template extend<Colored_>(v, DNA_Utility::map_char(b_ext));
+        bool e;
+        if constexpr(!Colored_) e = unitig.extend(v, DNA_Utility::map_char(b_ext));
+        else                    e = unitig.extend(v, state.color_hash(), DNA_Utility::map_char(b_ext));
         assert(e); (void)e;
 
         s_v = opposite_side(s_v);

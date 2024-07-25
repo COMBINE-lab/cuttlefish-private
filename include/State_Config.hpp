@@ -169,12 +169,15 @@ private:
     static constexpr uint32_t source_pos = 11;
     static constexpr uint32_t source_mask = 0x1FFFFF << source_pos; // Flag to extract last observed source's ID.
 
-    uint64_t color_hash;    // Hash of the vertex's color-set.
+    uint64_t color_hash_;   // Hash of the associated color-set.
 
 public:
 
     // Constructs an empty state.
-    State_Config(): Vertex_Neighborhood(), Vertex_Status(), color_hash(0) {}
+    State_Config(): Vertex_Neighborhood(), Vertex_Status(), color_hash_(0) {}
+
+    // Returns the hash of the associated color-set.
+    uint64_t color_hash() const { return color_hash_; }
 
     // Adds the source ID `source` and its hash `h_s` to the color-set of this
     // state.
@@ -184,7 +187,7 @@ public:
         const auto last_source = (status & source_mask) >> source_pos;
         if(source != last_source)   // Dealing with the problem of hashing multisets.
         {
-            color_hash ^= h_s;
+            color_hash_ ^= h_s;
             status = (status & ~source_mask) | (source << source_pos);
         }
     }

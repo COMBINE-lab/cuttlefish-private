@@ -39,18 +39,24 @@ private:
 
 public:
 
-    // Initializes the unitig scratch with the vertex `v`. `Keep_Vertices`
-    // denote whether the vertices in their canonical form are to be kept or
-    // not.
-    template <bool Keep_Vertices_ = false>
+    // Initializes the unitig scratch with the vertex `v`.
     void init(const Directed_Vertex<k>& v);
+
+    // Initializes the unitig scratch with the vertex `v` and some associated
+    // hash `h`.
+    void init(const Directed_Vertex<k>& v, uint64_t h);
 
     // Extends the unitig scratch with the vertex `v`, and its literal form
     // with the symbol `b`. Returns `true` iff adding `v` to the unitig does
-    // not render itself a cycle. `Keep_Vertices` denote whether the vertices
-    // in their canonical form are to be kept or not.
-    template <bool Keep_Vertices_ = false>
+    // not render itself a cycle. Note that the vertices are not kept around
+    // internally.
     bool extend(const Directed_Vertex<k>& v, char b);
+
+    // Extends the unitig scratch with the vertex `v`, some associated hash `h`,
+    // and its literal form with the symbol `b`. Returns `true` iff adding `v`
+    // to the unitig does not render itself a cycle. The vertices are kept
+    // around internally.
+    bool extend(const Directed_Vertex<k>& v, uint64_t h, char b);
 
     // Marks the unitig as a cycle.
     void mark_cycle() { is_cycle_ = true; }
@@ -95,7 +101,6 @@ inline void Unitig_Scratch<k>::clear()
 
 
 template <uint16_t k>
-template <bool Keep_Vertices_>
 inline void Unitig_Scratch<k>::init(const Directed_Vertex<k>& v)
 {
     clear();
@@ -105,13 +110,19 @@ inline void Unitig_Scratch<k>::init(const Directed_Vertex<k>& v)
 
     endpoint_.kmer().get_label(label_);
     hash_.emplace_back(endpoint_.hash());
-    if constexpr(Keep_Vertices_) V.emplace_back(v.canonical());
     is_cycle_ = false;
 }
 
 
 template <uint16_t k>
-template <bool Keep_Vertices_>
+inline void Unitig_Scratch<k>::init(const Directed_Vertex<k>& v, const uint64_t h)
+{
+    init(v);
+    V.push_back(v.canonical()), hash_.push_back(h);
+}
+
+
+template <uint16_t k>
 inline bool Unitig_Scratch<k>::extend(const Directed_Vertex<k>& v, const char b)
 {
     if(v.is_same_vertex(anchor))
@@ -130,8 +141,18 @@ inline bool Unitig_Scratch<k>::extend(const Directed_Vertex<k>& v, const char b)
 
     label_.emplace_back(b);
     hash_.emplace_back(endpoint_.hash());
-    if constexpr(Keep_Vertices_) V.emplace_back(v.canonical());
 
+    return true;
+}
+
+
+template <uint16_t k>
+inline bool Unitig_Scratch<k>::extend(const Directed_Vertex<k>& v, const uint64_t h, const char b)
+{
+    if(!extend(v, b))
+        return false;
+
+    V.emplace_back(h);
     return true;
 }
 
