@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <algorithm>
 
 
 // =============================================================================
@@ -29,6 +30,7 @@ private:
 
     std::vector<char> label_;       // Literal label of the unitig.
     std::vector<uint64_t> hash_;    // Hashes of the constituent vertices of the unitig.
+    std::vector<Kmer<k>> V;         // Set of the vertices (in their canonical-form) in the unitig.
     bool is_cycle_;                 // Whether the unitig is cyclical or not.
 
 
@@ -37,12 +39,17 @@ private:
 
 public:
 
-    // Initializes the unitig scratch with the vertex `v`.
+    // Initializes the unitig scratch with the vertex `v`. `Keep_Vertices`
+    // denote whether the vertices in their canonical form are to be kept or
+    // not.
+    template <bool Keep_Vertices_ = false>
     void init(const Directed_Vertex<k>& v);
 
     // Extends the unitig scratch with the vertex `v`, and its literal form
     // with the symbol `b`. Returns `true` iff adding `v` to the unitig does
-    // not render itself a cycle.
+    // not render itself a cycle. `Keep_Vertices` denote whether the vertices
+    // in their canonical form are to be kept or not.
+    template <bool Keep_Vertices_ = false>
     bool extend(const Directed_Vertex<k>& v, char b);
 
     // Marks the unitig as a cycle.
@@ -56,6 +63,10 @@ public:
 
     // Returns the hash collection of the unitig vertices.
     const std::vector<uint64_t>& hash() const { return hash_; }
+
+    // Returns the vertices (in their canonical-form) in the unitig, in the
+    // order of the label.
+    const std::vector<Kmer<k>>& vertices() const { return V; }
 
     // Returns the current extension-end vertex of the unitig.
     const Directed_Vertex<k>& endpoint() const { return endpoint_; }
@@ -79,10 +90,12 @@ inline void Unitig_Scratch<k>::clear()
 {
     label_.clear();
     hash_.clear();
+    V.clear();
 }
 
 
 template <uint16_t k>
+template <bool Keep_Vertices_>
 inline void Unitig_Scratch<k>::init(const Directed_Vertex<k>& v)
 {
     clear();
@@ -92,11 +105,13 @@ inline void Unitig_Scratch<k>::init(const Directed_Vertex<k>& v)
 
     endpoint_.kmer().get_label(label_);
     hash_.emplace_back(endpoint_.hash());
+    if constexpr(Keep_Vertices_) V.emplace_back(v.canonical());
     is_cycle_ = false;
 }
 
 
 template <uint16_t k>
+template <bool Keep_Vertices_>
 inline bool Unitig_Scratch<k>::extend(const Directed_Vertex<k>& v, const char b)
 {
     if(v.is_same_vertex(anchor))
@@ -115,6 +130,7 @@ inline bool Unitig_Scratch<k>::extend(const Directed_Vertex<k>& v, const char b)
 
     label_.emplace_back(b);
     hash_.emplace_back(endpoint_.hash());
+    if constexpr(Keep_Vertices_) V.emplace_back(v.canonical());
 
     return true;
 }
@@ -124,8 +140,9 @@ template <uint16_t k>
 inline void Unitig_Scratch<k>::reverse_complement()
 {
     cuttlefish::reverse_complement(label_);
-    min_v_idx = (hash_.size() - 1 - min_v_idx);
     std::reverse(hash_.begin(), hash_.end());
+    std::reverse(V.begin(), V.end());
+    min_v_idx = (size() - 1 - min_v_idx);
 }
 
 
