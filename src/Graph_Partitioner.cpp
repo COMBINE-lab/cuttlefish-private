@@ -58,7 +58,7 @@ template <uint16_t k, bool Colored_>
 void Graph_Partitioner<k, Colored_>::read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {
     uint64_t chunk_count = 0;   // Number of parsed chunks.
-    rabbit::int64 source_id = 0;    // Source (i.e. file) ID of a chunk.
+    rabbit::int64 source_id = 1;    // Source (i.e. file) ID of a chunk.
 
     for(const auto& file_path : seqs)
     {

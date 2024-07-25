@@ -2,6 +2,7 @@
 #include "Subgraph.hpp"
 #include "Super_Kmer_Bucket.hpp"
 #include "globals.hpp"
+#include "xxHash/xxhash.h"
 #include "parlay/parallel.h"
 
 #include <cassert>
@@ -49,17 +50,23 @@ void Subgraph<k, Colored_>::construct()
     typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
     const auto word_count = super_kmer_it.super_kmer_word_count();  // Fixed number of words in a super k-mer label.
 
-    Directed_Vertex<k> v;
-    Kmer<k> pred_v;
+    Directed_Vertex<k> v;   // Current vertex in a scan over some super k-mer.
+    Kmer<k> pred_v; // Previous vertex in a scan.
 
     Super_Kmer_Attributes<Colored_> att;
     label_unit_t* label;
+    uint32_t source = 0;    // Source-ID of the current super k-mer.
+    uint64_t h_s = 0;   // Hash of the source-ID.
     while(super_kmer_it.next(att, label))
     {
         const auto len = att.len();
         assert(len >= k);
         assert(len < 2 * (k - 1));
         kmer_count_ += len - (k - 1);
+
+        if(att.source() != source)
+            source = att.source(),
+            h_s = XXH3_64bits(&source, 3);
 
         v.from_super_kmer(label, word_count);
         std::size_t kmer_idx = 0;
@@ -82,7 +89,8 @@ void Subgraph<k, Colored_>::construct()
             ht_router::update(M, v.canonical(),
                                  front, back,
                                  kmer_idx == 0 && att.left_discontinuous() ? v.entrance_side() : side_t::unspecified,
-                                 kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified);
+                                 kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified,
+                                 source, h_s);
 
             if(kmer_idx + k == len)
                 break;

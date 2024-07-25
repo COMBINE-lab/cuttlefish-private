@@ -138,18 +138,56 @@ public:
 // is a configuration attached to vertices in subgraphs. `Colored_` denotes
 // whether the state has color / annotation metadata associated to it.
 template <bool Colored_>
-class State_Config: public Vertex_Neighborhood, public Vertex_Status<uint8_t>
+class State_Config
+{};
+
+
+template <>
+class State_Config<false>: public Vertex_Neighborhood, public Vertex_Status<uint8_t>
 {
 public:
 
     // Constructs an empty state.
-    State_Config(): Vertex_Neighborhood(), Vertex_Status()
-    {}
+    State_Config(): Vertex_Neighborhood(), Vertex_Status() {}
 
     // Adds the edge-encodings `front` and `back` to the associated sides of a
     // corresponding vertex, and marks the associated vertex as discontinuous
     // at sides `s_0` and `s_1`.
-    void update(base_t front, base_t back, side_t s_0, side_t s_1);
+    void update(base_t front, base_t back, side_t s_0, side_t s_1)
+    {
+        update_edges(front, back);
+        mark_discontinuous_optional(s_0), mark_discontinuous_optional(s_1);
+    }
+};
+
+
+template <>
+class State_Config<true> : public Vertex_Neighborhood, public Vertex_Status<uint32_t>
+{
+private:
+
+    static constexpr uint32_t source_pos = 11;
+    static constexpr uint32_t source_mask = 0x1FFFFF << source_pos; // Flag to extract last observed source's ID.
+
+    uint64_t color_hash;    // Hash of the vertex's color-set.
+
+public:
+
+    // Constructs an empty state.
+    State_Config(): Vertex_Neighborhood(), Vertex_Status(), color_hash(0) {}
+
+    // Adds the source ID `source` and its hash `h_s` to the color-set of this
+    // state.
+    void add_source_hash(const uint32_t source, const uint64_t h_s)
+    {
+        assert(source <= (source_mask >> source_pos));
+        const auto last_source = (status & source_mask) >> source_pos;
+        if(source != last_source)   // Dealing with the problem of hashing multisets.
+        {
+            color_hash ^= h_s;
+            status = (status & ~source_mask) | (source << source_pos);
+        }
+    }
 };
 
 
@@ -234,16 +272,6 @@ inline bool Vertex_Status<T_status_>::is_discontinuity() const
     return is_discontinuous(side_t::front) | is_discontinuous(side_t::back);
 
 #pragma GCC diagnostic pop
-}
-
-
-template <bool Colored_>
-inline void State_Config<Colored_>::update(base_t front, base_t back, side_t s_0, side_t s_1)
-{
-    update_edges(front, back);
-
-    mark_discontinuous_optional(s_0);
-    mark_discontinuous_optional(s_1);
 }
 
 }

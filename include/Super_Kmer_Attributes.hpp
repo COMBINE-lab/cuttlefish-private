@@ -53,6 +53,9 @@ public:
 
     // Returns whether the super k-mer is discontinuous on the right.
     bool right_discontinuous() const { return bit_pack & r_disc_mask; }
+
+    // Dummy method.
+    constexpr uint32_t source() const { return 0; }
 };
 
 

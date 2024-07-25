@@ -41,10 +41,10 @@ class Subgraphs_Scratch_Space
 public:
 
     // typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
-    // typedef ankerl::unordered_dense::map<Kmer<k>, State_Config<Colored_>, Kmer_Hasher<k>> map_t;
+    typedef ankerl::unordered_dense::map<Kmer<k>, State_Config<Colored_>, Kmer_Hasher<k>> map_t;
     // TODO: try swiss table.
 
-    typedef Kmer_Hashtable<k, Colored_> map_t;
+    // typedef Kmer_Hashtable<k, Colored_> map_t;
 
     // Constructs working space for workers, supporting capacity of at least
     // `max_sz` vertices.
@@ -179,7 +179,7 @@ private:
     template <typename T_ht_> static void add_HT(std::vector<Padded<T_ht_>>& vec, std::size_t sz) { vec.emplace_back(); (void)sz; }
     static void add_HT(std::vector<Padded<Kmer_Hashtable<k, Colored_>>>& vec, std::size_t sz) { vec.emplace_back(sz); }
 
-    template <typename T_ht_> static void update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
+    template <typename T_ht_> static void update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1, uint32_t source, uint64_t h_s);
     static void update(Kmer_Hashtable<k, Colored_>& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
 
     template <typename T_iter_> static const Kmer<k>& get_key(const T_iter_& it) { return it->first; }
@@ -327,7 +327,7 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
 
 template <uint16_t k, bool Colored_>
 template <typename T_ht_>
-inline void HT_Router<k, Colored_>::update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1)
+inline void HT_Router<k, Colored_>::update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1, uint32_t source, uint64_t h_s)
 {
     auto& st = HT[kmer];
     st.update_edges(front, back);
@@ -336,6 +336,9 @@ inline void HT_Router<k, Colored_>::update(T_ht_& HT, const Kmer<k>& kmer, base_
         st.mark_discontinuous(disc_0);
     if(disc_1 != side_t::unspecified)
         st.mark_discontinuous(disc_1);
+
+    if constexpr(Colored_)
+        st.add_source_hash(source, h_s);
 }
 
 
