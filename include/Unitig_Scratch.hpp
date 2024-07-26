@@ -118,7 +118,8 @@ template <uint16_t k>
 inline void Unitig_Scratch<k>::init(const Directed_Vertex<k>& v, const uint64_t h)
 {
     init(v);
-    V.push_back(v.canonical()), hash_.push_back(h);
+    V.push_back(v.canonical());
+    hash_.back() = h; // hash_.push_back(h);
 }
 
 
@@ -152,7 +153,8 @@ inline bool Unitig_Scratch<k>::extend(const Directed_Vertex<k>& v, const uint64_
     if(!extend(v, b))
         return false;
 
-    V.emplace_back(h);
+    V.push_back(v.canonical());
+    hash_.back() = h; // hash_.push_back(h);
     return true;
 }
 
