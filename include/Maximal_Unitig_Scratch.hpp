@@ -10,7 +10,9 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstring>
 #include <vector>
+#include <cassert>
 
 
 // =============================================================================
@@ -258,18 +260,28 @@ inline void Maximal_Unitig_Scratch<k>::get_canonical_label(std::string& label) c
     {
         const auto& u_f = unitig_front.label();
         const auto& u_b = unitig_back.label();
+        assert(u_f.size() >= k && u_b.size() >= k);
 
         if(is_canonical())
-            label.insert(label.end(), u_f.cbegin(), u_f.cend()),
+        {
+            assert(std::memcmp(u_f.data() + (u_f.size() - k), u_b.data(), k) == 0); // Overlap at meet-point.
+            label.insert(label.end(), u_f.cbegin(), u_f.cend());
             label.insert(label.end(), u_b.cbegin() + k, u_b.cend());
+        }
         else
-            label.insert(label.end(), u_b.cbegin(), u_b.cend()),
+        {
+            assert(std::memcmp(u_b.data() + (u_b.size() - k), u_f.data(), k) == 0); // Overlap at meet-point.
+            label.insert(label.end(), u_b.cbegin(), u_b.cend());
             label.insert(label.end(), u_f.cbegin() + k, u_f.cend());
+        }
     }
     else
     {
         const auto& u = cycle->label();
         const auto pivot = cycle->min_vertex_idx();
+        assert(u.size() >= k);
+
+        assert(std::memcmp(u.data() + (u.size() - (k - 1)), u.data(), k - 1) == 0); // (k - 1)-overlap at end-begin.
         label.insert(label.end(), u.cbegin() + pivot, u.cend()),
         label.insert(label.end(), u.cbegin() + k - 1, u.cbegin() + k - 1 + pivot);
     }
@@ -285,15 +297,20 @@ inline void Maximal_Unitig_Scratch<k>::get_label(std::string& label) const
     {
         const auto& u_f = unitig_front.label();
         const auto& u_b = unitig_back.label();
+        assert(u_f.size() >= k && u_b.size() >= k);
 
-        label.insert(label.end(), u_f.cbegin(), u_f.cend()),
+        assert(std::memcmp(u_f.data() + (u_f.size() - k), u_b.data(), k) == 0); // Overlap at meet-point.
+        label.insert(label.end(), u_f.cbegin(), u_f.cend());
         label.insert(label.end(), u_b.cbegin() + k, u_b.cend());
     }
     else
     {
         const auto& u = cycle->label();
         const auto pivot = cycle->min_vertex_idx();
-        label.insert(label.end(), u.cbegin() + pivot, u.cend()),
+        assert(u.size() >= k);
+
+        assert(std::memcmp(u.data() + (u.size() - (k - 1)), u.data(), k - 1) == 0); // (k - 1)-overlap at end-begin.
+        label.insert(label.end(), u.cbegin() + pivot, u.cend());
         label.insert(label.end(), u.cbegin() + k - 1, u.cbegin() + k - 1 + pivot);
     }
 }
