@@ -304,7 +304,7 @@ void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
         [&]()
         {
             Path_Info<k> x_inf, y_inf;
-            for(int64_t idx = edge_c - 1; idx >= 0; --idx)  // In reverse order of the newly introduced diagonal-edges to always ensure one endpoint having path-info ready.
+            for(int64_t idx = static_cast<int64_t>(edge_c) - 1; idx >= 0; --idx)    // In reverse order of the newly introduced diagonal-edges to always ensure one endpoint having path-info ready.
             {
                 const auto& e = D_i[idx];
                 assert(M.find(e.x()) || M.find(e.y()));
