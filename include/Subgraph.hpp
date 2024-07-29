@@ -86,6 +86,7 @@ private:
 
     Discontinuity_Graph<k>& G;  // The discontinuity graph.
 
+    uint64_t mtig_c;    // Number of maximal unitigs in the graph.
     uint64_t trivial_mtig_c;    // Number of trivial maximal unitigs in the graph (i.e. also maximal unitigs in the supergraph).
     uint64_t icc_count_;    // Number of trivial maximal unitigs in the graph that are ICCs.
 
@@ -152,6 +153,9 @@ public:
     // Returns the number of edges of the discontinuity graph produced from this
     // subgraph.
     uint64_t discontinuity_edge_count() const { return disc_edge_c; }
+
+    // Returns the number of maximal unitigs in the graph.
+    uint64_t mtig_count() const { return mtig_c; }
 
     // Returns the number of trivial maximal unitigs in the graph (i.e. also
     // maximal unitigs in the supergraph).

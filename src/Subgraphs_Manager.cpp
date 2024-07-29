@@ -7,7 +7,9 @@
 #include "parlay/parallel.h"
 
 #include <atomic>
+#include <cstdint>
 #include <limits>
+#include <vector>
 #include <iostream>
 #include <cstdlib>
 #include <algorithm>
@@ -77,6 +79,7 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::vector<Padded<std::size_t>> max_size(parlay::num_workers(), 0);   // Largest graph size processed per worker.
     std::vector<Padded<std::size_t>> min_size(parlay::num_workers(), std::numeric_limits<std::size_t>::max()); // Smallest graph size processed per worker.
     std::vector<Padded<std::size_t>> label_sz(parlay::num_workers(), 0);    // Sum label size produced per worker.
+    std::vector<Padded<uint64_t>> mtig_count(parlay::num_workers(), 0); // Number of locally maximal unitigs produced per worker.
     std::vector<Padded<std::size_t>> color_shift(parlay::num_workers(), 0); // Number of color-shifting vertices per worker.
 
     const auto process_subgraph =
@@ -100,6 +103,7 @@ void Subgraphs_Manager<k, Colored_>::process()
             auto& l_sz = label_sz[parlay::worker_id()].unwrap();
             auto& max_sz = max_size[parlay::worker_id()].unwrap();
             auto& min_sz = min_size[parlay::worker_id()].unwrap();
+            auto& mtig_c = mtig_count[parlay::worker_id()].unwrap();
             auto& color_shift_c = color_shift[parlay::worker_id()].unwrap();
             max_kmer_c = std::max(max_kmer_c, sub_dBG.kmer_count());
             min_kmer_c = std::min(min_kmer_c, sub_dBG.kmer_count());
@@ -107,7 +111,8 @@ void Subgraphs_Manager<k, Colored_>::process()
             max_sz = std::max(max_sz, sub_dBG.size());
             min_sz = std::min(min_sz, sub_dBG.size());
             l_sz += sub_dBG.label_size();
-            color_shift_c += sub_dBG.color_transition_vertex();
+            mtig_c += sub_dBG.mtig_count();
+            color_shift_c += sub_dBG.color_shift_count();
 
             trivial_mtig_count_ += sub_dBG.trivial_mtig_count();
             icc_count_ += sub_dBG.icc_count();
@@ -153,6 +158,10 @@ void Subgraphs_Manager<k, Colored_>::process()
         [&](){  std::size_t sz = 0;
                 std::for_each(label_sz.cbegin(), label_sz.cend(), [&](const auto& v){ sz += v.unwrap(); });
                 return sz; }() << ".\n";
+    std::cerr << "lm-tig count: " <<
+        [&](){  uint64_t c = 0;
+                std::for_each(mtig_count.cbegin(), mtig_count.cend(), [&](const auto& v){ c += v.unwrap(); });
+                return c; }() << ".\n";
     std::cerr << "Color-shifting vertex count: " <<
         [&](){  std::size_t c = 0;
                 std::for_each(color_shift.cbegin(), color_shift.cend(), [&](const auto& v){ c += v.unwrap(); });

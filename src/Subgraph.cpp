@@ -23,6 +23,7 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
     , disc_edge_c(0)
     , isolated(0)
     , G(G)
+    , mtig_c(0)
     , trivial_mtig_c(0)
     , icc_count_(0)
     , color_shift_c(0)
@@ -215,6 +216,7 @@ void Subgraph<k, Colored_>::contract()
         {
             vertex_count += maximal_unitig.size();
             label_sz += maximal_unitig.size() + k - 1;
+            mtig_c++;
 
             if constexpr(Colored_)
             {
