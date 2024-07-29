@@ -5,6 +5,7 @@
 #include "xxHash/xxhash.h"
 #include "parlay/parallel.h"
 
+#include <cstddef>
 #include <cassert>
 
 
@@ -207,74 +208,15 @@ void Subgraph<k, Colored_>::contract()
             continue;
         }
 
-        non_isolated++;
-
 
         if(extract_maximal_unitig(v, maximal_unitig))
         {
             vertex_count += maximal_unitig.size();
-            unitig_count++;
             label_sz += maximal_unitig.size() + k - 1;
         }
     }
 
     assert(vertex_count + isolated == M.size());
-}
-
-
-template <uint16_t k, bool Colored_>
-std::size_t Subgraph<k, Colored_>::size() const
-{
-    return M.size();
-}
-
-
-template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::kmer_count() const
-{
-    return kmer_count_;
-}
-
-
-template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::edge_count() const
-{
-    return edge_c;
-}
-
-
-template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::discontinuity_edge_count() const
-{
-    return disc_edge_c;
-}
-
-
-template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::trivial_mtig_count() const
-{
-    return trivial_mtig_c;
-}
-
-
-template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::icc_count() const
-{
-    return icc_count_;
-}
-
-
-template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::label_size() const
-{
-    return label_sz;
-}
-
-
-template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::isolated_vertex_count() const
-{
-    return isolated;
 }
 
 

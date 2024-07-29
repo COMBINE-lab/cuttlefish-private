@@ -136,31 +136,31 @@ public:
     void contract();
 
     // Returns the size of the graph.
-    std::size_t size() const;
+    std::size_t size() const { return M.size(); }
 
     // Returns the count of isolated vertices—not part of any edge.
-    uint64_t isolated_vertex_count() const;
+    uint64_t isolated_vertex_count() const { return isolated; }
 
     // Returns the number of k-mer instances (copies) in the graph.
-    uint64_t kmer_count() const;
+    uint64_t kmer_count() const { return kmer_count_; }
 
     // Returns the number of (multi-)edges in the graph.
-    uint64_t edge_count() const;
+    uint64_t edge_count() const { return edge_c; }
 
     // Returns the number of edges of the discontinuity graph produced from this
     // subgraph.
-    uint64_t discontinuity_edge_count() const;
+    uint64_t discontinuity_edge_count() const { return disc_edge_c; }
 
     // Returns the number of trivial maximal unitigs in the graph (i.e. also
     // maximal unitigs in the supergraph).
-    uint64_t trivial_mtig_count() const;
+    uint64_t trivial_mtig_count() const { return trivial_mtig_c; }
 
     // Returns the number of trivial maximal unitigs in the graph that are ICCs.
-    uint64_t icc_count() const;
+    uint64_t icc_count() const { return icc_count_; }
 
     // Returns the total number of characters in the literal representations of
     // all the maximal unitigs.
-    uint64_t label_size() const;
+    uint64_t label_size() const { return label_sz; }
 };
 
 
