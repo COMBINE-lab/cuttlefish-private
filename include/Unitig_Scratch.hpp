@@ -64,6 +64,9 @@ public:
     // Reverse complements the unitig.
     void reverse_complement();
 
+    // Swaps this unitig with `rhs`.
+    void swap(Unitig_Scratch& rhs);
+
     // Returns the literal label of the unitig.
     const std::vector<char>& label() const { return label_; }
 
@@ -166,6 +169,23 @@ inline void Unitig_Scratch<k>::reverse_complement()
     std::reverse(hash_.begin(), hash_.end());
     std::reverse(V.begin(), V.end());
     min_v_idx = (size() - 1 - min_v_idx);
+}
+
+
+template <uint16_t k>
+inline void Unitig_Scratch<k>::swap(Unitig_Scratch& rhs)
+{
+    std::swap(anchor, rhs.anchor);
+    std::swap(endpoint_, rhs.endpoint_);
+    std::swap(min_vertex_, rhs.min_vertex_);
+    std::swap(vertex_idx, rhs.vertex_idx);
+    std::swap(min_v_idx, rhs.min_v_idx);
+
+    label_.swap(rhs.label_);
+    hash_.swap(rhs.hash_);
+    V.swap(rhs.V);
+
+    std::swap(is_cycle_, rhs.is_cycle_);
 }
 
 

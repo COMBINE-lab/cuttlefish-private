@@ -76,6 +76,8 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::vector<Padded<std::size_t>> size(parlay::num_workers(), 0);   // Sum graph size processed per worker.
     std::vector<Padded<std::size_t>> max_size(parlay::num_workers(), 0);   // Largest graph size processed per worker.
     std::vector<Padded<std::size_t>> min_size(parlay::num_workers(), std::numeric_limits<std::size_t>::max()); // Smallest graph size processed per worker.
+    std::vector<Padded<std::size_t>> label_sz(parlay::num_workers(), 0);    // Sum label size produced per worker.
+    std::vector<Padded<std::size_t>> color_shift(parlay::num_workers(), 0); // Number of color-shifting vertices per worker.
 
     const auto process_subgraph =
         [&](const std::size_t graph_id)
@@ -95,13 +97,17 @@ void Subgraphs_Manager<k, Colored_>::process()
             auto& max_kmer_c = max_kmer_count[parlay::worker_id()].unwrap();
             auto& min_kmer_c = min_kmer_count[parlay::worker_id()].unwrap();
             auto& sz = size[parlay::worker_id()].unwrap();
+            auto& l_sz = label_sz[parlay::worker_id()].unwrap();
             auto& max_sz = max_size[parlay::worker_id()].unwrap();
             auto& min_sz = min_size[parlay::worker_id()].unwrap();
+            auto& color_shift_c = color_shift[parlay::worker_id()].unwrap();
             max_kmer_c = std::max(max_kmer_c, sub_dBG.kmer_count());
             min_kmer_c = std::min(min_kmer_c, sub_dBG.kmer_count());
             sz += sub_dBG.size();
             max_sz = std::max(max_sz, sub_dBG.size());
             min_sz = std::min(min_sz, sub_dBG.size());
+            l_sz += sub_dBG.label_size();
+            color_shift_c += sub_dBG.color_transition_vertex();
 
             trivial_mtig_count_ += sub_dBG.trivial_mtig_count();
             icc_count_ += sub_dBG.icc_count();
@@ -143,6 +149,14 @@ void Subgraphs_Manager<k, Colored_>::process()
         [&](){  std::size_t min_sz = std::numeric_limits<std::size_t>::max();
                 std::for_each(min_size.cbegin(), min_size.cend(), [&](const auto& v){ min_sz = std::min(min_sz, v.unwrap()); });
                 return min_sz; }() << ".\n";
+    std::cerr << "Sum label size: " <<
+        [&](){  std::size_t sz = 0;
+                std::for_each(label_sz.cbegin(), label_sz.cend(), [&](const auto& v){ sz += v.unwrap(); });
+                return sz; }() << ".\n";
+    std::cerr << "Color-shifting vertex count: " <<
+        [&](){  std::size_t c = 0;
+                std::for_each(color_shift.cbegin(), color_shift.cend(), [&](const auto& v){ c += v.unwrap(); });
+                return c; }() << ".\n";
 }
 
 

@@ -4,6 +4,7 @@
 
 
 
+#include "Kmer.hpp"
 #include "Unitig_Scratch.hpp"
 #include "FASTA_Record.hpp"
 #include "Character_Buffer.hpp"
@@ -110,6 +111,10 @@ public:
 
     // Gets the literal label of the maximal unitig into `label`.
     void get_label(std::string& label) const;
+
+    // Gets the vertices of the maximal unitig and their associated hashes into
+    // `V` and `H` respectively.
+    void get_vertices_and_hashes(std::vector<Kmer<k>>& V, std::vector<uint64_t>& H) const;
 };
 
 
@@ -201,8 +206,12 @@ inline void Maximal_Unitig_Scratch<k>::finalize()
             id_ = unitig_front.endpoint().hash(),
             unitig_front.reverse_complement();
         else
+        {
             id_ = unitig_back.endpoint().hash(),
             unitig_back.reverse_complement();
+            unitig_front.swap(unitig_back);
+            assert(is_canonical());
+        }
     }
     else
     {
@@ -312,6 +321,44 @@ inline void Maximal_Unitig_Scratch<k>::get_label(std::string& label) const
         assert(std::memcmp(u.data() + (u.size() - (k - 1)), u.data(), k - 1) == 0); // (k - 1)-overlap at end-begin.
         label.insert(label.end(), u.cbegin() + pivot, u.cend());
         label.insert(label.end(), u.cbegin() + k - 1, u.cbegin() + k - 1 + pivot);
+    }
+}
+
+
+template <uint16_t k>
+inline void Maximal_Unitig_Scratch<k>::get_vertices_and_hashes(std::vector<Kmer<k>>& V, std::vector<uint64_t>& H) const
+{
+    V.clear(), H.clear();
+
+    if(is_linear())
+    {
+        const auto& v_f = unitig_front.vertices();
+        const auto& v_b = unitig_back.vertices();
+        const auto& h_f = unitig_front.hash();
+        const auto& h_b = unitig_back.hash();
+        assert(!v_f.empty() && !v_b.empty() && h_f.size() == v_f.size() && h_b.size() == v_b.size());
+
+        assert(v_f.back() == v_b.front());  // Overlap at meet-point.
+        V.insert(V.end(), v_f.cbegin(), v_f.cend());
+        V.insert(V.end(), v_b.cbegin() + 1, v_b.cend());
+
+        assert(h_f.back() == h_b.front());  // Overlap at meet-point.
+        H.insert(H.end(), h_f.cbegin(), h_f.cend());
+        H.insert(H.end(), h_b.cbegin() + 1, h_b.cend());
+    }
+    else
+    {
+        const auto& v = cycle->vertices();
+        const auto& h = cycle->hash();
+        const auto pivot = cycle->min_vertex_idx();
+        assert(!v.empty() && h.size() == v.size());
+        assert(pivot < v.size());
+
+        V.insert(V.end(), v.cbegin() + pivot, v.cend());
+        V.insert(V.end(), v.cbegin(), v.cbegin() + pivot);
+
+        H.insert(H.end(), h.cbegin() + pivot, h.cend());
+        H.insert(H.end(), h.cbegin(), h.cbegin() + pivot);
     }
 }
 

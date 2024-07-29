@@ -25,6 +25,7 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
     , G(G)
     , trivial_mtig_c(0)
     , icc_count_(0)
+    , color_shift_c(0)
     , op_buf(op_buf)
 {
     M.clear();
@@ -187,8 +188,9 @@ void Subgraph<k, Colored_>::contract()
 {
     Maximal_Unitig_Scratch<k> maximal_unitig;   // Scratch space to be used to construct maximal unitigs.
     uint64_t vertex_count = 0;  // Count of vertices processed.
-    uint64_t unitig_count = 0;  // Count of maximal unitigs.
-    uint64_t non_isolated = 0;  // Count of non-isolated vertices.
+
+    std::vector<Kmer<k>> V; // Vertices in an lm-tig.
+    std::vector<uint64_t> H;    // Color-set hashes of the vertices in an lm-tig.
 
     for(auto p = M.begin(); p != M.end(); ++p)
     {
@@ -213,6 +215,20 @@ void Subgraph<k, Colored_>::contract()
         {
             vertex_count += maximal_unitig.size();
             label_sz += maximal_unitig.size() + k - 1;
+
+            if constexpr(Colored_)
+            {
+                maximal_unitig.get_vertices_and_hashes(V, H);
+                assert(V.size() == H.size() && V.size() == maximal_unitig.size());
+
+                uint64_t h_last = ~H[0];
+                for(std::size_t i = 0; i < V.size(); ++i)
+                    if(H[i] != h_last)  // This is either a color-shifting vertex, or the first vertex in the lm-tig.
+                    {
+                        h_last = H[i];
+                        color_shift_c++;
+                    }
+            }
         }
     }
 

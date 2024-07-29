@@ -89,6 +89,8 @@ private:
     uint64_t trivial_mtig_c;    // Number of trivial maximal unitigs in the graph (i.e. also maximal unitigs in the supergraph).
     uint64_t icc_count_;    // Number of trivial maximal unitigs in the graph that are ICCs.
 
+    uint64_t color_shift_c; // Number of vertices in the graph that either shift color or is the first vertex in an lm-tig.
+
 
     // TODO: move the following out to a central location.
 
@@ -157,6 +159,10 @@ public:
 
     // Returns the number of trivial maximal unitigs in the graph that are ICCs.
     uint64_t icc_count() const { return icc_count_; }
+
+    // Returns the number of vertices in the graph that either shift color or
+    // is the first vertex in an lm-tig.
+    uint64_t color_shift_count() const { return color_shift_c; }
 
     // Returns the total number of characters in the literal representations of
     // all the maximal unitigs.
