@@ -7,10 +7,10 @@
 #include "RabbitFX/io/FastxStream.h"
 #include "RabbitFX/io/Reference.h"
 #include "RabbitFX/io/Formater.h"
+#include "RabbitFX/io/Globals.h"
 #include "parlay/parallel.h"
 
 #include <cmath>
-#include <functional>
 #include <cassert>
 
 
@@ -39,12 +39,15 @@ void Graph_Partitioner<k, Colored_>::partition()
     chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
     chunk_q_t chunk_q(chunk_count); // Parsed chunks.
 
-    std::thread parser(&Graph_Partitioner::read_chunks, this, std::ref(chunk_pool), std::ref(chunk_q));
-
-    const auto process = [&](std::size_t){ this->process(chunk_q, chunk_pool); };
-    parlay::parallel_for(0, parlay::num_workers(), process, 1);
-
-    parser.join();
+    parlay::par_do(
+        [&]()
+        {
+            read_chunks(chunk_pool, chunk_q);
+        },
+        [&](){
+            const auto process_chunks = [&](std::size_t){ this->process(chunk_q, chunk_pool); };
+            parlay::parallel_for(0, parlay::num_workers(), process_chunks, 1);
+        });
 
     std::cerr << "Number of processed chunks: " << chunk_count_ << ".\n";
     std::cerr << "Number of records: " << record_count_ << ".\n";
