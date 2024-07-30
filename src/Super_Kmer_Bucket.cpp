@@ -43,8 +43,7 @@ void Super_Kmer_Bucket<Colored_>::close()
     // TODO: no need to empty or serialize the chunks—the subsequent iteration over the bucket should
     // handle the buffered in-memory content. This would skip #buckets many syscalls.
 
-    for(std::size_t w_id = 0; w_id < parlay::num_workers(); ++w_id)
-        empty_w_local_chunk(w_id);
+    empty_w_local_chunks();
 
     if(!chunk.empty())
     {
@@ -53,6 +52,14 @@ void Super_Kmer_Bucket<Colored_>::close()
     }
 
     output.close();
+}
+
+
+template <bool Colored_>
+void Super_Kmer_Bucket<Colored_>::empty_w_local_chunks()
+{
+    for(std::size_t w_id = 0; w_id < parlay::num_workers(); ++w_id)
+        empty_w_local_chunk(w_id);
 }
 
 

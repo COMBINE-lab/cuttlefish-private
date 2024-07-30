@@ -12,6 +12,7 @@
 
 #include <cmath>
 #include <cassert>
+#include <cstddef>
 
 
 namespace cuttlefish
@@ -39,15 +40,34 @@ void Graph_Partitioner<k, Colored_>::partition()
     chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
     chunk_q_t chunk_q(chunk_count); // Parsed chunks.
 
-    parlay::par_do(
-        [&]()
+    const auto process_chunks = [&](std::size_t){ this->process(chunk_q, chunk_pool); };
+
+    if constexpr(!Colored_)
+        parlay::par_do(
+            [&]()
+            {
+                read_chunks(chunk_pool, chunk_q);
+            },
+            [&](){
+                parlay::parallel_for(0, parlay::num_workers(), process_chunks, 1);
+            });
+    else
+        for(std::size_t source_id = 1; source_id <= seqs.size(); ++source_id)
         {
-            read_chunks(chunk_pool, chunk_q);
-        },
-        [&](){
-            const auto process_chunks = [&](std::size_t){ this->process(chunk_q, chunk_pool); };
-            parlay::parallel_for(0, parlay::num_workers(), process_chunks, 1);
-        });
+            chunk_q.Reset();
+
+            parlay::par_do(
+            [&]()
+                {
+                    read_chunks(source_id, chunk_pool, chunk_q);
+                },
+                [&]()
+                {
+                    parlay::parallel_for(0, parlay::num_workers(), process_chunks, 1);
+                });
+
+            subgraphs.flush_local_bufs();
+        }
 
     std::cerr << "Number of processed chunks: " << chunk_count_ << ".\n";
     std::cerr << "Number of records: " << record_count_ << ".\n";
@@ -83,12 +103,33 @@ void Graph_Partitioner<k, Colored_>::read_chunks(chunk_pool_t& chunk_pool, chunk
 
 
 template <uint16_t k, bool Colored_>
+uint64_t Graph_Partitioner<k, Colored_>::read_chunks(const std::size_t source_id, chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
+{
+    uint64_t chunk_count = 0;   // Number of parsed chunks.
+
+    // TODO: address memory-reuse issue within a reader for every new instance.
+    rabbit::fq::FastqFileReader reader(seqs[source_id - 1], chunk_pool);
+    const chunk_t* chunk;
+    while((chunk = reader.readNextChunk()) != NULL)
+    {
+        chunk_q.Push(source_id, chunk);
+        chunk_count++;
+    }
+
+    chunk_q.SetCompleted();
+
+    return chunk_count;
+}
+
+
+template <uint16_t k, bool Colored_>
 void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool)
 {
     rabbit::int64 source_id;    // Source (i.e. file) ID of a chunk.
     uint64_t chunk_count = 0;   // Number of processed chunks.
     chunk_t* chunk; // Current chunk.
     std::vector<neoReference> parsed_chunk; // Current parsed chunk.
+    rabbit::int64 last_source = 0;  // Source ID of the last chunk processed.
 
     uint64_t rec_count = 0; // Number of parsed records.
     uint64_t sup_km1_mer_count = 0; // Number of parsed super (k - 1)-mers.
@@ -99,6 +140,8 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     Min_Iterator<k - 1> min_it(l_); // `l`-minimizer iterator for `(k - 1)`-mers.
     while(chunk_q.Pop(source_id, chunk))
     {
+        assert(source_id >= last_source);
+
         parsed_chunk.clear();
         rec_count += rabbit::fq::chunkFormat(chunk, parsed_chunk);
 
@@ -243,6 +286,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     weak_super_kmer_count_ += sup_km1_mer_count;
     weak_super_kmers_len_ += weak_sup_kmers_len;
     super_km1_mers_len_ += sup_km1_mers_len;
+    last_source = source_id;
 }
 
 

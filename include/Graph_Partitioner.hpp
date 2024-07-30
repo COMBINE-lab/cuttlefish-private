@@ -56,6 +56,11 @@ private:
     // `chunk_pool` and puts the parsed chunks into the queue `chunk_q`.
     void read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q);
 
+    // Reads the sequences with source ID `source_id` into chunks from the
+    // memory pool `chunk_pool` and puts the parsed chunks into the queue
+    // `chunk_q`.
+    uint64_t read_chunks(std::size_t source_id, chunk_pool_t& chunk_pool, chunk_q_t& chunk_q);
+
     // Processes the parsed chunks from the queue `chunk_q` and returns the
     // processed chunks to the memory pool `chunk_pool`.
     void process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool);

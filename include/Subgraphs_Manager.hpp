@@ -97,6 +97,9 @@ public:
     // after this.
     void finalize();
 
+    // Flushes the worker-local super `k`-mer buffers for each bucket.
+    void flush_local_bufs();
+
     // Returns the largest estimated size of any subgraph.
     uint64_t estimate_size_max() const;
 

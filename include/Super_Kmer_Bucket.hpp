@@ -78,6 +78,9 @@ public:
     // Closes the bucket—no more content should be added afterwards.
     void close();
 
+    // Empties the local chunks of workers to the chunk of the bucket.
+    void empty_w_local_chunks();
+
     // Removes the bucket.
     void remove();
 
@@ -162,6 +165,8 @@ inline void Super_Kmer_Bucket<Colored_>::empty_w_local_chunk(const std::size_t w
     lock.lock();
 
     // TODO: do away with `chunk`, and write `c_w` directly.
+    // Note: can be inefficient when working with colors, i.e. when every source needs
+    // one force-flush of each bucket to maintain semi-sorted order of super k-mers.
 
     const auto break_idx = std::min(c_w.size(), chunk.free_capacity());
     chunk.append(c_w, 0, break_idx);

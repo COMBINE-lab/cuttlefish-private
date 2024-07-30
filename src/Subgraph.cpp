@@ -67,9 +67,14 @@ void Subgraph<k, Colored_>::construct()
         assert(len < 2 * (k - 1));
         kmer_count_ += len - (k - 1);
 
-        if(att.source() != source)
-            source = att.source(),
-            h_s = XXH3_64bits(&source, 3);
+        if constexpr(Colored_)
+            if(att.source() != source)
+            {
+                assert(att.source() > source);
+
+                source = att.source();
+                h_s = XXH3_64bits(&source, 3);
+            }
 
         v.from_super_kmer(label, word_count);
         std::size_t kmer_idx = 0;
