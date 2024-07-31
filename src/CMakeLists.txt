@@ -91,7 +91,7 @@ add_executable(test test.cpp)
 
 # Define dependencies between the targets.
 add_dependencies(rabbitfx prj_rapidgzip)
-add_dependencies(cfcore_static prj_parlaylib)
+add_dependencies(cfcore_static prj_parlaylib prj_boost)
 
 
 # Set the include directories for the targets.

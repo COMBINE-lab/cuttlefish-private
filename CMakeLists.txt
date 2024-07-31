@@ -339,7 +339,8 @@ ExternalProject_Add(prj_rapidgzip
     BUILD_IN_SOURCE     TRUE
     INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external/
     CONFIGURE_COMMAND   mkdir -p build && cd build &&
-                        cmake -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DWITH_RPMALLOC=ON -DWITH_ISAL=ON ..
+                        cmake -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                        -DWITH_RPMALLOC=ON -DWITH_ISAL=ON ..
     BUILD_COMMAND       cd build && make -j
     INSTALL_COMMAND     mkdir -p ${EXT_INCLUDE}/rapidgzip &&
                         cp -rf src/core src/huffman src/indexed_bzip2 src/rapidgzip ${EXT_INCLUDE}/rapidgzip/ &&
@@ -355,6 +356,33 @@ add_dependencies(isal_inflate prj_rapidgzip)
 add_library(rpmalloc STATIC IMPORTED)
 set_target_properties(rpmalloc PROPERTIES IMPORTED_LOCATION ${EXT_LIB}/librpmalloc.a)
 add_dependencies(rpmalloc prj_rapidgzip)
+
+
+# Prepare the `boost` library. It provides: support for preprocessor
+# metaprogramming and a scalable concurrent hashmap.
+set(BOOST_MIN_VERSION "1.85.0")
+find_package(Boost ${BOOST_MIN_VERSION})
+if(BOOST_FOUND)
+    message("Found boost (v${BOOST_VERSION}) in the system")
+else()
+    message("Build system will fetch and install required Boost libraries")
+    ExternalProject_Add(prj_boost
+        DOWNLOAD_DIR        ${CMAKE_SOURCE_DIR}/external
+        DOWNLOAD_COMMAND    curl -k -L https://github.com/boostorg/boost/releases/download/boost-${BOOST_MIN_VERSION}/boost-${BOOST_MIN_VERSION}-cmake.tar.gz -o boost-${BOOST_MIN_VERSION}-cmake.tar.gz &&
+                            tar -xzf boost-${BOOST_MIN_VERSION}-cmake.tar.gz &&
+                            rm boost-${BOOST_MIN_VERSION}-cmake.tar.gz
+
+        SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/boost-${BOOST_MIN_VERSION}
+        BUILD_IN_SOURCE     TRUE
+        INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external
+        CONFIGURE_COMMAND   mkdir -p build && cd build &&
+                            cmake -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                            -DBOOST_INCLUDE_LIBRARIES=preprocessor$<SEMICOLON>unordered
+                            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=./ ..
+        BUILD_COMMAND       cd build && cmake --build . --target install --config Release
+        INSTALL_COMMAND     cp -rf build/include/boost ${EXT_INCLUDE}/
+    )
+endif()
 
 
 # The `Debug` configuration optimizes the program for debugging and enables full debug information.
