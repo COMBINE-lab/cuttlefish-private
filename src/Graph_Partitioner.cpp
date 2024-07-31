@@ -278,6 +278,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
 
         chunk_pool.Release(chunk);
         chunk_count++;
+        last_source = source_id;
     }
 
 
@@ -286,7 +287,6 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     weak_super_kmer_count_ += sup_km1_mer_count;
     weak_super_kmers_len_ += weak_sup_kmers_len;
     super_km1_mers_len_ += sup_km1_mers_len;
-    last_source = source_id;
 }
 
 
