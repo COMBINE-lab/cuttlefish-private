@@ -338,7 +338,8 @@ ExternalProject_Add(prj_rapidgzip
     SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/rapidgzip
     BUILD_IN_SOURCE     TRUE
     INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external/
-    CONFIGURE_COMMAND   mkdir -p build && cd build && cmake -DWITH_RPMALLOC=ON -DWITH_ISAL=ON ..
+    CONFIGURE_COMMAND   mkdir -p build && cd build &&
+                        cmake -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DWITH_RPMALLOC=ON -DWITH_ISAL=ON ..
     BUILD_COMMAND       cd build && make -j
     INSTALL_COMMAND     mkdir -p ${EXT_INCLUDE}/rapidgzip &&
                         cp -rf src/core src/huffman src/indexed_bzip2 src/rapidgzip ${EXT_INCLUDE}/rapidgzip/ &&
