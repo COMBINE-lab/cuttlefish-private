@@ -72,6 +72,7 @@ set(PROJECT_SRC
         Contracted_Graph_Expander.cpp
         Unitig_Collator.cpp
         Unitig_Coord_Bucket.cpp
+        Color_Table.cpp
         profile.cpp
         commands.cpp
     )

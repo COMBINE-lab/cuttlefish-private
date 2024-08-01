@@ -13,6 +13,7 @@
 #include "Unitig_Scratch.hpp"
 #include "Maximal_Unitig_Scratch.hpp"
 #include "Discontinuity_Graph.hpp"
+#include "Color_Table.hpp"
 #include "dBG_Utilities.hpp"
 #include "utility.hpp"
 #include "globals.hpp"
@@ -53,11 +54,16 @@ public:
     // Returns the appropriate map for a worker.
     map_t& map();
 
+    // Returns the hashtable for color-sets.
+    Color_Table& color_map();
+
 
 private:
 
     std::vector<Padded<map_t>> map_;   // Map collection for different workers.
     // TODO: try thread-local allocation for map-space, e.g. from parlay.
+
+    Color_Table M_c;    // Hashtable for color-sets.
 };
 
 
@@ -76,6 +82,8 @@ private:
     const Super_Kmer_Bucket<Colored_>& B;   // The weak super k-mer bucket inducing this subgraph.
 
     typename Subgraphs_Scratch_Space<k, Colored_>::map_t& M;    // Map to be used for this subgraph.
+
+    Color_Table& M_c;   // Color-set map.
 
     uint64_t kmer_count_;   // Number of k-mer instances (copies) in the graph.
 

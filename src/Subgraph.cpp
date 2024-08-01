@@ -17,6 +17,7 @@ template <uint16_t k, bool Colored_>
 Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& G, op_buf_t& op_buf, Subgraphs_Scratch_Space<k, Colored_>& space):
       B(B)
     , M(space.map())
+    , M_c(space.color_map())
     , kmer_count_(0)
     , edge_c(0)
     , label_sz(0)
@@ -257,6 +258,14 @@ typename Subgraphs_Scratch_Space<k, Colored_>::map_t& Subgraphs_Scratch_Space<k,
 {
     assert(map_.size() == parlay::num_workers());
     return map_[parlay::worker_id()].unwrap();
+}
+
+
+template <uint16_t k, bool Colored_>
+Color_Table& Subgraphs_Scratch_Space<k, Colored_>::color_map()
+{
+    assert(Colored_);
+    return M_c;
 }
 
 }

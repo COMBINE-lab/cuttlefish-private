@@ -187,7 +187,7 @@ public:
         const auto last_source = (status & source_mask) >> source_pos;
         if(source != last_source)   // Dealing with the problem of hashing multisets.
         {
-            color_hash_ ^= h_s;
+            color_hash_ ^= h_s; // TODO: consider using `boost::hash_combine`.
             status = (status & ~source_mask) | (source << source_pos);
         }
     }
