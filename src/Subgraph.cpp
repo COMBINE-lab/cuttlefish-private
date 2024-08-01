@@ -18,6 +18,7 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
       B(B)
     , M(space.map())
     , M_c(space.color_map())
+    , M_l(space.lmtig_coord_map())
     , kmer_count_(0)
     , edge_c(0)
     , label_sz(0)
@@ -250,6 +251,8 @@ Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t 
     map_.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
         HT_Router<k, Colored_>::add_HT(map_, max_sz);
+
+    lmtig_coord_map_.resize(parlay::num_workers());
 }
 
 
@@ -266,6 +269,14 @@ Color_Table& Subgraphs_Scratch_Space<k, Colored_>::color_map()
 {
     assert(Colored_);
     return M_c;
+}
+
+
+template <uint16_t k, bool Colored_>
+typename Subgraphs_Scratch_Space<k, Colored_>::lmtig_coord_map_t& Subgraphs_Scratch_Space<k, Colored_>::lmtig_coord_map()
+{
+    assert(lmtig_coord_map_.size() == parlay::num_workers());
+    return lmtig_coord_map_[parlay::worker_id()].unwrap();
 }
 
 }

@@ -35,6 +35,8 @@ template <uint16_t k, bool Colored_> class HT_Router;
 
 enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
 
+class LMTig_Coord;  // lm-tig coordinate of a vertex (k-mer).
+
 
 // Working space for workers processing different subgraphs.
 template <uint16_t k, bool Colored_>
@@ -46,6 +48,8 @@ public:
     typedef ankerl::unordered_dense::map<Kmer<k>, State_Config<Colored_>, Kmer_Hasher<k>> map_t;
     // typedef Kmer_Hashtable<k, Colored_> map_t;
 
+    typedef ankerl::unordered_dense::map<Kmer<k>, LMTig_Coord, Kmer_Hasher<k>> lmtig_coord_map_t;
+
     // Constructs working space for workers, supporting capacity of at least
     // `max_sz` vertices.
     Subgraphs_Scratch_Space(std::size_t max_sz);
@@ -56,6 +60,9 @@ public:
     // Returns the hashtable for color-sets.
     Color_Table& color_map();
 
+    // Returns the appropriate lm-tig coordinate map of vertices for a worker.
+    lmtig_coord_map_t& lmtig_coord_map();
+
 
 private:
 
@@ -63,6 +70,9 @@ private:
     // TODO: try thread-local allocation for map-space, e.g. from parlay.
 
     Color_Table M_c;    // Hashtable for color-sets.
+
+    // Map collection for lm-tig coordinates of vertices for workers.
+    std::vector<Padded<lmtig_coord_map_t>> lmtig_coord_map_;
 };
 
 
@@ -83,6 +93,7 @@ private:
     typename Subgraphs_Scratch_Space<k, Colored_>::map_t& M;    // Map to be used for this subgraph.
 
     Color_Table& M_c;   // Color-set map.
+    typename Subgraphs_Scratch_Space<k, Colored_>::lmtig_coord_map_t& M_l;  // lm-tig coordinate map.
 
     uint64_t kmer_count_;   // Number of k-mer instances (copies) in the graph.
 
@@ -215,6 +226,37 @@ enum class Walk_Termination
     crossed,    // crossed to a different unitig, or looped / cycled back to the same unitig
     dead_ended, // no extension existed
     exitted,    // exitted the subgraph
+};
+
+
+// lm-tig coordinate of a vertex (k-mer).
+class LMTig_Coord
+{
+private:
+
+    uint16_t b_;    // Bucket-ID of the containing lm-tig: the `x` coordinate.
+    uint16_t off_;  // Offset of the corresponding k-mer within the containing lm-tig label: the `z` coordinate.
+    uint32_t idx_;  // Index of the containing lm-tig within its bucket: the `y` coordinate.
+
+
+public:
+
+    LMTig_Coord(uint16_t b, uint32_t idx, uint16_t off):
+          b_(b)
+        , off_(off)
+        , idx_(idx)
+    {}
+
+    // Returns the bucket-ID of the containing lm-tig: the `x` coordinate.
+    uint16_t b() const { return b_; }
+
+    // Returns the index of the containing lm-tig within its bucket: the `y`
+    // coordinate.
+    uint32_t idx() const { return idx_; }
+
+    // Returns the offset of the corresponding k-mer within the containing lm-
+    // tig label: the `z` coordinate.
+    uint16_t off() const { return off_; }
 };
 
 
