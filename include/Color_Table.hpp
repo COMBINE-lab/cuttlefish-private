@@ -8,10 +8,43 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <utility>
 
 
 namespace cuttlefish
 {
+
+enum class Color_Status;    // Extraction-status of a color-set.
+
+
+// Coordinate of a color in the actual color-collection.
+class Color_Coordinate
+{
+private:
+
+    // Flag to denote whether the corresponding color is in the process of
+    // extraction or not.
+    static constexpr uint32_t in_process = (uint32_t(1) << 31);
+
+    uint32_t bit_pack;  // Packed representation of the color-coordinate.
+
+public:
+
+    // Constructs an empty coordinate.
+    constexpr Color_Coordinate(): bit_pack(0)
+    {}
+
+    // Returns whether the corresponding color is in the process of extraction
+    // or not.
+    constexpr bool is_in_process() const { return bit_pack & in_process; }
+
+    // Marks that the corresponding color is in the process of extraction.
+    constexpr void mark_in_process() { bit_pack |= in_process; }
+
+    // Returns the designated coordinate of a color that is being extracted.
+    static constexpr Color_Coordinate in_process_coordinate() { Color_Coordinate c; c.mark_in_process(); return c; }
+};
+
 
 // Hashtable for color-sets. Keys are color-set hashes and values are color-set
 // coordinates.
@@ -19,7 +52,7 @@ class Color_Table
 {
 
     typedef uint64_t hash_t;
-    typedef uint32_t coord_t;
+    typedef Color_Coordinate coord_t;
 
 private:
 
@@ -34,6 +67,9 @@ public:
     // Reserves enough space for at least `n` elements in the table.
     void reserve(std::size_t n) { M.reserve(n); }
 
+    // Returns the size of the table.
+    auto size() const { return M.size(); }
+
     // Returns `true` iff the table contains the key `h`.
     bool contains(const hash_t h) const { return M.contains(h); }
 
@@ -41,9 +77,33 @@ public:
     // `true` iff the `h` was absent in the table prior to the insertion.
     bool add(hash_t h, coord_t c) { return M.emplace(h, c); }
 
-    // Returns the size of the table.
-    auto size() const { return M.size(); }
+    // Marks that the color with hash `h` is in the process of extraction.
+    // Returns the extraction-status of the color prior to this invocation.
+    Color_Status mark_in_process(hash_t h);
 };
+
+
+// Extraction-status of a color-set.
+enum class Color_Status
+{
+    undiscovered,   // has not been seen yet
+    in_process,     // is in the process of extraction
+    discovered,     // completely extracted
+};
+
+
+inline Color_Status Color_Table::mark_in_process(const hash_t h)
+{
+    Color_Coordinate c;
+    const auto r = M.insert_or_visit(std::make_pair(h, Color_Coordinate::in_process_coordinate()),
+                    [&](const auto& p)
+                    {
+                        c = p.second;
+                    });
+
+    typedef Color_Status status_t;
+    return r ? status_t::undiscovered : (c.is_in_process() ? status_t::in_process : status_t::discovered);
+}
 
 }
 

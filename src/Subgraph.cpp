@@ -234,10 +234,26 @@ void Subgraph<k, Colored_>::contract()
                 for(std::size_t i = 0; i < V.size(); ++i)
                     if(H[i] != h_last)  // This is either a color-shifting vertex, or the first vertex in the lm-tig.
                     {
-                        h_last = H[i];
-                        if(!C.contains(H[i]))
+                        const auto color_status = C.mark_in_process(H[i]);
+                        switch (color_status)
+                        {
+                        case Color_Status::undiscovered:
                             M[V[i]].mark_new_color();
+                            // TODO: track lm-tig coordinate of V_i.
+                            break;
 
+                        case Color_Status::in_process:
+                            // TODO: track lm-tig coordinate of V_i and H_i to add back
+                            // the color-coordinate once the color's been extracted.
+                            break;
+
+                        case Color_Status::discovered:
+                            // TODO: add color-coordinate to appropriate color-bucket
+                            // as per the lm-tig coordinate of this vertex.
+                            break;
+                        }
+
+                        h_last = H[i];
                         color_shift_c++;
                     }
             }
