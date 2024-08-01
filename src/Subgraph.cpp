@@ -17,7 +17,7 @@ template <uint16_t k, bool Colored_>
 Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& G, op_buf_t& op_buf, Subgraphs_Scratch_Space<k, Colored_>& space):
       B(B)
     , M(space.map())
-    , M_c(space.color_map())
+    , C(space.color_map())
     , M_l(space.lmtig_coord_map())
     , kmer_count_(0)
     , edge_c(0)
@@ -235,6 +235,9 @@ void Subgraph<k, Colored_>::contract()
                     if(H[i] != h_last)  // This is either a color-shifting vertex, or the first vertex in the lm-tig.
                     {
                         h_last = H[i];
+                        if(!C.contains(H[i]))
+                            M[V[i]].mark_new_color();
+
                         color_shift_c++;
                     }
             }

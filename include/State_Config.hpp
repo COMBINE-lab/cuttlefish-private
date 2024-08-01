@@ -169,6 +169,8 @@ private:
     static constexpr uint32_t source_pos = 11;
     static constexpr uint32_t source_mask = 0x1FFFFF << source_pos; // Flag to extract last observed source's ID.
 
+    static constexpr uint32_t new_color = 0b0000'1000;  // Flag to denote a vertex as having a new color.
+
     uint64_t color_hash_;   // Hash of the associated color-set.
 
 public:
@@ -191,6 +193,12 @@ public:
             status = (status & ~source_mask) | (source << source_pos);
         }
     }
+
+    // Marks the associated vertex as having a new color.
+    void mark_new_color() { status |= new_color; }
+
+    // Returns whether the associated vertex has a new color or not.
+    bool has_new_color() const { return status & new_color; }
 };
 
 

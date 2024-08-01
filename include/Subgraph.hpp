@@ -92,7 +92,7 @@ private:
 
     typename Subgraphs_Scratch_Space<k, Colored_>::map_t& M;    // Map to be used for this subgraph.
 
-    Color_Table& M_c;   // Color-set map.
+    Color_Table& C; // Color-set map.
     typename Subgraphs_Scratch_Space<k, Colored_>::lmtig_coord_map_t& M_l;  // lm-tig coordinate map.
 
     uint64_t kmer_count_;   // Number of k-mer instances (copies) in the graph.
