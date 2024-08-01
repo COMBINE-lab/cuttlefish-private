@@ -8,6 +8,7 @@
 #include "State_Config.hpp"
 #include "Directed_Vertex.hpp"
 #include "Kmer.hpp"
+#include "Kmer_Hasher.hpp"
 #include "DNA_Utility.hpp"
 #include "Kmer_Hashtable.hpp"
 #include "Unitig_Scratch.hpp"
@@ -43,8 +44,6 @@ public:
 
     // typedef std::unordered_map<Kmer<k>, State_Config, Kmer_Hasher<k>> map_t;
     typedef ankerl::unordered_dense::map<Kmer<k>, State_Config<Colored_>, Kmer_Hasher<k>> map_t;
-    // TODO: try swiss table.
-
     // typedef Kmer_Hashtable<k, Colored_> map_t;
 
     // Constructs working space for workers, supporting capacity of at least

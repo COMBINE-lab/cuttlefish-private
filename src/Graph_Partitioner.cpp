@@ -130,6 +130,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     chunk_t* chunk; // Current chunk.
     std::vector<neoReference> parsed_chunk; // Current parsed chunk.
     rabbit::int64 last_source = 0;  // Source ID of the last chunk processed.
+    (void)last_source;
 
     uint64_t rec_count = 0; // Number of parsed records.
     uint64_t sup_km1_mer_count = 0; // Number of parsed super (k - 1)-mers.
