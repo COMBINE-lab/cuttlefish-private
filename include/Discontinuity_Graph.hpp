@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <utility>
 #include <atomic>
 
 
@@ -65,9 +66,10 @@ public:
 
     // Adds the edge `({(u, s_u), (v, s_v)}, 1)` to the graph. `u_is_phi` and
     // `v_is_phi` denote whether `u` and `v` are `ϕ` respectively. The locally-
-    // maximal unitig corresponding to the edge is `mtig`. The edge should be an
-    // original edge of the graph.
-    void add_edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, bool u_is_phi, bool v_is_phi, const Maximal_Unitig_Scratch<k>& mtig);
+    // maximal unitig corresponding to the edge is `mtig`. The edge should be
+    // an original edge of the graph. Returns `(b, b_idx)`, where the deposited
+    // lm-tig is put into bucket `b` at index `b_idx`.
+    std::pair<std::size_t, std::size_t> add_edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, bool u_is_phi, bool v_is_phi, const Maximal_Unitig_Scratch<k>& mtig);
 
     // Adds the edge `({ϕ, (v, s_v)}, 1)` to the graph. The edge should be an
     // original edge of the graph.
@@ -94,14 +96,16 @@ template <uint16_t k> const Kmer<k> Discontinuity_Graph<k>::phi_(phi_label);
 
 
 template <uint16_t k>
-inline void Discontinuity_Graph<k>::add_edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const bool u_is_phi, const bool v_is_phi, const Maximal_Unitig_Scratch<k>& mtig)
+inline std::pair<std::size_t, std::size_t> Discontinuity_Graph<k>::add_edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const bool u_is_phi, const bool v_is_phi, const Maximal_Unitig_Scratch<k>& mtig)
 {
     const auto w_id = parlay::worker_id();
     const auto b = lmtigs.file_idx(w_id);
-    std::size_t b_idx = lmtigs.unitig_count(b);
+    const std::size_t b_idx = lmtigs.unitig_count(b);
     lmtigs.add(w_id, mtig);
 
     E_.add(u, s_u, v, s_v, 1, b, b_idx, u_is_phi, v_is_phi);
+
+    return {b, b_idx};
 }
 
 

@@ -77,9 +77,11 @@ public:
     // `true` iff the `h` was absent in the table prior to the insertion.
     bool add(hash_t h, coord_t c) { return M.emplace(h, c); }
 
-    // Marks that the color with hash `h` is in the process of extraction.
-    // Returns the extraction-status of the color prior to this invocation.
-    Color_Status mark_in_process(hash_t h);
+    // Marks that the color with hash `h` is in the process of extraction, if a
+    // corresponding coordinate for `h` does not already exist in the table. If
+    // it does, it is put in `c`. Returns the extraction-status of the color
+    // prior to this invocation.
+    Color_Status mark_in_process(hash_t h, Color_Coordinate& c);
 };
 
 
@@ -92,10 +94,9 @@ enum class Color_Status
 };
 
 
-inline Color_Status Color_Table::mark_in_process(const hash_t h)
+inline Color_Status Color_Table::mark_in_process(const hash_t h, Color_Coordinate& c)
 {
-    Color_Coordinate c;
-    const auto r = M.insert_or_visit(std::make_pair(h, Color_Coordinate::in_process_coordinate()),
+    const auto r = M.insert_or_visit({h, Color_Coordinate::in_process_coordinate()},
                     [&](const auto& p)
                     {
                         c = p.second;

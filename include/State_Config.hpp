@@ -199,6 +199,10 @@ public:
 
     // Returns whether the associated vertex has a new color or not.
     bool has_new_color() const { return status & new_color; }
+
+    // Sets the hash of the associated color-set to `val`. Do not use this
+    // unless you know what you are doing.
+    void replace_hash(const uint64_t val) { color_hash_ = val; }
 };
 
 

@@ -23,6 +23,8 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <tuple>
+#include <utility>
 #include <unordered_map>
 
 
@@ -35,6 +37,8 @@ template <uint16_t k, bool Colored_> class HT_Router;
 
 enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
 
+class LMTig_Coord;  // lm-tig coordinate of a vertex (k-mer).
+
 
 // Working space for workers processing different subgraphs.
 template <uint16_t k, bool Colored_>
@@ -46,6 +50,9 @@ public:
     typedef ankerl::unordered_dense::map<Kmer<k>, State_Config<Colored_>, Kmer_Hasher<k>> map_t;
     // typedef Kmer_Hashtable<k, Colored_> map_t;
 
+    typedef std::pair<LMTig_Coord, uint64_t> in_process_t;  // Vertex's lm-tig coordinate and color-hash.
+    typedef std::vector<in_process_t> in_process_arr_t;
+
     // Constructs working space for workers, supporting capacity of at least
     // `max_sz` vertices.
     Subgraphs_Scratch_Space(std::size_t max_sz);
@@ -56,12 +63,20 @@ public:
     // Returns the hashtable for color-sets.
     Color_Table& color_map();
 
+    // Returns the appropriate container of in-process vertices, their lm-tig
+    // coordinates and color-hashes, for a worker.
+    in_process_arr_t& in_process_arr();
+
 private:
 
     std::vector<Padded<map_t>> map_;   // Map collection for different workers.
     // TODO: try thread-local allocation for map-space, e.g. from parlay.
 
     Color_Table M_c;    // Hashtable for color-sets.
+
+    // Collection of containers for in-process vertices: their lm-tig
+    // coordinates and color-hashes, for different workers.
+    std::vector<Padded<in_process_arr_t>> in_process_arr_;
 };
 
 
@@ -72,6 +87,7 @@ template <uint16_t k, bool Colored_>
 class Subgraph
 {
     typedef Walk_Termination termination_t;
+    typedef typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t in_process_arr_t;
 
 private:
 
@@ -82,6 +98,8 @@ private:
     typename Subgraphs_Scratch_Space<k, Colored_>::map_t& M;    // Map to be used for this subgraph.
 
     Color_Table& C; // Color-set map.
+
+    in_process_arr_t& in_process;   // Container for in-process vertices: their lm-tig coordinates and color-hashes.
 
     uint64_t kmer_count_;   // Number of k-mer instances (copies) in the graph.
 
@@ -110,8 +128,9 @@ private:
     // `maximal_unitig` is used as the working scratch for the extraction, i.e.
     // to build and store two unitigs connecting to the two sides of `v_hat`.
     // Returns `true` iff the containing maximal unitig has not been outputted
-    // earlier.
-    bool extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Unitig_Scratch<k>& maximal_unitig);
+    // earlier. If succeeds, puts the produced lm-tig's bucket-ID to `b` and
+    // the lm-tig's index in the bucket to `b_idx`.
+    bool extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Unitig_Scratch<k>& maximal_unitig, std::size_t& b, std::size_t& b_idx);
 
     // Traverses a unitig starting from the vertex `v_hat`, exiting it through
     // the side `s_v_hat`. `unitig` is used as the scratch space to build the
@@ -245,11 +264,14 @@ public:
     // Returns the offset of the corresponding k-mer within the containing lm-
     // tig label: the `z` coordinate.
     uint16_t off() const { return off_; }
+
+    // Returns a packed 64-bit representation of the coordinate.
+    uint64_t pack_u64() const { return (uint64_t(b_) << 48) | (uint64_t(idx_) << 16) | uint64_t(off_); }
 };
 
 
 template <uint16_t k, bool Colored_>
-inline bool Subgraph<k, Colored_>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Unitig_Scratch<k>& maximal_unitig)
+inline bool Subgraph<k, Colored_>::extract_maximal_unitig(const Kmer<k>& v_hat, Maximal_Unitig_Scratch<k>& maximal_unitig, std::size_t& b, std::size_t& b_idx)
 {
     constexpr auto back = side_t::back;
     constexpr auto front = side_t::front;
@@ -278,7 +300,7 @@ inline bool Subgraph<k, Colored_>::extract_maximal_unitig(const Kmer<k>& v_hat, 
     if(walk_end_l == exitted || walk_end_r == exitted)  // The maximal unitig containing `v_hat` spans multiple subgraphs.
     {
         maximal_unitig.finalize_weak();
-        G.add_edge( walk_end_l == exitted ? v_l.canonical() : Discontinuity_Graph<k>::phi(), walk_end_l == exitted ? v_l.entrance_side() : side_t::back,
+        std::tie(b, b_idx) = G.add_edge( walk_end_l == exitted ? v_l.canonical() : Discontinuity_Graph<k>::phi(), walk_end_l == exitted ? v_l.entrance_side() : side_t::back,
                     walk_end_r == exitted ? v_r.canonical() : Discontinuity_Graph<k>::phi(), walk_end_r == exitted ? v_r.entrance_side() : side_t::back,
                     walk_end_l != exitted, walk_end_r != exitted, maximal_unitig);
         disc_edge_c++;
@@ -290,7 +312,16 @@ inline bool Subgraph<k, Colored_>::extract_maximal_unitig(const Kmer<k>& v_hat, 
             icc_count_++;
 
         maximal_unitig.finalize();
-        maximal_unitig.add_fasta_rec_to_buffer(op_buf);
+        if constexpr(!Colored_)
+            maximal_unitig.add_fasta_rec_to_buffer(op_buf);
+        else
+        {
+            // TODO: deposit trivially maximal unitigs to buckets instead of directly routing them to the output,
+            // to attach color-sets to them later.
+            maximal_unitig.add_fasta_rec_to_buffer(op_buf); // Temporary.
+            b = 0, b_idx = 0;   // Temporary.
+        }
+
     }
 
     return true;

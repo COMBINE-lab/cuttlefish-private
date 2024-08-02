@@ -18,6 +18,7 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
       B(B)
     , M(space.map())
     , C(space.color_map())
+    , in_process(space.in_process_arr())
     , kmer_count_(0)
     , edge_c(0)
     , label_sz(0)
@@ -31,6 +32,8 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
     , op_buf(op_buf)
 {
     M.clear();
+    if constexpr(Colored_)
+        in_process.clear();
 }
 
 
@@ -218,7 +221,9 @@ void Subgraph<k, Colored_>::contract()
         }
 
 
-        if(extract_maximal_unitig(v, maximal_unitig))
+        std::size_t b;  // Bucket-ID of the produced unitig-label.
+        std::size_t b_idx;  // Index of the unitig-label in the corresponding bucket.
+        if(extract_maximal_unitig(v, maximal_unitig, b, b_idx))
         {
             vertex_count += maximal_unitig.size();
             label_sz += maximal_unitig.size() + k - 1;
@@ -230,24 +235,28 @@ void Subgraph<k, Colored_>::contract()
                 assert(V.size() == H.size() && V.size() == maximal_unitig.size());
 
                 uint64_t h_last = ~H[0];
+                Color_Coordinate c;
                 for(std::size_t i = 0; i < V.size(); ++i)
                     if(H[i] != h_last)  // This is either a color-shifting vertex, or the first vertex in the lm-tig.
                     {
-                        const auto color_status = C.mark_in_process(H[i]);
-                        switch (color_status)
+                        const LMTig_Coord lmtig_coord(b, b_idx, i);
+                        const auto color_status = C.mark_in_process(H[i], c);
+                        switch(color_status)
                         {
-                        case Color_Status::undiscovered:
-                            M[V[i]].mark_new_color();
+                        case Color_Status::undiscovered:    // Mark this vertex's color as of interest to extract later.
+                        {
+                            auto& st = M[V[i]];
+                            st.mark_new_color();
+                            st.replace_hash(lmtig_coord.pack_u64());
+                            break;
+                        }
+
+                        case Color_Status::in_process:  // Keep this vertex pending and revisit it once its color is available.
+                            in_process.emplace_back(lmtig_coord, H[i]);
                             break;
 
-                        case Color_Status::in_process:
-                            // TODO: track lm-tig coordinate of V_i and H_i to add back
-                            // the color-coordinate once the color's been extracted.
-                            break;
-
-                        case Color_Status::discovered:
-                            // TODO: add color-coordinate to appropriate color-bucket
-                            // as per the lm-tig coordinate of this vertex.
+                        case Color_Status::discovered:  // This vertex's color is available.
+                            // TODO: add `(b_idx, i, c)` to the `b`'th color-bucket.
                             break;
                         }
 
@@ -268,6 +277,8 @@ Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t 
     map_.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
         HT_Router<k, Colored_>::add_HT(map_, max_sz);
+
+    in_process_arr_.resize(parlay::num_workers());
 }
 
 
@@ -284,6 +295,15 @@ Color_Table& Subgraphs_Scratch_Space<k, Colored_>::color_map()
 {
     assert(Colored_);
     return M_c;
+}
+
+
+template <uint16_t k, bool Colored_>
+typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t& Subgraphs_Scratch_Space<k, Colored_>::in_process_arr()
+{
+    assert(Colored_);
+    assert(map_.size() == parlay::num_workers());
+    return in_process_arr_[parlay::worker_id()].unwrap();
 }
 
 }
