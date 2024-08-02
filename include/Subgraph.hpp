@@ -35,8 +35,6 @@ template <uint16_t k, bool Colored_> class HT_Router;
 
 enum class Walk_Termination;    // Type of scenarios how a unitig-walk terminates in the subgraph.
 
-class LMTig_Coord;  // lm-tig coordinate of a vertex (k-mer).
-
 
 // Working space for workers processing different subgraphs.
 template <uint16_t k, bool Colored_>
@@ -48,8 +46,6 @@ public:
     typedef ankerl::unordered_dense::map<Kmer<k>, State_Config<Colored_>, Kmer_Hasher<k>> map_t;
     // typedef Kmer_Hashtable<k, Colored_> map_t;
 
-    typedef ankerl::unordered_dense::map<Kmer<k>, LMTig_Coord, Kmer_Hasher<k>> lmtig_coord_map_t;
-
     // Constructs working space for workers, supporting capacity of at least
     // `max_sz` vertices.
     Subgraphs_Scratch_Space(std::size_t max_sz);
@@ -60,19 +56,12 @@ public:
     // Returns the hashtable for color-sets.
     Color_Table& color_map();
 
-    // Returns the appropriate lm-tig coordinate map of vertices for a worker.
-    lmtig_coord_map_t& lmtig_coord_map();
-
-
 private:
 
     std::vector<Padded<map_t>> map_;   // Map collection for different workers.
     // TODO: try thread-local allocation for map-space, e.g. from parlay.
 
     Color_Table M_c;    // Hashtable for color-sets.
-
-    // Map collection for lm-tig coordinates of vertices for workers.
-    std::vector<Padded<lmtig_coord_map_t>> lmtig_coord_map_;
 };
 
 
@@ -93,7 +82,6 @@ private:
     typename Subgraphs_Scratch_Space<k, Colored_>::map_t& M;    // Map to be used for this subgraph.
 
     Color_Table& C; // Color-set map.
-    typename Subgraphs_Scratch_Space<k, Colored_>::lmtig_coord_map_t& M_l;  // lm-tig coordinate map.
 
     uint64_t kmer_count_;   // Number of k-mer instances (copies) in the graph.
 
