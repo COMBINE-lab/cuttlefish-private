@@ -16,9 +16,8 @@ namespace cuttlefish
 template <uint16_t k, bool Colored_>
 Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& G, op_buf_t& op_buf, Subgraphs_Scratch_Space<k, Colored_>& space):
       B(B)
+    , work_space(space)
     , M(space.map())
-    , C(space.color_map())
-    , in_process(space.in_process_arr())
     , kmer_count_(0)
     , edge_c(0)
     , label_sz(0)
@@ -32,8 +31,6 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
     , op_buf(op_buf)
 {
     M.clear();
-    if constexpr(Colored_)
-        in_process.clear();
 }
 
 
@@ -201,6 +198,11 @@ void Subgraph<k, Colored_>::contract()
 
     std::vector<Kmer<k>> V; // Vertices in an lm-tig.
     std::vector<uint64_t> H;    // Color-set hashes of the vertices in an lm-tig.
+
+    auto& C = work_space.color_map();   // Color-set map.
+    auto& in_process = work_space.in_process_arr();
+    if constexpr(Colored_)
+        in_process.clear();
 
     for(auto p = M.begin(); p != M.end(); ++p)
     {

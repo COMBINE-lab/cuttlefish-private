@@ -95,11 +95,9 @@ private:
 
     const Super_Kmer_Bucket<Colored_>& B;   // The weak super k-mer bucket inducing this subgraph.
 
+    Subgraphs_Scratch_Space<k, Colored_>& work_space;   // Collection of working space for various data structures, per worker.
+
     typename Subgraphs_Scratch_Space<k, Colored_>::map_t& M;    // Map to be used for this subgraph.
-
-    Color_Table& C; // Color-set map.
-
-    in_process_arr_t& in_process;   // Container for in-process vertices: their lm-tig coordinates and color-hashes.
 
     uint64_t kmer_count_;   // Number of k-mer instances (copies) in the graph.
 
