@@ -239,7 +239,6 @@ void Subgraph<k, Colored_>::contract()
                         {
                         case Color_Status::undiscovered:
                             M[V[i]].mark_new_color();
-                            // TODO: track lm-tig coordinate of V_i.
                             break;
 
                         case Color_Status::in_process:
