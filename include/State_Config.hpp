@@ -5,6 +5,7 @@
 
 
 #include "DNA.hpp"
+#include "Source_Hash.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 
@@ -181,15 +182,14 @@ public:
     // Returns the hash of the associated color-set.
     uint64_t color_hash() const { return color_hash_; }
 
-    // Adds the source ID `source` and its hash `h_s` to the color-set of this
-    // state.
-    void add_source_hash(const uint32_t source, const uint64_t h_s)
+    // Adds the source ID `source` to the color-set of this state.
+    void add_source(const uint32_t source)
     {
         assert(source <= (source_mask >> source_pos));
         const auto last_source = (status & source_mask) >> source_pos;
         if(source != last_source)   // Dealing with the problem of hashing multisets.
         {
-            color_hash_ ^= h_s; // TODO: consider using `boost::hash_combine`.
+            color_hash_ = hash_combine(color_hash_, source_hash(source));
             status = (status & ~source_mask) | (source << source_pos);
         }
     }

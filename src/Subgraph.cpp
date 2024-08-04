@@ -60,7 +60,6 @@ void Subgraph<k, Colored_>::construct()
     Super_Kmer_Attributes<Colored_> att;
     label_unit_t* label;
     uint32_t source = 0;    // Source-ID of the current super k-mer.
-    uint64_t h_s = 0;   // Hash of the source-ID.
     while(super_kmer_it.next(att, label))
     {
         const auto len = att.len();
@@ -69,13 +68,7 @@ void Subgraph<k, Colored_>::construct()
         kmer_count_ += len - (k - 1);
 
         if constexpr(Colored_)
-            if(att.source() != source)
-            {
-                assert(att.source() > source);
-
-                source = att.source();
-                h_s = XXH3_64bits(&source, 3);
-            }
+            assert(att.source() >= source);
 
         v.from_super_kmer(label, word_count);
         std::size_t kmer_idx = 0;
@@ -99,7 +92,7 @@ void Subgraph<k, Colored_>::construct()
                                  front, back,
                                  kmer_idx == 0 && att.left_discontinuous() ? v.entrance_side() : side_t::unspecified,
                                  kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified,
-                                 source, h_s);
+                                 att.source());
 
             if(kmer_idx + k == len)
                 break;
