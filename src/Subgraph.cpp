@@ -306,14 +306,15 @@ if constexpr(Colored_)
 
     for(std::size_t i = 0, j; i < color_rel.size(); i = j)
     {
-        uint64_t h = 0;
+        uint64_t h = hash_combine(0, source_hash(color_rel[i].second));
         for(j = i + 1; j < color_rel.size(); ++j)
         {
             if(color_rel[j].first != color_rel[i].first)
                 break;
 
-            assert(color_rel[j].second > color_rel[j - 1].second);
-            h = hash_combine(h, source_hash(color_rel[i].second));
+            assert(color_rel[j].second >= color_rel[j - 1].second);
+            if(color_rel[j].second != color_rel[j - 1].second)  // Deal with multi-set hashing.
+                h = hash_combine(h, source_hash(color_rel[j].second));
         }
 
 
