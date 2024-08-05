@@ -194,7 +194,10 @@ inline bool Super_Kmer_Bucket<Colored_>::Iterator::next(attribute_t& att, label_
     assert(idx <= B.size());
 
     if(CF_UNLIKELY(idx == B.size()))
+    {
+        B.chunk.clear();
         return false;
+    }
 
     if(idx == chunk_end_idx)
     {

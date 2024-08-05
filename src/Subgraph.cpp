@@ -354,7 +354,7 @@ typename Subgraphs_Scratch_Space<k, Colored_>::map_t& Subgraphs_Scratch_Space<k,
 template <uint16_t k, bool Colored_>
 Color_Table& Subgraphs_Scratch_Space<k, Colored_>::color_map()
 {
-    assert(Colored_);
+    // assert(Colored_);
     return M_c;
 }
 
@@ -362,7 +362,7 @@ Color_Table& Subgraphs_Scratch_Space<k, Colored_>::color_map()
 template <uint16_t k, bool Colored_>
 typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t& Subgraphs_Scratch_Space<k, Colored_>::in_process_arr()
 {
-    assert(Colored_);
+    // assert(Colored_);
     assert(in_process_arr_.size() == parlay::num_workers());
     return in_process_arr_[parlay::worker_id()].unwrap();
 }
@@ -371,7 +371,7 @@ typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t& Subgraphs_Scrat
 template <uint16_t k, bool Colored_>
 typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t& Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr()
 {
-    assert(Colored_);
+    // assert(Colored_);
     assert(color_rel_arr_.size() == parlay::num_workers());
     return color_rel_arr_[parlay::worker_id()].unwrap();
 }

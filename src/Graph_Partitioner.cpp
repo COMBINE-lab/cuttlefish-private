@@ -54,8 +54,6 @@ void Graph_Partitioner<k, Colored_>::partition()
     else
         for(std::size_t source_id = 1; source_id <= seqs.size(); ++source_id)
         {
-            chunk_q.Reset();
-
             parlay::par_do(
             [&]()
                 {
@@ -67,6 +65,7 @@ void Graph_Partitioner<k, Colored_>::partition()
                 });
 
             subgraphs.flush_local_bufs();
+            chunk_q.Reset();
         }
 
     std::cerr << "Number of processed chunks: " << chunk_count_ << ".\n";
