@@ -53,6 +53,8 @@ public:
     typedef std::pair<LMTig_Coord, uint64_t> in_process_t;  // Vertex's lm-tig coordinate and color-hash.
     typedef std::vector<in_process_t> in_process_arr_t;
 
+    typedef std::vector<std::pair<Kmer<k>, uint32_t>> color_rel_arr_t;
+
     // Constructs working space for workers, supporting capacity of at least
     // `max_sz` vertices.
     Subgraphs_Scratch_Space(std::size_t max_sz);
@@ -67,6 +69,10 @@ public:
     // coordinates and color-hashes, for a worker.
     in_process_arr_t& in_process_arr();
 
+    // Returns the appropriate container for (vertex, source-ID) relationships
+    // for a worker.
+    color_rel_arr_t& color_rel_arr();
+
 private:
 
     std::vector<Padded<map_t>> map_;   // Map collection for different workers.
@@ -77,6 +83,10 @@ private:
     // Collection of containers for in-process vertices: their lm-tig
     // coordinates and color-hashes, for different workers.
     std::vector<Padded<in_process_arr_t>> in_process_arr_;
+
+    // Collection of containers for (vertex, source-ID) relationships, for
+    // different workers.
+    std::vector<Padded<color_rel_arr_t>> color_rel_arr_;
 };
 
 
@@ -88,6 +98,7 @@ class Subgraph
 {
     typedef Walk_Termination termination_t;
     typedef typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t in_process_arr_t;
+    typedef typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t color_rel_arr_t;
 
 private:
 
@@ -122,6 +133,10 @@ private:
     typedef typename dBG_Contractor<k>::op_buf_t op_buf_t;
     op_buf_t& op_buf;   // Output buffer for trivially maximal unitigs of the underlying dBG.
 
+    // Returns the `idx`'th base of the super k-mer label encoding `super_kmer`
+    // that has `word_count` words.
+    static base_t get_base(const label_unit_t* super_kmer, std::size_t word_count, std::size_t idx);
+
     // Extracts the maximal unitig containing the vertex `v_hat`, and
     // `maximal_unitig` is used as the working scratch for the extraction, i.e.
     // to build and store two unitigs connecting to the two sides of `v_hat`.
@@ -135,6 +150,10 @@ private:
     // unitig. Returns `true` iff the walk tried to exit the subgraph through a
     // discontinuous side; in which case that vertex is stored in `exit_v`.
     termination_t walk_unitig(const Kmer<k>& v_hat, side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v);
+
+    // Semisorts color-relationship array `A` by the vertices, and sorts each
+    // vertex's sources by their IDs.
+    static void semisort(color_rel_arr_t& A);
 
 
 public:
@@ -160,6 +179,9 @@ public:
 
     // Builds the compacted graph from the original graph.
     void contract();
+
+    // Extracts the new color-sets available from this subgraph.
+    void extract_new_colors();
 
     // Returns the size of the graph.
     std::size_t size() const { return M.size(); }
@@ -266,6 +288,17 @@ public:
     // Returns a packed 64-bit representation of the coordinate.
     uint64_t pack_u64() const { return (uint64_t(b_) << 48) | (uint64_t(idx_) << 16) | uint64_t(off_); }
 };
+
+
+template <uint16_t k, bool Colored_>
+inline base_t Subgraph<k, Colored_>::get_base(const label_unit_t* const super_kmer, const std::size_t word_count, const std::size_t idx)
+{
+    assert(idx / 32 < word_count);
+
+    const auto word_idx = idx >> 5;
+    const auto bit_idx  = (idx & 31) << 1;
+    return base_t((super_kmer[(word_count - 1) - word_idx] >> (62 - bit_idx)) & 0b11lu);
+}
 
 
 template <uint16_t k, bool Colored_>

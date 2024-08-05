@@ -1,8 +1,8 @@
 
 #include "Subgraph.hpp"
 #include "Super_Kmer_Bucket.hpp"
+#include "Source_Hash.hpp"
 #include "globals.hpp"
-#include "xxHash/xxhash.h"
 #include "parlay/parallel.h"
 
 #include <cstddef>
@@ -37,18 +37,6 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::construct()
 {
-    // Returns the `idx`'th base of the super k-mer label encoding `super_kmer`
-    // that has `word_count` words.
-    const auto get_base = [](const label_unit_t* const super_kmer, const std::size_t word_count, const std::size_t idx)
-    {
-        assert(idx / 32 < word_count);
-
-        const auto word_idx = idx >> 5;
-        const auto bit_idx  = (idx & 31) << 1;
-        return base_t((super_kmer[(word_count - 1) - word_idx] >> (62 - bit_idx)) & 0b11lu);
-    };
-
-
     auto super_kmer_it = B.iterator();  // Iterator over the weak super k-mers inducing this graph.
 
     typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
@@ -69,6 +57,8 @@ void Subgraph<k, Colored_>::construct()
 
         if constexpr(Colored_)
             assert(att.source() >= source);
+        source = att.source();
+        (void)source;
 
         v.from_super_kmer(label, word_count);
         std::size_t kmer_idx = 0;
@@ -267,6 +257,81 @@ void Subgraph<k, Colored_>::contract()
 
 
 template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::extract_new_colors()
+{
+if constexpr(Colored_)
+{
+    auto& C = work_space.color_map();
+    auto& color_rel = work_space.color_rel_arr();
+    color_rel.clear();
+
+    auto super_kmer_it = B.iterator();  // Iterator over the weak super k-mers inducing this graph.
+    typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
+    const auto word_count = super_kmer_it.super_kmer_word_count();  // Fixed number of words in a super k-mer label.
+
+    Directed_Vertex<k> v;   // Current vertex in a scan over some super k-mer.
+    Super_Kmer_Attributes<Colored_> att;
+    label_unit_t* label;
+    uint64_t kmer_count = 0;    // Number of k-mer instances processed.
+
+    while(super_kmer_it.next(att, label))
+    {
+        const auto len = att.len();
+        assert(len >= k);
+        assert(len < 2 * (k - 1));
+        kmer_count += len - (k - 1);
+        const auto source = att.source();
+
+        v.from_super_kmer(label, word_count);
+        std::size_t kmer_idx = 0;
+
+        while(true)
+        {
+            assert(kmer_idx + k - 1 < len);
+
+            if(M[v.canonical()].has_new_color())
+                color_rel.emplace_back(v.canonical(), source);
+
+            if(kmer_idx + k == len)
+                break;
+
+            const auto succ_base = get_base(label, word_count, kmer_idx + k);
+            v.roll_forward(succ_base);
+            kmer_idx++;
+        }
+    }
+
+
+    semisort(color_rel);
+
+    for(std::size_t i = 0, j; i < color_rel.size(); i = j)
+    {
+        uint64_t h = 0;
+        for(j = i + 1; j < color_rel.size(); ++j)
+        {
+            if(color_rel[j].first != color_rel[i].first)
+                break;
+
+            assert(color_rel[j].second > color_rel[j - 1].second);
+            h = hash_combine(h, source_hash(color_rel[i].second));
+        }
+
+
+        // TODO: add `(color_set_sz = j - i, {color_set})` to this worker's color-bucket.
+        C.assign(h, Color_Coordinate(parlay::worker_id(), 0)); // TODO: get bucket-size to use as index.
+    }
+}
+}
+
+
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::semisort(typename Subgraph::color_rel_arr_t& A)
+{
+    std::sort(A.begin(), A.end());
+}
+
+
+template <uint16_t k, bool Colored_>
 Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t max_sz)
 {
     map_.reserve(parlay::num_workers());
@@ -274,6 +339,7 @@ Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t 
         HT_Router<k, Colored_>::add_HT(map_, max_sz);
 
     in_process_arr_.resize(parlay::num_workers());
+    color_rel_arr_.resize(parlay::num_workers());
 }
 
 
@@ -297,8 +363,17 @@ template <uint16_t k, bool Colored_>
 typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t& Subgraphs_Scratch_Space<k, Colored_>::in_process_arr()
 {
     assert(Colored_);
-    assert(map_.size() == parlay::num_workers());
+    assert(in_process_arr_.size() == parlay::num_workers());
     return in_process_arr_[parlay::worker_id()].unwrap();
+}
+
+
+template <uint16_t k, bool Colored_>
+typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t& Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr()
+{
+    assert(Colored_);
+    assert(color_rel_arr_.size() == parlay::num_workers());
+    return color_rel_arr_[parlay::worker_id()].unwrap();
 }
 
 }

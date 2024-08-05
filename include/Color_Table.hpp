@@ -8,7 +8,7 @@
 
 #include <cstdint>
 #include <cstddef>
-#include <utility>
+#include <cassert>
 
 
 namespace cuttlefish
@@ -90,6 +90,9 @@ public:
     // it does, it is put in `c`. Returns the extraction-status of the color
     // prior to this invocation.
     Color_Status mark_in_process(hash_t h, Color_Coordinate& c);
+
+    // Assigns `c` to the value of the key `h`.
+    void assign(hash_t h, coord_t c);
 };
 
 
@@ -112,6 +115,13 @@ inline Color_Status Color_Table::mark_in_process(const hash_t h, Color_Coordinat
 
     typedef Color_Status status_t;
     return r ? status_t::undiscovered : (c.is_in_process() ? status_t::in_process : status_t::discovered);
+}
+
+
+inline void Color_Table::assign(const hash_t h, const Color_Coordinate c)
+{
+    assert(M.contains(h));
+    M.insert_or_assign(h, c);
 }
 
 }

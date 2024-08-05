@@ -78,6 +78,7 @@ void Subgraphs_Manager<k, Colored_>::process()
 
     std::vector<Padded<double>> t_construction(parlay::num_workers(), 0);  // Timer-per-worker for construction work.
     std::vector<Padded<double>> t_contraction(parlay::num_workers(), 0);   // Timer-per-worker for contraction work.
+    std::vector<Padded<double>> t_color_extract(parlay::num_workers(), 0);  // Timer-per-worker for color-extraction work.
     std::vector<Padded<double>> t_bucket_rm(parlay::num_workers(), 0); // Timer-per-worker for super k-mer bucket removal.
     std::vector<Padded<uint64_t>> max_kmer_count(parlay::num_workers(), 0);    // Largest k-mer bucket size per worker.
     std::vector<Padded<uint64_t>> min_kmer_count(parlay::num_workers(), std::numeric_limits<uint64_t>::max()); // Smallest k-mer bucket size per worker.
@@ -96,12 +97,18 @@ void Subgraphs_Manager<k, Colored_>::process()
             const auto t_0 = timer::now();
             Subgraph<k, Colored_> sub_dBG(b, G, op_buf[parlay::worker_id()].unwrap(), subgraphs_space);
             sub_dBG.construct();
-            // sub_dBG.construct_loop_filtered();
             const auto t_1 = timer::now();
-            b.remove();
+            if constexpr(!Colored_)
+                b.remove();
             const auto t_2 = timer::now();
             sub_dBG.contract();  // Perf-diagnose.
             const auto t_3 = timer::now();
+            if constexpr(Colored_)
+                sub_dBG.extract_new_colors();
+            const auto t_4 = timer::now();
+            if constexpr(Colored_)
+                b.remove();
+            const auto t_5 = timer::now();
 
             auto& max_kmer_c = max_kmer_count[parlay::worker_id()].unwrap();
             auto& min_kmer_c = min_kmer_count[parlay::worker_id()].unwrap();
@@ -127,8 +134,9 @@ void Subgraphs_Manager<k, Colored_>::process()
                 std::cerr << "\rSolved " << solved << " subgraphs.";
 
             t_construction[parlay::worker_id()].unwrap() += timer::duration(t_1 - t_0);
-            t_bucket_rm[parlay::worker_id()].unwrap() += timer::duration(t_2 - t_1);
+            t_bucket_rm[parlay::worker_id()].unwrap() += timer::duration(t_2 - t_1) + timer::duration(t_5 - t_4);
             t_contraction[parlay::worker_id()].unwrap()  += timer::duration(t_3 - t_2);
+            t_color_extract[parlay::worker_id()].unwrap() += timer::duration(t_4 - t_3);
         };
 
     parlay::parallel_for(0, graph_count_, process_subgraph, 1);
@@ -138,6 +146,8 @@ void Subgraphs_Manager<k, Colored_>::process()
         { double t = 0; std::for_each(T.cbegin(), T.cend(), [&t](const auto& v){ t += v.unwrap(); }); return t; };
     std::cerr << "Total work in graph construction: " << sum_time(t_construction) << " (s).\n";
     std::cerr << "Total work in graph contraction:  " << sum_time(t_contraction) << " (s).\n";
+    if constexpr(Colored_)
+        std::cerr << "Total work in color extraction:  " << sum_time(t_color_extract) << " (s).\n";
     std::cerr << "Total work in bucket removal:     " << sum_time(t_bucket_rm) << " (s).\n";
 
     std::cerr << "Maximum k-mer count in bucket: " <<
@@ -168,10 +178,15 @@ void Subgraphs_Manager<k, Colored_>::process()
         [&](){  uint64_t c = 0;
                 std::for_each(mtig_count.cbegin(), mtig_count.cend(), [&](const auto& v){ c += v.unwrap(); });
                 return c; }() << ".\n";
-    std::cerr << "Color-shifting vertex count: " <<
-        [&](){  std::size_t c = 0;
-                std::for_each(color_shift.cbegin(), color_shift.cend(), [&](const auto& v){ c += v.unwrap(); });
-                return c; }() << ".\n";
+    if constexpr(Colored_)
+    {
+        std::cerr << "Color-shifting vertex count: " <<
+            [&](){  std::size_t c = 0;
+                    std::for_each(color_shift.cbegin(), color_shift.cend(), [&](const auto& v){ c += v.unwrap(); });
+                    return c; }() << ".\n";
+
+        std::cerr << "Color count: " << subgraphs_space.color_map().size() << ".\n";
+    }
 }
 
 
