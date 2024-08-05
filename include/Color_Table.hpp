@@ -20,18 +20,26 @@ enum class Color_Status;    // Extraction-status of a color-set.
 // Coordinate of a color in the actual color-collection.
 class Color_Coordinate
 {
+    typedef uint64_t pack_t;
+
 private:
 
     // Flag to denote whether the corresponding color is in the process of
     // extraction or not.
-    static constexpr uint32_t in_process = (uint32_t(1) << 31);
+    static constexpr pack_t in_process = (pack_t(1) << (sizeof(pack_t) * 8 - 1));
 
-    uint32_t bit_pack;  // Packed representation of the color-coordinate.
+    static constexpr uint32_t idx_pos = 9;  // Position of the index (in worker-local bucket) of a color-set.
+
+    pack_t bit_pack;    // Packed representation of the color-coordinate.
 
 public:
 
     // Constructs an empty coordinate.
     constexpr Color_Coordinate(): bit_pack(0)
+    {}
+
+    // Constructs the coordinate `(w_id, idx)`.
+    Color_Coordinate(uint16_t w_id, std::size_t idx): bit_pack(w_id | (pack_t(idx) << idx_pos))
     {}
 
     // Returns whether the corresponding color is in the process of extraction
