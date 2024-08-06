@@ -221,22 +221,25 @@ void Subgraph<k, Colored_>::contract()
 
                 uint64_t h_last = ~H[0];
                 Color_Coordinate c;
+                const auto w_id = parlay::worker_id();
                 for(std::size_t i = 0; i < V.size(); ++i)
                     if(H[i] != h_last)  // This is either a color-shifting vertex, or the first vertex in the lm-tig.
                     {
                         const LMTig_Coord lmtig_coord(b, b_idx, i);
-                        const auto color_status = C.mark_in_process(H[i], c);
+                        const auto color_status = C.mark_in_process(H[i], w_id, c);
                         switch(color_status)
                         {
-                        case Color_Status::undiscovered:    // Mark this vertex's color as of interest to extract later.
+                        case Color_Status::undiscovered:    // Mark this vertex's color as of interest to extract later, and keep the vertex as pending.
                         {
-                            auto& st = M[V[i]];
-                            st.mark_new_color();
-                            st.replace_hash(lmtig_coord.pack_u64());
+                            M[V[i]].mark_new_color();
+                            in_process.emplace_back(lmtig_coord, H[i]);
                             break;
                         }
 
                         case Color_Status::in_process:  // Keep this vertex pending and revisit it once its color is available.
+                            if(c.processing_worker() != w_id)   // The color is new to this worker.
+                                M[V[i]].mark_new_color();
+
                             in_process.emplace_back(lmtig_coord, H[i]);
                             break;
 
