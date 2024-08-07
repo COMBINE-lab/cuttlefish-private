@@ -103,6 +103,9 @@ namespace cuttlefish
     // TODO: use `u16` after testing done with `u32`.
     // typedef uint16_t uni_len_t; // Type of the length of a lm-tig in a bucket.
     typedef uint32_t uni_len_t; // Type of the length of a lm-tig in a bucket.
+
+    // Type of source-ID, i.e. color-units.
+    typedef uint32_t source_id_t;
 }
 
 

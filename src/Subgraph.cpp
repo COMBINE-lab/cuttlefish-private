@@ -307,6 +307,7 @@ if constexpr(Colored_)
     semisort(color_rel);
 
     auto& C = work_space.color_map();
+    auto& color_bucket = work_space.color_repo().bucket();
     for(std::size_t i = 0, j; i < color_rel.size(); i = j)
     {
         const auto& v = color_rel[i].first;
@@ -318,8 +319,13 @@ if constexpr(Colored_)
             assert(color_rel[j].second >= color_rel[j - 1].second);
         }
 
-        if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), 0)))
-            ; // TODO: add color-set to color-repo.
+        const auto color_idx = color_bucket.size();
+        if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), color_idx)))
+        {
+            color_bucket.add(j - i);
+            for(std::size_t idx = i; idx < j; idx++)
+                color_bucket.add(color_rel[idx].second);
+        }
     }
 }
 }
@@ -375,6 +381,14 @@ typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t& Subgraphs_Scratc
     // assert(Colored_);
     assert(color_rel_arr_.size() == parlay::num_workers());
     return color_rel_arr_[parlay::worker_id()].unwrap();
+}
+
+
+template <uint16_t k, bool Colored_>
+Color_Repo& Subgraphs_Scratch_Space<k, Colored_>::color_repo()
+{
+    assert(Colored_);
+    return color_repo_;
 }
 
 }

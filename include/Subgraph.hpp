@@ -15,6 +15,7 @@
 #include "Maximal_Unitig_Scratch.hpp"
 #include "Discontinuity_Graph.hpp"
 #include "Color_Table.hpp"
+#include "Color_Repo.hpp"
 #include "dBG_Utilities.hpp"
 #include "utility.hpp"
 #include "globals.hpp"
@@ -73,6 +74,9 @@ public:
     // for a worker.
     color_rel_arr_t& color_rel_arr();
 
+    // Returns the external-memory color repository.
+    Color_Repo& color_repo();
+
 private:
 
     std::vector<Padded<map_t>> map_;   // Map collection for different workers.
@@ -87,6 +91,9 @@ private:
     // Collection of containers for (vertex, source-ID) relationships, for
     // different workers.
     std::vector<Padded<color_rel_arr_t>> color_rel_arr_;
+
+    // External-memory color repository.
+    Color_Repo color_repo_;
 };
 
 

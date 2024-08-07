@@ -73,6 +73,7 @@ set(PROJECT_SRC
         Unitig_Collator.cpp
         Unitig_Coord_Bucket.cpp
         Color_Table.cpp
+        Color_Repo.cpp
         profile.cpp
         commands.cpp
     )

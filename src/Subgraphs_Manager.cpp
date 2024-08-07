@@ -74,6 +74,9 @@ void Subgraphs_Manager<k, Colored_>::process()
     Subgraphs_Scratch_Space<k, Colored_> subgraphs_space(estimate_size_max() * 1.10);
     force_free(HLL);
 
+    if constexpr(Colored_)
+        subgraphs_space.color_repo().init(path_pref + ".col");
+
     std::atomic_uint64_t solved = 0;
 
     std::vector<Padded<double>> t_construction(parlay::num_workers(), 0);  // Timer-per-worker for construction work.
