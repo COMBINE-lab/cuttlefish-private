@@ -327,6 +327,20 @@ if constexpr(Colored_)
                 color_bucket.add(color_rel[idx].second);
         }
     }
+
+
+    auto& in_process = work_space.in_process_arr();
+    for(const auto& p : in_process)
+    {
+        const auto& lmtig_coord = p.first;
+        const auto& h = p.second;
+
+        const auto c = C.get(h);
+        (void)lmtig_coord, (void)c;
+        // TODO: add `(b_idx, off, c)` to the `b`'th color-bucket.
+    }
+
+    in_process.clear();
 }
 }
 

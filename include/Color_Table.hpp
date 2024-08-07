@@ -99,6 +99,9 @@ public:
 
     // Assigns `c` to the value of the key `h`.
     void assign(hash_t h, coord_t c);
+
+    // Returns the value associated to the key `h`.
+    Color_Coordinate get(hash_t h) const;
 };
 
 
@@ -139,6 +142,18 @@ inline bool Color_Table::update_if_in_process(const hash_t h, const Color_Coordi
     assert(!r); (void)r;
 
     return was_in_process;
+}
+
+
+inline Color_Coordinate Color_Table::get(const hash_t h) const
+{
+    assert(M.contains(h));
+
+    Color_Coordinate c;
+    const auto r = M.cvisit(h, [&](const auto& p){ c = p.second; });
+    assert(r); (void)r;
+
+    return c;
 }
 
 }

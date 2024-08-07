@@ -291,9 +291,6 @@ public:
     // Returns the offset of the corresponding k-mer within the containing lm-
     // tig label: the `z` coordinate.
     uint16_t off() const { return off_; }
-
-    // Returns a packed 64-bit representation of the coordinate.
-    uint64_t pack_u64() const { return (uint64_t(b_) << 48) | (uint64_t(idx_) << 16) | uint64_t(off_); }
 };
 
 
