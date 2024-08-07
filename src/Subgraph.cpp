@@ -237,7 +237,7 @@ void Subgraph<k, Colored_>::contract()
                         }
 
                         case Color_Status::in_process:  // Keep this vertex pending and revisit it once its color is available.
-                            if(c.processing_worker() != w_id)   // The color is new to this worker.
+                            if(c.processing_worker() != w_id)   // The color is not new globally, but new to this worker.
                                 M[V[i]].mark_new_color();
 
                             in_process.emplace_back(lmtig_coord, H[i]);
@@ -264,7 +264,6 @@ void Subgraph<k, Colored_>::extract_new_colors()
 {
 if constexpr(Colored_)
 {
-    auto& C = work_space.color_map();
     auto& color_rel = work_space.color_rel_arr();
     color_rel.clear();
 
@@ -307,22 +306,20 @@ if constexpr(Colored_)
 
     semisort(color_rel);
 
+    auto& C = work_space.color_map();
     for(std::size_t i = 0, j; i < color_rel.size(); i = j)
     {
-        uint64_t h = hash_combine(0, source_hash(color_rel[i].second));
+        const auto& v = color_rel[i].first;
         for(j = i + 1; j < color_rel.size(); ++j)
         {
-            if(color_rel[j].first != color_rel[i].first)
+            if(color_rel[j].first != v)
                 break;
 
             assert(color_rel[j].second >= color_rel[j - 1].second);
-            if(color_rel[j].second != color_rel[j - 1].second)  // Deal with multi-set hashing.
-                h = hash_combine(h, source_hash(color_rel[j].second));
         }
 
-
-        // TODO: add `(color_set_sz = j - i, {color_set})` to this worker's color-bucket.
-        C.assign(h, Color_Coordinate(parlay::worker_id(), 0)); // TODO: get bucket-size to use as index.
+        if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), 0)))
+            ; // TODO: add color-set to color-repo.
     }
 }
 }

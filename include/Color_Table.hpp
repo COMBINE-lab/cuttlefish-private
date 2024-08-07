@@ -93,6 +93,10 @@ public:
     // extraction-status of the color prior to this invocation.
     Color_Status mark_in_process(hash_t h, uint64_t w, Color_Coordinate& c);
 
+    // Updates the key `h` with value `c` if `h` is marked as in process of
+    // extraction. Returns `true` iff the update is successful.
+    bool update_if_in_process(hash_t h, Color_Coordinate c);
+
     // Assigns `c` to the value of the key `h`.
     void assign(hash_t h, coord_t c);
 };
@@ -120,10 +124,21 @@ inline Color_Status Color_Table::mark_in_process(const hash_t h, const uint64_t 
 }
 
 
-inline void Color_Table::assign(const hash_t h, const Color_Coordinate c)
+inline bool Color_Table::update_if_in_process(const hash_t h, const Color_Coordinate c)
 {
     assert(M.contains(h));
-    M.insert_or_assign(h, c);
+
+    bool was_in_process = false;
+    const auto r = M.emplace_or_visit(h, c,
+                    [&](auto& p)
+                    {
+                        auto& color = p.second;
+                        was_in_process = color.is_in_process();
+                        color = (was_in_process ? c : color);
+                    });
+    assert(!r); (void)r;
+
+    return was_in_process;
 }
 
 }
