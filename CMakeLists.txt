@@ -378,7 +378,8 @@ else()
         CONFIGURE_COMMAND   mkdir -p build && cd build &&
                             cmake -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                             -DBOOST_INCLUDE_LIBRARIES=preprocessor$<SEMICOLON>unordered
-                            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=./ ..
+                            -DCMAKE_BUILD_TYPE=Release
+                            -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/boost-${BOOST_MIN_VERSION}/build/ ..
         BUILD_COMMAND       cd build && cmake --build . --target install --config Release
         INSTALL_COMMAND     cp -rf build/include/boost ${EXT_INCLUDE}/
     )
