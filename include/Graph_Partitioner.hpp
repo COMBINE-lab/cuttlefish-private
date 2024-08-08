@@ -46,6 +46,7 @@ private:
     const std::string subgraphs_path_pref;  // Path prefix for the subgraphs' super k-mer buckets.
 
     std::atomic_uint64_t chunk_count_;  // Number of chunks parsed from the sequences.
+    std::atomic_uint64_t chunk_bytes_;  // Total size of chunks in bytes.
     std::atomic_uint64_t record_count_; // Number of records in the sequences.
     std::atomic_uint64_t weak_super_kmer_count_;    // Number of weak super k-mers in the sequences.
     std::atomic_uint64_t weak_super_kmers_len_; // Total length of the weak super k-mers in the sequences.

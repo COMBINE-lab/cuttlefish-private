@@ -26,6 +26,7 @@ Graph_Partitioner<k, Colored_>::Graph_Partitioner(Subgraphs_Manager<k, Colored_>
     , sup_km1_mer_len_th(2 * (k - 1) - l_)
     , subgraphs_path_pref(logistics.subgraphs_path())
     , chunk_count_(0)
+    , chunk_bytes_(0)
     , record_count_(0)
     , weak_super_kmer_count_(0)
     , weak_super_kmers_len_(0)
@@ -69,6 +70,7 @@ void Graph_Partitioner<k, Colored_>::partition()
         }
 
     std::cerr << "Number of processed chunks: " << chunk_count_ << ".\n";
+    std::cerr << "Total size of chunks: " << chunk_bytes_ << ".\n";
     std::cerr << "Number of records: " << record_count_ << ".\n";
     std::cerr << "Number of super (k - 1)-mers: " << weak_super_kmer_count_ << ".\n";
     std::cerr << "Total length of the weak super k-mers:  " << weak_super_kmers_len_ << ".\n";
@@ -132,6 +134,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     (void)last_source;
 
     uint64_t rec_count = 0; // Number of parsed records.
+    uint64_t chunk_bytes = 0;   // Sum size of the chunks.
     uint64_t sup_km1_mer_count = 0; // Number of parsed super (k - 1)-mers.
     std::size_t sup_km1_mers_len = 0;   // Total length of the super (k - 1)-mers, in bases.
     std::size_t weak_sup_kmers_len = 0; // Total length of the (weak) super k-mers, in bases.
@@ -142,6 +145,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
     {
         assert(source_id >= last_source);
 
+        chunk_bytes += chunk->size;
         parsed_chunk.clear();
         rec_count += rabbit::fq::chunkFormat(chunk, parsed_chunk);
 
@@ -283,6 +287,7 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
 
 
     chunk_count_ += chunk_count;
+    chunk_bytes_ += chunk_bytes;
     record_count_ += rec_count;
     weak_super_kmer_count_ += sup_km1_mer_count;
     weak_super_kmers_len_ += weak_sup_kmers_len;
