@@ -53,8 +53,17 @@ void dBG_Contractor<k>::construct()
 
     Subgraphs_Manager<k, Colored_> subgraphs(logistics, params.subgraph_count(), params.min_len(), G, op_buf);
 
-    Graph_Partitioner<k, true, Colored_> super_kmer_splitter(subgraphs, logistics, params.min_len());
-    EXECUTE("partition", super_kmer_splitter.partition);
+    if(params.is_read_graph())
+    {
+        std::cerr << "Read graph\n";
+        EXECUTE("partition", (Graph_Partitioner<k, true, Colored_>(subgraphs, logistics, params.min_len())).partition)
+    }
+    else
+    {
+        std::cerr << "Ref graph\n";
+        EXECUTE("partition", (Graph_Partitioner<k, false, Colored_>(subgraphs, logistics, params.min_len())).partition)
+    }
+
     subgraphs.finalize();
 
     const auto t_part = timer::now();
