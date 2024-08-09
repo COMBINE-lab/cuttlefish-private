@@ -203,9 +203,9 @@ Reference getNextSeq(FastaChunk &fachunk, bool &done, uint64 &pos) {
     fachunk.start++;
   } else {
     string line = getLine(fachunk.chunk, pos);
-    int str_pos = line.find_first_of(' ');
-    ref.name = line.substr(1, str_pos - 1);  // remove '>' and ' '
-    if (static_cast<std::size_t>(str_pos) < line.size()) ref.comment = line.substr(str_pos + 1);
+    // int str_pos = line.find_first_of(' ');
+    // ref.name = line.substr(1, str_pos - 1);  // remove '>' and ' '
+    // if (static_cast<std::size_t>(str_pos) < line.size()) ref.comment = line.substr(str_pos + 1);
     // cerr << "name: " << ref.name << endl << flush;
     ref.seq = getSequence(fachunk.chunk, pos);
     // cerr << "seq: " << ref.seq << endl << flush;
