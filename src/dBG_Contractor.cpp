@@ -55,12 +55,10 @@ void dBG_Contractor<k>::construct()
 
     if(params.is_read_graph())
     {
-        std::cerr << "Read graph\n";
         EXECUTE("partition", (Graph_Partitioner<k, true, Colored_>(subgraphs, logistics, params.min_len())).partition)
     }
     else
     {
-        std::cerr << "Ref graph\n";
         EXECUTE("partition", (Graph_Partitioner<k, false, Colored_>(subgraphs, logistics, params.min_len())).partition)
     }
 

@@ -36,8 +36,9 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 {
-    const auto chunk_count = std::ceil(parlay::num_workers() * 2);    // Maximum number of chunks. TODO: make a more informed choice.
-    chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
+    const auto chunk_count = parlay::num_workers() * (Is_FASTQ_ ? 2 : 8);   // Maximum number of chunks. TODO: make a more informed choice.
+    constexpr auto chunk_sz = (Is_FASTQ_ ? 1lu << 23 : 1lu << 24);  // Size of each chunk: 16MB.
+    chunk_pool_t chunk_pool(chunk_count, chunk_sz); // Memory pool for chunks of sequences.
     chunk_q_t chunk_q(chunk_count); // Parsed chunks.
 
     const auto process_chunks = [&](std::size_t){ this->process(chunk_q, chunk_pool); };
@@ -87,15 +88,22 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(chunk_pool_t& chunk_
     {
         // TODO: address memory-reuse issue within a reader for every new instance.
         typename RabbitFX_DS_type<Is_FASTQ_>::reader_t reader(file_path, chunk_pool);
-        while(true)
+        const auto process_chunk = [&](auto const chunk)
         {
-            const auto chunk = reader.readNextChunk();
             if(chunk == NULL)
-                break;
+                return false;
 
             chunk_q.Push(source_id, chunk);
             chunk_count++;
-        }
+            return true;
+        };
+
+        bool chunks_remain = true;
+        while(chunks_remain)
+            if constexpr(Is_FASTQ_)
+                chunks_remain = process_chunk(reader.readNextChunk());
+            else
+                chunks_remain = process_chunk(reader.readNextChunkList());
 
         source_id++;
     }
@@ -155,8 +163,19 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chun
             chunk_bytes += chunk->size,
             rec_count += rabbit::fq::chunkFormat(chunk, parsed_chunk);
         else
+        {
             chunk_bytes += chunk->chunk->size,
-            rec_count += rabbit::fa::chunkFormat(*chunk, parsed_chunk);
+            rec_count += rabbit::fa::chunkListFormat(*chunk, parsed_chunk);
+
+            auto ptr = chunk->chunk;
+            do
+            {
+                chunk_pool.Release(ptr);
+                ptr = ptr->next;
+            }
+            while(ptr != NULL);
+        }
+
 
         for(const auto& record : parsed_chunk)
         {
@@ -298,8 +317,6 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chun
 
         if constexpr(Is_FASTQ_)
             chunk_pool.Release(chunk);
-        else
-            chunk_pool.Release(chunk->chunk);
 
         chunk_count++;
         last_source = source_id;
