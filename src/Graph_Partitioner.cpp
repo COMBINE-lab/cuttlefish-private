@@ -18,8 +18,8 @@
 namespace cuttlefish
 {
 
-template <uint16_t k, bool Colored_>
-Graph_Partitioner<k, Colored_>::Graph_Partitioner(Subgraphs_Manager<k, Colored_>& subgraphs, const Data_Logistics& logistics, const uint16_t l):
+template <uint16_t k, bool Is_FASTQ_, bool Colored_>
+Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k, Colored_>& subgraphs, const Data_Logistics& logistics, const uint16_t l):
       subgraphs(subgraphs)
     , seqs(logistics.input_paths_collection())
     , l_(l)
@@ -34,8 +34,8 @@ Graph_Partitioner<k, Colored_>::Graph_Partitioner(Subgraphs_Manager<k, Colored_>
 {}
 
 
-template <uint16_t k, bool Colored_>
-void Graph_Partitioner<k, Colored_>::partition()
+template <uint16_t k, bool Is_FASTQ_, bool Colored_>
+void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 {
     const auto chunk_count = std::ceil(parlay::num_workers() * 2);    // Maximum number of chunks. TODO: make a more informed choice.
     chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
@@ -78,8 +78,8 @@ void Graph_Partitioner<k, Colored_>::partition()
 }
 
 
-template <uint16_t k, bool Colored_>
-void Graph_Partitioner<k, Colored_>::read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
+template <uint16_t k, bool Is_FASTQ_, bool Colored_>
+void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {
     uint64_t chunk_count = 0;   // Number of parsed chunks.
     rabbit::int64 source_id = 1;    // Source (i.e. file) ID of a chunk.
@@ -103,8 +103,8 @@ void Graph_Partitioner<k, Colored_>::read_chunks(chunk_pool_t& chunk_pool, chunk
 }
 
 
-template <uint16_t k, bool Colored_>
-uint64_t Graph_Partitioner<k, Colored_>::read_chunks(const std::size_t source_id, chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
+template <uint16_t k, bool Is_FASTQ_, bool Colored_>
+uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(const std::size_t source_id, chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {
     uint64_t chunk_count = 0;   // Number of parsed chunks.
 
@@ -123,8 +123,8 @@ uint64_t Graph_Partitioner<k, Colored_>::read_chunks(const std::size_t source_id
 }
 
 
-template <uint16_t k, bool Colored_>
-void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool)
+template <uint16_t k, bool Is_FASTQ_, bool Colored_>
+void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool)
 {
     rabbit::int64 source_id;    // Source (i.e. file) ID of a chunk.
     uint64_t chunk_count = 0;   // Number of processed chunks.
@@ -295,8 +295,8 @@ void Graph_Partitioner<k, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& c
 }
 
 
-template <uint16_t k, bool Colored_>
-bool Graph_Partitioner<k, Colored_>::is_discontinuity(const char* const seq) const
+template <uint16_t k, bool Is_FASTQ_, bool Colored_>
+bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::is_discontinuity(const char* const seq) const
 {
     minimizer_t min_l, min_r;
     uint64_t h_l, h_r;
@@ -317,4 +317,4 @@ bool Graph_Partitioner<k, Colored_>::is_discontinuity(const char* const seq) con
 
 
 // Template-instantiations for the required instances.
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Graph_Partitioner)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL_L2, cuttlefish::Graph_Partitioner)

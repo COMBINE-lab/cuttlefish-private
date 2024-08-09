@@ -19,13 +19,40 @@ namespace cuttlefish
 
 template <uint16_t k, bool Colored_> class Subgraphs_Manager;
 
+
+// Data types for the `rabbitfx` parser. `Is_FASTQ` denotes whether the parsing
+// is over FASTQ data or not (i.e. FASTA).
+template <bool Is_FASTQ_>
+struct RabbitFX_DS_type
+{};
+
+
+template <>
+struct RabbitFX_DS_type<true>
+{
+    typedef rabbit::fq::FastqDataChunk chunk_t; // Type of chunks containing parsed sequences.
+    typedef rabbit::fq::FastqDataPool chunk_pool_t; // Type of memory pools for chunks.
+    typedef rabbit::core::TDataQueue<chunk_t> chunk_q_t;    // Type of queue of parsed chunks.
+};
+
+
+template <>
+struct RabbitFX_DS_type<false>
+{
+    typedef rabbit::fa::FastaDataChunk chunk_t; // Type of chunks containing parsed sequences.
+    typedef rabbit::fa::FastaDataPool chunk_pool_t; // Type of memory pools for chunks.
+    typedef rabbit::core::TDataQueue<chunk_t> chunk_q_t;    // Type of queue of parsed chunks.
+};
+
+
 // =============================================================================
 // Class to partition de Bruijn graphs into subgraphs based on minimizers of the
 // `k`-mers. Effectively, splits input sequences to maximal weak super k-mers
-// and distributes those to appropriate subgraphs. `Colored_` denotes whether
-// the vertices in the graph have associated colors.
+// and distributes those to appropriate subgraphs. `Is_FASTQ_` denotes whether
+// the input is FASTQ or not (i.e. FASTA). `Colored_` denotes whether the
+// vertices in the graph have associated colors.
 // TODO: only supports FASTQ for now; extend to FASTA also.
-template <uint16_t k, bool Colored_>
+template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 class Graph_Partitioner
 {
 
@@ -33,9 +60,9 @@ private:
 
     Subgraphs_Manager<k, Colored_>& subgraphs;  // Subgraphs of the de Bruijn graph.
 
-    typedef rabbit::fq::FastqDataChunk chunk_t; // Type of chunks containing parsed sequences.
-    typedef rabbit::fq::FastqDataPool chunk_pool_t; // Type of memory pools for chunks.
-    typedef rabbit::core::TDataQueue<chunk_t> chunk_q_t;    // Type of queue of parsed chunks.
+    typedef typename RabbitFX_DS_type<Is_FASTQ_>::chunk_t chunk_t;  // Type of chunks containing parsed sequences.
+    typedef typename RabbitFX_DS_type<Is_FASTQ_>::chunk_pool_t chunk_pool_t;    // Type of memory pools for chunks.
+    typedef typename RabbitFX_DS_type<Is_FASTQ_>::chunk_q_t chunk_q_t;  // Type of queue of parsed chunks.
 
     const std::vector<std::string> seqs;    // Input sequence collection.
 

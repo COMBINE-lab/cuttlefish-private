@@ -53,7 +53,7 @@ void dBG_Contractor<k>::construct()
 
     Subgraphs_Manager<k, Colored_> subgraphs(logistics, params.subgraph_count(), params.min_len(), G, op_buf);
 
-    Graph_Partitioner<k, Colored_> super_kmer_splitter(subgraphs, logistics, params.min_len());
+    Graph_Partitioner<k, true, Colored_> super_kmer_splitter(subgraphs, logistics, params.min_len());
     EXECUTE("partition", super_kmer_splitter.partition);
     subgraphs.finalize();
 
