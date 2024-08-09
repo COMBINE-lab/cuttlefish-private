@@ -227,7 +227,7 @@ namespace rabbit {
                 pos_++;
             } while (pos_ < size && data[pos_] != '>');
 
-            return data[pos_] == '>' ? true : false;
+            return pos_ == size ? false : (data[pos_] == '>');
         }
 
         bool FastaFileReader::ReadNextFaChunk_(FastaDataChunk *chunk_, SeqInfos &seqInfos, bool &continue_read) {
