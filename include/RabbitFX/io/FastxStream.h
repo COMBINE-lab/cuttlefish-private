@@ -138,7 +138,7 @@ namespace rabbit {
                     }
 
                 FastaFileReader(const std::string &fileName_, FastaDataPool &pool_, bool isZippedNew = false, uint64 halo = 21):
-                    FastaFileReader(fileName_, &pool_, isZippedNew, halo)
+                    FastaFileReader(fileName_, &pool_, isZippedNew || ends_with(fileName_, ".gz"), halo)
                 {}
 
                 ~FastaFileReader() {
