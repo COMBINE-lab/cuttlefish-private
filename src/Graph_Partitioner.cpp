@@ -177,7 +177,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chun
         }
 
 
-        for(const auto& record : parsed_chunk)
+        for(auto& record : parsed_chunk)
         {
             const char* seq;
             std::size_t seq_len;
@@ -186,8 +186,11 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chun
                 seq = reinterpret_cast<const char*>(record.base + record.pseq),
                 seq_len = record.lseq;
             else
+            {
+                record.seq.resize(record.seq.length() + 32);    // Deal with UB in `Super_Kmer_Chunk::add_encoded_label`
                 seq = record.seq.c_str(),
                 seq_len = record.length;
+            }
 
             std::size_t last_frag_end = 0;  // Ending index (exclusive) of the last sequence fragment.
             while(true)
