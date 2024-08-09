@@ -4,7 +4,6 @@
 #include "Minimizer_Iterator.hpp"
 #include "DNA_Utility.hpp"
 #include "globals.hpp"
-#include "RabbitFX/io/FastxStream.h"
 #include "RabbitFX/io/Reference.h"
 #include "RabbitFX/io/Formater.h"
 #include "RabbitFX/io/Globals.h"
@@ -87,10 +86,13 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(chunk_pool_t& chunk_
     for(const auto& file_path : seqs)
     {
         // TODO: address memory-reuse issue within a reader for every new instance.
-        rabbit::fq::FastqFileReader reader(file_path, chunk_pool);
-        const chunk_t* chunk;
-        while((chunk = reader.readNextChunk()) != NULL)
+        typename RabbitFX_DS_type<Is_FASTQ_>::reader_t reader(file_path, chunk_pool);
+        while(true)
         {
+            const auto chunk = reader.readNextChunk();
+            if(chunk == NULL)
+                break;
+
             chunk_q.Push(source_id, chunk);
             chunk_count++;
         }
@@ -109,10 +111,13 @@ uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(const std::size_
     uint64_t chunk_count = 0;   // Number of parsed chunks.
 
     // TODO: address memory-reuse issue within a reader for every new instance.
-    rabbit::fq::FastqFileReader reader(seqs[source_id - 1], chunk_pool);
-    const chunk_t* chunk;
-    while((chunk = reader.readNextChunk()) != NULL)
+    typename RabbitFX_DS_type<Is_FASTQ_>::reader_t reader(seqs[source_id - 1], chunk_pool);
+    while(true)
     {
+        const auto chunk = reader.readNextChunk();
+        if(chunk == NULL)
+            break;
+
         chunk_q.Push(source_id, chunk);
         chunk_count++;
     }
@@ -129,7 +134,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chun
     rabbit::int64 source_id;    // Source (i.e. file) ID of a chunk.
     uint64_t chunk_count = 0;   // Number of processed chunks.
     chunk_t* chunk; // Current chunk.
-    std::vector<neoReference> parsed_chunk; // Current parsed chunk.
+    std::vector<typename RabbitFX_DS_type<Is_FASTQ_>::ref_t> parsed_chunk;  // Current parsed chunk.
     rabbit::int64 last_source = 0;  // Source ID of the last chunk processed.
     (void)last_source;
 
@@ -145,14 +150,25 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chun
     {
         assert(source_id >= last_source);
 
-        chunk_bytes += chunk->size;
         parsed_chunk.clear();
-        rec_count += rabbit::fq::chunkFormat(chunk, parsed_chunk);
+        if constexpr(Is_FASTQ_)
+            chunk_bytes += chunk->size,
+            rec_count += rabbit::fq::chunkFormat(chunk, parsed_chunk);
+        else
+            chunk_bytes += chunk->chunk->size,
+            rec_count += rabbit::fa::chunkFormat(*chunk, parsed_chunk);
 
         for(const auto& record : parsed_chunk)
         {
-            const auto seq = reinterpret_cast<const char*>(record.base + record.pseq);
-            const auto seq_len = record.lseq;
+            const char* seq;
+            std::size_t seq_len;
+
+            if constexpr(Is_FASTQ_)
+                seq = reinterpret_cast<const char*>(record.base + record.pseq),
+                seq_len = record.lseq;
+            else
+                seq = record.seq.c_str(),
+                seq_len = record.length;
 
             std::size_t last_frag_end = 0;  // Ending index (exclusive) of the last sequence fragment.
             while(true)
@@ -280,7 +296,11 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chun
         }
 
 
-        chunk_pool.Release(chunk);
+        if constexpr(Is_FASTQ_)
+            chunk_pool.Release(chunk);
+        else
+            chunk_pool.Release(chunk->chunk);
+
         chunk_count++;
         last_source = source_id;
     }

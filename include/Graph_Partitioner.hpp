@@ -7,6 +7,8 @@
 #include "Data_Logistics.hpp"
 #include "RabbitFX/io/FastxChunk.h"
 #include "RabbitFX/io/DataQueue.h"
+#include "RabbitFX/io/FastxStream.h"
+#include "RabbitFX/io/Reference.h"
 
 #include <cstdint>
 #include <atomic>
@@ -33,15 +35,19 @@ struct RabbitFX_DS_type<true>
     typedef rabbit::fq::FastqDataChunk chunk_t; // Type of chunks containing parsed sequences.
     typedef rabbit::fq::FastqDataPool chunk_pool_t; // Type of memory pools for chunks.
     typedef rabbit::core::TDataQueue<chunk_t> chunk_q_t;    // Type of queue of parsed chunks.
+    typedef rabbit::fq::FastqFileReader reader_t;   // Type of file-reader.
+    typedef neoReference ref_t; // Type of parsed data.
 };
 
 
 template <>
 struct RabbitFX_DS_type<false>
 {
-    typedef rabbit::fa::FastaDataChunk chunk_t; // Type of chunks containing parsed sequences.
+    typedef rabbit::fa::FastaChunk chunk_t; // Type of chunks containing parsed sequences.
     typedef rabbit::fa::FastaDataPool chunk_pool_t; // Type of memory pools for chunks.
     typedef rabbit::core::TDataQueue<chunk_t> chunk_q_t;    // Type of queue of parsed chunks.
+    typedef rabbit::fa::FastaFileReader reader_t;   // Type of file-reader.
+    typedef Reference ref_t;    // Type of parsed data.
 };
 
 
