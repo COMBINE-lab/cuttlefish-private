@@ -120,7 +120,6 @@ public:
     // Placeholder bases are not checked for, and returns some valid integer.
     static DNA::Base map_base_unchecked(const char base)
     {
-        assert(std::isalpha(base));
         return DNA::Base(((base >> 2) ^ (base >> 1)) & 0b11);
     }
 
@@ -188,7 +187,6 @@ public:
     // Returns the upper-case equivalent of the character `base`.
     static char to_upper(const char b)
     {
-        assert(std::isalpha(b));
         return b & 0b0101'1111;
     }
 
