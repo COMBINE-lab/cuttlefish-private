@@ -380,7 +380,7 @@ else()
                             -DBOOST_INCLUDE_LIBRARIES=preprocessor$<SEMICOLON>unordered
                             -DCMAKE_BUILD_TYPE=Release
                             -DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/external/boost-${BOOST_MIN_VERSION}/build/ ..
-        BUILD_COMMAND       cd build && cmake --build . --target install --config Release
+        BUILD_COMMAND       cd build && cmake --build . --config Release
         INSTALL_COMMAND     cp -rf build/include/boost ${EXT_INCLUDE}/
     )
 endif()
