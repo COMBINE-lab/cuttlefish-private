@@ -4,6 +4,7 @@
 #include "Minimizer_Iterator.hpp"
 #include "DNA_Utility.hpp"
 #include "globals.hpp"
+#include "utility.hpp"
 #include "RabbitFX/io/Reference.h"
 #include "RabbitFX/io/Formater.h"
 #include "RabbitFX/io/Globals.h"
@@ -30,13 +31,14 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
     , weak_super_kmer_count_(0)
     , weak_super_kmers_len_(0)
     , super_km1_mers_len_(0)
+    , parse_time(0)
 {}
 
 
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 {
-    const auto chunk_count = parlay::num_workers() * (Is_FASTQ_ ? 2 : 8);   // Maximum number of chunks. TODO: make a more informed choice.
+    const auto chunk_count = parlay::num_workers() * (Is_FASTQ_ ? 2 : 4);   // Maximum number of chunks. TODO: make a more informed choice.
     constexpr auto chunk_sz = (Is_FASTQ_ ? 1lu << 23 : 1lu << 24);  // Size of each chunk: 16MB.
     chunk_pool_t chunk_pool(chunk_count, chunk_sz); // Memory pool for chunks of sequences.
     chunk_q_t chunk_q(chunk_count); // Parsed chunks.
@@ -75,6 +77,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
     std::cerr << "Number of super (k - 1)-mers: " << weak_super_kmer_count_ << ".\n";
     std::cerr << "Total length of the weak super k-mers:  " << weak_super_kmers_len_ << ".\n";
     std::cerr << "Total length of the super (k - 1)-mers: " << super_km1_mers_len_ << ".\n";
+    std::cerr << "Total work in parse: " << parse_time << "s.\n";
 }
 
 
@@ -169,6 +172,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chun
     {
         assert(source_id >= last_source);
 
+        const auto t_s = timer::now();
         parsed_chunk.clear();
         if constexpr(Is_FASTQ_)
             chunk_bytes += chunk->size,
@@ -187,6 +191,8 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chun
             while(ptr != NULL);
         }
 
+        const auto t_e = timer::now();
+        parse_time += std::ceil(timer::duration(t_e - t_s) + 0.5);
 
         for(auto& record : parsed_chunk)
         {
