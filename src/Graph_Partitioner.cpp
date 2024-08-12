@@ -9,9 +9,9 @@
 #include "RabbitFX/io/Globals.h"
 #include "parlay/parallel.h"
 
+#include <cstddef>
 #include <cmath>
 #include <cassert>
-#include <cstddef>
 
 
 namespace cuttlefish
@@ -81,6 +81,8 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {
+    assert(!Colored_);
+
     uint64_t chunk_count = 0;   // Number of parsed chunks.
     rabbit::int64 source_id = 1;    // Source (i.e. file) ID of a chunk.
 
@@ -116,19 +118,28 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(chunk_pool_t& chunk_
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(const std::size_t source_id, chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {
+    assert(Colored_);
+
     uint64_t chunk_count = 0;   // Number of parsed chunks.
 
     // TODO: address memory-reuse issue within a reader for every new instance.
     typename RabbitFX_DS_type<Is_FASTQ_>::reader_t reader(seqs[source_id - 1], chunk_pool);
-    while(true)
+    const auto process_chunk = [&](auto const chunk)
     {
-        const auto chunk = reader.readNextChunk();
         if(chunk == NULL)
-            break;
+            return false;
 
         chunk_q.Push(source_id, chunk);
         chunk_count++;
-    }
+        return true;
+    };
+
+    bool chunks_remain = true;
+    while(chunks_remain)
+        if constexpr(Is_FASTQ_)
+            chunks_remain = process_chunk(reader.readNextChunk());
+        else
+            chunks_remain = process_chunk(reader.readNextChunkList());
 
     chunk_q.SetCompleted();
 
