@@ -40,8 +40,7 @@ template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 {
     const auto chunk_count = parlay::num_workers() * (Is_FASTQ_ ? 2 : 4);   // Maximum number of chunks. TODO: make a more informed choice.
-    constexpr auto chunk_sz = (Is_FASTQ_ ? 1lu << 23 : 1lu << 24);  // Size of each chunk: 16MB.
-    chunk_pool_t chunk_pool(chunk_count, chunk_sz); // Memory pool for chunks of sequences.
+    chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
     chunk_q_t chunk_q(chunk_count); // Parsed chunks.
 
     const auto process_chunks = [&](std::size_t){ this->process(chunk_q, chunk_pool); };
