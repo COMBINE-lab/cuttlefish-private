@@ -11,7 +11,6 @@
 #include "parlay/parallel.h"
 
 #include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <cassert>
 
@@ -83,6 +82,8 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
         [&](){ double t = 0; std::for_each(parse_time.cbegin(), parse_time.cend(), [&](const auto& v){ t += v.unwrap(); }); return t; }() << "s.\n";
     std::cerr << "Total work in processing records: " <<
         [&](){ double t = 0; std::for_each(process_time.cbegin(), process_time.cend(), [&](const auto& v){ t += v.unwrap(); }); return t; }() << "s.\n";
+    std::cerr << "Max work in processing records: " <<
+        [&](){ double t = 0; std::for_each(process_time.cbegin(), process_time.cend(), [&](const auto& v){ t = std::max(t, v.unwrap()); }); return t; }() << "s.\n";
 }
 
 
@@ -199,7 +200,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chun
         }
 
         const auto t_1 = timer::now();
-        parse_time[parlay::worker_id()].unwrap() += std::ceil(timer::duration(t_1 - t_0));
+        parse_time[parlay::worker_id()].unwrap() += timer::duration(t_1 - t_0);
 
         for(auto& record : parsed_chunk)
         {
@@ -342,7 +343,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chun
         }
 
         const auto t_2 = timer::now();
-        process_time[parlay::worker_id()].unwrap() += std::ceil(timer::duration(t_2 - t_1));
+        process_time[parlay::worker_id()].unwrap() += timer::duration(t_2 - t_1);
 
 
         if constexpr(Is_FASTQ_)

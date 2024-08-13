@@ -9,6 +9,7 @@
 #include "RabbitFX/io/DataQueue.h"
 #include "RabbitFX/io/FastxStream.h"
 #include "RabbitFX/io/Reference.h"
+#include "utility.hpp"
 
 #include <cstdint>
 #include <atomic>
