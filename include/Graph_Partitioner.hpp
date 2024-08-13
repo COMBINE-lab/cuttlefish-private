@@ -84,8 +84,8 @@ private:
     std::atomic_uint64_t weak_super_kmer_count_;    // Number of weak super k-mers in the sequences.
     std::atomic_uint64_t weak_super_kmers_len_; // Total length of the weak super k-mers in the sequences.
     std::atomic_uint64_t super_km1_mers_len_;   // Total length of the super (k - 1)-mers in the sequences.
-    std::atomic_uint64_t parse_time;    // Total time taken in parsing read chunks.
-
+    std::vector<Padded<double>> parse_time; // Total time taken in parsing read chunks.
+    std::vector<Padded<double>> process_time;   // Total time taken in processing parsed records.
 
     // Reads the provided sequences into chunks from the memory pool
     // `chunk_pool` and puts the parsed chunks into the queue `chunk_q`.
