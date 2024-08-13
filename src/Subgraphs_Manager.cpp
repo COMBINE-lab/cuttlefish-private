@@ -62,7 +62,7 @@ uint64_t Subgraphs_Manager<k, Colored_>::estimate_size_max() const
 {
     uint64_t max_est = 0;
     for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
-        max_est = std::max(max_est, HLL[g_id].estimate());
+        max_est = std::max(max_est, HLL[g_id].unwrap().estimate());
 
     return max_est;
 }

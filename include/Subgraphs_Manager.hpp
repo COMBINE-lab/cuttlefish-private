@@ -46,7 +46,7 @@ private:
     typedef Super_Kmer_Bucket<Colored_> bucket_t;
     std::vector<Padded<bucket_t>> subgraph_bucket;  // Super k-mer buckets for the subgraphs.
 
-    std::vector<HyperLogLog> HLL;   // `HLL[g]` is the cardinality-estimator for subgraph `g`.
+    std::vector<Padded<HyperLogLog>> HLL;   // `HLL[g]` is the cardinality-estimator for subgraph `g`.
 
     Discontinuity_Graph<k>& G;  // The discontinuity graph.
 
@@ -128,7 +128,7 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, 
     auto& bucket = subgraph_bucket[g].unwrap();
     bucket.add(seq, len, l_disc, r_disc);
 
-    add_to_HLL(g, seq, len);
+    // add_to_HLL(g, seq, len);
 }
 
 
@@ -141,14 +141,14 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, 
     auto& bucket = subgraph_bucket[g].unwrap();
     bucket.add(seq, len, source, l_disc, r_disc);
 
-    add_to_HLL(g, seq, len);
+    // add_to_HLL(g, seq, len);
 }
 
 
 template <uint16_t k, bool Colored_>
 inline void Subgraphs_Manager<k, Colored_>::add_to_HLL(const std::size_t g, const char* const seq, const std::size_t len)
 {
-    auto& hll = HLL[g];
+    auto& hll = HLL[g].unwrap();
     Directed_Vertex<k> v{Kmer<k>(seq)};
     constexpr auto u32_mask = std::numeric_limits<uint32_t>::max();
     std::size_t next_idx = k;
