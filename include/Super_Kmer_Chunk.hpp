@@ -8,11 +8,11 @@
 #include "Kmer_Utility.hpp"
 #include "utility.hpp"
 
-#include <cassert>
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
 #include <fstream>
+#include <cassert>
 
 
 namespace cuttlefish
@@ -34,7 +34,7 @@ private:
     const std::size_t max_sup_kmer_len; // Maximum length of the (weak) super k-mers.
     const std::size_t sup_kmer_word_c;  // Number of 64-bit words in super k-mer encodings.
 
-    const std::size_t cap_; // Maximum capacity of the chunk in number of super k-mers.
+    std::size_t cap_;   // Maximum capacity of the chunk in number of super k-mers.
     std::size_t size_;  // Size of the chunk in number of super k-mers.
 
     Buffer<attribute_t> att_buf;    // Buffer of attributes of the super k-mers.
@@ -78,6 +78,12 @@ public:
     // Returns the number of units, i.e. 64-bit words, in the label buffer.
     auto label_units() const { return size() * sup_kmer_word_c; }
 
+    // Reserves sufficient space for at least `cap` many super k-mers.
+    void reserve(std::size_t cap);
+
+    // Resizes the chunk to `n` many super k-mers.
+    void resize(std::size_t n);
+
     // Clears the chunk.
     void clear() { size_ = 0; }
 
@@ -108,10 +114,47 @@ public:
     // Appends the chunk `c` to the end of this chunk.
     void append(const Super_Kmer_Chunk& c);
 
+    // Copies `n` super k-mers from the chunk `c`'s index `src_idx` to the
+    // index `dest_idx` of this chunk. The indices `[dest_idx, dest_idx + n)`
+    // are overwritten.
+    void copy(std::size_t dest_idx, const Super_Kmer_Chunk& c, std::size_t src_idx, std::size_t n);
+
+    // Moves `n` super k-mers from index `src_idx` to index `dest_idx`. The
+    // indices `[dest_idx, dest_idx + n)` are overwritten.
+    void move(std::size_t dest_idx, std::size_t src_idx, std::size_t n);
+
     // Gets the `idx`'th super k-mer's (in the chunk) attributes to `att` and
     // label to `label`.
     void get_super_kmer(std::size_t idx, attribute_t& att, label_unit_t*& label);
+
+    // Returns the attribute of the super k-mer at index `i`.
+    const attribute_t& att_at(const std::size_t i) const { assert(i < size()); return att_buf[i]; }
+
+    // Returns the attribute of the super k-mer at the back of the chunk.
+    const attribute_t& back_att() const { return att_at(size() - 1); }
 };
+
+
+template <bool Colored_>
+inline void Super_Kmer_Chunk<Colored_>::reserve(const std::size_t cap)
+{
+    if(capacity() >= cap)
+        return;
+
+    att_buf.reserve(cap);
+    label_buf.reserve(cap * sup_kmer_word_c);
+    cap_ = att_buf.capacity();
+}
+
+
+template <bool Colored_>
+inline void Super_Kmer_Chunk<Colored_>::resize(const std::size_t n)
+{
+    if(n > capacity())
+        reserve(n);
+
+    size_ = n;
+}
 
 
 template <>
@@ -171,6 +214,26 @@ template <bool Colored_>
 inline void Super_Kmer_Chunk<Colored_>::append(const Super_Kmer_Chunk& c)
 {
     append(c, 0, c.size());
+}
+
+
+template <bool Colored_>
+inline void Super_Kmer_Chunk<Colored_>::copy(const std::size_t dest_idx, const Super_Kmer_Chunk& c, const std::size_t src_idx, const std::size_t n)
+{
+    assert(dest_idx + n <= size());
+
+    std::memcpy(att_buf.data() + dest_idx, c.att_buf.data() + src_idx, n * sizeof(attribute_t));
+    std::memcpy(label_buf.data() + dest_idx * sup_kmer_word_c, c.label_buf.data() + src_idx * sup_kmer_word_c, n * sup_kmer_word_c * sizeof(label_unit_t));
+}
+
+
+template <bool Colored_>
+inline void Super_Kmer_Chunk<Colored_>::move(const std::size_t dest_idx, const std::size_t src_idx, const std::size_t n)
+{
+    assert(dest_idx + n <= size());
+
+    std::memmove(att_buf.data() + dest_idx, att_buf.data() + src_idx, n * sizeof(attribute_t));
+    std::memmove(label_buf.data() + dest_idx * sup_kmer_word_c, label_buf.data() + src_idx * sup_kmer_word_c, n * sup_kmer_word_c * sizeof(label_unit_t));
 }
 
 
