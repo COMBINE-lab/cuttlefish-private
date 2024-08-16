@@ -6,7 +6,9 @@
 
 #include "Super_Kmer_Attributes.hpp"
 #include "Kmer_Utility.hpp"
+#include "utility.hpp"
 
+#include <cassert>
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
@@ -35,8 +37,8 @@ private:
     const std::size_t cap_; // Maximum capacity of the chunk in number of super k-mers.
     std::size_t size_;  // Size of the chunk in number of super k-mers.
 
-    attribute_t* att_buf;    // Buffer of attributes of the super k-mers.
-    label_unit_t* label_buf;  // Buffer of concatenated labels of the super k-mers.
+    Buffer<attribute_t> att_buf;    // Buffer of attributes of the super k-mers.
+    Buffer<label_unit_t> label_buf; // Buffer of concatenated labels of the super k-mers.
 
 
     // Adds the 2-bit encoded form of the label `seq` with length `len` to the
@@ -49,8 +51,6 @@ public:
     // Constructs a super k-mer chunk for `k`-mers and `l`-minimizers, with
     // maximum capacity `cap` in number of super k-mers.
     Super_Kmer_Chunk(uint16_t k, uint16_t l, std::size_t cap);
-
-    ~Super_Kmer_Chunk();
 
     Super_Kmer_Chunk(const Super_Kmer_Chunk&) = delete;
     Super_Kmer_Chunk(Super_Kmer_Chunk&&);
@@ -160,8 +160,8 @@ inline void Super_Kmer_Chunk<Colored_>::append(const Super_Kmer_Chunk& c, const 
     const auto n = r - l;
     assert(size() + n <= cap_);
 
-    std::memcpy(att_buf + size(), c.att_buf + l, n * sizeof(attribute_t));
-    std::memcpy(label_buf + label_units(), c.label_buf + l * sup_kmer_word_c, n * sup_kmer_word_c * sizeof(label_unit_t));
+    std::memcpy(att_buf.data() + size(), c.att_buf.data() + l, n * sizeof(attribute_t));
+    std::memcpy(label_buf.data() + label_units(), c.label_buf.data() + l * sup_kmer_word_c, n * sup_kmer_word_c * sizeof(label_unit_t));
 
     size_ += n;
 }
@@ -180,7 +180,7 @@ inline void Super_Kmer_Chunk<Colored_>::get_super_kmer(std::size_t idx, attribut
     assert(idx < size());
 
     att = att_buf[idx];
-    label = label_buf + idx * sup_kmer_word_c;
+    label = label_buf.data() + idx * sup_kmer_word_c;
 }
 
 }

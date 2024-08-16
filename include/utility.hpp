@@ -228,10 +228,23 @@ public:
         , cap_(0)
     {}
 
+    // Constructs a buffer with capacity `cap`.
+    Buffer(const std::size_t cap):
+          buf_(allocate<T_>(cap))
+        , cap_(cap)
+    {}
+
     ~Buffer() { deallocate(buf_); }
 
+    Buffer(Buffer&& rhs):
+          buf_(std::move(rhs.buf_))
+        , cap_(std::move(rhs.cap_))
+    {
+        rhs.buf_ = nullptr;
+        rhs.cap_ = 0;
+    }
+
     Buffer(const Buffer&) = delete;
-    Buffer(Buffer&&) = delete;
     Buffer& operator=(const Buffer&) = delete;
     Buffer& operator=(Buffer&&) = delete;
 
