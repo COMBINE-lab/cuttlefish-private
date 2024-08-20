@@ -43,33 +43,16 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
     chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
     chunk_q_t chunk_q(chunk_count); // Parsed chunks.
 
-    const auto process_chunks = [&](std::size_t){ this->process(chunk_q, chunk_pool); };
-
-    if constexpr(!Colored_)
-        parlay::par_do(
-            [&]()
-            {
-                read_chunks(chunk_pool, chunk_q);
-            },
-            [&](){
-                parlay::parallel_for(0, parlay::num_workers(), process_chunks, 1);
-            });
-    else
-        for(std::size_t source_id = 1; source_id <= seqs.size(); ++source_id)
+    parlay::par_do(
+        [&]()
         {
-            parlay::par_do(
-            [&]()
-                {
-                    read_chunks(source_id, chunk_pool, chunk_q);
-                },
-                [&]()
-                {
-                    parlay::parallel_for(0, parlay::num_workers(), process_chunks, 1);
-                });
-
-            subgraphs.flush_local_bufs();
-            chunk_q.Reset();
-        }
+            read_chunks(chunk_pool, chunk_q);
+        },
+        [&]()
+        {
+            const auto process_chunks = [&](std::size_t){ process(chunk_q, chunk_pool); };
+            parlay::parallel_for(0, parlay::num_workers(), process_chunks, 1);
+        });
 
     std::cerr << "Number of processed chunks: " << chunk_count_ << ".\n";
     std::cerr << "Total size of chunks: " << chunk_bytes_ << ".\n";
@@ -89,8 +72,6 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {
-    assert(!Colored_);
-
     const auto t_s = timer::now();
     uint64_t chunk_count = 0;   // Number of parsed chunks.
     rabbit::int64 source_id = 1;    // Source (i.e. file) ID of a chunk.
@@ -125,6 +106,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(chunk_pool_t& chunk_
 }
 
 
+// TODO: remove.
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(const std::size_t source_id, chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {

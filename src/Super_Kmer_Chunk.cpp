@@ -21,7 +21,7 @@ Super_Kmer_Chunk<Colored_>::Super_Kmer_Chunk(const uint16_t k, const uint16_t l,
 {
     assert(k > l);
     assert(sup_kmer_word_c > 0);
-    assert(cap_ > 0);
+    assert(cap_ > 0 || !Colored_);  // A super k-mer bucket's "safe"-chunk is meaningless in the uncolored case.
 }
 
 

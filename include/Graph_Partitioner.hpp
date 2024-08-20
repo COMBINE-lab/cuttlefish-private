@@ -95,6 +95,7 @@ private:
     // Reads the sequences with source ID `source_id` into chunks from the
     // memory pool `chunk_pool` and puts the parsed chunks into the queue
     // `chunk_q`.
+    // TODO: remove.
     uint64_t read_chunks(std::size_t source_id, chunk_pool_t& chunk_pool, chunk_q_t& chunk_q);
 
     // Processes the parsed chunks from the queue `chunk_q` and returns the

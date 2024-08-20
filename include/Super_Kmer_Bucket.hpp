@@ -12,9 +12,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 #include <fstream>
+#include <algorithm>
+#include <cassert>
 
 
 namespace cuttlefish
@@ -43,12 +46,28 @@ private:
     mutable chunk_t chunk;  // Super k-mer chunk for the bucket.    // TODO: maybe this is not required. `chunk_w[i]` can bypass this to disk.
     mutable std::vector<Padded<chunk_t>> chunk_w;   // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
 
+    std::vector<Padded<uint32_t>> latest_src_w; // Latest source-ID of committed super k-mers to the chunk, per worker.
+    uint32_t latest_safe_src = 1;   // Latest source-ID of super k-mers safe to flush.
+    std::vector<uint32_t> src_hist; // Frequency histogram of super k-mer sources currently committed to the chunk.
+
+    mutable chunk_t chunk_safe; // Chunk of super k-mers safe to flush to the external-memory bucket in the colored case.
+    std::vector<uint32_t> chunk_sz; // Sizes of the flushed chunks; only applicable in the colored case.
+
     mutable Spin_Lock lock; // Lock to the chunk and the external-memory bucket.
 
 
     // Empties the local chunk of worker `w_id` to the chunk of the bucket in a
     // thread-safe manner.
     void empty_w_local_chunk(std::size_t w_id);
+
+    // Counting-sorts the committed super k-mers (i.e. in `chunk`) that are
+    // safe to flush and appends them in order to `chunk_safe`. The unsafe
+    // super k-mers are moved to the front of `chunk`. Returns the latest
+    // source-ID of the sorted super k-mers.
+    uint32_t counting_sort_safe_super_kmers();
+
+    // Returns the chunk to use in reading super k-mers during iteration.
+    constexpr chunk_t* reader_chunk() const { if constexpr(!Colored_) return &chunk; return &chunk_safe; }
 
 public:
 
@@ -78,9 +97,6 @@ public:
     // Closes the bucket—no more content should be added afterwards.
     void close();
 
-    // Empties the local chunks of workers to the chunk of the bucket.
-    void empty_w_local_chunks();
-
     // Removes the bucket.
     void remove();
 
@@ -104,6 +120,7 @@ private:
     std::size_t idx;    // Current slot-index the iterator is in, i.e. next super k-mer to access.
     std::size_t chunk_start_idx;    // Index into the bucket where the current in-memory chunk starts.
     std::size_t chunk_end_idx;  // Non-inclusive index into the bucket where the current in-memory chunk ends.
+    std::size_t chunk_id;   // Sequential-ID of the chunk being processed right now; only applicable in the colored case.
 
 
     // Constructs an iterator for the super k-mer bucket `B`.
@@ -130,43 +147,15 @@ public:
 
 
 template <>
-inline void Super_Kmer_Bucket<false>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
-{
-    const auto w_id = parlay::worker_id();
-    auto& c_w = chunk_w[w_id].unwrap();   // Worker-specific chunk.
-
-    assert(c_w.size() < c_w.capacity());
-    c_w.add(seq, len, l_disc, r_disc);
-
-    if(c_w.full())
-        empty_w_local_chunk(w_id);
-}
-
-
-template <>
-inline void Super_Kmer_Bucket<true>::add(const char* const seq, const std::size_t len, const uint32_t source, const bool l_disc, const bool r_disc)
-{
-    const auto w_id = parlay::worker_id();
-    auto& c_w = chunk_w[w_id].unwrap();   // Worker-specific chunk.
-
-    assert(c_w.size() < c_w.capacity());
-    c_w.add(seq, len, source, l_disc, r_disc);
-
-    if(c_w.full())
-        empty_w_local_chunk(w_id);
-}
-
-
-template <bool Colored_>
-inline void Super_Kmer_Bucket<Colored_>::empty_w_local_chunk(const std::size_t w_id)
+inline void Super_Kmer_Bucket<false>::empty_w_local_chunk(const std::size_t w_id)
 {
     auto& c_w = chunk_w[w_id].unwrap();
+    if(c_w.empty())
+        return;
 
     lock.lock();
 
     // TODO: do away with `chunk`, and write `c_w` directly.
-    // Note: can be inefficient when working with colors, i.e. when every source needs
-    // one force-flush of each bucket to maintain semi-sorted order of super k-mers.
 
     const auto break_idx = std::min(c_w.size(), chunk.free_capacity());
     chunk.append(c_w, 0, break_idx);
@@ -188,14 +177,141 @@ inline void Super_Kmer_Bucket<Colored_>::empty_w_local_chunk(const std::size_t w
 }
 
 
+template <>
+inline void Super_Kmer_Bucket<false>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
+{
+    const auto w_id = parlay::worker_id();
+    auto& c_w = chunk_w[w_id].unwrap();   // Worker-specific chunk.
+
+    assert(c_w.size() < c_w.capacity());
+    c_w.add(seq, len, l_disc, r_disc);
+
+    if(c_w.full())
+        empty_w_local_chunk(w_id);
+}
+
+
+template <>
+inline uint32_t Super_Kmer_Bucket<true>::counting_sort_safe_super_kmers()
+{
+    uint32_t src_th = std::numeric_limits<uint32_t>::max(); // Upper-bound of source-IDs of super k-mers in the chunk safe to flush.
+    std::for_each(latest_src_w.cbegin(), latest_src_w.cend(), [&](const auto& v){ src_th = std::min(src_th, v.unwrap()); });
+
+    src_hist.resize(src_th - latest_safe_src + 1);
+    std::memset(src_hist.data(), 0, src_hist.size() * sizeof(decltype(src_hist)::value_type));
+    uint64_t safe_c = 0;    // Count of super k-mers safe to flush.
+    for(std::size_t i = 0; i < chunk.size(); ++i)
+    {
+        const auto src = chunk.att_at(i).source();
+        if(src <= src_th)
+            src_hist[src - latest_safe_src]++,
+            safe_c++;
+    }
+
+    // assert(safe_c > 0);  // TODO: diagnose performance characteristics of this assert failing.
+
+
+    // Base offset for new super k-mers into the safe chunk.
+    const auto base_off = chunk_safe.size();
+    chunk_safe.resize(chunk_safe.size() + safe_c);
+    auto& src_off = src_hist;   // Offsets for super k-mers in the safe chunk, for counting sort.
+    uint64_t pref_sum = 0;
+    for(std::size_t i = 0; i < src_off.size(); ++i)
+    {
+        const auto temp = src_off[i];
+        src_off[i] = pref_sum;
+        pref_sum += temp;
+    }
+    assert(pref_sum == safe_c);
+
+
+    std::size_t unsafe_c = 0;   // Count of super k-mers unsafe to flush.
+    for(std::size_t i = 0, j; i < chunk.size(); i = j)
+    {
+        const auto src = chunk.att_at(i).source();
+        for(j = i + 1; j < chunk.size(); ++j)
+            if(chunk.att_at(j).source() != src)
+                break;
+
+        const auto stretch_sz = j - i;
+        if(src <= src_th)   // Add this stretch of super k-mers to the safe chunk, counting-sorted.
+        {
+            const auto src_rel = src - latest_safe_src;
+            chunk_safe.copy(base_off + src_off[src_rel], chunk, i, stretch_sz);
+            src_off[src_rel] += stretch_sz;
+            assert(src_rel + 1 == src_off.size() || src_off[src_rel] <= src_off[src_rel + 1]);
+        }
+        else    // Move this stretch of super k-mers toward the front.
+        {
+            chunk.move(unsafe_c, i, stretch_sz);
+            unsafe_c += stretch_sz;
+        }
+    }
+
+    chunk.resize(unsafe_c);
+
+    return src_th;
+}
+
+
+template <>
+inline void Super_Kmer_Bucket<true>::empty_w_local_chunk(const std::size_t w_id)
+{
+    auto& c_w = chunk_w[w_id].unwrap();
+    if(c_w.empty())
+        return;
+
+    lock.lock();
+
+    chunk.reserve(chunk.size() + c_w.size());
+    chunk.append(c_w);
+    size_ += c_w.size();
+
+    latest_src_w[w_id].unwrap() = c_w.back_att().source();
+
+
+    if(chunk.size() >= chunk_cap)
+    {
+        latest_safe_src = counting_sort_safe_super_kmers();
+
+        if(chunk_safe.size() >= chunk_cap)
+        {
+            chunk_safe.serialize(output);
+            chunk_sz.push_back(chunk_safe.size());
+            chunk_safe.clear();
+        }
+    }
+
+    lock.unlock();
+
+    c_w.clear();
+}
+
+
+template <>
+inline void Super_Kmer_Bucket<true>::add(const char* const seq, const std::size_t len, const uint32_t source, const bool l_disc, const bool r_disc)
+{
+    const auto w_id = parlay::worker_id();
+    auto& c_w = chunk_w[w_id].unwrap();   // Worker-specific chunk.
+
+    assert(c_w.size() < c_w.capacity());
+    c_w.add(seq, len, source, l_disc, r_disc);
+
+    if(c_w.full())
+        empty_w_local_chunk(w_id);
+}
+
+
 template <bool Colored_>
 inline bool Super_Kmer_Bucket<Colored_>::Iterator::next(attribute_t& att, label_unit_t*& label)
 {
     assert(idx <= B.size());
 
+    auto* const c = B.reader_chunk();
+
     if(CF_UNLIKELY(idx == B.size()))
     {
-        B.chunk.clear();
+        c->clear();
         return false;
     }
 
@@ -206,7 +322,7 @@ inline bool Super_Kmer_Bucket<Colored_>::Iterator::next(attribute_t& att, label_
     }
 
     assert(idx >= chunk_start_idx && idx < chunk_end_idx);
-    B.chunk.get_super_kmer(idx - chunk_start_idx, att, label);
+    c->get_super_kmer(idx - chunk_start_idx, att, label);
     idx++;
 
     return true;

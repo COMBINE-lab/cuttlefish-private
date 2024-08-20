@@ -50,14 +50,6 @@ void Subgraphs_Manager<k, Colored_>::finalize()
 
 
 template <uint16_t k, bool Colored_>
-void Subgraphs_Manager<k, Colored_>::flush_local_bufs()
-{
-    const auto collate_bucket = [&](const std::size_t g_id) { subgraph_bucket[g_id].unwrap().empty_w_local_chunks(); };
-    parlay::parallel_for(0, graph_count_, collate_bucket);
-}
-
-
-template <uint16_t k, bool Colored_>
 uint64_t Subgraphs_Manager<k, Colored_>::estimate_size_max() const
 {
     uint64_t max_est = 0;
