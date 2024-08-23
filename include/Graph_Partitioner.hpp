@@ -33,9 +33,9 @@ struct RabbitFX_DS_type
 template <>
 struct RabbitFX_DS_type<true>
 {
-    typedef rabbit::fq::FastqDataChunk chunk_t; // Type of chunks containing parsed sequences.
+    typedef rabbit::fq::FastqDataChunk chunk_t; // Type of chunks containing read sequences.
     typedef rabbit::fq::FastqDataPool chunk_pool_t; // Type of memory pools for chunks.
-    typedef rabbit::core::TDataQueue<chunk_t> chunk_q_t;    // Type of queue of parsed chunks.
+    typedef rabbit::core::TDataQueue<chunk_t> chunk_q_t;    // Type of queue of read chunks.
     typedef rabbit::fq::FastqFileReader reader_t;   // Type of file-reader.
     typedef neoReference ref_t; // Type of parsed data.
 };
@@ -44,9 +44,9 @@ struct RabbitFX_DS_type<true>
 template <>
 struct RabbitFX_DS_type<false>
 {
-    typedef rabbit::fa::FastaChunk chunk_t; // Type of chunks containing parsed sequences.
+    typedef rabbit::fa::FastaChunk chunk_t; // Type of chunks containing read sequences.
     typedef rabbit::fa::FastaDataPool chunk_pool_t; // Type of memory pools for chunks.
-    typedef rabbit::core::TDataQueue<chunk_t> chunk_q_t;    // Type of queue of parsed chunks.
+    typedef rabbit::core::TDataQueue<chunk_t> chunk_q_t;    // Type of queue of read chunks.
     typedef rabbit::fa::FastaFileReader reader_t;   // Type of file-reader.
     typedef Reference ref_t;    // Type of parsed data.
 };
@@ -67,9 +67,10 @@ private:
 
     Subgraphs_Manager<k, Colored_>& subgraphs;  // Subgraphs of the de Bruijn graph.
 
-    typedef typename RabbitFX_DS_type<Is_FASTQ_>::chunk_t chunk_t;  // Type of chunks containing parsed sequences.
+    typedef typename RabbitFX_DS_type<Is_FASTQ_>::chunk_t chunk_t;  // Type of chunks containing read sequences.
     typedef typename RabbitFX_DS_type<Is_FASTQ_>::chunk_pool_t chunk_pool_t;    // Type of memory pools for chunks.
-    typedef typename RabbitFX_DS_type<Is_FASTQ_>::chunk_q_t chunk_q_t;  // Type of queue of parsed chunks.
+    typedef typename RabbitFX_DS_type<Is_FASTQ_>::chunk_q_t chunk_q_t;  // Type of queue of read chunks.
+    typedef typename RabbitFX_DS_type<Is_FASTQ_>::ref_t parsed_seq_t;   // Type of parsed sequences.
 
     const std::vector<std::string> seqs;    // Input sequence collection.
 
@@ -89,11 +90,11 @@ private:
     std::vector<Padded<double>> process_time;   // Total time taken in processing parsed records.
 
     // Reads the provided sequences into chunks from the memory pool
-    // `chunk_pool` and puts the parsed chunks into the queue `chunk_q`.
+    // `chunk_pool` and puts the read chunks into the queue `chunk_q`.
     void read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q);
 
     // Reads the sequences with source ID `source_id` into chunks from the
-    // memory pool `chunk_pool` and puts the parsed chunks into the queue
+    // memory pool `chunk_pool` and puts the read chunks into the queue
     // `chunk_q`.
     // TODO: remove.
     uint64_t read_chunks(std::size_t source_id, chunk_pool_t& chunk_pool, chunk_q_t& chunk_q);

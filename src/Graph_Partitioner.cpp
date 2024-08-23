@@ -41,7 +41,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 {
     const auto chunk_count = parlay::num_workers() * (Is_FASTQ_ ? 2 : 4);   // Maximum number of chunks. TODO: make a more informed choice.
     chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
-    chunk_q_t chunk_q(chunk_count); // Parsed chunks.
+    chunk_q_t chunk_q(chunk_count); // Read chunks.
 
     parlay::par_do(
         [&]()
@@ -73,7 +73,7 @@ template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
 {
     const auto t_s = timer::now();
-    uint64_t chunk_count = 0;   // Number of parsed chunks.
+    uint64_t chunk_count = 0;   // Number of read chunks.
     rabbit::int64 source_id = 1;    // Source (i.e. file) ID of a chunk.
 
     for(const auto& file_path : seqs)
@@ -112,7 +112,7 @@ uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(const std::size_
 {
     assert(Colored_);
 
-    uint64_t chunk_count = 0;   // Number of parsed chunks.
+    uint64_t chunk_count = 0;   // Number of read chunks.
 
     // TODO: address memory-reuse issue within a reader for every new instance.
     typename RabbitFX_DS_type<Is_FASTQ_>::reader_t reader(seqs[source_id - 1], chunk_pool);
@@ -145,7 +145,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chun
     rabbit::int64 source_id;    // Source (i.e. file) ID of a chunk.
     uint64_t chunk_count = 0;   // Number of processed chunks.
     chunk_t* chunk; // Current chunk.
-    std::vector<typename RabbitFX_DS_type<Is_FASTQ_>::ref_t> parsed_chunk;  // Current parsed chunk.
+    std::vector<parsed_seq_t> parsed_chunk; // Current parsed chunk.
     rabbit::int64 last_source = 0;  // Source ID of the last chunk processed.
     (void)last_source;
 
