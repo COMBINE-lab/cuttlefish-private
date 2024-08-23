@@ -85,14 +85,26 @@ private:
 
     const std::string subgraphs_path_pref;  // Path prefix for the subgraphs' super k-mer buckets.
 
-    std::atomic_uint64_t chunk_count_;  // Number of chunks parsed from the sequences.
-    std::atomic_uint64_t chunk_bytes_;  // Total size of chunks in bytes.
-    std::atomic_uint64_t record_count_; // Number of records in the sequences.
-    std::atomic_uint64_t weak_super_kmer_count_;    // Number of weak super k-mers in the sequences.
-    std::atomic_uint64_t weak_super_kmers_len_; // Total length of the weak super k-mers in the sequences.
-    std::atomic_uint64_t super_km1_mers_len_;   // Total length of the super (k - 1)-mers in the sequences.
-    std::vector<Padded<double>> parse_time; // Total time taken in parsing read chunks.
-    std::vector<Padded<double>> process_time;   // Total time taken in processing parsed records.
+    struct Worker_Stats
+    {
+        uint64_t chunk_count = 0;   // Number of chunks processed from the input.
+        uint64_t chunk_bytes = 0;   // Total size of chunks in bytes.
+        uint64_t record_count = 0;  // Number of records in the sequences.
+
+        uint64_t weak_super_kmer_count = 0; // Number of weak super k-mers in the sequences.
+        uint64_t weak_super_kmers_len = 0;  // Total length of the weak super k-mers in the sequences.
+        uint64_t super_km1_mers_len = 0;    // Total length of the super (k - 1)-mers in the sequences.
+
+        double parse_time = 0;  // Total time taken in parsing read chunks.
+        double process_time = 0;    // Total time taken in processing parsed records.
+
+        Worker_Stats()
+        {}
+
+        void operator+=(const Worker_Stats& rhs);
+    };
+
+    std::vector<Padded<Worker_Stats>> stat_w;   // Sequence-processing statistics per worker.
 
     // Reads the provided sequences into chunks from the chunk memory pool and
     // puts the read chunks into the read-queue`.
@@ -108,6 +120,10 @@ private:
     // chunks to the chunk memory pool.
     void process();
 
+    // Processes the chunk `chunk` with source-ID `source_id`. The parsed
+    // sequences are stored in `parsed_chunk`.
+    void process_chunk(chunk_t* chunk, uint32_t source_id, std::vector<parsed_seq_t>& parsed_chunk);
+
     // Returns `true` iff the k-mer at `seq` is a discontinuity vertex.
     bool is_discontinuity(const char* seq) const;
 
@@ -117,18 +133,6 @@ public:
     // sequences from the data logistics manager `logistics`. The graph is
     // partitioned into the subgraph-manager `subgraphs`.
     Graph_Partitioner(Subgraphs_Manager<k, Colored_>& subgraphs, const Data_Logistics& logistics, uint16_t l);
-
-    // Returns the size of minimizers for the super k-mers.
-    auto l() const { return l_; }
-
-    // Returns the number of records in the sequences.
-    uint64_t record_count() const { return record_count_; }
-
-    // Returns the number of weak super k-mers in the sequences.
-    uint64_t weak_super_kmer_count() const { return weak_super_kmer_count_; }
-
-    // Returns the total length of the weak super k-mers in the sequences.
-    uint64_t weak_super_kmers_len() const { return weak_super_kmers_len_; }
 
     // Partitions the passed sequences into maximal weak super k-mers and
     // deposits those to corresponding subgraphs.
