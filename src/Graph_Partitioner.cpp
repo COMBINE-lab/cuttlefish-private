@@ -24,6 +24,9 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
     , seqs(logistics.input_paths_collection())
     , l_(l)
     , sup_km1_mer_len_th(2 * (k - 1) - l_)
+    , chunk_pool_sz(parlay::num_workers() * (Is_FASTQ_ ? 2 : 4))    // TODO: make a more informed choice.
+    , chunk_pool(chunk_pool_sz)
+    , chunk_q(chunk_pool_sz)
     , subgraphs_path_pref(logistics.subgraphs_path())
     , chunk_count_(0)
     , chunk_bytes_(0)
@@ -39,18 +42,14 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 {
-    const auto chunk_count = parlay::num_workers() * (Is_FASTQ_ ? 2 : 4);   // Maximum number of chunks. TODO: make a more informed choice.
-    chunk_pool_t chunk_pool(chunk_count);   // Memory pool for chunks of sequences.
-    chunk_q_t chunk_q(chunk_count); // Read chunks.
-
     parlay::par_do(
         [&]()
         {
-            read_chunks(chunk_pool, chunk_q);
+            read_chunks();
         },
         [&]()
         {
-            const auto process_chunks = [&](std::size_t){ process(chunk_q, chunk_pool); };
+            const auto process_chunks = [&](std::size_t){ process(); };
             parlay::parallel_for(0, parlay::num_workers(), process_chunks, 1);
         });
 
@@ -70,7 +69,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 
 
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
-void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
+void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
 {
     const auto t_s = timer::now();
     uint64_t chunk_count = 0;   // Number of read chunks.
@@ -108,7 +107,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(chunk_pool_t& chunk_
 
 // TODO: remove.
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
-uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(const std::size_t source_id, chunk_pool_t& chunk_pool, chunk_q_t& chunk_q)
+uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(const std::size_t source_id)
 {
     assert(Colored_);
 
@@ -140,7 +139,7 @@ uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(const std::size_
 
 
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
-void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool)
+void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process()
 {
     rabbit::int64 source_id;    // Source (i.e. file) ID of a chunk.
     uint64_t chunk_count = 0;   // Number of processed chunks.

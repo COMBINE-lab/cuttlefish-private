@@ -12,6 +12,7 @@
 #include "utility.hpp"
 
 #include <cstdint>
+#include <cstddef>
 #include <atomic>
 #include <string>
 #include <vector>
@@ -78,6 +79,10 @@ private:
     static constexpr uint64_t min_seed = 0; // Seed for `l`-minimizer hashing.
     const std::size_t sup_km1_mer_len_th;   // Length threshold of super (k - 1)-mers.
 
+    const std::size_t chunk_pool_sz;    // Maximum number of chunks in the chunk memory pool.
+    chunk_pool_t chunk_pool;    // Memory pool for chunks of sequences.
+    chunk_q_t chunk_q;  // Read chunks.
+
     const std::string subgraphs_path_pref;  // Path prefix for the subgraphs' super k-mer buckets.
 
     std::atomic_uint64_t chunk_count_;  // Number of chunks parsed from the sequences.
@@ -89,19 +94,19 @@ private:
     std::vector<Padded<double>> parse_time; // Total time taken in parsing read chunks.
     std::vector<Padded<double>> process_time;   // Total time taken in processing parsed records.
 
-    // Reads the provided sequences into chunks from the memory pool
-    // `chunk_pool` and puts the read chunks into the queue `chunk_q`.
-    void read_chunks(chunk_pool_t& chunk_pool, chunk_q_t& chunk_q);
+    // Reads the provided sequences into chunks from the chunk memory pool and
+    // puts the read chunks into the read-queue`.
+    void read_chunks();
 
     // Reads the sequences with source ID `source_id` into chunks from the
     // memory pool `chunk_pool` and puts the read chunks into the queue
     // `chunk_q`.
     // TODO: remove.
-    uint64_t read_chunks(std::size_t source_id, chunk_pool_t& chunk_pool, chunk_q_t& chunk_q);
+    uint64_t read_chunks(std::size_t source_id);
 
-    // Processes the parsed chunks from the queue `chunk_q` and returns the
-    // processed chunks to the memory pool `chunk_pool`.
-    void process(chunk_q_t& chunk_q, chunk_pool_t& chunk_pool);
+    // Processes the read chunks from the read-queue and returns the processed
+    // chunks to the chunk memory pool.
+    void process();
 
     // Returns `true` iff the k-mer at `seq` is a discontinuity vertex.
     bool is_discontinuity(const char* seq) const;
