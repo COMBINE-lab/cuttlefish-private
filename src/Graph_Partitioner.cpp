@@ -158,6 +158,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_chunk(chunk_t* chunk, co
     uint64_t sup_km1_mer_count = 0; // Number of parsed super (k - 1)-mers.
     std::size_t sup_km1_mers_len = 0;   // Total length of the super (k - 1)-mers, in bases.
     std::size_t weak_sup_kmers_len = 0; // Total length of the (weak) super k-mers, in bases.
+    uint64_t chunk_bytes = 0;   // Count of bytes in the chunk.
 
     // Minimizer_Iterator<const char*, k - 1, true> min_it(l_, min_seed);   // `l`-minimizer iterator for `(k - 1)`-mers.
     Min_Iterator<k - 1> min_it(l_); // `l`-minimizer iterator for `(k - 1)`-mers.
@@ -165,16 +166,16 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_chunk(chunk_t* chunk, co
     const auto t_0 = timer::now();
     parsed_chunk.clear();
     if constexpr(Is_FASTQ_)
-        w_stat.chunk_bytes += chunk->size,
+        chunk_bytes = chunk->size,
         w_stat.record_count += rabbit::fq::chunkFormat(chunk, parsed_chunk);
     else
     {
-        w_stat.chunk_bytes += chunk->chunk->size,
         w_stat.record_count += rabbit::fa::chunkListFormat(*chunk, parsed_chunk);
 
         auto ptr = chunk->chunk;
         do
         {
+            chunk_bytes += ptr->size;
             chunk_pool.Release(ptr);
             ptr = ptr->next;
         }
@@ -331,6 +332,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_chunk(chunk_t* chunk, co
         chunk_pool.Release(chunk);
 
     w_stat.chunk_count++;
+    w_stat.chunk_bytes += chunk_bytes;
     w_stat.weak_super_kmer_count += sup_km1_mer_count;
     w_stat.weak_super_kmers_len += weak_sup_kmers_len;
     w_stat.super_km1_mers_len += sup_km1_mers_len;
