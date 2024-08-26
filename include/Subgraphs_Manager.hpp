@@ -93,6 +93,10 @@ public:
     template <bool C_ = Colored_, std::enable_if_t<C_, int> = 0>
     void add_super_kmer(std::size_t g, const char* seq, std::size_t len, uint32_t source, bool l_disc, bool r_disc);
 
+    // Collates the current super k-mer buffers in each subgraph per their
+    // source-IDs into external-memory buckets.
+    void collate_super_kmer_buffers();
+
     // Finalizes the subgraphs for iteration—no more content should be added
     // after this.
     void finalize();

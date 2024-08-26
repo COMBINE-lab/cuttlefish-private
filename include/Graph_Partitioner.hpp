@@ -71,7 +71,7 @@ private:
     typedef typename RabbitFX_DS_type<Is_FASTQ_>::chunk_t chunk_t;  // Type of chunks containing read sequences.
     typedef typename RabbitFX_DS_type<Is_FASTQ_>::chunk_pool_t chunk_pool_t;    // Type of memory pools for chunks.
     typedef typename RabbitFX_DS_type<Is_FASTQ_>::chunk_q_t chunk_q_t;  // Type of queue of read chunks.
-    typedef typename RabbitFX_DS_type<Is_FASTQ_>::ref_t parsed_seq_t;   // Type of parsed sequences.
+    typedef typename RabbitFX_DS_type<Is_FASTQ_>::ref_t parsed_rec_t;   // Type of parsed records.
 
     const std::vector<std::string> seqs;    // Input sequence collection.
 
@@ -83,7 +83,12 @@ private:
     chunk_pool_t chunk_pool;    // Memory pool for chunks of sequences.
     chunk_q_t chunk_q;  // Read chunks.
 
+    std::vector<Padded<std::vector<parsed_rec_t>>> parsed_chunk_w;  // Parsed record collection per worker.
+
     const std::string subgraphs_path_pref;  // Path prefix for the subgraphs' super k-mer buckets.
+
+    std::atomic_uint64_t bytes_consumed;    // Counts of input bytes consumed across all workers in one batch in the colored-case.
+    constexpr static uint64_t bytes_per_batch = 128 * 1024 * 1024lu;    // 128MB per input batch, at least.
 
     struct Worker_Stats
     {
@@ -110,19 +115,20 @@ private:
     // puts the read chunks into the read-queue`.
     void read_chunks();
 
-    // Reads the sequences with source ID `source_id` into chunks from the
-    // memory pool `chunk_pool` and puts the read chunks into the queue
-    // `chunk_q`.
-    // TODO: remove.
-    uint64_t read_chunks(std::size_t source_id);
+    // Processes the read chunks from the read-queue and returns the processed
+    // chunks to the chunk memory pool for uncolored graphs.
+    void process_uncolored_chunks();
 
     // Processes the read chunks from the read-queue and returns the processed
-    // chunks to the chunk memory pool.
-    void process();
+    // chunks to the chunk memory pool for colored graphs until total bytes
+    // processed across all workers reaches a certain threshold. Returns
+    // `false` if no data remain anymore in the queue after this processing.
+    bool process_colored_chunks();
 
     // Processes the chunk `chunk` with source-ID `source_id`. The parsed
-    // sequences are stored in `parsed_chunk`.
-    void process_chunk(chunk_t* chunk, uint32_t source_id, std::vector<parsed_seq_t>& parsed_chunk);
+    // sequences are stored in `parsed_chunk`. Returns the count of bytes in
+    // chunk.
+    uint64_t process_chunk(chunk_t* chunk, uint32_t source_id);
 
     // Returns `true` iff the k-mer at `seq` is a discontinuity vertex.
     bool is_discontinuity(const char* seq) const;

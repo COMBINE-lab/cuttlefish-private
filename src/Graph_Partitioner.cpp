@@ -26,6 +26,7 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
     , chunk_pool_sz(parlay::num_workers() * (Is_FASTQ_ ? 2 : 4))    // TODO: make a more informed choice.
     , chunk_pool(chunk_pool_sz)
     , chunk_q(chunk_pool_sz)
+    , parsed_chunk_w(parlay::num_workers())
     , subgraphs_path_pref(logistics.subgraphs_path())
     , stat_w(parlay::num_workers())
 {}
@@ -41,8 +42,36 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
         },
         [&]()
         {
-            const auto process_chunks = [&](std::size_t){ process(); };
-            parlay::parallel_for(0, parlay::num_workers(), process_chunks, 1);
+            if constexpr(!Colored_)
+                parlay::parallel_for(0, parlay::num_workers(),
+                    [&](auto)
+                    {
+                        process_uncolored_chunks();
+                    }, 1);
+            else
+            {
+                assert(parlay::num_workers() > 1);
+                std::cerr << "\n";
+
+                std::atomic_uint16_t finished_workers = 0;
+                uint64_t bytes_processed = 0;
+                while(finished_workers < parlay::num_workers() - 1)
+                {
+                    bytes_consumed = 0;
+                    parlay::parallel_for(0, parlay::num_workers() - 1,
+                        [&](auto)
+                        {
+                            finished_workers += !process_colored_chunks();
+                        }, 1);
+
+                    // Collate and flush all buckets.
+                    subgraphs.collate_super_kmer_buffers();
+                    bytes_processed += bytes_consumed;
+                    std::cerr << "\rProcessed " << (bytes_processed / (1024 * 1024)) << "MB of uncompressed input data.";
+                }
+
+                std::cerr << "\n";
+            }
         });
 
 
@@ -94,49 +123,17 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
 
     chunk_q.SetCompleted();
     const auto t_e = timer::now();
-    std::cerr << "Read " << chunk_count << " chunks in total from " << seqs.size() << " files. Time elapsed: " << timer::duration(t_e - t_s) << " s.\n";
-}
-
-
-// TODO: remove.
-template <uint16_t k, bool Is_FASTQ_, bool Colored_>
-uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks(const std::size_t source_id)
-{
-    assert(Colored_);
-
-    uint64_t chunk_count = 0;   // Number of read chunks.
-
-    // TODO: address memory-reuse issue within a reader for every new instance.
-    typename RabbitFX_DS_type<Is_FASTQ_>::reader_t reader(seqs[source_id - 1], chunk_pool);
-    const auto push_chunk = [&](auto const chunk)
-    {
-        if(chunk == NULL)
-            return false;
-
-        chunk_q.Push(source_id, chunk);
-        chunk_count++;
-        return true;
-    };
-
-    bool chunks_remain = true;
-    while(chunks_remain)
-        if constexpr(Is_FASTQ_)
-            chunks_remain = push_chunk(reader.readNextChunk());
-        else
-            chunks_remain = push_chunk(reader.readNextChunkList());
-
-    chunk_q.SetCompleted();
-
-    return chunk_count;
+    std::cerr << "\nRead " << chunk_count << " chunks in total from " << seqs.size() << " files. Time elapsed: " << timer::duration(t_e - t_s) << " s.\n";
 }
 
 
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
-void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process()
+void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_uncolored_chunks()
 {
+    assert(!Colored_);
+
     rabbit::int64 source_id;    // Source (i.e. file) ID of a chunk.
     chunk_t* chunk; // Current chunk.
-    std::vector<parsed_seq_t> parsed_chunk; // Current parsed chunk.
     rabbit::int64 last_source = 0;  // Source ID of the last chunk processed.
     (void)last_source;
 
@@ -144,14 +141,43 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process()
     {
         assert(source_id >= last_source);
 
-        process_chunk(chunk, source_id, parsed_chunk);
+        process_chunk(chunk, source_id);
         last_source = source_id;
     }
 }
 
 
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
-void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_chunk(chunk_t* chunk, const uint32_t source_id, std::vector<parsed_seq_t>& parsed_chunk)
+bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_colored_chunks()
+{
+    assert(Colored_);
+
+    rabbit::int64 source_id;    // Source (i.e. file) ID of a chunk.
+    chunk_t* chunk; // Current chunk.
+    rabbit::int64 last_source = 0;  // Source ID of the last chunk processed.
+    (void)last_source;
+
+    bool data_remain = true;
+    while(data_remain && bytes_consumed < bytes_per_batch)
+    {
+        if(!chunk_q.Pop(source_id, chunk))
+        {
+            data_remain = false;
+            break;
+        }
+
+        assert(source_id >= last_source);
+
+        bytes_consumed += process_chunk(chunk, source_id);
+        last_source = source_id;
+    }
+
+    return data_remain;
+}
+
+
+template <uint16_t k, bool Is_FASTQ_, bool Colored_>
+uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_chunk(chunk_t* chunk, const uint32_t source_id)
 {
     auto& w_stat = stat_w[parlay::worker_id()].unwrap();
 
@@ -164,6 +190,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_chunk(chunk_t* chunk, co
     Min_Iterator<k - 1> min_it(l_); // `l`-minimizer iterator for `(k - 1)`-mers.
 
     const auto t_0 = timer::now();
+    auto& parsed_chunk = parsed_chunk_w[parlay::worker_id()].unwrap();
     parsed_chunk.clear();
     if constexpr(Is_FASTQ_)
         chunk_bytes = chunk->size,
@@ -336,6 +363,8 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_chunk(chunk_t* chunk, co
     w_stat.weak_super_kmer_count += sup_km1_mer_count;
     w_stat.weak_super_kmers_len += weak_sup_kmers_len;
     w_stat.super_km1_mers_len += sup_km1_mers_len;
+
+    return chunk_bytes;
 }
 
 

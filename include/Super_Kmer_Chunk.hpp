@@ -130,6 +130,9 @@ public:
     // Returns the attribute of the super k-mer at index `i`.
     const attribute_t& att_at(const std::size_t i) const { assert(i < size()); return att_buf[i]; }
 
+    // Returns the attribute of the super k-mer at the front of the chunk.
+    const attribute_t& front_att() const { return att_at(0); }
+
     // Returns the attribute of the super k-mer at the back of the chunk.
     const attribute_t& back_att() const { return att_at(size() - 1); }
 };
@@ -173,7 +176,9 @@ template <>
 inline void Super_Kmer_Chunk<true>::add(const char* const seq, const std::size_t len, const uint32_t source, const bool l_disc, const bool r_disc)
 {
     assert(len <= max_sup_kmer_len);
-    assert(size() < cap_);
+
+    att_buf.reserve(size() + 1);
+    label_buf.reserve(label_units() + sup_kmer_word_c);
 
     att_buf[size()] = Super_Kmer_Attributes<true>(len, source, l_disc, r_disc);
     add_encoded_label(seq, len);
