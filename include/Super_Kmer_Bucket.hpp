@@ -85,7 +85,7 @@ public:
     // source-ID `source`. The markers `l_disc` and `r_disc` denote whether the
     // left and the right ends of the (weak) super k-mer are discontinuous or
     // not.
-    void add(const char* seq, std::size_t len, uint32_t source, bool l_disc, bool r_disc);
+    void add(const char* seq, std::size_t len, source_id_t source, bool l_disc, bool r_disc);
 
     // Collates the worker-local buffers into the external-memory bucket and
     // empties them.
@@ -188,7 +188,7 @@ inline void Super_Kmer_Bucket<false>::add(const char* const seq, const std::size
 
 
 template <>
-inline void Super_Kmer_Bucket<true>::add(const char* const seq, const std::size_t len, const uint32_t source, const bool l_disc, const bool r_disc)
+inline void Super_Kmer_Bucket<true>::add(const char* const seq, const std::size_t len, const source_id_t source, const bool l_disc, const bool r_disc)
 {
     const auto w_id = parlay::worker_id();
     auto& c_w = chunk_w[w_id].unwrap(); // Worker-specific chunk.

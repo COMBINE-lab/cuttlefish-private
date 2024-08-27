@@ -91,7 +91,7 @@ public:
     // `l_disc` and `r_disc` denote whether the left and the right ends of the
     // (weak) super k-mer are discontinuous or not.
     template <bool C_ = Colored_, std::enable_if_t<C_, int> = 0>
-    void add_super_kmer(std::size_t g, const char* seq, std::size_t len, uint32_t source, bool l_disc, bool r_disc);
+    void add_super_kmer(std::size_t g, const char* seq, std::size_t len, source_id_t source, bool l_disc, bool r_disc);
 
     // Collates the current super k-mer buffers in each subgraph per their
     // source-IDs into external-memory buckets.
@@ -135,7 +135,7 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, 
 
 template <uint16_t k, bool Colored_>
 template <bool C_, std::enable_if_t<C_, int>>
-inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, const char* const seq, const std::size_t len, const uint32_t source, const bool l_disc, const bool r_disc)
+inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, const char* const seq, const std::size_t len, const source_id_t source, const bool l_disc, const bool r_disc)
 {
     assert(len >= k);
 

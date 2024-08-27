@@ -48,8 +48,8 @@ template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::collate_buffers()
 {
     std::size_t sz = 0; // Number of pending super k-mers in the worker-local buffers.
-    auto src_min = std::numeric_limits<uint32_t>::max();
-    auto src_max = std::numeric_limits<uint32_t>::min();
+    auto src_min = std::numeric_limits<source_id_t>::max();
+    auto src_max = std::numeric_limits<source_id_t>::min();
     std::for_each(chunk_w.cbegin(), chunk_w.cend(), [&](const auto& c)
     {
         const auto& c_w = c.unwrap();
@@ -110,7 +110,7 @@ void Super_Kmer_Bucket<Colored_>::collate_buffers()
     std::for_each(chunk_w.begin(), chunk_w.end(), [&](auto& c)
     {
         auto& c_w = c.unwrap();
-        uint32_t src = 0;
+        source_id_t src = 0;
         for(std::size_t i = 0, j; i < c_w.size(); i = j)
         {
             assert(c_w.att_at(i).source() >= src);  // Ensure super k-mers are source-sorted.

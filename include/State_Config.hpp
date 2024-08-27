@@ -183,12 +183,13 @@ public:
     uint64_t color_hash() const { return color_hash_; }
 
     // Adds the source ID `source` to the color-set of this state.
-    void add_source(const uint32_t source)
+    void add_source(const source_id_t source)
     {
         assert(source <= (source_mask >> source_pos));
         const auto last_source = (status & source_mask) >> source_pos;
         if(source != last_source)   // Dealing with the problem of hashing multisets.
         {
+            assert(source >= last_source);  // Ensure sortedness of source-IDs.
             color_hash_ = hash_combine(color_hash_, source_hash(source));
             status = (status & ~source_mask) | (source << source_pos);
         }
@@ -199,10 +200,6 @@ public:
 
     // Returns whether the associated vertex has a new color or not.
     bool has_new_color() const { return status & new_color; }
-
-    // Sets the hash of the associated color-set to `val`. Do not use this
-    // unless you know what you are doing.
-    void replace_hash(const uint64_t val) { color_hash_ = val; }
 };
 
 

@@ -6,6 +6,7 @@
 
 #include "Super_Kmer_Attributes.hpp"
 #include "Kmer_Utility.hpp"
+#include "globals.hpp"
 #include "utility.hpp"
 
 #include <cstdint>
@@ -106,7 +107,7 @@ public:
     // source-ID `source`. The markers `l_disc` and `r_disc` denote whether the
     // left and the right ends of the (weak) super k-mer are discontinuous or
     // not.
-    void add(const char* seq, std::size_t len, uint32_t source, bool l_disc, bool r_disc);
+    void add(const char* seq, std::size_t len, source_id_t source, bool l_disc, bool r_disc);
 
     // Appends the chunk `c`'s contents in the indices `[l, r)` to this chunk.
     void append(const Super_Kmer_Chunk& c, std::size_t l, std::size_t r);
@@ -173,7 +174,7 @@ inline void Super_Kmer_Chunk<false>::add(const char* const seq, const std::size_
 
 
 template <>
-inline void Super_Kmer_Chunk<true>::add(const char* const seq, const std::size_t len, const uint32_t source, const bool l_disc, const bool r_disc)
+inline void Super_Kmer_Chunk<true>::add(const char* const seq, const std::size_t len, const source_id_t source, const bool l_disc, const bool r_disc)
 {
     assert(len <= max_sup_kmer_len);
 

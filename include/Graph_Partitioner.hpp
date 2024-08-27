@@ -5,11 +5,12 @@
 
 
 #include "Data_Logistics.hpp"
+#include "globals.hpp"
+#include "utility.hpp"
 #include "RabbitFX/io/FastxChunk.h"
 #include "RabbitFX/io/DataQueue.h"
 #include "RabbitFX/io/FastxStream.h"
 #include "RabbitFX/io/Reference.h"
-#include "utility.hpp"
 
 #include <cstdint>
 #include <cstddef>
@@ -128,7 +129,7 @@ private:
     // Processes the chunk `chunk` with source-ID `source_id`. The parsed
     // sequences are stored in `parsed_chunk`. Returns the count of bytes in
     // chunk.
-    uint64_t process_chunk(chunk_t* chunk, uint32_t source_id);
+    uint64_t process_chunk(chunk_t* chunk, source_id_t source_id);
 
     // Returns `true` iff the k-mer at `seq` is a discontinuity vertex.
     bool is_discontinuity(const char* seq) const;

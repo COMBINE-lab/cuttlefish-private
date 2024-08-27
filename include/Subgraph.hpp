@@ -54,7 +54,7 @@ public:
     typedef std::pair<LMTig_Coord, uint64_t> in_process_t;  // Vertex's lm-tig coordinate and color-hash.
     typedef std::vector<in_process_t> in_process_arr_t;
 
-    typedef std::vector<std::pair<Kmer<k>, uint32_t>> color_rel_arr_t;
+    typedef std::vector<std::pair<Kmer<k>, source_id_t>> color_rel_arr_t;
 
     // Constructs working space for workers, supporting capacity of at least
     // `max_sz` vertices.
@@ -241,7 +241,7 @@ private:
     template <typename T_ht_> static void add_HT(std::vector<Padded<T_ht_>>& vec, std::size_t sz) { vec.emplace_back(); (void)sz; }
     static void add_HT(std::vector<Padded<Kmer_Hashtable<k, Colored_>>>& vec, std::size_t sz) { vec.emplace_back(sz); }
 
-    template <typename T_ht_> static void update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1, uint32_t source);
+    template <typename T_ht_> static void update(T_ht_& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1, source_id_t source);
     static void update(Kmer_Hashtable<k, Colored_>& HT, const Kmer<k>& kmer, base_t front, base_t back, side_t disc_0, side_t disc_1);
 
     template <typename T_iter_> static const Kmer<k>& get_key(const T_iter_& it) { return it->first; }
@@ -444,7 +444,7 @@ inline typename Subgraph<k, Colored_>::termination_t Subgraph<k, Colored_>::walk
 
 template <uint16_t k, bool Colored_>
 template <typename T_ht_>
-inline void HT_Router<k, Colored_>::update(T_ht_& HT, const Kmer<k>& kmer, const base_t front, const base_t back, const side_t disc_0, const side_t disc_1, const uint32_t source)
+inline void HT_Router<k, Colored_>::update(T_ht_& HT, const Kmer<k>& kmer, const base_t front, const base_t back, const side_t disc_0, const side_t disc_1, const source_id_t source)
 {
     auto& st = HT[kmer];
     st.update_edges(front, back);

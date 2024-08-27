@@ -177,7 +177,7 @@ bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_colored_chunks()
 
 
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
-uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_chunk(chunk_t* chunk, const uint32_t source_id)
+uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_chunk(chunk_t* chunk, const source_id_t source_id)
 {
     auto& w_stat = stat_w[parlay::worker_id()].unwrap();
 

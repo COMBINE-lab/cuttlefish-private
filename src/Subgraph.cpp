@@ -1,7 +1,6 @@
 
 #include "Subgraph.hpp"
 #include "Super_Kmer_Bucket.hpp"
-#include "Source_Hash.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
 
@@ -47,7 +46,7 @@ void Subgraph<k, Colored_>::construct()
 
     Super_Kmer_Attributes<Colored_> att;
     label_unit_t* label;
-    uint32_t source = 0;    // Source-ID of the current super k-mer.
+    source_id_t source = 0; // Source-ID of the current super k-mer.
     while(super_kmer_it.next(att, label))
     {
         const auto len = att.len();
@@ -274,14 +273,12 @@ if constexpr(Colored_)
     Directed_Vertex<k> v;   // Current vertex in a scan over some super k-mer.
     Super_Kmer_Attributes<Colored_> att;
     label_unit_t* label;
-    uint64_t kmer_count = 0;    // Number of k-mer instances processed.
 
     while(super_kmer_it.next(att, label))
     {
         const auto len = att.len();
         assert(len >= k);
         assert(len < 2 * (k - 1));
-        kmer_count += len - (k - 1);
         const auto source = att.source();
 
         v.from_super_kmer(label, word_count);
@@ -316,12 +313,13 @@ if constexpr(Colored_)
             if(color_rel[j].first != v)
                 break;
 
-            assert(color_rel[j].second >= color_rel[j - 1].second);
+            assert(color_rel[j].second >= color_rel[j - 1].second); // Ensure sortedness of source-IDs.
         }
 
         const auto color_idx = color_bucket.size();
         if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), color_idx)))
         {
+            // TODO: address multiple occurrences of the same source-IDs.
             color_bucket.add(j - i);
             for(std::size_t idx = i; idx < j; idx++)
                 color_bucket.add(color_rel[idx].second);

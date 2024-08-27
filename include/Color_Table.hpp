@@ -116,8 +116,7 @@ enum class Color_Status
 
 inline Color_Status Color_Table::mark_in_process(const hash_t h, const uint64_t w, Color_Coordinate& c)
 {
-    const auto r = M.emplace_or_cvisit(h, Color_Coordinate(w),
-                    [&](const auto& p)
+    const auto r =  M.emplace_or_cvisit(h, Color_Coordinate(w), [&](const auto& p)
                     {
                         c = p.second;
                     });
@@ -132,14 +131,13 @@ inline bool Color_Table::update_if_in_process(const hash_t h, const Color_Coordi
     assert(M.contains(h));
 
     bool was_in_process = false;
-    const auto r = M.emplace_or_visit(h, c,
-                    [&](auto& p)
+    const auto r =  M.visit(h, [&](auto& p)
                     {
                         auto& color = p.second;
                         was_in_process = color.is_in_process();
                         color = (was_in_process ? c : color);
                     });
-    assert(!r); (void)r;
+    assert(r); (void)r;
 
     return was_in_process;
 }
@@ -150,7 +148,10 @@ inline Color_Coordinate Color_Table::get(const hash_t h) const
     assert(M.contains(h));
 
     Color_Coordinate c;
-    const auto r = M.cvisit(h, [&](const auto& p){ c = p.second; });
+    const auto r =  M.cvisit(h, [&](const auto& p)
+                    {
+                        c = p.second;
+                    });
     assert(r); (void)r;
 
     return c;
