@@ -93,12 +93,13 @@ public:
     template <bool C_ = Colored_, std::enable_if_t<C_, int> = 0>
     void add_super_kmer(std::size_t g, const char* seq, std::size_t len, uint32_t source, bool l_disc, bool r_disc);
 
+    // Collates the current super k-mer buffers in each subgraph per their
+    // source-IDs into external-memory buckets.
+    void collate_super_kmer_buffers();
+
     // Finalizes the subgraphs for iteration—no more content should be added
     // after this.
     void finalize();
-
-    // Flushes the worker-local super `k`-mer buffers for each bucket.
-    void flush_local_bufs();
 
     // Returns the largest estimated size of any subgraph.
     uint64_t estimate_size_max() const;

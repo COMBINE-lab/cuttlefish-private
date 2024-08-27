@@ -12,9 +12,13 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
+#include <cstring>
 #include <string>
 #include <vector>
 #include <fstream>
+#include <algorithm>
+#include <cassert>
 
 
 namespace cuttlefish
@@ -38,17 +42,25 @@ private:
     uint64_t size_; // Number of super k-mers in the bucket. It's not necessarily correct before closing the bucket.
 
     typedef Super_Kmer_Chunk<Colored_> chunk_t;
-    static constexpr std::size_t chunk_bytes = 4 * 1024;    // 4 KB chunk capacity.
+    static constexpr std::size_t chunk_bytes = 128 * 1024;  // 128 KB chunk capacity.
+    static constexpr std::size_t w_chunk_bytes = 1 * 1024;  // 1 KB worker-chunk capacity.
     const std::size_t chunk_cap;    // Capacity (in number of super k-mers) of the chunk of the bucket.
     mutable chunk_t chunk;  // Super k-mer chunk for the bucket.    // TODO: maybe this is not required. `chunk_w[i]` can bypass this to disk.
-    mutable std::vector<Padded<chunk_t>> chunk_w;   // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
+    std::vector<Padded<chunk_t>> chunk_w;   // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
 
-    mutable Spin_Lock lock; // Lock to the chunk and the external-memory bucket.
+    std::vector<uint32_t> src_hist; // Frequency histogram of super k-mer sources currently committed to the chunk.
+
+    std::vector<uint32_t> chunk_sz; // Sizes of the flushed chunks; only applicable in the colored case.
+
+    Spin_Lock lock; // Lock to the chunk and the external-memory bucket.
 
 
     // Empties the local chunk of worker `w_id` to the chunk of the bucket in a
     // thread-safe manner.
     void empty_w_local_chunk(std::size_t w_id);
+
+    // Flushes the super k-mer chunk to the external-memory bucket.
+    void flush_chunk();
 
 public:
 
@@ -75,11 +87,12 @@ public:
     // not.
     void add(const char* seq, std::size_t len, uint32_t source, bool l_disc, bool r_disc);
 
+    // Collates the worker-local buffers into the external-memory bucket and
+    // empties them.
+    void collate_buffers();
+
     // Closes the bucket—no more content should be added afterwards.
     void close();
-
-    // Empties the local chunks of workers to the chunk of the bucket.
-    void empty_w_local_chunks();
 
     // Removes the bucket.
     void remove();
@@ -104,6 +117,7 @@ private:
     std::size_t idx;    // Current slot-index the iterator is in, i.e. next super k-mer to access.
     std::size_t chunk_start_idx;    // Index into the bucket where the current in-memory chunk starts.
     std::size_t chunk_end_idx;  // Non-inclusive index into the bucket where the current in-memory chunk ends.
+    std::size_t chunk_id;   // Sequential-ID of the chunk being processed right now; only applicable in the colored case.
 
 
     // Constructs an iterator for the super k-mer bucket `B`.
@@ -130,10 +144,40 @@ public:
 
 
 template <>
+inline void Super_Kmer_Bucket<false>::empty_w_local_chunk(const std::size_t w_id)
+{
+    auto& c_w = chunk_w[w_id].unwrap();
+    if(c_w.empty())
+        return;
+
+    lock.lock();
+
+    // TODO: do away with `chunk`, and write `c_w` directly.
+
+    const auto break_idx = std::min(c_w.size(), chunk.free_capacity());
+    chunk.append(c_w, 0, break_idx);
+    if(chunk.full())
+    {
+        flush_chunk();
+
+        if(break_idx < c_w.size())
+            assert(chunk.capacity() >= c_w.size() - break_idx),
+            chunk.append(c_w, break_idx, c_w.size());
+    }
+
+    size_ += c_w.size();
+
+    lock.unlock();
+
+    c_w.clear();
+}
+
+
+template <>
 inline void Super_Kmer_Bucket<false>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
 {
     const auto w_id = parlay::worker_id();
-    auto& c_w = chunk_w[w_id].unwrap();   // Worker-specific chunk.
+    auto& c_w = chunk_w[w_id].unwrap(); // Worker-specific chunk.
 
     assert(c_w.size() < c_w.capacity());
     c_w.add(seq, len, l_disc, r_disc);
@@ -147,44 +191,10 @@ template <>
 inline void Super_Kmer_Bucket<true>::add(const char* const seq, const std::size_t len, const uint32_t source, const bool l_disc, const bool r_disc)
 {
     const auto w_id = parlay::worker_id();
-    auto& c_w = chunk_w[w_id].unwrap();   // Worker-specific chunk.
+    auto& c_w = chunk_w[w_id].unwrap(); // Worker-specific chunk.
 
-    assert(c_w.size() < c_w.capacity());
     c_w.add(seq, len, source, l_disc, r_disc);
-
-    if(c_w.full())
-        empty_w_local_chunk(w_id);
-}
-
-
-template <bool Colored_>
-inline void Super_Kmer_Bucket<Colored_>::empty_w_local_chunk(const std::size_t w_id)
-{
-    auto& c_w = chunk_w[w_id].unwrap();
-
-    lock.lock();
-
-    // TODO: do away with `chunk`, and write `c_w` directly.
-    // Note: can be inefficient when working with colors, i.e. when every source needs
-    // one force-flush of each bucket to maintain semi-sorted order of super k-mers.
-
-    const auto break_idx = std::min(c_w.size(), chunk.free_capacity());
-    chunk.append(c_w, 0, break_idx);
-    if(chunk.full())
-    {
-        chunk.serialize(output);
-        chunk.clear();
-
-        if(break_idx < c_w.size())
-            assert(chunk.capacity() >= c_w.size() - break_idx),
-            chunk.append(c_w, break_idx, c_w.size());
-    }
-
-    size_ += c_w.size();
-
-    lock.unlock();
-
-    c_w.clear();
+    // No flush until collation is invoked explicitly from outside.
 }
 
 
