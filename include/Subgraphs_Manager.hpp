@@ -60,6 +60,8 @@ private:
     typedef std::vector<Padded<op_buf_t>> op_buf_list_t;
     op_buf_list_t& op_buf; // Worker-specific output buffers.
 
+    const std::string color_path_pref;  // Path-prefix to the output color buckets.
+
 
     // Adds the label `seq` and length `len` to the HLL estimate of the
     // subgraph `g` of the de Bruijn graph.

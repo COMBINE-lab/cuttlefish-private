@@ -28,6 +28,7 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     , trivial_mtig_count_(0)
     , icc_count_(0)
     , op_buf(op_buf)
+    , color_path_pref(logistics.output_file_path())
 {
     if((graph_count_ & (graph_count_ - 1)) != 0)
     {
@@ -77,7 +78,7 @@ void Subgraphs_Manager<k, Colored_>::process()
     force_free(HLL);
 
     if constexpr(Colored_)
-        subgraphs_space.color_repo().init(path_pref + ".col");
+        subgraphs_space.color_repo().init(color_path_pref + ".col");
 
     std::atomic_uint64_t solved = 0;
 
