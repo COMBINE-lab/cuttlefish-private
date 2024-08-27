@@ -305,24 +305,27 @@ if constexpr(Colored_)
 
     auto& C = work_space.color_map();
     auto& color_bucket = work_space.color_repo().bucket();
+    std::vector<source_id_t> src;   // Sources of the current vertex.
     for(std::size_t i = 0, j; i < color_rel.size(); i = j)
     {
         const auto& v = color_rel[i].first;
+        src.clear();
+        src.push_back(color_rel[i].second);
         for(j = i + 1; j < color_rel.size(); ++j)
         {
             if(color_rel[j].first != v)
                 break;
 
             assert(color_rel[j].second >= color_rel[j - 1].second); // Ensure sortedness of source-IDs.
+            if(color_rel[j].second != color_rel[j - 1].second)
+                src.push_back(color_rel[j].second);
         }
 
         const auto color_idx = color_bucket.size();
         if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), color_idx)))
         {
-            // TODO: address multiple occurrences of the same source-IDs.
-            color_bucket.add(j - i);
-            for(std::size_t idx = i; idx < j; idx++)
-                color_bucket.add(color_rel[idx].second);
+            color_bucket.add(src.size());
+            color_bucket.add(src.data(), src.size());
         }
     }
 
