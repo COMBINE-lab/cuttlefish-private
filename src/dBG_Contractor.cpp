@@ -18,7 +18,6 @@ template <uint16_t k>
 dBG_Contractor<k>::dBG_Contractor(const Build_Params& params):
       params(params)
     , logistics(params)
-    , G(params.vertex_part_count(), params.lmtig_bucket_count(), logistics)
     , op_buf(parlay::num_workers(), op_buf_t(output_sink.sink()))
 {
     Edge_Frequency::set_edge_threshold(params.cutoff());
@@ -48,6 +47,8 @@ void dBG_Contractor<k>::construct()
     const auto op_file_path = logistics.output_file_path();
     clear_file(op_file_path);
     output_sink.init_sink(op_file_path);
+
+    Discontinuity_Graph<k, Colored_> G(params.vertex_part_count(), params.lmtig_bucket_count(), logistics); // The discontinuity graph.
 
     const auto t_0 = timer::now();
 
@@ -79,7 +80,7 @@ void dBG_Contractor<k>::construct()
     std::cerr << "Phantom edge upper-bound: " << G.phantom_edge_upper_bound() << "\n";
     std::cerr << "Expecting at most " << ((G.E().row_size(0) + G.phantom_edge_upper_bound()) / 2) << " more non-DCC maximal unitigs\n";
 
-    Discontinuity_Graph_Contractor<k> contractor(G, P_v, logistics);
+    Discontinuity_Graph_Contractor<k, Colored_> contractor(G, P_v, logistics);
     EXECUTE("contract", contractor.contract)
 
     G.close_lmtig_stream();
@@ -87,7 +88,7 @@ void dBG_Contractor<k>::construct()
     const auto t_c = timer::now();
     std::cerr << "Discontinuity-graph contraction completed. Time taken: " << timer::duration(t_c - t_subg) << " seconds.\n";
 
-    Contracted_Graph_Expander<k> expander(G, P_v, P_e, logistics);
+    Contracted_Graph_Expander<k, Colored_> expander(G, P_v, P_e, logistics);
     EXECUTE("expand", expander.expand)
 
     const auto t_e = timer::now();

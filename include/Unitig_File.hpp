@@ -128,6 +128,7 @@ public:
 
 // =============================================================================
 // Distributor of unitig-write operations over multiple write-managers.
+template <bool Colored_>
 class Unitig_Write_Distributor
 {
 private:
@@ -273,11 +274,13 @@ inline std::size_t Unitig_File_Reader::read_next_unitig(Buffer<char>& unitig)
 }
 
 
+template <bool Colored_>
 template <uint16_t k>
-inline void Unitig_Write_Distributor::add(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
+inline void Unitig_Write_Distributor<Colored_>::add(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
 {
     auto& next = next_writer[w_id].unwrap();
     const auto writer_id = w_id * writer_per_worker + next + 1; // +1 as edge-partition 0 conceptually contains edges without any associated lm-tig (i.e. with weight > 1)
+    // TODO: instead of rolling `writer_id` in every add, do it in batches (say of size 64) to enhance cache-performance.
     const auto range_size = (w_id < worker_count - 1 ? writer_per_worker : writer_count - (w_id * writer_per_worker));
     assert(range_size > 0);
     assert(next < range_size);
@@ -292,8 +295,9 @@ inline void Unitig_Write_Distributor::add(std::size_t w_id, const Maximal_Unitig
 }
 
 
+template <bool Colored_>
 template <uint16_t k>
-inline void Unitig_Write_Distributor::add(std::size_t w_id, const Kmer<k>& kmer)
+inline void Unitig_Write_Distributor<Colored_>::add(std::size_t w_id, const Kmer<k>& kmer)
 {
     auto& next = next_writer[w_id].unwrap();
     const auto writer_id = w_id * writer_per_worker + next + 1; // +1 as edge-partition 0 conceptually contains edges without any associated lm-tig (i.e. with weight > 1)
@@ -312,13 +316,15 @@ inline void Unitig_Write_Distributor::add(std::size_t w_id, const Kmer<k>& kmer)
 }
 
 
-inline std::size_t Unitig_Write_Distributor::file_idx(const std::size_t w_id) const
+template <bool Colored_>
+inline std::size_t Unitig_Write_Distributor<Colored_>::file_idx(const std::size_t w_id) const
 {
     return w_id * writer_per_worker + next_writer[w_id].unwrap() + 1;
 }
 
 
-inline std::size_t Unitig_Write_Distributor::unitig_count(const std::size_t b_id) const
+template <bool Colored_>
+inline std::size_t Unitig_Write_Distributor<Colored_>::unitig_count(const std::size_t b_id) const
 {
     return writer[b_id].unwrap().unitig_count();
 }

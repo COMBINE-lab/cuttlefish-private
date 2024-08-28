@@ -13,8 +13,8 @@
 namespace cuttlefish
 {
 
-template <uint16_t k>
-Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, P_v_t& P_v, const Data_Logistics& logistics):
+template <uint16_t k, bool Colored_>
+Discontinuity_Graph_Contractor<k, Colored_>::Discontinuity_Graph_Contractor(Discontinuity_Graph<k, Colored_>& G, P_v_t& P_v, const Data_Logistics& logistics):
       G(G)
     , P_v(P_v)
     , compressed_diagonal_path(logistics.compressed_diagonal_path())
@@ -27,8 +27,8 @@ Discontinuity_Graph_Contractor<k>::Discontinuity_Graph_Contractor(Discontinuity_
 }
 
 
-template <uint16_t k>
-void Discontinuity_Graph_Contractor<k>::contract()
+template <uint16_t k, bool Colored_>
+void Discontinuity_Graph_Contractor<k, Colored_>::contract()
 {
     // Debug
     double map_clr_time = 0;    // Time taken to clear the hash map.
@@ -138,10 +138,10 @@ void Discontinuity_Graph_Contractor<k>::contract()
 
                 if(m_x.v() == e.y())    // `e.x()` has a false-phantom edge.
                     G.add_edge(e.x(), inv_side(e.s_x())),
-                    m_x = Other_End(Discontinuity_Graph<k>::phi(), side_t::back, inv_side(e.s_x()), true, 1, false);
+                    m_x = Other_End(Discontinuity_Graph<k, Colored_>::phi(), side_t::back, inv_side(e.s_x()), true, 1, false);
                 if(m_y.v() == e.x())    // `e.y()` has a false-phantom edge.
                     G.add_edge(e.y(), inv_side(e.s_y())),
-                    m_y = Other_End(Discontinuity_Graph<k>::phi(), side_t::back, inv_side(e.s_y()), true, 1, false);
+                    m_y = Other_End(Discontinuity_Graph<k, Colored_>::phi(), side_t::back, inv_side(e.s_y()), true, 1, false);
 
                 if(m_x.is_phi() && m_y.is_phi())
                     form_meta_vertex(e.x(), j, inv_side(e.s_x()), m_x.w(), w_xy + m_y.w(), false);
@@ -176,7 +176,7 @@ void Discontinuity_Graph_Contractor<k>::contract()
                         else
                         {
                             assert(G.E().partition(end.v()) < j);
-                            G.add_edge(Discontinuity_Graph<k>::phi(), side_t::back, end.v(), end.s_v(), 1 + end.w(), true, false);
+                            G.add_edge(Discontinuity_Graph<k, Colored_>::phi(), side_t::back, end.v(), end.s_v(), 1 + end.w(), true, false);
                         }
                     }
             };
@@ -203,8 +203,8 @@ void Discontinuity_Graph_Contractor<k>::contract()
 }
 
 
-template <uint16_t k>
-void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_t j)
+template <uint16_t k, bool Colored_>
+void Discontinuity_Graph_Contractor<k, Colored_>::contract_diagonal_block(const std::size_t j)
 {
     D_j.clear();
     const auto t_s = now();
@@ -243,7 +243,7 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
         if(CF_UNLIKELY(u == v)) // The ICC has already been contracted to a single vertex.
         {
             assert(e.x() == e.y() && e.x() == u); assert(e.w() > 1);
-            M.insert_overwrite(u, Other_End(Discontinuity_Graph<k>::phi(), side_t::back, side_t::front, true, 1, false, true));
+            M.insert_overwrite(u, Other_End(Discontinuity_Graph<k, Colored_>::phi(), side_t::back, side_t::front, true, 1, false, true));
             form_meta_vertex(u, j, side_t::front, 1, w, true);
             icc_count++;
         }
@@ -252,8 +252,8 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
             assert(e.x() != e.y());
             assert(inv_side(s_u) == e.s_y()); assert(inv_side(s_v) == e.s_x());
 
-            M.insert_overwrite(u, Other_End(Discontinuity_Graph<k>::phi(), side_t::back, inv_side(s_u), true, 1, false, true));
-            M.insert_overwrite(v, Other_End(Discontinuity_Graph<k>::phi(), side_t::back, inv_side(s_v), true, 1, false, true));
+            M.insert_overwrite(u, Other_End(Discontinuity_Graph<k, Colored_>::phi(), side_t::back, inv_side(s_u), true, 1, false, true));
+            M.insert_overwrite(v, Other_End(Discontinuity_Graph<k, Colored_>::phi(), side_t::back, inv_side(s_v), true, 1, false, true));
             form_meta_vertex(u, j, inv_side(s_u), 1, true); // Propagation needs to go through `s_u`, since `u` has already been connected to the other cycle members through that side.
             icc_count++;
         }
@@ -307,4 +307,4 @@ void Discontinuity_Graph_Contractor<k>::contract_diagonal_block(const std::size_
 
 
 // Template-instantiations for the required instances.
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Discontinuity_Graph_Contractor)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Discontinuity_Graph_Contractor)

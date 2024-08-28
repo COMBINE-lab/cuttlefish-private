@@ -32,12 +32,12 @@ namespace cuttlefish
 
 // =============================================================================
 // Expander for contracted discontinuity-graphs.
-template <uint16_t k>
+template <uint16_t k, bool Colored_>
 class Contracted_Graph_Expander
 {
 private:
 
-    Discontinuity_Graph<k>& G;  // The (augmented) discontinuity graph.
+    Discontinuity_Graph<k, Colored_>& G;    // The (augmented) discontinuity graph.
 
     typedef typename dBG_Contractor<k>::P_v_t P_v_t;
     typedef typename dBG_Contractor<k>::P_e_t P_e_t;
@@ -109,15 +109,15 @@ public:
     // `P_v[i]` is to contain path-information for vertices at partition `i`,
     // and `P_e[b]` is to contain path-information for edges at bucket `b`.
     // `logistics` is the data logistics manager for the algorithm execution.
-    Contracted_Graph_Expander(Discontinuity_Graph<k>& G, P_v_t& P_v, P_e_t& P_e, const Data_Logistics& logistics);
+    Contracted_Graph_Expander(Discontinuity_Graph<k, Colored_>& G, P_v_t& P_v, P_e_t& P_e, const Data_Logistics& logistics);
 
     // Expands the contracted discontinuity-graph.
     void expand();
 };
 
 
-template <uint16_t k>
-inline Path_Info<k> Contracted_Graph_Expander<k>::infer(const Path_Info<k> u_inf, const side_t s_u, const side_t s_v, const weight_t w)
+template <uint16_t k, bool Colored_>
+inline Path_Info<k> Contracted_Graph_Expander<k, Colored_>::infer(const Path_Info<k> u_inf, const side_t s_u, const side_t s_v, const weight_t w)
 {
     assert(u_inf.r() > 0);
 
@@ -132,8 +132,8 @@ inline Path_Info<k> Contracted_Graph_Expander<k>::infer(const Path_Info<k> u_inf
 }
 
 
-template <uint16_t k>
-inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> u_inf, const Path_Info<k> v_inf)
+template <uint16_t k, bool Colored_>
+inline void Contracted_Graph_Expander<k, Colored_>::add_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> u_inf, const Path_Info<k> v_inf)
 {
     assert(e.w() == 1);
     assert(!e.x_is_phi() && !e.y_is_phi());
@@ -148,8 +148,8 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
 }
 
 
-template <uint16_t k>
-inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> v_inf)
+template <uint16_t k, bool Colored_>
+inline void Contracted_Graph_Expander<k, Colored_>::add_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> v_inf)
 {
     assert(e.w() == 1);
     assert(e.x_is_phi() && !e.y_is_phi());
@@ -163,8 +163,8 @@ inline void Contracted_Graph_Expander<k>::add_edge_path_info(const Discontinuity
 }
 
 
-template <uint16_t k>
-inline void Contracted_Graph_Expander<k>::add_diagonal_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> u_inf)
+template <uint16_t k, bool Colored_>
+inline void Contracted_Graph_Expander<k, Colored_>::add_diagonal_edge_path_info(const Discontinuity_Edge<k>& e, const Path_Info<k> u_inf)
 {
     assert(e.w() == 1);
     assert(!e.x_is_phi() && !e.y_is_phi());

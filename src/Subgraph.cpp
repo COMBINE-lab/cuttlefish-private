@@ -13,7 +13,7 @@ namespace cuttlefish
 
 
 template <uint16_t k, bool Colored_>
-Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& G, op_buf_t& op_buf, Subgraphs_Scratch_Space<k, Colored_>& space):
+Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k, Colored_>& G, op_buf_t& op_buf, Subgraphs_Scratch_Space<k, Colored_>& space):
       B(B)
     , work_space(space)
     , M(space.map())

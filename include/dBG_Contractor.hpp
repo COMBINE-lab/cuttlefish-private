@@ -49,8 +49,6 @@ private:
     const Build_Params params;  // Required parameters (wrapped inside).
     const Data_Logistics logistics; // Data logistics manager for the algorithm execution.
 
-    Discontinuity_Graph<k> G;   // The discontinuity graph.
-
     std::size_t n_disc_v;   // Number of discontinuity-vertices.
 
     // TODO: consider using padding.

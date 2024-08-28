@@ -19,7 +19,7 @@ namespace cuttlefish
 {
 
 template <uint16_t k, bool Colored_>
-Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistics, const std::size_t graph_count_, const uint16_t l, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf):
+Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistics, const std::size_t graph_count_, const uint16_t l, Discontinuity_Graph<k, Colored_>& G, op_buf_list_t& op_buf):
       path_pref(logistics.subgraphs_path())
     , graph_count_(graph_count_)
     , l(l)

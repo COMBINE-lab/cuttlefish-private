@@ -9,30 +9,30 @@ namespace cuttlefish
 {
 
 
-template <uint16_t k>
-Discontinuity_Graph<k>::Discontinuity_Graph(const std::size_t part_count, const std::size_t lmtig_bucket_count, const Data_Logistics& logistics):
+template <uint16_t k, bool Colored_>
+Discontinuity_Graph<k, Colored_>::Discontinuity_Graph(const std::size_t part_count, const std::size_t lmtig_bucket_count, const Data_Logistics& logistics):
       E_(part_count, logistics.edge_matrix_path())
     , lmtigs(logistics.lmtig_buckets_path(), lmtig_bucket_count, parlay::num_workers())
     , phantom_edge_count_(0)
 {}
 
 
-template <uint16_t k>
-uint64_t Discontinuity_Graph<k>::phantom_edge_upper_bound() const
+template <uint16_t k, bool Colored_>
+uint64_t Discontinuity_Graph<k, Colored_>::phantom_edge_upper_bound() const
 {
     return phantom_edge_count_;
 }
 
 
-template <uint16_t k>
-void Discontinuity_Graph<k>::close_lmtig_stream()
+template <uint16_t k, bool Colored_>
+void Discontinuity_Graph<k, Colored_>::close_lmtig_stream()
 {
     lmtigs.close();
 }
 
 
-template <uint16_t k>
-std::size_t Discontinuity_Graph<k>::vertex_part_size_upper_bound() const
+template <uint16_t k, bool Colored_>
+std::size_t Discontinuity_Graph<k, Colored_>::vertex_part_size_upper_bound() const
 {
     std::size_t bound = 0;
     for(std::size_t j = 1; j <= E_.vertex_part_count(); ++j)
@@ -49,4 +49,4 @@ std::size_t Discontinuity_Graph<k>::vertex_part_size_upper_bound() const
 
 
 // Template-instantiations for the required instances.
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Discontinuity_Graph)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Discontinuity_Graph)

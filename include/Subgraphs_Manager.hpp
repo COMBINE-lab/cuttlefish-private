@@ -48,7 +48,7 @@ private:
 
     std::vector<Padded<HyperLogLog>> HLL;   // `HLL[g]` is the cardinality-estimator for subgraph `g`.
 
-    Discontinuity_Graph<k>& G;  // The discontinuity graph.
+    Discontinuity_Graph<k, Colored_>& G;    // The discontinuity graph.
 
     std::atomic_uint64_t trivial_mtig_count_;   // Number of trivial maximal unitigs in the subgraphs (i.e. also maximal unitigs in the supergraph).
     std::atomic_uint64_t icc_count_;    // Number of trivial maximal unitigs in the subgraphs that are ICCs.
@@ -76,7 +76,7 @@ public:
     // The discontinuity-graph is produced at `G` without false-phantom edges.
     // Worker-specific trivially maximal unitigs are written to the buffers in
     // `op_buf`.
-    Subgraphs_Manager(const Data_Logistics& logistics, std::size_t graph_count, uint16_t l, Discontinuity_Graph<k>& G, op_buf_list_t& op_buf);
+    Subgraphs_Manager(const Data_Logistics& logistics, std::size_t graph_count, uint16_t l, Discontinuity_Graph<k, Colored_>& G, op_buf_list_t& op_buf);
 
     // Returns the number of subgraphs.
     auto graph_count() const { return graph_count_; }

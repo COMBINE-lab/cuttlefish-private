@@ -124,7 +124,7 @@ private:
     uint64_t disc_edge_c;   // Number of edges of the discontinuity graph induced from this subgraph.
     uint64_t isolated;  // Count of isolated vertices—not part of any edge.
 
-    Discontinuity_Graph<k>& G;  // The discontinuity graph.
+    Discontinuity_Graph<k, Colored_>& G;    // The discontinuity graph.
 
     uint64_t mtig_c;    // Number of maximal unitigs in the graph.
     uint64_t trivial_mtig_c;    // Number of trivial maximal unitigs in the graph (i.e. also maximal unitigs in the supergraph).
@@ -170,7 +170,7 @@ public:
     // its edges observed from this subgraph and writes the trivially maximal
     // unitigs to `op_buf`. Uses scratch space for internal data structures
     // from `space`.
-    Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& d_graph, op_buf_t& op_buf, Subgraphs_Scratch_Space<k, Colored_>& space);
+    Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k, Colored_>& d_graph, op_buf_t& op_buf, Subgraphs_Scratch_Space<k, Colored_>& space);
 
     Subgraph(const Subgraph&) = delete;
     Subgraph(Subgraph&&) = delete;
@@ -335,8 +335,8 @@ inline bool Subgraph<k, Colored_>::extract_maximal_unitig(const Kmer<k>& v_hat, 
     if(walk_end_l == exitted || walk_end_r == exitted)  // The maximal unitig containing `v_hat` spans multiple subgraphs.
     {
         maximal_unitig.finalize_weak();
-        std::tie(b, b_idx) = G.add_edge( walk_end_l == exitted ? v_l.canonical() : Discontinuity_Graph<k>::phi(), walk_end_l == exitted ? v_l.entrance_side() : side_t::back,
-                    walk_end_r == exitted ? v_r.canonical() : Discontinuity_Graph<k>::phi(), walk_end_r == exitted ? v_r.entrance_side() : side_t::back,
+        std::tie(b, b_idx) = G.add_edge( walk_end_l == exitted ? v_l.canonical() : Discontinuity_Graph<k, Colored_>::phi(), walk_end_l == exitted ? v_l.entrance_side() : side_t::back,
+                    walk_end_r == exitted ? v_r.canonical() : Discontinuity_Graph<k, Colored_>::phi(), walk_end_r == exitted ? v_r.entrance_side() : side_t::back,
                     walk_end_l != exitted, walk_end_r != exitted, maximal_unitig);
         disc_edge_c++;
     }

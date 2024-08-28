@@ -54,7 +54,8 @@ void Unitig_File_Reader::remove_files()
 }
 
 
-Unitig_Write_Distributor::Unitig_Write_Distributor(const std::string& path_pref, const std::size_t writer_count, const std::size_t worker_count):
+template <bool Colored_>
+Unitig_Write_Distributor<Colored_>::Unitig_Write_Distributor(const std::string& path_pref, const std::size_t writer_count, const std::size_t worker_count):
       writer_count(writer_count)
     , worker_count(worker_count)
     , writer_per_worker(writer_count / worker_count)
@@ -67,10 +68,17 @@ Unitig_Write_Distributor::Unitig_Write_Distributor(const std::string& path_pref,
 }
 
 
-void Unitig_Write_Distributor::close()
+template <bool Colored_>
+void Unitig_Write_Distributor<Colored_>::close()
 {
     for(auto& w : writer)
         w.unwrap().close();
 }
 
 }
+
+
+
+// Template instantiations for the required instances.
+template class cuttlefish::Unitig_Write_Distributor<false>;
+template class cuttlefish::Unitig_Write_Distributor<true>;

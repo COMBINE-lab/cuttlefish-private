@@ -28,12 +28,12 @@ namespace cuttlefish
 
 // =============================================================================
 // Contractor of discontinuity-graphs.
-template <uint16_t k>
+template <uint16_t k, bool Colored_>
 class Discontinuity_Graph_Contractor
 {
 private:
 
-    Discontinuity_Graph<k>& G;  // The discontinuity-graph.
+    Discontinuity_Graph<k, Colored_>& G;    // The discontinuity-graph.
 
     typedef typename dBG_Contractor<k>::P_v_t P_v_t;
     P_v_t& P_v; // `P_v[j]` contains path-info for vertices in partition `j`—specifically, the meta-vertices.
@@ -83,7 +83,7 @@ public:
     // Constructs a contractor for the discontinuity-graph `G`. `P_v[j]` is to
     // contain path-information for vertices at partition `j`. `logistics` is
     // the data logistics manager for the algorithm execution.
-    Discontinuity_Graph_Contractor(Discontinuity_Graph<k>& G, P_v_t& P_v, const Data_Logistics& logistics);
+    Discontinuity_Graph_Contractor(Discontinuity_Graph<k, Colored_>& G, P_v_t& P_v, const Data_Logistics& logistics);
 
     // Contracts the discontinuity-graph.
     void contract();
@@ -92,8 +92,8 @@ public:
 
 // =============================================================================
 // Other endpoint `v` associated to a current vertex `u` through an edge.
-template <uint16_t k>
-class Discontinuity_Graph_Contractor<k>::Other_End
+template <uint16_t k, bool Colored_>
+class Discontinuity_Graph_Contractor<k, Colored_>::Other_End
 {
 private:
 
@@ -155,16 +155,16 @@ public:
 };
 
 
-template <uint16_t k>
-inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s_1, const weight_t w_1, const weight_t w_2, const bool is_cycle)
+template <uint16_t k, bool Colored_>
+inline void Discontinuity_Graph_Contractor<k, Colored_>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s_1, const weight_t w_1, const weight_t w_2, const bool is_cycle)
 {
     assert(w_1 > 0); assert(w_2 > 0);
     form_meta_vertex(v, part, side_t::front, s_1 == side_t::front ? w_1 : w_2, is_cycle);
 }
 
 
-template <uint16_t k>
-inline void Discontinuity_Graph_Contractor<k>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s, const weight_t w, const bool is_cycle)
+template <uint16_t k, bool Colored_>
+inline void Discontinuity_Graph_Contractor<k, Colored_>::form_meta_vertex(const Kmer<k> v, const std::size_t part, const side_t s, const weight_t w, const bool is_cycle)
 {
     assert(w > 0);
     assert(part < P_v.size());

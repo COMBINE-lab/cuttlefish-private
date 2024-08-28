@@ -14,8 +14,8 @@
 namespace cuttlefish
 {
 
-template <uint16_t k>
-Contracted_Graph_Expander<k>::Contracted_Graph_Expander(Discontinuity_Graph<k>& G, P_v_t& P_v, P_e_t& P_e, const Data_Logistics& logistics):
+template <uint16_t k, bool Colored_>
+Contracted_Graph_Expander<k, Colored_>::Contracted_Graph_Expander(Discontinuity_Graph<k, Colored_>& G, P_v_t& P_v, P_e_t& P_e, const Data_Logistics& logistics):
       G(G)
     , P_v(P_v)
     , P_e(P_e)
@@ -27,8 +27,8 @@ Contracted_Graph_Expander<k>::Contracted_Graph_Expander(Discontinuity_Graph<k>& 
 }
 
 
-template <uint16_t k>
-void Contracted_Graph_Expander<k>::expand()
+template <uint16_t k, bool Colored_>
+void Contracted_Graph_Expander<k, Colored_>::expand()
 {
     // Debug
     double map_clr_time = 0;    // Time taken to clear the hash map.
@@ -234,8 +234,8 @@ void Contracted_Graph_Expander<k>::expand()
 }
 
 
-template <uint16_t k>
-std::size_t Contracted_Graph_Expander<k>::load_path_info(const std::size_t i, Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf)
+template <uint16_t k, bool Colored_>
+std::size_t Contracted_Graph_Expander<k, Colored_>::load_path_info(const std::size_t i, Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf)
 {
     const auto t_s = now();
     const auto sz = P_v[i].unwrap().size();
@@ -248,8 +248,8 @@ std::size_t Contracted_Graph_Expander<k>::load_path_info(const std::size_t i, Bu
 }
 
 
-template <uint16_t k>
-void Contracted_Graph_Expander<k>::fill_path_info(const Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf, const std::size_t buf_sz)
+template <uint16_t k, bool Colored_>
+void Contracted_Graph_Expander<k, Colored_>::fill_path_info(const Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf, const std::size_t buf_sz)
 {
     const auto t_s = now();
     const auto load_vertex_info = [&](const std::size_t idx)
@@ -275,8 +275,8 @@ void Contracted_Graph_Expander<k>::fill_path_info(const Buffer<Obj_Path_Info_Pai
 }
 
 
-template <uint16_t k>
-void Contracted_Graph_Expander<k>::expand_diagonal_block(const std::size_t i)
+template <uint16_t k, bool Colored_>
+void Contracted_Graph_Expander<k, Colored_>::expand_diagonal_block(const std::size_t i)
 {
     const std::string d_i_path(compressed_diagonal_path + "_" + std::to_string(i));
     const auto file_sz = file_size(d_i_path);
@@ -361,4 +361,4 @@ uint64_t Contracted_Graph_Expander<k>::collate_w_local_bufs(T_s_& source, const 
 
 
 // Template-instantiations for the required instances.
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Contracted_Graph_Expander)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Contracted_Graph_Expander)

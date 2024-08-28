@@ -23,8 +23,9 @@ namespace cuttlefish
 {
 
 // =============================================================================
-// A representation of a discontinuity graph of `k`-mers.
-template <uint16_t k>
+// A representation of a discontinuity graph of `k`-mers. `Colored_` denotes
+// whether the edges have colors or not.
+template <uint16_t k, bool Colored_>
 class Discontinuity_Graph
 {
 private:
@@ -38,7 +39,7 @@ private:
 
     Edge_Matrix<k> E_;  // Edge-matrix of the discontinuity graph.
 
-    Unitig_Write_Distributor lmtigs;    // Distribution-manager for the writes of locally maximal unitigs' labels.
+    Unitig_Write_Distributor<Colored_> lmtigs;  // Distribution-manager for the writes of locally maximal unitigs' labels.
 
     std::atomic_uint64_t phantom_edge_count_;   // Number of potential phantom edges identified.
 
@@ -92,11 +93,11 @@ public:
 };
 
 
-template <uint16_t k> const Kmer<k> Discontinuity_Graph<k>::phi_(phi_label);
+template <uint16_t k, bool Colored_> const Kmer<k> Discontinuity_Graph<k, Colored_>::phi_(phi_label);
 
 
-template <uint16_t k>
-inline std::pair<std::size_t, std::size_t> Discontinuity_Graph<k>::add_edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const bool u_is_phi, const bool v_is_phi, const Maximal_Unitig_Scratch<k>& mtig)
+template <uint16_t k, bool Colored_>
+inline std::pair<std::size_t, std::size_t> Discontinuity_Graph<k, Colored_>::add_edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const bool u_is_phi, const bool v_is_phi, const Maximal_Unitig_Scratch<k>& mtig)
 {
     const auto w_id = parlay::worker_id();
     const auto b = lmtigs.file_idx(w_id);
@@ -109,8 +110,8 @@ inline std::pair<std::size_t, std::size_t> Discontinuity_Graph<k>::add_edge(cons
 }
 
 
-template <uint16_t k>
-inline void Discontinuity_Graph<k>::add_edge(const Kmer<k>& v, const side_t s_v)
+template <uint16_t k, bool Colored_>
+inline void Discontinuity_Graph<k, Colored_>::add_edge(const Kmer<k>& v, const side_t s_v)
 {
     const auto w_id = parlay::worker_id();
     const auto b = lmtigs.file_idx(w_id);
@@ -121,8 +122,8 @@ inline void Discontinuity_Graph<k>::add_edge(const Kmer<k>& v, const side_t s_v)
 }
 
 
-template <uint16_t k>
-inline void Discontinuity_Graph<k>::add_edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const weight_t w, const bool u_is_phi, const bool v_is_phi)
+template <uint16_t k, bool Colored_>
+inline void Discontinuity_Graph<k, Colored_>::add_edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const weight_t w, const bool u_is_phi, const bool v_is_phi)
 {
     // Edge-partition 0 associates to edges that do not have any corresponding lm-tig (i.e. has weight > 1).
     E_.add(u, s_u, v, s_v, w, 0, 0, u_is_phi, v_is_phi);
