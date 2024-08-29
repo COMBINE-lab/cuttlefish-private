@@ -4,6 +4,7 @@
 
 
 
+#include "Color_Coordinate.hpp"
 #include "boost/unordered/concurrent_flat_map.hpp"
 
 #include <cstdint>
@@ -15,45 +16,6 @@ namespace cuttlefish
 {
 
 enum class Color_Status;    // Extraction-status of a color-set.
-
-
-// Coordinate of a color in the actual color-collection.
-class Color_Coordinate
-{
-    typedef uint64_t pack_t;
-
-private:
-
-    // Flag to denote whether the corresponding color is in the process of
-    // extraction or not.
-    static constexpr pack_t in_process = (pack_t(1) << (sizeof(pack_t) * 8 - 1));
-
-    static constexpr uint32_t idx_pos = 9;  // Position of the index (in worker-local bucket) of a color-set.
-
-    pack_t bit_pack;    // Packed representation of the color-coordinate.
-
-public:
-
-    // Constructs an empty coordinate.
-    constexpr Color_Coordinate(): bit_pack(0)
-    {}
-
-    // Constructs an empty coordinate marked as being processed by worker-ID
-    // `w`.
-    Color_Coordinate(const pack_t w_id): bit_pack(w_id | in_process)
-    {}
-
-    // Constructs the coordinate `(w_id, idx)`.
-    Color_Coordinate(const pack_t w_id, const pack_t idx): bit_pack(w_id | (pack_t(idx) << idx_pos))
-    {}
-
-    // Returns whether the corresponding color is in the process of extraction
-    // or not.
-    bool is_in_process() const { return bit_pack & in_process; }
-
-    // Returns the worker-ID that marked this coordinate as processing.
-    pack_t processing_worker() const { assert(is_in_process()); return bit_pack & (~in_process); }
-};
 
 
 // Hashtable for color-sets. Keys are color-set hashes and values are color-set
