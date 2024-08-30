@@ -14,6 +14,7 @@
 #include <cstring>
 #include <vector>
 #include <string>
+#include <utility>
 #include <fstream>
 #include <cstdlib>
 #include <cassert>
@@ -145,18 +146,15 @@ public:
     // for `worker_count` workers. The files are at the path-prefix `path_pref`.
     Unitig_Write_Distributor(const std::string& path_pref, std::size_t writer_count, std::size_t worker_count);
 
-    // Adds the unitig content in the scratch `maximal_unitig` to the writer for
-    // the `w_id`'th worker.
-    template <uint16_t k> void add(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig);
+    // Adds the unitig content in the scratch `maximal_unitig` to the writer
+    // for the `w_id`'th worker. Returns the pair `(b, idx)` such that `b` is
+    // the ID of the bucket where the unitig is put in at the index `idx`.
+    template <uint16_t k> std::pair<std::size_t, std::size_t> add(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig);
 
     // Adds the k-mer content in `kmer` to the writer for the `w_id`'th worker.
-    template <uint16_t k> void add(std::size_t w_id, const Kmer<k>& kmer);
-
-    // Returns the ID of the next unitig-file to write to for worker `w_id`.
-    std::size_t file_idx(std::size_t w_id) const;
-
-    // Returns the number of unitigs added to the `b_id`'th file.
-    std::size_t unitig_count(std::size_t b_id) const;
+    // Returns the pair `(b, idx)` such that `b` is the ID of the bucket where
+    // the unitig is put in at the index `idx`.
+    template <uint16_t k> std::pair<std::size_t, std::size_t> add(std::size_t w_id, const Kmer<k>& kmer);
 
     // Closes the unitig-writer streams.
     void close();
@@ -276,7 +274,7 @@ inline std::size_t Unitig_File_Reader::read_next_unitig(Buffer<char>& unitig)
 
 template <bool Colored_>
 template <uint16_t k>
-inline void Unitig_Write_Distributor<Colored_>::add(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
+inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor<Colored_>::add(const std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
 {
     auto& next = next_writer[w_id].unwrap();
     const auto writer_id = w_id * writer_per_worker + next + 1; // +1 as edge-partition 0 conceptually contains edges without any associated lm-tig (i.e. with weight > 1)
@@ -291,13 +289,17 @@ inline void Unitig_Write_Distributor<Colored_>::add(std::size_t w_id, const Maxi
     const auto& u_f = maximal_unitig.unitig_label(side_t::front);
     const auto& u_b = maximal_unitig.unitig_label(side_t::back);
     assert(writer_id < writer.size());
-    writer[writer_id].unwrap().add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
+    auto& w = writer[writer_id].unwrap();
+    const auto idx = w.unitig_count();
+    w.add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
+
+    return {writer_id, idx};
 }
 
 
 template <bool Colored_>
 template <uint16_t k>
-inline void Unitig_Write_Distributor<Colored_>::add(std::size_t w_id, const Kmer<k>& kmer)
+inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor<Colored_>::add(std::size_t w_id, const Kmer<k>& kmer)
 {
     auto& next = next_writer[w_id].unwrap();
     const auto writer_id = w_id * writer_per_worker + next + 1; // +1 as edge-partition 0 conceptually contains edges without any associated lm-tig (i.e. with weight > 1)
@@ -312,21 +314,11 @@ inline void Unitig_Write_Distributor<Colored_>::add(std::size_t w_id, const Kmer
     std::string label;
     kmer.get_label(label);
     assert(writer_id < writer.size());
-    writer[writer_id].unwrap().add(label.cbegin(), label.cend());
-}
+    auto& w = writer[writer_id].unwrap();
+    const auto idx = w.unitig_count();
+    w.add(label.cbegin(), label.cend());
 
-
-template <bool Colored_>
-inline std::size_t Unitig_Write_Distributor<Colored_>::file_idx(const std::size_t w_id) const
-{
-    return w_id * writer_per_worker + next_writer[w_id].unwrap() + 1;
-}
-
-
-template <bool Colored_>
-inline std::size_t Unitig_Write_Distributor<Colored_>::unitig_count(const std::size_t b_id) const
-{
-    return writer[b_id].unwrap().unitig_count();
+    return {writer_id, idx};
 }
 
 }

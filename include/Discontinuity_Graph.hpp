@@ -100,13 +100,10 @@ template <uint16_t k, bool Colored_>
 inline std::pair<std::size_t, std::size_t> Discontinuity_Graph<k, Colored_>::add_edge(const Kmer<k>& u, const side_t s_u, const Kmer<k>& v, const side_t s_v, const bool u_is_phi, const bool v_is_phi, const Maximal_Unitig_Scratch<k>& mtig)
 {
     const auto w_id = parlay::worker_id();
-    const auto b = lmtigs.file_idx(w_id);
-    const std::size_t b_idx = lmtigs.unitig_count(b);
-    lmtigs.add(w_id, mtig);
+    const auto coord = lmtigs.add(w_id, mtig);
+    E_.add(u, s_u, v, s_v, 1, coord.first, coord.second, u_is_phi, v_is_phi);
 
-    E_.add(u, s_u, v, s_v, 1, b, b_idx, u_is_phi, v_is_phi);
-
-    return {b, b_idx};
+    return coord;
 }
 
 
@@ -114,11 +111,8 @@ template <uint16_t k, bool Colored_>
 inline void Discontinuity_Graph<k, Colored_>::add_edge(const Kmer<k>& v, const side_t s_v)
 {
     const auto w_id = parlay::worker_id();
-    const auto b = lmtigs.file_idx(w_id);
-    std::size_t b_idx = lmtigs.unitig_count(b);
-    lmtigs.add(w_id, s_v == side_t::front ? v : v.reverse_complement());
-
-    E_.add(phi_, side_t::back, v, s_v, 1, b, b_idx, true, false);
+    const auto coord = lmtigs.add(w_id, s_v == side_t::front ? v : v.reverse_complement());
+    E_.add(phi_, side_t::back, v, s_v, 1, coord.first, coord.second, true, false);
 }
 
 
