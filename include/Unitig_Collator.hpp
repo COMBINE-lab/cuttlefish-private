@@ -67,6 +67,10 @@ private:
     // information from the bucket to the table.
     std::size_t load_path_info(std::size_t b, Path_Info<k>* M, Buffer<unitig_path_info_t>& buf);
 
+    // Emits the trivially maximal unitigs to the output stream. Only
+    // applicable in the colored case.
+    void emit_trivial_mtigs();
+
 
 public:
 

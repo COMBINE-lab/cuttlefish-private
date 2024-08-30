@@ -140,6 +140,8 @@ private:
     const std::size_t writer_per_worker;    // Number of write-managers dedicated to a worker.
     std::vector<Padded<std::size_t>> next_writer;   // `next_writer[w]` contains the relative-ID of the next writer-manager to be used by worker `w`.
 
+    std::vector<Padded<Unitig_File_Writer>> mtig_writer;    // Collection of write-managers for trivially maximal unitigs.
+
 public:
 
     // Constructs a unitig-writer distributor to `writer_count` write-managers
@@ -155,6 +157,12 @@ public:
     // Returns the pair `(b, idx)` such that `b` is the ID of the bucket where
     // the unitig is put in at the index `idx`.
     template <uint16_t k> std::pair<std::size_t, std::size_t> add(std::size_t w_id, const Kmer<k>& kmer);
+
+    // Adds the trivially maximal unitig in the scratch `maximal_unitig` to the
+    // writer for the `w_id`'th worker. Returns the pair `(b, idx)` such that
+    // `b` is the ID of the bucket where the unitig is put in at the index
+    // `idx`.
+    template <uint16_t k> std::pair<std::size_t, std::size_t> add_trivial_mtig(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig);
 
     // Closes the unitig-writer streams.
     void close();
@@ -319,6 +327,21 @@ inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor<Colored_>::a
     w.add(label.cbegin(), label.cend());
 
     return {writer_id, idx};
+}
+
+
+template <bool Colored_>
+template <uint16_t k>
+inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor<Colored_>::add_trivial_mtig(const std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
+{
+    assert(w_id < mtig_writer.size());
+    const auto& u_f = maximal_unitig.unitig_label(side_t::front);
+    const auto& u_b = maximal_unitig.unitig_label(side_t::back);
+    auto& w = mtig_writer[w_id].unwrap();
+    const auto idx = w.unitig_count();
+    w.add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
+
+    return {writer.size() + w_id, idx};
 }
 
 }

@@ -350,12 +350,7 @@ inline bool Subgraph<k, Colored_>::extract_maximal_unitig(const Kmer<k>& v_hat, 
         if constexpr(!Colored_)
             maximal_unitig.add_fasta_rec_to_buffer(op_buf);
         else
-        {
-            // TODO: deposit trivially maximal unitigs to buckets instead of directly routing them to the output,
-            // to attach color-sets to them later.
-            maximal_unitig.add_fasta_rec_to_buffer(op_buf); // Temporary.
-            b = 0, b_idx = 0;   // Temporary.
-        }
+            std::tie(b, b_idx) = G.add_trivial_mtig(maximal_unitig);
 
     }
 

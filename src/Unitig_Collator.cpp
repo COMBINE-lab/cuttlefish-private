@@ -61,6 +61,13 @@ void Unitig_Collator<k, Colored_>::collate()
     const auto t_2 = timer::now();
     std::cerr << "Time taken in reduction: " << timer::duration(t_2 - t_1) << "s.\n";
 
+    if constexpr(Colored_)
+    {
+        emit_trivial_mtigs();
+        const auto t_3 = timer::now();
+        std::cerr << "Time taken in trivial-mtigs emission: " << timer::duration(t_3 - t_2) << "s.\n";
+    }
+
     // TODO: print meta-information over the maximal unitigs'.
 }
 
@@ -264,6 +271,25 @@ std::size_t Unitig_Collator<k, Colored_>::load_path_info(const std::size_t b, Pa
     }
 
     return b_sz;
+}
+
+
+template <uint16_t k, bool Colored_>
+void Unitig_Collator<k, Colored_>::emit_trivial_mtigs()
+{
+    assert(Colored_);
+
+    parlay::parallel_for(0, parlay::num_workers(), [&](const std::size_t w)
+    {
+        auto& output = op_buf[w].unwrap();  // Output buffer for the maximal unitigs.
+        Unitig_File_Reader unitig_reader(lmtig_buckets_path + "_" + std::to_string(P_e.size() + w));
+        Buffer<char> unitig;    // Read-off unitig.
+        std::size_t uni_len;    // The unitig's length in bases.
+        while((uni_len = unitig_reader.read_next_unitig(unitig)) > 0)
+            output += FASTA_Record(0, std::string_view(unitig.data(), uni_len));
+
+        unitig_reader.remove_files();
+    }, 1);
 }
 
 }

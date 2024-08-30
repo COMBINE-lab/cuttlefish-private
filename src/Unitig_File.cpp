@@ -62,9 +62,18 @@ Unitig_Write_Distributor<Colored_>::Unitig_Write_Distributor(const std::string& 
     , next_writer(worker_count, 0)
 {
     assert(writer_count >= worker_count);
+
+    writer.reserve(1 + writer_count);
     writer.emplace_back(std::string()); // Edge-partition 0 is symbolic, for edges that do not have any associated lm-tig (i.e. has weight > 1).
     for(std::size_t b = 1; b <= writer_count; ++b)
         writer.emplace_back(path_pref + "_" + std::to_string(b));
+
+    if constexpr(Colored_)
+    {
+        mtig_writer.reserve(worker_count);
+        for(std::size_t w = 0; w < worker_count; ++w)
+            mtig_writer.emplace_back(path_pref + "_" + std::to_string(writer.size() + w));
+    }
 }
 
 
@@ -73,6 +82,10 @@ void Unitig_Write_Distributor<Colored_>::close()
 {
     for(auto& w : writer)
         w.unwrap().close();
+
+    if constexpr(Colored_)
+        for(auto& w : mtig_writer)
+            w.unwrap().close();
 }
 
 }

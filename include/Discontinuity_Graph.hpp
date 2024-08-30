@@ -81,6 +81,11 @@ public:
     // should be a contracted edge and not an original one.
     void add_edge(const Kmer<k>& u, side_t s_u, const Kmer<k>& v, side_t s_v, weight_t w, bool u_is_phi, bool v_is_phi);
 
+    // Adds the trivial maximal unitig `mtig` to the graph. Nothing is added to
+    // the graph per se, just the unitig label is stored. Returns `(b, b_idx)`,
+    // where the deposited `mtig` is put into bucket `b` at index `b_idx`.
+    std::pair<std::size_t, std::size_t> add_trivial_mtig(const Maximal_Unitig_Scratch<k>& mtig);
+
     // Increments the potential phantom edge count.
     void inc_potential_phantom_edge() { phantom_edge_count_++; }
 
@@ -121,6 +126,13 @@ inline void Discontinuity_Graph<k, Colored_>::add_edge(const Kmer<k>& u, const s
 {
     // Edge-partition 0 associates to edges that do not have any corresponding lm-tig (i.e. has weight > 1).
     E_.add(u, s_u, v, s_v, w, 0, 0, u_is_phi, v_is_phi);
+}
+
+
+template <uint16_t k, bool Colored_>
+inline std::pair<std::size_t, std::size_t> Discontinuity_Graph<k, Colored_>::add_trivial_mtig(const Maximal_Unitig_Scratch<k>& mtig)
+{
+    return lmtigs.add_trivial_mtig(parlay::worker_id(), mtig);
 }
 
 }
