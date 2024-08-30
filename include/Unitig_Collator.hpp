@@ -30,7 +30,7 @@ namespace cuttlefish
 // =============================================================================
 // Collates locally-maximal unitigs from different unitig-buckets as per their
 // path-information in a discontinuity graph of `k`-mers.
-template <uint16_t k>
+template <uint16_t k, bool Colored_>
 class Unitig_Collator
 {
 private:
@@ -84,8 +84,8 @@ public:
 
 
 // Label of a maximal unitig.
-template  <uint16_t k>
-class Unitig_Collator<k>::Maximal_Unitig_Label
+template  <uint16_t k, bool Colored_>
+class Unitig_Collator<k, Colored_>::Maximal_Unitig_Label
 {
 private:
 
@@ -135,9 +135,9 @@ public:
 };
 
 
-template <uint16_t k>
+template <uint16_t k, bool Colored_>
 template <bool RC_>
-inline void Unitig_Collator<k>::Maximal_Unitig_Label::append(const char* const s, const std::size_t len_s)
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::append(const char* const s, const std::size_t len_s)
 {
     if constexpr(!RC_)
         std::memcpy(label_.data() + sz, s, len_s);
@@ -149,8 +149,8 @@ inline void Unitig_Collator<k>::Maximal_Unitig_Label::append(const char* const s
 }
 
 
-template <uint16_t k>
-inline void Unitig_Collator<k>::Maximal_Unitig_Label::init(const std::string_view& unitig, const bool rc)
+template <uint16_t k, bool Colored_>
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::init(const std::string_view& unitig, const bool rc)
 {
     clear();
 
@@ -162,8 +162,8 @@ inline void Unitig_Collator<k>::Maximal_Unitig_Label::init(const std::string_vie
 }
 
 
-template <uint16_t k>
-inline void Unitig_Collator<k>::Maximal_Unitig_Label::append(const std::string_view& unitig, const bool rc)
+template <uint16_t k, bool Colored_>
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::append(const std::string_view& unitig, const bool rc)
 {
     label_.reserve(sz + unitig.length() - k);
     if(!rc)
@@ -173,8 +173,8 @@ inline void Unitig_Collator<k>::Maximal_Unitig_Label::append(const std::string_v
 }
 
 
-template <uint16_t k>
-inline void Unitig_Collator<k>::Maximal_Unitig_Label::canonicalize()
+template <uint16_t k, bool Colored_>
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::canonicalize()
 {
     for(std::size_t i = 0; i < k; ++i)
     {
@@ -203,8 +203,8 @@ inline void Unitig_Collator<k>::Maximal_Unitig_Label::canonicalize()
 }
 
 
-template <uint16_t k>
-inline void Unitig_Collator<k>::Maximal_Unitig_Label::canonicalize_cycle()
+template <uint16_t k, bool Colored_>
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::canonicalize_cycle()
 {
     Directed_Vertex<k> v(label_.data());
     Kmer<k> min_fw(v.kmer());   // Minimum k-mer in the forward strand.

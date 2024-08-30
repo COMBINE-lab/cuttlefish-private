@@ -23,8 +23,8 @@
 namespace cuttlefish
 {
 
-template <uint16_t k>
-Unitig_Collator<k>::Unitig_Collator(P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf, const std::size_t gmtig_bucket_count):
+template <uint16_t k, bool Colored_>
+Unitig_Collator<k, Colored_>::Unitig_Collator(P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf, const std::size_t gmtig_bucket_count):
       P_e(P_e)
     , lmtig_buckets_path(logistics.lmtig_buckets_path())
     , unitig_coord_buckets_path(logistics.unitig_coord_buckets_path())
@@ -48,8 +48,8 @@ Unitig_Collator<k>::Unitig_Collator(P_e_t& P_e, const Data_Logistics& logistics,
 }
 
 
-template <uint16_t k>
-void Unitig_Collator<k>::collate()
+template <uint16_t k, bool Colored_>
+void Unitig_Collator<k, Colored_>::collate()
 {
     const auto t_0 = timer::now();
     map();
@@ -65,8 +65,8 @@ void Unitig_Collator<k>::collate()
 }
 
 
-template <uint16_t k>
-void Unitig_Collator<k>::map()
+template <uint16_t k, bool Colored_>
+void Unitig_Collator<k, Colored_>::map()
 {
     typedef Buffer<Path_Info<k>> map_t;
     typedef Buffer<unitig_path_info_t> buf_t;
@@ -140,8 +140,8 @@ void Unitig_Collator<k>::map()
 }
 
 
-template <uint16_t k>
-void Unitig_Collator<k>::reduce()
+template <uint16_t k, bool Colored_>
+void Unitig_Collator<k, Colored_>::reduce()
 {
     std::size_t max_max_uni_b_sz = 0;   // Maximum unitig-count in some maximal unitig bucket.
     std::size_t max_max_uni_b_label_len = 0;    // Maximum dump-string length in some maximal unitig bucket.
@@ -248,8 +248,8 @@ void Unitig_Collator<k>::reduce()
 }
 
 
-template <uint16_t k>
-std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>* const M, Buffer<unitig_path_info_t>& buf)
+template <uint16_t k, bool Colored_>
+std::size_t Unitig_Collator<k, Colored_>::load_path_info(const std::size_t b, Path_Info<k>* const M, Buffer<unitig_path_info_t>& buf)
 {
     buf.reserve_uninit(P_e[b].unwrap().size());  // TODO: perform one fixed resize beforehand, as the `P_e` buckets will not grow anymore.
     const std::size_t b_sz = P_e[b].unwrap().load(buf.data());
@@ -271,4 +271,4 @@ std::size_t Unitig_Collator<k>::load_path_info(const std::size_t b, Path_Info<k>
 
 
 // Template-instantiations for the required instances.
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Unitig_Collator)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Unitig_Collator)
