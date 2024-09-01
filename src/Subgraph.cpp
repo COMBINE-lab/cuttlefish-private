@@ -243,7 +243,7 @@ void Subgraph<k, Colored_>::contract()
                             break;
 
                         case Color_Status::discovered:  // This vertex's color is available.
-                            // TODO: add `(b_idx, i, c)` to the `b`'th color-bucket.
+                            G.add_color(b, b_idx, i, c);
                             break;
                         }
 
@@ -337,8 +337,7 @@ if constexpr(Colored_)
         const auto& h = p.second;
 
         const auto c = C.get(h);
-        (void)lmtig_coord, (void)c;
-        // TODO: add `(b_idx, off, c)` to the `b`'th color-bucket.
+        G.add_color(lmtig_coord.b(), lmtig_coord.idx(), lmtig_coord.off(), c);
     }
 
     in_process.clear();

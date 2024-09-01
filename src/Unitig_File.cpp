@@ -1,5 +1,6 @@
 
 #include "Unitig_File.hpp"
+#include "utility.hpp"
 
 #include <cstdlib>
 
@@ -73,6 +74,11 @@ Unitig_Write_Distributor<Colored_>::Unitig_Write_Distributor(const std::string& 
         mtig_writer.reserve(worker_count);
         for(std::size_t w = 0; w < worker_count; ++w)
             mtig_writer.emplace_back(path_pref + "_" + std::to_string(writer.size() + w));
+
+        color_bucket.reserve(writer.size() + mtig_writer.size());
+        color_bucket.emplace_back(std::string());
+        for(std::size_t b = 1; b < writer.size() + mtig_writer.size(); ++b)
+            color_bucket.emplace_back(path_pref + "_" + std::to_string(b) + ".col");
     }
 }
 

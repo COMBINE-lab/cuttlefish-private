@@ -6,9 +6,12 @@
 
 #include "Virtual_File.hpp"
 #include "Maximal_Unitig_Scratch.hpp"
+#include "Color_Coordinate.hpp"
+#include "Ext_Mem_Bucket.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 
+#include <cstdint>
 #include <cstddef>
 #include <limits>
 #include <cstring>
@@ -34,10 +37,10 @@ private:
 
     const std::string file_path;    // Path to the file for the unitig content.
 
-    std::vector<char> buf;  // In-memory buffer for the unitig content.
+    std::vector<char> buf;  // In-memory buffer for the unitig content. TODO: replace with `Buffer`.
 
     std::size_t total_sz;   // Total size of the added unitig content.
-    std::vector<uni_len_t> len; // Lengths of the unitigs in the file.
+    std::vector<uni_len_t> len; // Lengths of the unitigs in the file.  TODO: replace with `Buffer`.
     std::size_t unitig_c;   // Number of unitigs added.
     std::ofstream output; // The unitig file.
     std::ofstream output_len;   // The lengths file.
@@ -91,8 +94,8 @@ private:
 
     const std::string file_path;    // Path to the file with the unitig content.
 
-    std::vector<char> buf;  // In-memory buffer for the unitig content.
-    std::vector<uni_len_t> uni_len; // Sizes of the unitigs in the current buffer.
+    std::vector<char> buf;  // In-memory buffer for the unitig content. TODO: replace with `Buffer`.
+    std::vector<uni_len_t> uni_len; // Sizes of the unitigs in the current buffer.  TODO: replace with `Buffer`.
 
     std::ifstream input;    // The unitigs-file.
     Virtual_File<uni_len_t> len;    // The lengths-file.
@@ -128,6 +131,41 @@ public:
 
 
 // =============================================================================
+// External-memory bucket for color information of unitigs. This bucket should
+// accompany an actual unitig bucket.
+class Unitig_Color_Bucket
+{
+private:
+
+    struct Unitig_Color
+    {
+        uint32_t idx_;  // Index of the unitig in the accompanying bucket.
+        uint16_t off_;  // Offset of the color in the unitig label.
+        Color_Coordinate c_;    // Coordinate of the color in the color-repository.
+
+        Unitig_Color(const uint32_t idx, const uint16_t off, const Color_Coordinate& c):
+            idx_(idx), off_(off), c_(c)
+        {}
+    };
+
+    const std::string path; // Path to the file with the color-content.
+    Ext_Mem_Bucket<Unitig_Color> B; // Color bucket in external-memory.
+
+public:
+
+    // Constructs a color-bucket at file-path `path`.
+    Unitig_Color_Bucket(const std::string& path):
+          path(path)
+        , B(path)
+    {}
+
+    // Adds the color-coordinate `c` for the accompanying bucket's `idx`'th
+    // unitig, at its offset `off`.
+    void add(uint32_t idx, uint16_t off, const Color_Coordinate& c) { B.emplace(idx, off, c); }
+};
+
+
+// =============================================================================
 // Distributor of unitig-write operations over multiple write-managers.
 template <bool Colored_>
 class Unitig_Write_Distributor
@@ -141,6 +179,8 @@ private:
     std::vector<Padded<std::size_t>> next_writer;   // `next_writer[w]` contains the relative-ID of the next writer-manager to be used by worker `w`.
 
     std::vector<Padded<Unitig_File_Writer>> mtig_writer;    // Collection of write-managers for trivially maximal unitigs.
+
+    std::vector<Padded<Unitig_Color_Bucket>> color_bucket;  // Collection of color buckets of the unitigs.
 
 public:
 
@@ -163,6 +203,10 @@ public:
     // `b` is the ID of the bucket where the unitig is put in at the index
     // `idx`.
     template <uint16_t k> std::pair<std::size_t, std::size_t> add_trivial_mtig(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig);
+
+    // Adds the color-coordinate `c` to the `b`'th unitig bucket, where the
+    // `b_idx`'th unitig has the corresponding color at offset `off`.
+    void add_color(uint16_t b, uint32_t b_idx, uint16_t off, const Color_Coordinate& c);
 
     // Closes the unitig-writer streams.
     void close();
@@ -342,6 +386,14 @@ inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor<Colored_>::a
     w.add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
 
     return {writer.size() + w_id, idx};
+}
+
+
+template <bool Colored_>
+inline void Unitig_Write_Distributor<Colored_>::add_color(const uint16_t b, const uint32_t b_idx, const uint16_t off, const Color_Coordinate& c)
+{
+    assert(b < color_bucket.size());
+    color_bucket[b].unwrap().add(b_idx, off, c);
 }
 
 }

@@ -8,6 +8,7 @@
 #include "Edge_Matrix.hpp"
 #include "Unitig_File.hpp"
 #include "Maximal_Unitig_Scratch.hpp"
+#include "Color_Coordinate.hpp"
 #include "parlay/parallel.h"
 
 #include <cstdint>
@@ -41,6 +42,7 @@ private:
 
     Unitig_Write_Distributor<Colored_> lmtigs;  // Distribution-manager for the writes of locally maximal unitigs' labels.
 
+    // TODO: check logs to see if this is a bottleneck.
     std::atomic_uint64_t phantom_edge_count_;   // Number of potential phantom edges identified.
 
 
@@ -85,6 +87,10 @@ public:
     // the graph per se, just the unitig label is stored. Returns `(b, b_idx)`,
     // where the deposited `mtig` is put into bucket `b` at index `b_idx`.
     std::pair<std::size_t, std::size_t> add_trivial_mtig(const Maximal_Unitig_Scratch<k>& mtig);
+
+    // Adds the color-coordinate `c` to the `b`'th unitig bucket, where the
+    // `b_idx`'th unitig has the corresponding color at offset `off`.
+    void add_color(uint16_t b, uint32_t b_idx, uint16_t off, const Color_Coordinate& c);
 
     // Increments the potential phantom edge count.
     void inc_potential_phantom_edge() { phantom_edge_count_++; }
@@ -133,6 +139,13 @@ template <uint16_t k, bool Colored_>
 inline std::pair<std::size_t, std::size_t> Discontinuity_Graph<k, Colored_>::add_trivial_mtig(const Maximal_Unitig_Scratch<k>& mtig)
 {
     return lmtigs.add_trivial_mtig(parlay::worker_id(), mtig);
+}
+
+
+template <uint16_t k, bool Colored_>
+inline void Discontinuity_Graph<k, Colored_>::add_color(const uint16_t b, const uint32_t b_idx, const uint16_t off, const Color_Coordinate& c)
+{
+    lmtigs.add_color(b, b_idx, off, c);
 }
 
 }
