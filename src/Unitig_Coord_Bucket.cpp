@@ -47,8 +47,8 @@ void Unitig_Coord_Bucket<k>::remove()
 }
 
 
-template <uint16_t k>
-Unitig_Coord_Bucket_Concurrent<k>::Unitig_Coord_Bucket_Concurrent(const std::string& path_pref):
+template <uint16_t k, bool Colored_>
+Unitig_Coord_Bucket_Concurrent<k, Colored_>::Unitig_Coord_Bucket_Concurrent(const std::string& path_pref):
       path_pref(path_pref)
     , flushed(0)
     , flushed_len(0)
@@ -65,8 +65,8 @@ Unitig_Coord_Bucket_Concurrent<k>::Unitig_Coord_Bucket_Concurrent(const std::str
 }
 
 
-template <uint16_t k>
-Unitig_Coord_Bucket_Concurrent<k>::Unitig_Coord_Bucket_Concurrent(Unitig_Coord_Bucket_Concurrent&& rhs):
+template <uint16_t k, bool Colored_>
+Unitig_Coord_Bucket_Concurrent<k, Colored_>::Unitig_Coord_Bucket_Concurrent(Unitig_Coord_Bucket_Concurrent&& rhs):
       path_pref(std::move(rhs.path_pref))
     , flushed(std::move(rhs.flushed))
     , flushed_len(std::move(rhs.flushed_len))
@@ -76,8 +76,8 @@ Unitig_Coord_Bucket_Concurrent<k>::Unitig_Coord_Bucket_Concurrent(Unitig_Coord_B
 {}
 
 
-template <uint16_t k>
-std::size_t Unitig_Coord_Bucket_Concurrent<k>::size() const
+template <uint16_t k, bool Colored_>
+std::size_t Unitig_Coord_Bucket_Concurrent<k, Colored_>::size() const
 {
     auto sz = flushed;
     std::for_each(worker_buf.cbegin(), worker_buf.cend(), [&](const auto& w_buf){ sz += w_buf.unwrap().coord_buf.size(); });
@@ -86,8 +86,8 @@ std::size_t Unitig_Coord_Bucket_Concurrent<k>::size() const
 }
 
 
-template <uint16_t k>
-std::size_t Unitig_Coord_Bucket_Concurrent<k>::label_len() const
+template <uint16_t k, bool Colored_>
+std::size_t Unitig_Coord_Bucket_Concurrent<k, Colored_>::label_len() const
 {
     auto len = flushed_len;
     std::for_each(worker_buf.cbegin(), worker_buf.cend(), [&](const auto& w_buf){ len += w_buf.unwrap().label_buf.size(); });
@@ -96,8 +96,8 @@ std::size_t Unitig_Coord_Bucket_Concurrent<k>::label_len() const
 }
 
 
-template <uint16_t k>
-std::size_t Unitig_Coord_Bucket_Concurrent<k>::load_coords(Unitig_Coord<k>* const buf) const
+template <uint16_t k, bool Colored_>
+std::size_t Unitig_Coord_Bucket_Concurrent<k, Colored_>::load_coords(Unitig_Coord<k>* const buf) const
 {
     const auto file_sz = load_file(coord_bucket_path(), reinterpret_cast<char*>(buf));
     assert(file_sz == flushed * sizeof(Unitig_Coord<k>));
@@ -126,8 +126,8 @@ std::size_t Unitig_Coord_Bucket_Concurrent<k>::load_coords(Unitig_Coord<k>* cons
 }
 
 
-template <uint16_t k>
-std::size_t Unitig_Coord_Bucket_Concurrent<k>::load_labels(char* const buf) const
+template <uint16_t k, bool Colored_>
+std::size_t Unitig_Coord_Bucket_Concurrent<k, Colored_>::load_labels(char* const buf) const
 {
     auto len = load_file(label_bucket_path(), buf); // Length of the label data (i.e. dump-string of the bucket).
     assert(len == flushed_len);
@@ -146,8 +146,8 @@ std::size_t Unitig_Coord_Bucket_Concurrent<k>::load_labels(char* const buf) cons
 }
 
 
-template <uint16_t k>
-void Unitig_Coord_Bucket_Concurrent<k>::remove()
+template <uint16_t k, bool Colored_>
+void Unitig_Coord_Bucket_Concurrent<k, Colored_>::remove()
 {
     coord_os.close();
     label_os.close();
@@ -167,4 +167,4 @@ void Unitig_Coord_Bucket_Concurrent<k>::remove()
 
 // Template-instantiations for the required instances.
 ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Unitig_Coord_Bucket)
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Unitig_Coord_Bucket_Concurrent)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Unitig_Coord_Bucket_Concurrent)

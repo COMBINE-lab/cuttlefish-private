@@ -19,7 +19,7 @@
 namespace cuttlefish
 {
 
-template <uint16_t k> class Unitig_Coord_Bucket_Concurrent;
+template <uint16_t k, bool Colored_> class Unitig_Coord_Bucket_Concurrent;
 
 
 // =============================================================================
@@ -30,7 +30,8 @@ class Unitig_Coord
 {
     typedef uint32_t label_idx_t;
 
-    friend class Unitig_Coord_Bucket_Concurrent<k>;
+    friend class Unitig_Coord_Bucket_Concurrent<k, false>;
+    friend class Unitig_Coord_Bucket_Concurrent<k, true>;
 
 private:
 
@@ -140,7 +141,7 @@ inline void Unitig_Coord_Bucket<k>::add(const Path_Info<k>& path_info, const cha
 // containing maximal unitig's unique ID, its rank in the maximal unitig in a
 // fixed traversal of the path, its orientation in that traversal, and
 // additionally its literal label. Supports concurrent additions.
-template <uint16_t k>
+template <uint16_t k, bool Colored_>
 class Unitig_Coord_Bucket_Concurrent
 {
     typedef max_unitig_id_t<k> path_id_t;   // Type of a maximal unitig path's ID.
@@ -211,8 +212,8 @@ public:
 };
 
 
-template <uint16_t k>
-inline void Unitig_Coord_Bucket_Concurrent<k>::add(const Path_Info<k>& path_info, const char* const __restrict__ label, const uni_len_t len)
+template <uint16_t k, bool Colored_>
+inline void Unitig_Coord_Bucket_Concurrent<k, Colored_>::add(const Path_Info<k>& path_info, const char* const __restrict__ label, const uni_len_t len)
 {
     constexpr auto max_coord_buf_elems = buf_sz_th / sizeof(Unitig_Coord<k>);
     constexpr auto max_label_buf_elems = buf_sz_th;
