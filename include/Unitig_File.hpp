@@ -6,8 +6,6 @@
 
 #include "Virtual_File.hpp"
 #include "Maximal_Unitig_Scratch.hpp"
-#include "Color_Coordinate.hpp"
-#include "Ext_Mem_Bucket.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 
@@ -130,62 +128,8 @@ public:
 };
 
 
-// Mapping between a vertex (in a given unitig bucket) and its color.
-class Vertex_Color_Mapping
-{
-private:
-
-    uint32_t idx_;  // Index of the vertex's containing unitig in its bucket.
-    uint16_t off_;  // Offset of the vertex in the unitig label.
-    Color_Coordinate c_;    // Coordinate of the vertex's color in the color-repository.
-
-public:
-
-    // For some given unitig bucket, constructs a vertex-color mapping between
-    // the vertex at offset `off` in the unitig at index `idx` in the bucket
-    // and the color-coordinate `c`.
-    Vertex_Color_Mapping(const uint32_t idx, const uint16_t off, const Color_Coordinate& c):
-        idx_(idx), off_(off), c_(c)
-    {}
-
-    // Returns the index of the vertex's containing unitig in its bucket.
-    auto idx() const { return idx_; }
-
-    // Returns the offset of the vertex in the unitig label.
-    auto off() const { return off_; }
-
-    // Returns the coordinate of the vertex's color in the color-repository.
-    const auto& c() const { return c_; }
-};
-
-
-// =============================================================================
-// External-memory bucket for color information of unitigs. This bucket should
-// accompany an actual unitig bucket.
-class Unitig_Color_Bucket
-{
-private:
-
-    const std::string path; // Path to the file with the color-content.
-    Ext_Mem_Bucket<Vertex_Color_Mapping> B; // Color bucket in external-memory.
-
-public:
-
-    // Constructs a color-bucket at file-path `path`.
-    Unitig_Color_Bucket(const std::string& path):
-          path(path)
-        , B(path)
-    {}
-
-    // Adds the color-coordinate `c` for the accompanying bucket's `idx`'th
-    // unitig, at its offset `off`.
-    void add(uint32_t idx, uint16_t off, const Color_Coordinate& c) { B.emplace(idx, off, c); }
-};
-
-
 // =============================================================================
 // Distributor of unitig-write operations over multiple write-managers.
-template <bool Colored_>
 class Unitig_Write_Distributor
 {
 private:
@@ -198,13 +142,13 @@ private:
 
     std::vector<Padded<Unitig_File_Writer>> mtig_writer;    // Collection of write-managers for trivially maximal unitigs.
 
-    std::vector<Padded<Unitig_Color_Bucket>> color_bucket;  // Collection of color buckets of the unitigs.
-
 public:
 
     // Constructs a unitig-writer distributor to `writer_count` write-managers
-    // for `worker_count` workers. The files are at the path-prefix `path_pref`.
-    Unitig_Write_Distributor(const std::string& path_pref, std::size_t writer_count, std::size_t worker_count);
+    // for `worker_count` workers. The files are at path-prefix `path_pref`.
+    // `trivial_mtigs` denotes whether trivially maximal unitigs are to be
+    // written or not.
+    Unitig_Write_Distributor(const std::string& path_pref, std::size_t writer_count, std::size_t worker_count, bool trivial_mtigs);
 
     // Adds the unitig content in the scratch `maximal_unitig` to the writer
     // for the `w_id`'th worker. Returns the pair `(b, idx)` such that `b` is
@@ -222,9 +166,8 @@ public:
     // `idx`.
     template <uint16_t k> std::pair<std::size_t, std::size_t> add_trivial_mtig(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig);
 
-    // Adds the color-coordinate `c` to the `b`'th unitig bucket, where the
-    // `b_idx`'th unitig has the corresponding color at offset `off`.
-    void add_color(uint16_t b, uint32_t b_idx, uint16_t off, const Color_Coordinate& c);
+    // Returns the total number of buckets used for writing.
+    auto bucket_count() const { return  writer.size() + mtig_writer.size(); }
 
     // Closes the unitig-writer streams.
     void close();
@@ -342,9 +285,8 @@ inline std::size_t Unitig_File_Reader::read_next_unitig(Buffer<char>& unitig)
 }
 
 
-template <bool Colored_>
 template <uint16_t k>
-inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor<Colored_>::add(const std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
+inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor::add(const std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
 {
     auto& next = next_writer[w_id].unwrap();
     const auto writer_id = w_id * writer_per_worker + next + 1; // +1 as edge-partition 0 conceptually contains edges without any associated lm-tig (i.e. with weight > 1)
@@ -367,9 +309,8 @@ inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor<Colored_>::a
 }
 
 
-template <bool Colored_>
 template <uint16_t k>
-inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor<Colored_>::add(std::size_t w_id, const Kmer<k>& kmer)
+inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor::add(std::size_t w_id, const Kmer<k>& kmer)
 {
     auto& next = next_writer[w_id].unwrap();
     const auto writer_id = w_id * writer_per_worker + next + 1; // +1 as edge-partition 0 conceptually contains edges without any associated lm-tig (i.e. with weight > 1)
@@ -392,9 +333,8 @@ inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor<Colored_>::a
 }
 
 
-template <bool Colored_>
 template <uint16_t k>
-inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor<Colored_>::add_trivial_mtig(const std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
+inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor::add_trivial_mtig(const std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
 {
     assert(w_id < mtig_writer.size());
     const auto& u_f = maximal_unitig.unitig_label(side_t::front);
@@ -404,14 +344,6 @@ inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor<Colored_>::a
     w.add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
 
     return {writer.size() + w_id, idx};
-}
-
-
-template <bool Colored_>
-inline void Unitig_Write_Distributor<Colored_>::add_color(const uint16_t b, const uint32_t b_idx, const uint16_t off, const Color_Coordinate& c)
-{
-    assert(b < color_bucket.size());
-    color_bucket[b].unwrap().add(b_idx, off, c);
 }
 
 }

@@ -8,11 +8,14 @@
 #include "Edge_Matrix.hpp"
 #include "Unitig_File.hpp"
 #include "Maximal_Unitig_Scratch.hpp"
+#include "Ext_Mem_Bucket.hpp"
 #include "Color_Coordinate.hpp"
 #include "parlay/parallel.h"
+#include "utility.hpp"
 
 #include <cstdint>
 #include <cstddef>
+#include <vector>
 #include <utility>
 #include <atomic>
 
@@ -22,6 +25,9 @@ class Data_Logistics;
 
 namespace cuttlefish
 {
+
+class Vertex_Color_Mapping;
+
 
 // =============================================================================
 // A representation of a discontinuity graph of `k`-mers. `Colored_` denotes
@@ -40,10 +46,12 @@ private:
 
     Edge_Matrix<k> E_;  // Edge-matrix of the discontinuity graph.
 
-    Unitig_Write_Distributor<Colored_> lmtigs;  // Distribution-manager for the writes of locally maximal unitigs' labels.
+    Unitig_Write_Distributor lmtigs;    // Distribution-manager for the writes of locally maximal unitigs' labels.
 
     // TODO: check logs to see if this is a bottleneck.
     std::atomic_uint64_t phantom_edge_count_;   // Number of potential phantom edges identified.
+
+    std::vector<Padded<Ext_Mem_Bucket<Vertex_Color_Mapping>>> vertex_col_map;   // Buckets of vertex-color mappings.
 
 
 public:
@@ -104,6 +112,35 @@ public:
 };
 
 
+// Mapping between a vertex (in a given unitig bucket) and its color.
+class Vertex_Color_Mapping
+{
+private:
+
+    uint32_t idx_;  // Index of the vertex's containing unitig in its bucket.
+    uint16_t off_;  // Offset of the vertex in the unitig label.
+    Color_Coordinate c_;    // Coordinate of the vertex's color in the color-repository.
+
+public:
+
+    // For some given unitig bucket, constructs a vertex-color mapping between
+    // the vertex at offset `off` in the unitig at index `idx` in the bucket
+    // and the color-coordinate `c`.
+    Vertex_Color_Mapping(const uint32_t idx, const uint16_t off, const Color_Coordinate& c):
+        idx_(idx), off_(off), c_(c)
+    {}
+
+    // Returns the index of the vertex's containing unitig in its bucket.
+    auto idx() const { return idx_; }
+
+    // Returns the offset of the vertex in the unitig label.
+    auto off() const { return off_; }
+
+    // Returns the coordinate of the vertex's color in the color-repository.
+    const auto& c() const { return c_; }
+};
+
+
 template <uint16_t k, bool Colored_> const Kmer<k> Discontinuity_Graph<k, Colored_>::phi_(phi_label);
 
 
@@ -145,7 +182,7 @@ inline std::pair<std::size_t, std::size_t> Discontinuity_Graph<k, Colored_>::add
 template <uint16_t k, bool Colored_>
 inline void Discontinuity_Graph<k, Colored_>::add_color(const uint16_t b, const uint32_t b_idx, const uint16_t off, const Color_Coordinate& c)
 {
-    lmtigs.add_color(b, b_idx, off, c);
+    vertex_col_map[b].unwrap().emplace(b_idx, off, c);
 }
 
 }

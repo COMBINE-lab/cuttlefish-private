@@ -1,6 +1,5 @@
 
 #include "Unitig_File.hpp"
-#include "utility.hpp"
 
 #include <cstdlib>
 
@@ -55,8 +54,7 @@ void Unitig_File_Reader::remove_files()
 }
 
 
-template <bool Colored_>
-Unitig_Write_Distributor<Colored_>::Unitig_Write_Distributor(const std::string& path_pref, const std::size_t writer_count, const std::size_t worker_count):
+Unitig_Write_Distributor::Unitig_Write_Distributor(const std::string& path_pref, const std::size_t writer_count, const std::size_t worker_count, const bool trivial_mtigs):
       writer_count(writer_count)
     , worker_count(worker_count)
     , writer_per_worker(writer_count / worker_count)
@@ -69,35 +67,23 @@ Unitig_Write_Distributor<Colored_>::Unitig_Write_Distributor(const std::string& 
     for(std::size_t b = 1; b <= writer_count; ++b)
         writer.emplace_back(path_pref + "_" + std::to_string(b));
 
-    if constexpr(Colored_)
+    if(trivial_mtigs)
     {
         mtig_writer.reserve(worker_count);
         for(std::size_t w = 0; w < worker_count; ++w)
             mtig_writer.emplace_back(path_pref + "_" + std::to_string(writer.size() + w));
-
-        color_bucket.reserve(writer.size() + mtig_writer.size());
-        color_bucket.emplace_back(std::string());
-        for(std::size_t b = 1; b < writer.size() + mtig_writer.size(); ++b)
-            color_bucket.emplace_back(path_pref + "_" + std::to_string(b) + ".col");
     }
 }
 
 
-template <bool Colored_>
-void Unitig_Write_Distributor<Colored_>::close()
+void Unitig_Write_Distributor::close()
 {
     for(auto& w : writer)
         w.unwrap().close();
 
-    if constexpr(Colored_)
+    if(!mtig_writer.empty())
         for(auto& w : mtig_writer)
             w.unwrap().close();
 }
 
 }
-
-
-
-// Template instantiations for the required instances.
-template class cuttlefish::Unitig_Write_Distributor<false>;
-template class cuttlefish::Unitig_Write_Distributor<true>;

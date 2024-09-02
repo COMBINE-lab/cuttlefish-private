@@ -12,9 +12,18 @@ namespace cuttlefish
 template <uint16_t k, bool Colored_>
 Discontinuity_Graph<k, Colored_>::Discontinuity_Graph(const std::size_t part_count, const std::size_t lmtig_bucket_count, const Data_Logistics& logistics):
       E_(part_count, logistics.edge_matrix_path())
-    , lmtigs(logistics.lmtig_buckets_path(), lmtig_bucket_count, parlay::num_workers())
+    , lmtigs(logistics.lmtig_buckets_path(), lmtig_bucket_count, parlay::num_workers(), Colored_)
     , phantom_edge_count_(0)
-{}
+{
+    if constexpr(Colored_)
+    {
+        vertex_col_map.reserve(lmtigs.bucket_count());
+        vertex_col_map.emplace_back(std::string());
+        for(std::size_t b = 1; b < lmtigs.bucket_count(); ++b)
+            vertex_col_map.emplace_back(logistics.lmtig_buckets_path() + "_" + std::to_string(b) + ".col");
+
+    }
+}
 
 
 template <uint16_t k, bool Colored_>
