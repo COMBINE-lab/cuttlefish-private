@@ -95,14 +95,13 @@ namespace cuttlefish
 
     // Type of the ID of a maximal unitig.
     template <uint16_t k> using max_unitig_id_t = Kmer<k>;
+    template <uint16_t k> using path_id_t = max_unitig_id_t<k>;
 
-    // TODO: use `u16` and add assertion checks for limits in places.
     // Type of the index of a unitig in a bucket.
     typedef uint32_t uni_idx_t;
 
-    // TODO: use `u16` after testing done with `u32`.
-    // typedef uint16_t uni_len_t; // Type of the length of a lm-tig in a bucket.
-    typedef uint32_t uni_len_t; // Type of the length of a lm-tig in a bucket.
+    // Type of the length of a lm-tig in a bucket.
+    typedef uint16_t uni_len_t;
 
     // Type of source-ID, i.e. color-units.
     typedef uint32_t source_id_t;

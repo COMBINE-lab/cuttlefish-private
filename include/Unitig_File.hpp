@@ -81,11 +81,6 @@ public:
 // Unitig-file reader manager.
 class Unitig_File_Reader
 {
-    typedef uint32_t uni_idx_t; // Type of the index of a unitig in a bucket.
-    // TODO: use `u16` after testing done with `u32`.
-    // typedef uint16_t uni_len_t; // Type of the length of a unitig in a bucket.
-    typedef uint32_t uni_len_t; // Type of the length of a unitig in a bucket.
-
 private:
 
     static constexpr std::streamsize in_memory_bytes = 16lu * 1024; // 16 KB.

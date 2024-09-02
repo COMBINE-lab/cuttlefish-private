@@ -82,8 +82,6 @@ public:
 template <uint16_t k>
 class Unitig_Coord_Bucket
 {
-    typedef max_unitig_id_t<k> path_id_t;   // Type of a maximal unitig path's ID.
-
 private:
 
     const std::string path_pref;    // Path-prefix to the file(s) storing the bucket.
@@ -95,7 +93,6 @@ private:
     std::size_t size_;  // Number of unitigs stored in the bucket.
 
     std::size_t label_len_; // Total length of the labels of the stored unitigs.
-
 
 public:
 
@@ -144,8 +141,6 @@ inline void Unitig_Coord_Bucket<k>::add(const Path_Info<k>& path_info, const cha
 template <uint16_t k, bool Colored_>
 class Unitig_Coord_Bucket_Concurrent
 {
-    typedef max_unitig_id_t<k> path_id_t;   // Type of a maximal unitig path's ID.
-
 private:
 
     const std::string path_pref;    // Path-prefix to the file(s) storing the bucket.
