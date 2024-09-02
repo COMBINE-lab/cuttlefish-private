@@ -9,6 +9,7 @@
 #include "Unitig_Coord_Bucket.hpp"
 #include "DNA_Utility.hpp"
 #include "Directed_Vertex.hpp"
+#include "Discontinuity_Graph.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 
@@ -34,6 +35,8 @@ template <uint16_t k, bool Colored_>
 class Unitig_Collator
 {
 private:
+
+    Discontinuity_Graph<k, Colored_>& G;    // The discontinuity-graph.
 
     typedef typename dBG_Contractor<k>::unitig_path_info_t unitig_path_info_t;
 
@@ -79,8 +82,9 @@ public:
     // corresponding edges at bucket `b`. `logistics` is the data logistics
     // manager for the algorithm execution. Worker-specific maximal unitigs are
     // written to the buffers in `op_buf`. `gmtig_bucket_count` many buckets
-    // are used to partition the lm-tigs to their maximal unitigs.
-    Unitig_Collator(P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf, std::size_t gmtig_bucket_count);
+    // are used to partition the lm-tigs to their maximal unitigs. `G` is the
+    // associated discontinuity graph.
+    Unitig_Collator(Discontinuity_Graph<k, Colored_>& G, P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf, std::size_t gmtig_bucket_count);
 
     // Collates the locally-maximal unitigs into global ones.
     void collate();

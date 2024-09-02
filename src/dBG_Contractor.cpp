@@ -94,7 +94,7 @@ void dBG_Contractor<k>::construct()
     const auto t_e = timer::now();
     std::cerr << "Expansion of contracted graph completed. Time taken: " << timer::duration(t_e - t_c) << " seconds.\n";
 
-    Unitig_Collator<k, Colored_> collator(P_e, logistics, op_buf, params.gmtig_bucket_count());
+    Unitig_Collator<k, Colored_> collator(G, P_e, logistics, op_buf, params.gmtig_bucket_count());
     EXECUTE("collate", collator.collate);
 
     // Flush data and close the output sink.

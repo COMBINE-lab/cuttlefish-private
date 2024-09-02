@@ -24,8 +24,9 @@ namespace cuttlefish
 {
 
 template <uint16_t k, bool Colored_>
-Unitig_Collator<k, Colored_>::Unitig_Collator(P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf, const std::size_t gmtig_bucket_count):
-      P_e(P_e)
+Unitig_Collator<k, Colored_>::Unitig_Collator(Discontinuity_Graph<k, Colored_>& G, P_e_t& P_e, const Data_Logistics& logistics, op_buf_list_t& op_buf, const std::size_t gmtig_bucket_count):
+      G(G)
+    , P_e(P_e)
     , lmtig_buckets_path(logistics.lmtig_buckets_path())
     , unitig_coord_buckets_path(logistics.unitig_coord_buckets_path())
     , max_unitig_bucket_count(gmtig_bucket_count)
