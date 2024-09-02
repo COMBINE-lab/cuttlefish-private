@@ -51,7 +51,7 @@ private:
     // TODO: check logs to see if this is a bottleneck.
     std::atomic_uint64_t phantom_edge_count_;   // Number of potential phantom edges identified.
 
-    std::vector<Padded<Ext_Mem_Bucket<Vertex_Color_Mapping>>> vertex_col_map;   // Buckets of vertex-color mappings.
+    std::vector<Padded<Ext_Mem_Bucket<Vertex_Color_Mapping>>> vertex_color_map_;    // Buckets of vertex-color mappings.
 
 
 public:
@@ -99,6 +99,9 @@ public:
     // Adds the color-coordinate `c` to the `b`'th unitig bucket, where the
     // `b_idx`'th unitig has the corresponding color at offset `off`.
     void add_color(uint16_t b, uint32_t b_idx, uint16_t off, const Color_Coordinate& c);
+
+    // Returns the `b`'th vertex-color mapping bucket.
+    auto& vertex_color_map(const std::size_t b) { assert(b < vertex_color_map_.size()); return vertex_color_map_[b].unwrap(); }
 
     // Increments the potential phantom edge count.
     void inc_potential_phantom_edge() { phantom_edge_count_++; }
@@ -182,7 +185,7 @@ inline std::pair<std::size_t, std::size_t> Discontinuity_Graph<k, Colored_>::add
 template <uint16_t k, bool Colored_>
 inline void Discontinuity_Graph<k, Colored_>::add_color(const uint16_t b, const uint32_t b_idx, const uint16_t off, const Color_Coordinate& c)
 {
-    vertex_col_map[b].unwrap().emplace(b_idx, off, c);
+    vertex_color_map_[b].unwrap().emplace(b_idx, off, c);
 }
 
 }

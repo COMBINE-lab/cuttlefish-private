@@ -17,10 +17,10 @@ Discontinuity_Graph<k, Colored_>::Discontinuity_Graph(const std::size_t part_cou
 {
     if constexpr(Colored_)
     {
-        vertex_col_map.reserve(lmtigs.bucket_count());
-        vertex_col_map.emplace_back(std::string());
+        vertex_color_map_.reserve(lmtigs.bucket_count());
+        vertex_color_map_.emplace_back(std::string());
         for(std::size_t b = 1; b < lmtigs.bucket_count(); ++b)
-            vertex_col_map.emplace_back(logistics.lmtig_buckets_path() + "_" + std::to_string(b) + ".col");
+            vertex_color_map_.emplace_back(logistics.lmtig_buckets_path() + "_" + std::to_string(b) + ".col");
 
     }
 }

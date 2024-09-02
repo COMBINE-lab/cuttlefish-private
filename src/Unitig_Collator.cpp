@@ -136,7 +136,10 @@ void Unitig_Collator<k, Colored_>::map()
         }
 
         assert(idx == b_sz);
+
         unitig_reader.remove_files();
+        if constexpr(Colored_)
+            G.vertex_color_map(b).remove();
     };
 
     parlay::parallel_for(1, P_e.size(), map_to_max_unitig_bucket, 1);
@@ -290,6 +293,7 @@ void Unitig_Collator<k, Colored_>::emit_trivial_mtigs()
             output += FASTA_Record(0, std::string_view(unitig.data(), uni_len));
 
         unitig_reader.remove_files();
+        G.vertex_color_map(P_e.size() + w).remove();
     }, 1);
 }
 
