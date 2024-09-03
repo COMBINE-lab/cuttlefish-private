@@ -137,9 +137,11 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract()
                 auto& m_y = *M.find(e.y());
 
                 if(m_x.v() == e.y())    // `e.x()` has a false-phantom edge.
+                    phantom_count_++,
                     G.add_edge(e.x(), inv_side(e.s_x())),
                     m_x = Other_End(Discontinuity_Graph<k, Colored_>::phi(), side_t::back, inv_side(e.s_x()), true, 1, false);
                 if(m_y.v() == e.x())    // `e.y()` has a false-phantom edge.
+                    phantom_count_++,
                     G.add_edge(e.y(), inv_side(e.s_y())),
                     m_y = Other_End(Discontinuity_Graph<k, Colored_>::phi(), side_t::back, inv_side(e.s_y()), true, 1, false);
 
