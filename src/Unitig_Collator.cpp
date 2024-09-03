@@ -167,7 +167,7 @@ void Unitig_Collator<k, Colored_>::reduce()
     std::cerr << "Maximum maximal unitig label length: " << max_max_uni_b_label_len << "\n";
 
 
-    typedef Buffer<Unitig_Coord<k>> coord_buf_t;
+    typedef Buffer<Unitig_Coord<k, Colored_>> coord_buf_t;
     typedef Buffer<char> label_buf_t;
     std::vector<Padded<coord_buf_t>> U_vec(parlay::num_workers()); // Worker-local buffers for unitig coordinate information.
     std::vector<Padded<label_buf_t>> L_vec(parlay::num_workers()); // Worker-local buffers for dump-strings in buckets.

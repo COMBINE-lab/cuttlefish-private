@@ -14,6 +14,9 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <fstream>
+#include <algorithm>
+#include <cassert>
 
 
 namespace cuttlefish
@@ -24,10 +27,18 @@ template <uint16_t k, bool Colored_> class Unitig_Coord_Bucket_Concurrent;
 
 // =============================================================================
 // Coordinate information of a unitig, both in the de Bruijn graph and in the
-// dump-string in a bucket.
-template <uint16_t k>
+// dump-string of the associated bucket, and also in the concatenated color-
+// packs in the bucket in the colored-case.
+template <uint16_t k, bool Colored_>
 class Unitig_Coord
+{};
+
+
+template <uint16_t k>
+class Unitig_Coord<k, false>
 {
+protected:
+
     typedef uint32_t label_idx_t;
 
     friend class Unitig_Coord_Bucket_Concurrent<k, false>;
@@ -35,14 +46,14 @@ class Unitig_Coord
 
 private:
 
+    // TODO: inherit this instead of having as a member. C/C++ cannot back into this inner class' trailing padding.
     Path_Info<k> path_info; // Coordinate of the unitig in the de Bruijn graph.
-    label_idx_t label_idx_; // Index of the label of the unitig into the dump-string of the bucket.
+    label_idx_t label_idx_; // Index of the label of the unitig into the dump-string of the associated bucket.
     uni_len_t label_len_;   // Length of the label of the unitig.
-
 
 public:
 
-    Unitig_Coord(const Path_Info<k>& path_info, const uint32_t label_idx, const uni_len_t label_len):
+    Unitig_Coord(const Path_Info<k>& path_info, const label_idx_t label_idx, const uni_len_t label_len):
           path_info(path_info)
         , label_idx_(label_idx)
         , label_len_(label_len)
@@ -74,6 +85,36 @@ public:
 };
 
 
+template <uint16_t k>
+class Unitig_Coord<k, true>: public Unitig_Coord<k, false>
+{
+    typedef typename Unitig_Coord<k, false>::label_idx_t label_idx_t;
+    typedef uint32_t color_pack_idx_t;
+
+    friend class Unitig_Coord_Bucket_Concurrent<k, true>;
+
+private:
+
+    uni_len_t color_pack_c_;    // Count of color-offset and -coordinate packs of the unitig.
+    color_pack_idx_t color_pack_idx_;   // Index of the color pack collection of the unitig into the associated bucket.
+
+public:
+
+    Unitig_Coord(const Path_Info<k>& path_info, const label_idx_t label_idx, const uni_len_t label_len, const color_pack_idx_t color_pack_idx, const uni_len_t color_pack_c):
+          Unitig_Coord<k, false>(path_info, label_idx, label_len)
+        , color_pack_c_(color_pack_c)
+        , color_pack_idx_(color_pack_idx)
+    {}
+
+    // Returns the index of the color pack collection of the unitig into the
+    // associated bucket.
+    auto color_pack_idx() const { return color_pack_idx_; }
+
+    // Returns the count of color-offset and -coordinate packs of the unitig.
+    auto color_pack_c() const { return color_pack_c_; }
+};
+
+
 // =============================================================================
 // A bucket storing full coordinates for unitigs: for a specific unitig, it's
 // containing maximal unitig's unique ID, its rank in the maximal unitig in a
@@ -87,7 +128,7 @@ private:
     const std::string path_pref;    // Path-prefix to the file(s) storing the bucket.
 
     // TODO: use concurrent buckets.
-    Ext_Mem_Bucket<Unitig_Coord<k>> coord_bucket;   // External-memory bucket of the unitig-coordinates.
+    Ext_Mem_Bucket<Unitig_Coord<k, false>> coord_bucket;    // External-memory bucket of the unitig-coordinates.
     Ext_Mem_Bucket<char> label_bucket;  // External-memory bucket of the unitig-labels.
 
     std::size_t size_;  // Number of unitigs stored in the bucket.
@@ -111,7 +152,7 @@ public:
 
     // Loads all the unitig-coordinates in the bucket to `buf`, and returns this
     // size.
-    std::size_t load_coords(Unitig_Coord<k>* buf) const;
+    std::size_t load_coords(Unitig_Coord<k, false>* buf) const;
 
     // Loads the concatenated label string of the entire bucket into `buf`, and
     // returns its length.
@@ -147,11 +188,13 @@ private:
 
     std::size_t flushed;    // Number of unitig-coordinates flushed to external-memory.
     std::size_t flushed_len;    // Total length of the labels flushed to external-memory.
+    std::size_t flushed_pack_c; // Total count of color-packs flushed to external-memory.
 
     typedef struct
     {
-        std::vector<Unitig_Coord<k>> coord_buf; // Unitig-coordinate buffer.
+        std::vector<Unitig_Coord<k, Colored_>> coord_buf;   // Unitig-coordinate buffer.
         std::string label_buf;  // Unitig-label buffer.
+        std::vector<uint64_t> color_pack_buf;   // Color-offset's and -coordinate's packing buffer.
     } worker_buf_t;
 
     std::vector<Padded<worker_buf_t>> worker_buf;   // Buffers for unitig-coordinates and -labels from workers.
@@ -159,6 +202,7 @@ private:
 
     std::ofstream coord_os; // External-memory output stream of the unitig-coordinates.
     std::ofstream label_os; // External-memory output stream of the unitig-labels.
+    std::ofstream color_pack_os;    // External-memory output stream of the color packings.
 
     Spin_Lock lock; // Lock to data structures shared across workers.
 
@@ -169,6 +213,8 @@ private:
     // Returns path to the external-memory bucket of the unitig-labels.
     const std::string label_bucket_path() const { return path_pref + ".label"; }
 
+    // Returns path to the external-memory bucket of the unitig color-packings.
+    const std::string color_pack_bucket_path() const { return path_pref + ".color-pack"; }
 
 public:
 
@@ -192,11 +238,18 @@ public:
 
     // Adds a unitig to the bucket with its path-information in the de Bruijn
     // graph `path_info`, label `label`, and length `len`.
+    template <bool C_ = Colored_, std::enable_if_t<!C_, int> = 0>
     void add(const Path_Info<k>& path_info, const char* label, uni_len_t len);
+
+    // Adds a unitig to the bucket with its path-information in the de Bruijn
+    // graph `path_info`, label `label`, length `len`, and packings of color-
+    // offset and -coordinate `color_pack`.
+    template <bool C_ = Colored_, std::enable_if_t<C_, int> = 0>
+    void add(const Path_Info<k>& path_info, const char* label, uni_len_t len, const std::vector<uint64_t>& color_pack);
 
     // Loads all the unitig-coordinates in the bucket to `buf`, and returns this
     // size.
-    std::size_t load_coords(Unitig_Coord<k>* buf) const;
+    std::size_t load_coords(Unitig_Coord<k, Colored_>* buf) const;
 
     // Loads the concatenated label string of the entire bucket into `buf`, and
     // returns its length.
@@ -208,9 +261,10 @@ public:
 
 
 template <uint16_t k, bool Colored_>
+template <bool C_, std::enable_if_t<!C_, int>>
 inline void Unitig_Coord_Bucket_Concurrent<k, Colored_>::add(const Path_Info<k>& path_info, const char* const __restrict__ label, const uni_len_t len)
 {
-    constexpr auto max_coord_buf_elems = buf_sz_th / sizeof(Unitig_Coord<k>);
+    constexpr auto max_coord_buf_elems = buf_sz_th / sizeof(Unitig_Coord<k, false>);
     constexpr auto max_label_buf_elems = buf_sz_th;
 
     auto& w_buf = worker_buf[parlay::worker_id()].unwrap();
@@ -228,7 +282,7 @@ inline void Unitig_Coord_Bucket_Concurrent<k, Colored_>::add(const Path_Info<k>&
 
         // Offset-correction for the in-memory coordinates.
         std::for_each(coord_buf.begin(), coord_buf.end(), [&](auto& v){ v.label_idx_ += flushed_len; });
-        coord_os.write(reinterpret_cast<const char*>(coord_buf.data()), coord_buf.size() * sizeof(Unitig_Coord<k>));
+        coord_os.write(reinterpret_cast<const char*>(coord_buf.data()), coord_buf.size() * sizeof(Unitig_Coord<k, false>));
 
         flushed += coord_buf.size();
         flushed_len += label_buf.size();
@@ -237,6 +291,52 @@ inline void Unitig_Coord_Bucket_Concurrent<k, Colored_>::add(const Path_Info<k>&
 
         coord_buf.clear();
         label_buf.clear();
+    }
+}
+
+
+template <uint16_t k, bool Colored_>
+template <bool C_, std::enable_if_t<C_, int>>
+inline void Unitig_Coord_Bucket_Concurrent<k, Colored_>::add(const Path_Info<k>& path_info, const char* const __restrict__ label, const uni_len_t len, const std::vector<uint64_t>& color_pack)
+{
+    constexpr auto max_coord_buf_elems = buf_sz_th / sizeof(Unitig_Coord<k, Colored_>);
+    constexpr auto max_label_buf_elems = buf_sz_th;
+    constexpr auto max_color_pack_buf_elems = buf_sz_th / sizeof(uint64_t);
+
+    auto& w_buf = worker_buf[parlay::worker_id()].unwrap();
+    auto& coord_buf = w_buf.coord_buf;
+    auto& label_buf = w_buf.label_buf;
+    auto& color_pack_buf = w_buf.color_pack_buf;
+
+    coord_buf.emplace_back(path_info, label_buf.size(), len, color_pack_buf.size(), color_pack.size());
+    label_buf.append(label, label + len);
+    color_pack_buf.insert(color_pack_buf.end(), color_pack.cbegin(), color_pack.cend());
+
+    if(coord_buf.size() >= max_coord_buf_elems && label_buf.size() >= max_label_buf_elems && color_pack_buf.size() >= max_color_pack_buf_elems)
+    {
+        lock.lock();
+
+        label_os.write(label_buf.data(), label_buf.size());
+        color_pack_os.write(reinterpret_cast<const char*>(color_pack_buf.data()), color_pack_buf.size() * sizeof(uint64_t));
+
+        // Offset-correction for the in-memory coordinates.
+        std::for_each(coord_buf.begin(), coord_buf.end(),
+        [&](auto& v)
+        {
+            v.label_idx_ += flushed_len;
+            v.color_pack_idx_ += flushed_pack_c;
+        });
+        coord_os.write(reinterpret_cast<const char*>(coord_buf.data()), coord_buf.size() * sizeof(Unitig_Coord<k, Colored_>));
+
+        flushed += coord_buf.size();
+        flushed_len += label_buf.size();
+        flushed_pack_c += color_pack_buf.size();
+
+        lock.unlock();
+
+        coord_buf.clear();
+        label_buf.clear();
+        color_pack_buf.clear();
     }
 }
 
