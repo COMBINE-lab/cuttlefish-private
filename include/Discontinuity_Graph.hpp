@@ -120,6 +120,7 @@ class Vertex_Color_Mapping
 {
 private:
 
+    // TODO: consider packing `idx` and `off`?
     uint32_t idx_;  // Index of the vertex's containing unitig in its bucket.
     uint16_t off_;  // Offset of the vertex in the unitig label.
     Color_Coordinate c_;    // Coordinate of the vertex's color in the color-repository.
@@ -141,6 +142,10 @@ public:
 
     // Returns the coordinate of the vertex's color in the color-repository.
     const auto& c() const { return c_; }
+
+    // Returns `true` iff this vertex precedes the associated vertex of `rhs`
+    // in their bucket.
+    bool operator<(const Vertex_Color_Mapping& rhs) const { return idx_ != rhs.idx_ ? (idx_ < rhs.idx_) : (off_ < rhs.off_); }
 };
 
 

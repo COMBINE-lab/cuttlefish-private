@@ -31,6 +31,7 @@ Unitig_Collator<k, Colored_>::Unitig_Collator(Discontinuity_Graph<k, Colored_>& 
     , unitig_coord_buckets_path(logistics.unitig_coord_buckets_path())
     , max_unitig_bucket_count(gmtig_bucket_count)
     , op_buf(op_buf)
+    , phantom_c_(0)
 {
      // TODO: fix better policy?
     if((max_unitig_bucket_count & (max_unitig_bucket_count - 1)) != 0)
@@ -69,6 +70,8 @@ void Unitig_Collator<k, Colored_>::collate()
         std::cerr << "Time taken in trivial-mtigs emission: " << timer::duration(t_3 - t_2) << "s.\n";
     }
 
+    std::cerr << "Found " << phantom_c_ << " phantom unitigs.\n";
+
     // TODO: print meta-information over the maximal unitigs'.
 }
 
@@ -78,9 +81,11 @@ void Unitig_Collator<k, Colored_>::map()
 {
     typedef Buffer<Path_Info<k>> map_t;
     typedef Buffer<unitig_path_info_t> buf_t;
+    typedef Buffer<Vertex_Color_Mapping> v_c_map_t;
 
     std::vector<Padded<map_t>> M_vec(parlay::num_workers());   // Worker-local DATs of edge-index to edge path-info.
     std::vector<Padded<buf_t>> buf_vec(parlay::num_workers()); // Worker-local buffers to read in edge path-info.
+    std::vector<Padded<v_c_map_t>> v_c_map_vec(parlay::num_workers());  // Worker-local buffers to read in vertex-color mappings.
 
     parlay::parallel_for(0, parlay::num_workers(),
         [&](const std::size_t w_id)
@@ -103,10 +108,11 @@ void Unitig_Collator<k, Colored_>::map()
     [&](const std::size_t b)
     {
         const auto w_id = parlay::worker_id();
-        auto const M = M_vec[w_id].unwrap().data();
+        auto& M = M_vec[w_id].unwrap();
         auto& buf = buf_vec[w_id].unwrap();
+        auto& v_c_map = v_c_map_vec[w_id].unwrap();
 
-        const auto b_sz = load_path_info(b, M, buf);
+        const auto b_sz = load_path_info(b, M.data(), buf);
         edge_c += b_sz;
         P_e[b].unwrap().remove();
 
@@ -118,6 +124,12 @@ void Unitig_Collator<k, Colored_>::map()
         h_p_e ^= h;
 #endif
 
+        std::size_t v_c_map_sz = 0;
+        if constexpr(Colored_)
+        {
+            v_c_map_sz = load_vertex_color_mapping(b, v_c_map);
+            std::sort(v_c_map.data(), v_c_map.data() + v_c_map_sz);
+        }
 
         const auto bucket_path = lmtig_buckets_path + "_" + std::to_string(b);
         assert(file_exists(bucket_path));
@@ -125,6 +137,8 @@ void Unitig_Collator<k, Colored_>::map()
         Buffer<char> unitig;    // Read-off unitig.
         uni_idx_t idx = 0;  // The unitig's sequential ID in the bucket.
         std::size_t uni_len;    // The unitig's length in bases.
+        std::size_t color_idx = 0;  // The unitig's associated color-mappings' index into the sorted mappings.
+        std::vector<uint64_t> color_pack;   // Color-offset and -coordinate packings of the unitig.
         for(; (uni_len = unitig_reader.read_next_unitig(unitig)) > 0; idx++)
         {
             assert(idx < b_sz);
@@ -132,10 +146,32 @@ void Unitig_Collator<k, Colored_>::map()
             const auto mapped_b_id = XXH3_64bits(&p, sizeof(p)) & (max_unitig_bucket_count - 1); // Hashed maximal unitig bucket.
             // TODO: use `wyhash`. Result: buckets mapped with wyhash (seed = 0) is unbalanced af. Unreliable.
 
-            max_unitig_bucket[mapped_b_id].unwrap().add(M[idx], unitig.data(), uni_len);
+            if constexpr(!Colored_)
+                max_unitig_bucket[mapped_b_id].unwrap().add(M[idx], unitig.data(), uni_len);
+            else
+            {
+                color_pack.clear();
+                if(CF_UNLIKELY(color_idx == v_c_map_sz))    // Unitigs due to phantom k-mers do not have colors in this bucket.
+                {
+                    assert(uni_len == k);
+                    phantom_c_++;
+                }
+                else
+                {
+                    assert(v_c_map[color_idx].idx() == idx);
+                    for(; color_idx < v_c_map_sz; ++color_idx)
+                        if(v_c_map[color_idx].idx() != idx)
+                            break;
+                        else
+                            color_pack.push_back((v_c_map[color_idx].c().as_u48() << 16) | v_c_map[color_idx].off());
+                }
+
+                max_unitig_bucket[mapped_b_id].unwrap().add(M[idx], unitig.data(), uni_len, color_pack);
+            }
         }
 
         assert(idx == b_sz);
+        assert(color_idx == v_c_map_sz);
 
         unitig_reader.remove_files();
         if constexpr(Colored_)
@@ -275,6 +311,15 @@ std::size_t Unitig_Collator<k, Colored_>::load_path_info(const std::size_t b, Pa
     }
 
     return b_sz;
+}
+
+
+template <uint16_t k, bool Colored_>
+std::size_t Unitig_Collator<k, Colored_>::load_vertex_color_mapping(const std::size_t b, Buffer<Vertex_Color_Mapping>& buf)
+{
+    const auto& B = G.vertex_color_map(b);
+    buf.reserve_uninit(B.size());
+    return B.load(buf.data());
 }
 
 

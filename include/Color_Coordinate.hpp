@@ -24,8 +24,8 @@ private:
 
     static constexpr uint32_t idx_pos = 8;  // Position of the index (in worker-local bucket) of a color-set.
 
-    static constexpr pack_t max_w_id = (pack_t(1) << idx_pos) - 1;
-    static constexpr pack_t max_idx  = (pack_t(1) << (sizeof(pack_t) * 8 - idx_pos)) - 1;
+    static constexpr pack_t w_limit = (pack_t(1) << idx_pos);   // Maximum worker count: 2^8.
+    static constexpr pack_t idx_limit  = (pack_t(1) << (5 * 8));    // Maximum worker-local bucket size: 2^40.
 
     pack_t bit_pack;    // Packed representation of the color-coordinate.
 
@@ -37,10 +37,10 @@ public:
 
     // Constructs an empty coordinate marked as being processed by worker-ID
     // `w`.
-    Color_Coordinate(const pack_t w_id): bit_pack(w_id | in_process) { assert(w_id <= max_w_id); }
+    Color_Coordinate(const pack_t w_id): bit_pack(w_id | in_process) { assert(w_id < w_limit); }
 
     // Constructs the coordinate `(w_id, idx)`.
-    Color_Coordinate(const pack_t w_id, const pack_t idx): bit_pack(w_id | (pack_t(idx) << idx_pos)) { assert(w_id <= max_w_id); assert(idx <= max_idx); }
+    Color_Coordinate(const pack_t w_id, const pack_t idx): bit_pack(w_id | (pack_t(idx) << idx_pos)) { assert(w_id < w_limit); assert(idx < idx_limit); }
 
     // Returns whether the corresponding color is in the process of extraction
     // or not.
@@ -48,6 +48,9 @@ public:
 
     // Returns the worker-ID that marked this coordinate as processing.
     pack_t processing_worker() const { assert(is_in_process()); return bit_pack & (~in_process); }
+
+    // Returns 48-bit packing of the color-coordinate.
+    auto as_u48() const { return bit_pack; }
 };
 
 }

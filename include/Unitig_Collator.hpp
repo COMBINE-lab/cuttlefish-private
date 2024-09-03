@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <atomic>
 #include <cstring>
 #include <string_view>
 #include <vector>
@@ -55,6 +56,8 @@ private:
     typedef typename dBG_Contractor<k>::op_buf_list_t op_buf_list_t;
     op_buf_list_t& op_buf;  // Worker-specific output buffers.
 
+    std::atomic_uint64_t phantom_c_;    // Number of phantom unitigs observed.
+
     class Maximal_Unitig_Label;
 
 
@@ -69,6 +72,10 @@ private:
     // returns the size of the bucket. Uses the buffer `buf` to transfer the
     // information from the bucket to the table.
     std::size_t load_path_info(std::size_t b, Path_Info<k>* M, Buffer<unitig_path_info_t>& buf);
+
+    // Loads the vertex-color mappings from bucket `b` into `buf`, and returns
+    // the size of the bucket.
+    std::size_t load_vertex_color_mapping(std::size_t b, Buffer<Vertex_Color_Mapping>& buf);
 
     // Emits the trivially maximal unitigs to the output stream. Only
     // applicable in the colored case.
