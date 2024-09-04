@@ -138,7 +138,7 @@ void Unitig_Collator<k, Colored_>::map()
         uni_idx_t idx = 0;  // The unitig's sequential ID in the bucket.
         std::size_t uni_len;    // The unitig's length in bases.
         std::size_t color_idx = 0;  // The unitig's associated color-mappings' index into the sorted mappings.
-        std::vector<uint64_t> color_pack;   // Color-offset and -coordinate packings of the unitig.
+        std::vector<Unitig_Color> color;    // Color-encodings of the unitig.
         for(; (uni_len = unitig_reader.read_next_unitig(unitig)) > 0; idx++)
         {
             assert(idx < b_sz);
@@ -150,7 +150,7 @@ void Unitig_Collator<k, Colored_>::map()
                 max_unitig_bucket[mapped_b_id].unwrap().add(M[idx], unitig.data(), uni_len);
             else
             {
-                color_pack.clear();
+                color.clear();
                 if(CF_UNLIKELY(color_idx == v_c_map_sz))    // Unitigs due to phantom k-mers do not have colors in this bucket.
                 {
                     assert(uni_len == k);
@@ -163,10 +163,10 @@ void Unitig_Collator<k, Colored_>::map()
                         if(v_c_map[color_idx].idx() != idx)
                             break;
                         else
-                            color_pack.push_back((v_c_map[color_idx].c().as_u48() << 16) | v_c_map[color_idx].off());
+                            color.emplace_back(v_c_map[color_idx].off(), v_c_map[color_idx].c());
                 }
 
-                max_unitig_bucket[mapped_b_id].unwrap().add(M[idx], unitig.data(), uni_len, color_pack);
+                max_unitig_bucket[mapped_b_id].unwrap().add(M[idx], unitig.data(), uni_len, color);
             }
         }
 

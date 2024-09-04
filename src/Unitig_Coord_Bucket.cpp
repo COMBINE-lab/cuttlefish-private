@@ -4,6 +4,7 @@
 #include "utility.hpp"
 
 #include <cstdlib>
+#include <algorithm>
 
 
 namespace cuttlefish
@@ -52,13 +53,13 @@ Unitig_Coord_Bucket_Concurrent<k, Colored_>::Unitig_Coord_Bucket_Concurrent(cons
       path_pref(path_pref)
     , flushed(0)
     , flushed_len(0)
-    , flushed_pack_c(0)
+    , flushed_color_c(0)
     , worker_buf(parlay::num_workers())
     , coord_os(coord_bucket_path(), std::ios::out | std::ios::binary)
     , label_os(label_bucket_path(), std::ios::out | std::ios::binary)
 {
     if constexpr(Colored_)
-        color_pack_os.open(color_pack_bucket_path(), std::ios::out | std::ios::binary);
+        color_os.open(color_bucket_path(), std::ios::out | std::ios::binary);
 
     std::for_each(worker_buf.begin(), worker_buf.end(),
         [](auto& w_buf)
@@ -66,7 +67,7 @@ Unitig_Coord_Bucket_Concurrent<k, Colored_>::Unitig_Coord_Bucket_Concurrent(cons
             w_buf.unwrap().coord_buf.reserve(buf_sz_th / sizeof(Unitig_Coord<k, Colored_>));
             w_buf.unwrap().label_buf.reserve(buf_sz_th);
             if constexpr(Colored_)
-                w_buf.unwrap().color_pack_buf.reserve(buf_sz_th / sizeof(uint64_t));
+                w_buf.unwrap().color_buf.reserve(buf_sz_th / sizeof(uint64_t));
         });
 }
 
@@ -76,11 +77,11 @@ Unitig_Coord_Bucket_Concurrent<k, Colored_>::Unitig_Coord_Bucket_Concurrent(Unit
       path_pref(std::move(rhs.path_pref))
     , flushed(std::move(rhs.flushed))
     , flushed_len(std::move(rhs.flushed_len))
-    , flushed_pack_c(std::move(rhs.flushed_pack_c))
+    , flushed_color_c(std::move(rhs.flushed_color_c))
     , worker_buf(std::move(rhs.worker_buf))
     , coord_os(std::move(rhs.coord_os))
     , label_os(std::move(rhs.label_os))
-    , color_pack_os(std::move(rhs.color_pack_os))
+    , color_os(std::move(rhs.color_os))
 {}
 
 
@@ -113,7 +114,7 @@ std::size_t Unitig_Coord_Bucket_Concurrent<k, Colored_>::load_coords(Unitig_Coor
 
     auto coords_read = flushed; // Count of coordinates.
     std::size_t label_off_correct = flushed_len;    // Offset-correction factor of label-lengths for the in-memory coordinates.
-    std::size_t pack_off_correct = flushed_pack_c;  // Offset-correction factor of color-packs for the in-memory coordinates.
+    std::size_t color_off_correct = flushed_color_c;    // Offset-correction factor of colors for the in-memory coordinates.
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
     {
         const auto& w_buf = worker_buf[i].unwrap();
@@ -129,12 +130,12 @@ std::size_t Unitig_Coord_Bucket_Concurrent<k, Colored_>::load_coords(Unitig_Coor
             {
                 v.label_idx_ += label_off_correct;
                 if constexpr(Colored_)
-                    v.color_pack_idx_ += pack_off_correct;
+                    v.color_idx_ += color_off_correct;
             });
 
             label_off_correct += w_buf.label_buf.size();
             if constexpr(Colored_)
-                pack_off_correct += w_buf.color_pack_buf.size();
+                color_off_correct += w_buf.color_buf.size();
 
             coords_read += coord_buf.size();
         }
@@ -170,11 +171,11 @@ void Unitig_Coord_Bucket_Concurrent<k, Colored_>::remove()
     coord_os.close();
     label_os.close();
     if constexpr(Colored_)
-        color_pack_os.close();
+        color_os.close();
 
     bool err = !coord_os || !label_os || !remove_file(coord_bucket_path()) || !remove_file(label_bucket_path());
     if constexpr(Colored_)
-        err = err || !color_pack_os || !remove_file(color_pack_bucket_path());
+        err = err || !color_os || !remove_file(color_bucket_path());
 
     if(err)
     {
