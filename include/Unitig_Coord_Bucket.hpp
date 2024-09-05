@@ -264,6 +264,10 @@ public:
     // when the bucket is updated concurrently.
     std::size_t label_len() const;
 
+    // Returns the total count of colors of the stored unitigs. Not exact when
+    // the bucket is updated concurrently.
+    std::size_t color_count() const;
+
     // Adds a unitig to the bucket with its path-information in the de Bruijn
     // graph `path_info`, label `label`, and length `len`.
     template <bool C_ = Colored_, std::enable_if_t<!C_, int> = 0>
@@ -281,6 +285,10 @@ public:
     // Loads the concatenated label string of the entire bucket into `buf`, and
     // returns its length.
     std::size_t load_labels(char* buf) const;
+
+    // Loads the concatenated colors of the entire bucket into `buf` and
+    // returns the count of colors.
+    std::size_t load_colors(Unitig_Color* buf) const;
 
     // Removes the bucket.
     void remove();

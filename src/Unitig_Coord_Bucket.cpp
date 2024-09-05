@@ -5,6 +5,7 @@
 
 #include <cstdlib>
 #include <algorithm>
+#include <cassert>
 
 
 namespace cuttlefish
@@ -106,6 +107,16 @@ std::size_t Unitig_Coord_Bucket_Concurrent<k, Colored_>::label_len() const
 
 
 template <uint16_t k, bool Colored_>
+std::size_t Unitig_Coord_Bucket_Concurrent<k, Colored_>::color_count() const
+{
+    auto c = flushed_color_c;
+    std::for_each(worker_buf.cbegin(), worker_buf.cend(), [&](const auto& w_buf){ c += w_buf.unwrap().color_buf.size(); });
+
+    return c;
+}
+
+
+template <uint16_t k, bool Colored_>
 std::size_t Unitig_Coord_Bucket_Concurrent<k, Colored_>::load_coords(Unitig_Coord<k, Colored_>* const buf) const
 {
     const auto file_sz = load_file(coord_bucket_path(), reinterpret_cast<char*>(buf));
@@ -162,6 +173,28 @@ std::size_t Unitig_Coord_Bucket_Concurrent<k, Colored_>::load_labels(char* const
         });
 
     return len;
+}
+
+
+template <uint16_t k, bool Colored_>
+std::size_t Unitig_Coord_Bucket_Concurrent<k, Colored_>::load_colors(Unitig_Color* const buf) const
+{
+    const auto file_sz = load_file(color_bucket_path(), reinterpret_cast<char*>(buf));
+    assert(file_sz == flushed_color_c * sizeof(Unitig_Color));
+    (void)file_sz;
+
+    auto colors_read = flushed_color_c;
+    std::for_each(worker_buf.cbegin(), worker_buf.cend(),
+    [&](const auto& w_buf)
+    {
+        const auto& color_buf = w_buf.unwrap().color_buf;
+        if(CF_LIKELY(!color_buf.empty()))   // Conditional to avoid UB on `nullptr` being passed to `memcpy`.
+            std::memcpy(reinterpret_cast<char*>(buf + colors_read), reinterpret_cast<const char*>(color_buf.data()), color_buf.size() * sizeof(Unitig_Color));
+
+        colors_read += color_buf.size();
+    });
+
+    return colors_read;
 }
 
 
