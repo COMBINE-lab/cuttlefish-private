@@ -158,12 +158,24 @@ void Unitig_Collator<k, Colored_>::map()
                 }
                 else
                 {
-                    assert(v_c_map[color_idx].idx() == idx);
                     for(; color_idx < v_c_map_sz; ++color_idx)
-                        if(v_c_map[color_idx].idx() != idx)
+                    {
+                        const auto& v_c = v_c_map[color_idx];
+                        if(v_c.idx() != idx)
                             break;
                         else
-                            color.emplace_back(v_c_map[color_idx].off(), v_c_map[color_idx].c());
+                        {
+                            assert(v_c.off() <= uni_len - k);
+                            if(color.empty())
+                                assert(v_c.off() == 0);
+                            else
+                                assert(v_c.off() > v_c_map[color_idx - 1].off());
+
+                            color.emplace_back(v_c.off(), v_c.c());
+                        }
+                    }
+
+                    assert(!color.empty());
                 }
 
                 max_unitig_bucket[mapped_b_id].unwrap().add(M[idx], unitig.data(), uni_len, color);

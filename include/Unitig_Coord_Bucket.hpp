@@ -328,7 +328,7 @@ inline void Unitig_Coord_Bucket_Concurrent<k, Colored_>::add(const Path_Info<k>&
 {
     constexpr auto max_coord_buf_elems = buf_sz_th / sizeof(Unitig_Coord<k, Colored_>);
     constexpr auto max_label_buf_elems = buf_sz_th;
-    constexpr auto max_color_buf_elems = buf_sz_th / sizeof(uint64_t);
+    constexpr auto max_color_buf_elems = buf_sz_th / sizeof(Unitig_Color);
 
     auto& w_buf = worker_buf[parlay::worker_id()].unwrap();
     auto& coord_buf = w_buf.coord_buf;
@@ -344,7 +344,7 @@ inline void Unitig_Coord_Bucket_Concurrent<k, Colored_>::add(const Path_Info<k>&
         lock.lock();
 
         label_os.write(label_buf.data(), label_buf.size());
-        color_os.write(reinterpret_cast<const char*>(color_buf.data()), color_buf.size() * sizeof(uint64_t));
+        color_os.write(reinterpret_cast<const char*>(color_buf.data()), color_buf.size() * sizeof(Unitig_Color));
 
         // Offset-correction for the in-memory coordinates.
         std::for_each(coord_buf.begin(), coord_buf.end(),
