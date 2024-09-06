@@ -199,6 +199,9 @@ public:
 
     // Returns the coordinate of the color in the global color-repository.
     uint64_t c() const { return bit_pack >> 24; }
+
+    // Sets the offset of thee color in the unitig to `s`.
+    void set_off(const uint32_t o) { assert(o <= 0xFF'FF'FF); bit_pack = (bit_pack & ~0xFF'FF'FFlu) | o; }
 };
 
 

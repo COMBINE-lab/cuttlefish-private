@@ -380,13 +380,42 @@ void Unitig_Collator<k, Colored_>::emit_trivial_mtigs()
 
     parlay::parallel_for(0, parlay::num_workers(), [&](const std::size_t w)
     {
+        Buffer<Vertex_Color_Mapping> v_c_map;
+        const auto v_c_map_sz = load_vertex_color_mapping(P_e.size() + w, v_c_map);
+        std::sort(v_c_map.data(), v_c_map.data() + v_c_map_sz);
+
         auto& output = op_buf[w].unwrap();  // Output buffer for the maximal unitigs.
         Unitig_File_Reader unitig_reader(lmtig_buckets_path + "_" + std::to_string(P_e.size() + w));
         Buffer<char> unitig;    // Read-off unitig.
+        uni_idx_t idx = 0;  // The unitig's sequential ID in the bucket.
         std::size_t uni_len;    // The unitig's length in bases.
-        while((uni_len = unitig_reader.read_next_unitig(unitig)) > 0)
+        std::size_t color_idx = 0;  // The unitig's associated color-mappings' index into the sorted mappings.
+        std::vector<Unitig_Color> color;    // Color-encodings of the unitig.
+        for(; (uni_len = unitig_reader.read_next_unitig(unitig)) > 0; idx++)
+        {
+            color.clear();
+            for(; color_idx < v_c_map_sz; ++color_idx)
+            {
+                const auto& v_c = v_c_map[color_idx];
+                if(v_c.idx() != idx)
+                    break;
+                else
+                {
+                    assert(v_c.off() <= uni_len - k);
+                    if(color.empty())
+                        assert(v_c.off() == 0);
+                    else
+                        assert(v_c.off() > v_c_map[color_idx - 1].off());
+
+                    color.emplace_back(v_c.off(), v_c.c());
+                }
+            }
+
+            assert(!color.empty());
+
             // TODO: output (offset, color-coord) pairs.
             output += FASTA_Record(0, std::string_view(unitig.data(), uni_len));
+        }
 
         unitig_reader.remove_files();
         G.vertex_color_map(P_e.size() + w).remove();
