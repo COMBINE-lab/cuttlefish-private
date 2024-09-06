@@ -20,6 +20,7 @@
 #include <string_view>
 #include <vector>
 #include <string>
+#include <algorithm>
 #include <cassert>
 
 
@@ -58,7 +59,7 @@ private:
 
     std::atomic_uint64_t phantom_c_;    // Number of phantom unitigs observed.
 
-    class Maximal_Unitig_Label;
+    class Maximal_Unitig;
 
 
     // Maps each locally-maximal unitig to its maximal unitig's corresponding
@@ -98,14 +99,18 @@ public:
 };
 
 
-// Label of a maximal unitig.
+// Sequences associated to a maximal unitig.
 template  <uint16_t k, bool Colored_>
-class Unitig_Collator<k, Colored_>::Maximal_Unitig_Label
+class Unitig_Collator<k, Colored_>::Maximal_Unitig
 {
 private:
 
+    const Unitig_Collator<k, Colored_>& collator;   // The unitig-collator using this maximal unitig.
+
     Buffer<char> label_;    // Label-sequence.
     std::size_t sz; // Size of the label.
+
+    std::vector<Unitig_Color> color_;   // Color-sequence.
 
     Buffer<char> cycle_buf; // Working-space to process cyclic maximal unitigs.
 
@@ -114,8 +119,9 @@ private:
     // whether `s` needs to be reverse-complemented or not.
     template <bool RC_> void append(const char* s, std::size_t len_s);
 
-
 public:
+
+    Maximal_Unitig(const Unitig_Collator& collator): collator(collator) {}
 
     // Returns the label sequence.
     auto data() const { return label_.data(); }
@@ -124,7 +130,7 @@ public:
     auto size() const { return  sz; }
 
     // Clears the label.
-    auto clear() { sz = 0; }
+    auto clear() { sz = 0; if constexpr(Colored_) color_.clear(); }
 
     // Returns `true` iff the label is empty.
     auto empty() const { return sz == 0; }
@@ -133,13 +139,23 @@ public:
     // `unitig` needs to be put in its reverse-complemented form.
     void init(const std::string_view& unitig, bool rc);
 
+    // Initializes with the sequence `unitig` and its color sequence `color`
+    // (of size `color_c`). `rc` specifies whether the sequences need to be put
+    // in reverse-complemented forms.
+    void init(const std::string_view& unitig, bool rc, const Unitig_Color* color, std::size_t color_c);
+
     // Appends the `k`-overlapping sequence `unitig` to the label. `rc`
     // specifies whether `unitig` needs to be added in its reverse-
     // complemented form.
     void append(const std::string_view& unitig, bool rc);
 
-    // Removes the last character of the label.
-    void pop_back() { assert(sz > 0); sz--; }
+    // Appends the `k`-overlapping sequence `unitig` and the `color_c`-sized
+    // color-sequence `color`. `rc` specifies whether the sequences need to be
+    // added in reverse-complemented forms.
+    void append(const std::string_view& unitig, bool rc, const Unitig_Color* color, std::size_t color_c);
+
+    // Removes the last k-mer.
+    void pop_back();
 
     // Transforms the label to its canonical form.
     void canonicalize();
@@ -152,7 +168,7 @@ public:
 
 template <uint16_t k, bool Colored_>
 template <bool RC_>
-inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::append(const char* const s, const std::size_t len_s)
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig::append(const char* const s, const std::size_t len_s)
 {
     if constexpr(!RC_)
         std::memcpy(label_.data() + sz, s, len_s);
@@ -165,21 +181,55 @@ inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::append(const cha
 
 
 template <uint16_t k, bool Colored_>
-inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::init(const std::string_view& unitig, const bool rc)
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig::init(const std::string_view& unitig, const bool rc)
 {
+    assert(!Colored_);
+    assert(unitig.length() >= k);
+
     clear();
 
     label_.reserve_uninit(unitig.length());
     rc ?    append<true>(unitig.data(), unitig.length()) :
             append<false>(unitig.data(), unitig.length());
-
-    sz = unitig.length();
 }
 
 
 template <uint16_t k, bool Colored_>
-inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::append(const std::string_view& unitig, const bool rc)
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig::init(const std::string_view& unitig, const bool rc, const Unitig_Color* const color, const std::size_t color_c)
 {
+    assert(Colored_);
+    assert(unitig.length() >= k);
+    if(color_c == 0)    // Unitig induced by a phantom k-mer—no color is observed.
+        assert(unitig.length() == k && collator.G.is_discontinuity(unitig.data())); // Some necessary conditions.
+
+    clear();
+
+    label_.reserve_uninit(unitig.length());
+    color_.insert(color_.end(), color, color + color_c);
+
+    if(!rc)
+        append<false>(unitig.data(), unitig.length());
+    else
+    {
+        append<true>(unitig.data(), unitig.length());
+
+        const auto vertex_c = unitig.length() - k + 1;
+        std::reverse(color_.begin(), color_.end());
+        std::for_each(color_.begin(), color_.end(),
+        [&](auto& c)
+        {
+            assert(c.off() < vertex_c);
+            c.set_off((vertex_c - c.off()) - 1);
+        });
+    }
+}
+
+
+template <uint16_t k, bool Colored_>
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig::append(const std::string_view& unitig, const bool rc)
+{
+    assert(sz >= k); assert(unitig.length() >= k);
+
     label_.reserve(sz + unitig.length() - k);
     if(!rc)
         append<false>(unitig.data() + k, unitig.length() - k);
@@ -189,7 +239,58 @@ inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::append(const std
 
 
 template <uint16_t k, bool Colored_>
-inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::canonicalize()
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig::append(const std::string_view& unitig, const bool rc, const Unitig_Color* color, std::size_t color_c)
+{
+    assert(Colored_);
+    assert(sz >= k); assert(unitig.length() >= k);
+
+    if(CF_UNLIKELY(color_c == 0))   // Unitig induced by a phantom k-mer—no color is observed.
+    {
+        assert(unitig.length() == k && collator.G.is_discontinuity(unitig.data()));
+        append(unitig, rc);
+        return;
+    }
+
+    const auto prev_v_c = sz - k + 1;
+    const auto prev_col_c = color_.size();
+    const auto unitig_v_c = unitig.length() - k + 1;
+    label_.reserve(sz + unitig.length() - k);
+    if(!rc)
+    {
+        append<false>(unitig.data() + k, unitig.length() - k);
+
+        if(!color_.empty() && color_.back().c() == color[0].c())
+            color++, color_c--;
+
+        color_.insert(color_.end(), color, color + color_c);
+        std::for_each(color_.begin() + prev_col_c, color_.end(),
+        [&](auto& c)
+        {
+            assert(c.off() < unitig_v_c);
+            c.set_off((prev_v_c + c.off()) - 1);    // Offsets from the new unitig gets left-shifted due to vertex-overlap.
+        });
+    }
+    else
+    {
+        append<true>(unitig.data(), unitig.length() - k);
+
+        if(!color_.empty() && color_.back().c() == color[color_c - 1].c())
+            color_c--;
+
+        color_.insert(color_.end(), color, color + color_c);
+        std::reverse(color_.begin() + prev_col_c, color_.end());
+        std::for_each(color_.begin() + prev_col_c, color_.end(),
+        [&](auto& c)
+        {
+            assert(c.off() < unitig_v_c);
+            c.set_off((prev_v_c + ((unitig_v_c - c.off()) - 1)) - 1);
+        });
+    }
+}
+
+
+template <uint16_t k, bool Colored_>
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig::canonicalize()
 {
     for(std::size_t i = 0; i < k; ++i)
     {
@@ -212,6 +313,19 @@ inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::canonicalize()
             if(sz & 1)
                 label_[sz / 2] = DNA_Utility::complement(label_[sz / 2]);
 
+            if constexpr(Colored_)
+            {
+                std::reverse(color_.begin(), color_.end());
+
+                const int64_t v_c = sz - k + 1;
+                std::for_each(color_.begin(), color_.end(),
+                [&](auto& c)
+                {
+                    assert(c.off() < v_c);
+                    c.set_off((v_c - c.off()) - 1);
+                });
+            }
+
             return;
         }
     }
@@ -219,7 +333,20 @@ inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::canonicalize()
 
 
 template <uint16_t k, bool Colored_>
-inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::canonicalize_cycle()
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig::pop_back()
+{
+    assert(sz > k);
+
+    const auto v_c = sz - k;
+    sz--;
+    if constexpr(Colored_)
+        if(color_.back().off() == v_c - 1)
+            color_.pop_back();
+}
+
+
+template <uint16_t k, bool Colored_>
+inline void Unitig_Collator<k, Colored_>::Maximal_Unitig::canonicalize_cycle()
 {
     Directed_Vertex<k> v(label_.data());
     Kmer<k> min_fw(v.kmer());   // Minimum k-mer in the forward strand.
@@ -261,6 +388,8 @@ inline void Unitig_Collator<k, Colored_>::Maximal_Unitig_Label::canonicalize_cyc
     }
 
     std::memcpy(label_.data(), cycle_buf.data(), sz);
+
+    // TODO: no fixing-policy for colors yet.
 }
 
 }

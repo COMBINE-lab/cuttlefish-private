@@ -90,6 +90,7 @@ void Unitig_Collator<k, Colored_>::map()
     parlay::parallel_for(0, parlay::num_workers(),
         [&](const std::size_t w_id)
         {
+            // TODO: no need to resize to the maximum bucket-size, as we use more suited buffer now instead of `vector`.
             M_vec[w_id].unwrap().resize_uninit(max_bucket_sz);   // TODO: thread-local allocation suits best here.
         }, 1);
 
@@ -204,21 +205,29 @@ void Unitig_Collator<k, Colored_>::reduce()
 {
     std::size_t max_max_uni_b_sz = 0;   // Maximum unitig-count in some maximal unitig bucket.
     std::size_t max_max_uni_b_label_len = 0;    // Maximum dump-string length in some maximal unitig bucket.
+    std::size_t max_max_uni_b_color_c = 0;  // Maximum color-count in some maximal unitig bucket.
     std::for_each(max_unitig_bucket.cbegin(), max_unitig_bucket.cend(),
         [&](const auto& b)
         {
             max_max_uni_b_sz = std::max(max_max_uni_b_sz, b.unwrap().size()),
             max_max_uni_b_label_len = std::max(max_max_uni_b_label_len, b.unwrap().label_len());
+            if constexpr(Colored_)
+                max_max_uni_b_color_c = std::max(max_max_uni_b_color_c, b.unwrap().color_count());
         });
 
-    std::cerr << "Maximum maximal unitig bucket size:  " << max_max_uni_b_sz << "\n";
-    std::cerr << "Maximum maximal unitig label length: " << max_max_uni_b_label_len << "\n";
+    std::cerr << "Maximum maximal unitig bucket size:   " << max_max_uni_b_sz << "\n";
+    std::cerr << "Maximum label length in mtig-buckets: " << max_max_uni_b_label_len << "\n";
+    if constexpr(Colored_)
+        std::cerr << "Maximum colors in mtig-buckets:  " << max_max_uni_b_color_c << "\n",
+        assert(max_max_uni_b_color_c >= max_max_uni_b_sz);
 
 
     typedef Buffer<Unitig_Coord<k, Colored_>> coord_buf_t;
     typedef Buffer<char> label_buf_t;
+    typedef Buffer<Unitig_Color> color_buf_t;
     std::vector<Padded<coord_buf_t>> U_vec(parlay::num_workers()); // Worker-local buffers for unitig coordinate information.
     std::vector<Padded<label_buf_t>> L_vec(parlay::num_workers()); // Worker-local buffers for dump-strings in buckets.
+    std::vector<Padded<color_buf_t>> C_vec(parlay::num_workers()); // Worker-local buffers for colors in buckets.
 
     parlay::parallel_for(0, parlay::num_workers(),
         [&](const std::size_t w_id)
@@ -226,6 +235,8 @@ void Unitig_Collator<k, Colored_>::reduce()
             // TODO: thread-local allocations here suit best.
             U_vec[w_id].unwrap().resize_uninit(max_max_uni_b_sz);
             L_vec[w_id].unwrap().resize_uninit(max_max_uni_b_label_len);
+            if constexpr(Colored_)
+                C_vec[w_id].unwrap().resize_uninit(max_max_uni_b_color_c);
         }, 1);
 
     // TODO: add per-worker progress tracker.
@@ -236,16 +247,18 @@ void Unitig_Collator<k, Colored_>::reduce()
         const auto w_id = parlay::worker_id();
         auto const U = U_vec[w_id].unwrap().data(); // Coordinate info of the unitigs.
         auto const L = L_vec[w_id].unwrap().data();   // Dump-strings of the unitig labels.
+        auto const C = C_vec[w_id].unwrap().data(); // Colors of the unitigs.
         auto& output = op_buf[w_id].unwrap();   // Output buffer for the maximal unitigs.
 
         const auto b_sz = max_unitig_bucket[b].unwrap().load_coords(U);
         const auto len = max_unitig_bucket[b].unwrap().load_labels(L);
+        const auto color_c = (Colored_ ? max_unitig_bucket[b].unwrap().load_colors(C) : 0);
         max_unitig_bucket[b].unwrap().remove();
-        (void)len;
+        (void)len; (void)color_c;
 
         std::sort(U, U + b_sz);
 
-        Maximal_Unitig_Label m_tig;
+        Maximal_Unitig m_tig(*this);
         std::size_t i, j;
         for(i = 0; i < b_sz; i = j)
         {
@@ -253,12 +266,17 @@ void Unitig_Collator<k, Colored_>::reduce()
 
             const bool is_cycle = U[i].is_cycle();
             const std::size_t s = i;
-            std::size_t e = s + 1;
+            std::size_t e = s;
 
             // Find the current maximal unitig's stretch in the bucket.
             while(e < b_sz && U[e].p() == U[s].p())
             {
                 assert(U[e].o() != side_t::unspecified); assert(U[e].is_cycle() == is_cycle);
+
+                assert(U[e].label_idx() + U[e].label_len() <= len);
+                if constexpr(Colored_)
+                    assert(U[e].color_idx() + U[e].color_c() <= color_c);
+
                 e++;
             }
 
@@ -271,11 +289,18 @@ void Unitig_Collator<k, Colored_>::reduce()
 
                 const bool rc_0 = (U[s].o() == side_t::front);
                 bool rc_1 = (U[s + 1].o() == side_t::front);
-
                 rc_1 = !rc_1;
 
-                m_tig.init(u0, rc_0);
-                m_tig.append(u1, rc_1);
+                if constexpr(!Colored_)
+                {
+                    m_tig.init(u0, rc_0);
+                    m_tig.append(u1, rc_1);
+                }
+                else
+                {
+                    m_tig.init(u0, rc_0, C + U[s].color_idx(), U[s].color_c());
+                    m_tig.append(u1, rc_1, C + U[s + 1].color_idx(), U[s + 1].color_c());
+                }
             }
             else
                 for(j = s; j < e; ++j)
@@ -283,7 +308,14 @@ void Unitig_Collator<k, Colored_>::reduce()
                     const std::string_view u(L + U[j].label_idx(), U[j].label_len());
                     const bool rc = (U[j].o() == side_t::front);
 
-                    m_tig.empty() ? m_tig.init(u, rc) : m_tig.append(u, rc);
+                    if constexpr(!Colored_)
+                        m_tig.empty() ?
+                            m_tig.init(u, rc) :
+                            m_tig.append(u, rc);
+                    else
+                        m_tig.empty() ?
+                            m_tig.init(u, rc, C + U[j].color_idx(), U[j].color_c()) :
+                            m_tig.append(u, rc, C + U[j].color_idx(), U[j].color_c());
                 }
 
 
@@ -295,7 +327,13 @@ void Unitig_Collator<k, Colored_>::reduce()
             is_cycle ? m_tig.canonicalize_cycle(): m_tig.canonicalize();
 
             // TODO: decide record-ID choice.
-            output += FASTA_Record(0, std::string_view(m_tig.data(), m_tig.size()));
+            if constexpr(!Colored_)
+                output += FASTA_Record(0, std::string_view(m_tig.data(), m_tig.size()));
+            else
+            {
+                // TODO: output (offset, color-coord) pairs.
+                output += FASTA_Record(0, std::string_view(m_tig.data(), m_tig.size()));
+            }
 
             j = e;
         }
@@ -347,6 +385,7 @@ void Unitig_Collator<k, Colored_>::emit_trivial_mtigs()
         Buffer<char> unitig;    // Read-off unitig.
         std::size_t uni_len;    // The unitig's length in bases.
         while((uni_len = unitig_reader.read_next_unitig(unitig)) > 0)
+            // TODO: output (offset, color-coord) pairs.
             output += FASTA_Record(0, std::string_view(unitig.data(), uni_len));
 
         unitig_reader.remove_files();
