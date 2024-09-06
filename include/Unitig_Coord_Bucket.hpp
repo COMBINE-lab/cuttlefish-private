@@ -191,11 +191,11 @@ public:
     Unitig_Color(const std::size_t off, const Color_Coordinate c):
           bit_pack((c.as_u40() << 24) | off)
     {
-        assert(off < (1lu << 24));
+        assert(off <= 0xFF'FF'FF);
     }
 
     // Returns the offset of the color in the unitig.
-    uint32_t off() const { return bit_pack & 0xFFF; }
+    uint32_t off() const { return bit_pack & 0xFF'FF'FF; }
 
     // Returns the coordinate of the color in the global color-repository.
     uint64_t c() const { return bit_pack >> 24; }
