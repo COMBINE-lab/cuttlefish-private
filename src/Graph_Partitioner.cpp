@@ -296,7 +296,7 @@ uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_chunk(chunk_t* chunk
                 {
                     if(next_g != cur_g)
                         // The `(k - 1)`-mers of this discontinuity k-mer have minimizers mapping to different subgraphs.
-                        assert(is_discontinuity(frag + cur_sup_km1_mer_off + km1_mer_idx - 1));
+                        assert(subgraphs.G().is_discontinuity(frag + cur_sup_km1_mer_off + km1_mer_idx - 1));
 
                     const auto next_sup_km1_mer_off = cur_sup_km1_mer_off + km1_mer_idx;
                     assert(next_sup_km1_mer_off == frag_len - (k - 1));
@@ -379,24 +379,6 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::Worker_Stats::operator+=(const W
     super_km1_mers_len += rhs.super_km1_mers_len;
     parse_time += rhs.parse_time;
     process_time += rhs.process_time;
-}
-
-
-template <uint16_t k, bool Is_FASTQ_, bool Colored_>
-bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::is_discontinuity(const char* const seq) const
-{
-    minimizer_t min_l, min_r;
-    uint64_t h_l, h_r;
-    std::size_t idx_l, idx_r;
-
-    typedef Minimizer_Iterator<const char*, k - 1, true> min_it_t;
-    min_it_t::minimizer(seq, l_, min_seed, min_l, h_l, idx_l);
-    min_it_t::minimizer(seq + 1, l_, min_seed, min_r, h_r, idx_r);
-
-    if(subgraphs.graph_ID(h_l) == subgraphs.graph_ID(h_r))
-        return false;
-
-    return true;
 }
 
 }

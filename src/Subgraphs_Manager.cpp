@@ -24,7 +24,7 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     , graph_count_(graph_count_)
     , l(l)
     , HLL(graph_count_)
-    , G(G)
+    , G_(G)
     , trivial_mtig_count_(0)
     , icc_count_(0)
     , op_buf(op_buf)
@@ -101,7 +101,7 @@ void Subgraphs_Manager<k, Colored_>::process()
             auto& b = subgraph_bucket[graph_id].unwrap();
 
             const auto t_0 = timer::now();
-            Subgraph<k, Colored_> sub_dBG(b, G, op_buf[parlay::worker_id()].unwrap(), subgraphs_space);
+            Subgraph<k, Colored_> sub_dBG(b, G_, op_buf[parlay::worker_id()].unwrap(), subgraphs_space);
             sub_dBG.construct();
             const auto t_1 = timer::now();
             if constexpr(!Colored_)

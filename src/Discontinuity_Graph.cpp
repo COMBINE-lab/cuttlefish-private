@@ -1,5 +1,6 @@
 
 #include "Discontinuity_Graph.hpp"
+#include "Minimizer_Iterator.hpp"
 #include "Data_Logistics.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
@@ -10,9 +11,10 @@ namespace cuttlefish
 
 
 template <uint16_t k, bool Colored_>
-Discontinuity_Graph<k, Colored_>::Discontinuity_Graph(const std::size_t part_count, const std::size_t lmtig_bucket_count, const Data_Logistics& logistics):
-      E_(part_count, logistics.edge_matrix_path())
-    , lmtigs(logistics.lmtig_buckets_path(), lmtig_bucket_count, parlay::num_workers(), Colored_)
+Discontinuity_Graph<k, Colored_>::Discontinuity_Graph(const Build_Params& params, const Data_Logistics& logistics):
+      params(params)
+    , E_(params.vertex_part_count(), logistics.edge_matrix_path())
+    , lmtigs(logistics.lmtig_buckets_path(), params.lmtig_bucket_count(), parlay::num_workers(), Colored_)
     , phantom_edge_count_(0)
 {
     if constexpr(Colored_)
@@ -51,6 +53,22 @@ std::size_t Discontinuity_Graph<k, Colored_>::vertex_part_size_upper_bound() con
         bound = std::max(bound, E_.col_size(j) + E_.block_size(j, j));
 
     return bound;
+}
+
+
+template <uint16_t k, bool Colored_>
+bool Discontinuity_Graph<k, Colored_>::is_discontinuity(const char* const seq) const
+{
+    minimizer_t min_l, min_r;
+    uint64_t h_l, h_r;
+    std::size_t idx_l, idx_r;
+
+    typedef Minimizer_Iterator<const char*, k - 1, true> min_it_t;
+    min_it_t::minimizer(seq, params.min_len(), min_seed, min_l, h_l, idx_l);
+    min_it_t::minimizer(seq + 1, params.min_len(), min_seed, min_r, h_r, idx_r);
+
+    const auto graph_id = [&](const auto h){ return h & (params.subgraph_count() - 1); };
+    return graph_id(h_l) != graph_id(h_r);
 }
 
 }

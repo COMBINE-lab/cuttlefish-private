@@ -48,7 +48,7 @@ private:
 
     std::vector<Padded<HyperLogLog>> HLL;   // `HLL[g]` is the cardinality-estimator for subgraph `g`.
 
-    Discontinuity_Graph<k, Colored_>& G;    // The discontinuity graph.
+    Discontinuity_Graph<k, Colored_>& G_;   // The discontinuity graph.
 
     std::atomic_uint64_t trivial_mtig_count_;   // Number of trivial maximal unitigs in the subgraphs (i.e. also maximal unitigs in the supergraph).
     std::atomic_uint64_t icc_count_;    // Number of trivial maximal unitigs in the subgraphs that are ICCs.
@@ -80,6 +80,9 @@ public:
 
     // Returns the number of subgraphs.
     auto graph_count() const { return graph_count_; }
+
+    // Returns the discontinuity graph.
+    const auto& G() const { return G_; }
 
     // Adds a (weak) super k-mer to the subgraph `g` of the de Bruijn graph
     // with label `seq` and length `len`. The markers `l_disc` and `r_disc`

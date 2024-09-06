@@ -48,7 +48,7 @@ void dBG_Contractor<k>::construct()
     clear_file(op_file_path);
     output_sink.init_sink(op_file_path);
 
-    Discontinuity_Graph<k, Colored_> G(params.vertex_part_count(), params.lmtig_bucket_count(), logistics); // The discontinuity graph.
+    Discontinuity_Graph<k, Colored_> G(params, logistics);  // The discontinuity graph.
 
     const auto t_0 = timer::now();
 

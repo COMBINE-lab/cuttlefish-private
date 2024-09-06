@@ -77,7 +77,6 @@ private:
     const std::vector<std::string> seqs;    // Input sequence collection.
 
     const uint16_t l_;  // Size of minimizers for the super k-mers.
-    static constexpr uint64_t min_seed = 0; // Seed for `l`-minimizer hashing.
     const std::size_t sup_km1_mer_len_th;   // Length threshold of super (k - 1)-mers.
 
     const std::size_t chunk_pool_sz;    // Maximum number of chunks in the chunk memory pool.
@@ -130,9 +129,6 @@ private:
     // sequences are stored in `parsed_chunk`. Returns the count of bytes in
     // chunk.
     uint64_t process_chunk(chunk_t* chunk, source_id_t source_id);
-
-    // Returns `true` iff the k-mer at `seq` is a discontinuity vertex.
-    bool is_discontinuity(const char* seq) const;
 
 public:
 

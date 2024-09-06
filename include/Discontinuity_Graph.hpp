@@ -10,6 +10,7 @@
 #include "Maximal_Unitig_Scratch.hpp"
 #include "Ext_Mem_Bucket.hpp"
 #include "Color_Coordinate.hpp"
+#include "Build_Params.hpp"
 #include "parlay/parallel.h"
 #include "utility.hpp"
 
@@ -44,6 +45,8 @@ private:
                                                 "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
     static const Kmer<k> phi_;  // ϕ k-mer connected to each chain-end in the discontinuity graph.
 
+    const Build_Params params;  // All input parameters (wrapped inside).
+
     Edge_Matrix<k> E_;  // Edge-matrix of the discontinuity graph.
 
     Unitig_Write_Distributor lmtigs;    // Distribution-manager for the writes of locally maximal unitigs' labels.
@@ -56,11 +59,10 @@ private:
 
 public:
 
-    // Constructs a discontinuity graph object that operates with `part_count`
-    // vertex-partitions, and the locally-maximal unitigs corresponding to its
-    // edges are stored in `lmtig_bucket_count` buckets. `logistics` is the data
-    // logistics manager for the algorithm execution.
-    Discontinuity_Graph(std::size_t part_count, std::size_t lmtig_bucket_count, const Data_Logistics& logistics);
+    // Constructs a discontinuity graph object that operates with the required
+    // parameters in `params`. `logistics` is the data logistics manager for
+    // the algorithm execution.
+    Discontinuity_Graph(const Build_Params& params, const Data_Logistics& logistics);
 
     // Returns the ϕ k-mer connected to each chain-end in the discontinuity
     // graph.
@@ -112,6 +114,9 @@ public:
     // Returns a tight upper bound of the maximum number of vertices in a
     // partition.
     std::size_t vertex_part_size_upper_bound() const;
+
+    // Returns `true` iff the k-mer at `seq` is a discontinuity vertex.
+    bool is_discontinuity(const char* seq) const;
 };
 
 

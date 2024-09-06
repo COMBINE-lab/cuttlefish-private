@@ -105,6 +105,9 @@ namespace cuttlefish
 
     // Type of source-ID, i.e. color-units.
     typedef uint32_t source_id_t;
+
+    // Seed for `l`-minimizer hashing.
+    static constexpr uint64_t min_seed = 0;
 }
 
 
