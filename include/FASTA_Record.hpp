@@ -12,15 +12,15 @@
 
 
 // =============================================================================
-// A class wrapping a basic FASTA record: the sequence of type `T_seq_` and its
-// header/identifier of type `T_id`. The class is specifically designed for
-// writing purposes of output maximal unitigs in the FASTA format.
-template <typename T_seq_, typename T_id_ = fmt::format_int>
+// A class wrapping a basic FASTA record: the sequence of type `T_seq_. The
+// class is specifically designed for writing purposes of output maximal unitigs
+// in the FASTA format.
+template <typename T_seq_>
 class FASTA_Record
 {
 private:
 
-    const T_id_ id_; // Identifier for the FASTA sequence.
+    const fmt::format_int id_;  // Identifier for the FASTA sequence.
     const T_seq_* const seq_;   // Pointer to the FASTA sequence.
     const T_seq_* const seq_add_;   // Additional FASTA sequence (in case the original sequence `*seq` is broken into two parts).
     const std::size_t offset_;  // Offset position into the sequence `seq_`—data before this index will be skipped in the record.
@@ -71,20 +71,20 @@ public:
 };
 
 
-template <typename T_seq_, typename T_id_>
-inline FASTA_Record<T_seq_, T_id_>::FASTA_Record(const uint64_t id, const T_seq_& seq, const std::size_t offset):
+template <typename T_seq_>
+inline FASTA_Record<T_seq_>::FASTA_Record(const uint64_t id, const T_seq_& seq, const std::size_t offset):
     FASTA_Record(id, &seq, nullptr, offset)
 {}
 
 
-template <typename T_seq_, typename T_id_>
-inline FASTA_Record<T_seq_, T_id_>::FASTA_Record(const uint64_t id, const T_seq_& seq, const T_seq_& seq_add, const std::size_t offset, const std::size_t offset_add):
+template <typename T_seq_>
+inline FASTA_Record<T_seq_>::FASTA_Record(const uint64_t id, const T_seq_& seq, const T_seq_& seq_add, const std::size_t offset, const std::size_t offset_add):
     FASTA_Record(id, &seq, &seq_add, offset, offset_add)
 {}
 
 
-template <typename T_seq_, typename T_id_>
-inline FASTA_Record<T_seq_, T_id_>::FASTA_Record(const uint64_t id, const T_seq_* const seq, const T_seq_* const seq_add, const std::size_t offset, const std::size_t offset_add):
+template <typename T_seq_>
+inline FASTA_Record<T_seq_>::FASTA_Record(const uint64_t id, const T_seq_* const seq, const T_seq_* const seq_add, const std::size_t offset, const std::size_t offset_add):
     id_(id),
     seq_(seq),
     seq_add_(seq_add),
@@ -93,22 +93,22 @@ inline FASTA_Record<T_seq_, T_id_>::FASTA_Record(const uint64_t id, const T_seq_
 {}
 
 
-template <typename T_seq_, typename T_id_>
-inline std::size_t FASTA_Record<T_seq_, T_id_>::header_size() const
+template <typename T_seq_>
+inline std::size_t FASTA_Record<T_seq_>::header_size() const
 {
     return  id_.size() + static_cast<std::size_t>(1U);  // One additional byte for `>`.
 }
 
 
-template <typename T_seq_, typename T_id_>
-inline std::size_t FASTA_Record<T_seq_, T_id_>::seq_size() const
+template <typename T_seq_>
+inline std::size_t FASTA_Record<T_seq_>::seq_size() const
 {
     return (seq_->size() - offset_) + (seq_add_ != nullptr ? (seq_add_->size() - offset_add_) : 0);
 }
 
 
-template <typename T_seq_, typename T_id_>
-inline void FASTA_Record<T_seq_, T_id_>::append_header(std::string& buffer) const
+template <typename T_seq_>
+inline void FASTA_Record<T_seq_>::append_header(std::string& buffer) const
 {
     buffer.push_back('>');
 
@@ -116,8 +116,8 @@ inline void FASTA_Record<T_seq_, T_id_>::append_header(std::string& buffer) cons
 }
 
 
-template <typename T_seq_, typename T_id_>
-inline void FASTA_Record<T_seq_, T_id_>::append_seq(std::string& buffer) const
+template <typename T_seq_>
+inline void FASTA_Record<T_seq_>::append_seq(std::string& buffer) const
 {
     buffer.append(seq_->cbegin() + offset_, seq_->cend());
     if(seq_add_ != nullptr)
@@ -125,9 +125,9 @@ inline void FASTA_Record<T_seq_, T_id_>::append_seq(std::string& buffer) const
 }
 
 
-template <typename T_seq_, typename T_id_>
+template <typename T_seq_>
 template <uint16_t k>
-inline void FASTA_Record<T_seq_, T_id_>::append_rotated_cycle(std::string& buffer, const std::size_t pivot) const
+inline void FASTA_Record<T_seq_>::append_rotated_cycle(std::string& buffer, const std::size_t pivot) const
 {
     buffer.append(seq_->cbegin() + pivot, seq_->cend());
     buffer.append(seq_->cbegin() + k - 1, seq_->cbegin() + k - 1 + pivot);
