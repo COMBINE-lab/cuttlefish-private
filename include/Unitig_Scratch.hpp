@@ -28,7 +28,7 @@ private:
     std::size_t vertex_idx;         // Index of the vertex in the path being traversed.
     std::size_t min_v_idx;          // Index of the lexicographically minimum vertex in the path.
 
-    std::vector<char> label_;       // Literal label of the unitig.
+    std::string label_; // Literal label of the unitig.
     std::vector<uint64_t> hash_;    // Hashes of the constituent vertices of the unitig.
     std::vector<Kmer<k>> V;         // Set of the vertices (in their canonical-form) in the unitig.
     bool is_cycle_;                 // Whether the unitig is cyclical or not.
@@ -68,7 +68,7 @@ public:
     void swap(Unitig_Scratch& rhs);
 
     // Returns the literal label of the unitig.
-    const std::vector<char>& label() const { return label_; }
+    const std::string& label() const { return label_; }
 
     // Returns the hash collection of the unitig vertices.
     const std::vector<uint64_t>& hash() const { return hash_; }
@@ -143,7 +143,7 @@ inline bool Unitig_Scratch<k>::extend(const Directed_Vertex<k>& v, const char b)
         min_vertex_ = endpoint_,
         min_v_idx = vertex_idx;
 
-    label_.emplace_back(b);
+    label_.push_back(b);
     hash_.emplace_back(endpoint_.hash());
 
     return true;

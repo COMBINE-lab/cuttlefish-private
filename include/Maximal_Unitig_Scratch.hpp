@@ -52,7 +52,7 @@ public:
 
     // Returns the label of the unitig scratch `u_b` or `u_f`, based on `s` (see
     // note above class body).
-    const std::vector<char>& unitig_label(cuttlefish::side_t s) const;
+    const std::string& unitig_label(cuttlefish::side_t s) const;
 
     // Returns the unique ID of the maximal unitig.
     uint64_t id() const;
@@ -100,7 +100,7 @@ public:
 
     // Returns a FASTA record of the maximal unitig (in canonical form).
     // Applicable when the maximal unitig is linear.
-    const FASTA_Record<std::vector<char>> fasta_rec() const;
+    const FASTA_Record fasta_rec() const;
 
     // Adds a corresponding FASTA record for the maximal unitig into `buffer`.
     template <typename T_sink_> void add_fasta_rec_to_buffer(Character_Buffer<T_sink_>& buffer) const;
@@ -126,7 +126,7 @@ inline constexpr Unitig_Scratch<k>& Maximal_Unitig_Scratch<k>::unitig(const cutt
 
 
 template <uint16_t k>
-inline const std::vector<char>& Maximal_Unitig_Scratch<k>::unitig_label(const cuttlefish::side_t s) const
+inline const std::string& Maximal_Unitig_Scratch<k>::unitig_label(const cuttlefish::side_t s) const
 {
     return s == cuttlefish::side_t::back ? unitig_back.label() : unitig_front.label();
 }
@@ -241,11 +241,11 @@ inline bool Maximal_Unitig_Scratch<k>::is_cycle() const
 
 
 template <uint16_t k>
-inline const FASTA_Record<std::vector<char>> Maximal_Unitig_Scratch<k>::fasta_rec() const
+inline const FASTA_Record Maximal_Unitig_Scratch<k>::fasta_rec() const
 {
     return is_canonical() ?
-            FASTA_Record<std::vector<char>>(id(), unitig_front.label(), unitig_back.label(), 0, k) :
-            FASTA_Record<std::vector<char>>(id(), unitig_back.label(), unitig_front.label(), 0, k);
+            FASTA_Record(id(), unitig_front.label(), unitig_back.label(), 0, k) :
+            FASTA_Record(id(), unitig_back.label(), unitig_front.label(), 0, k);
 }
 
 
@@ -256,7 +256,7 @@ inline void Maximal_Unitig_Scratch<k>::add_fasta_rec_to_buffer(Character_Buffer<
     if(is_linear())
         buffer += fasta_rec();
     else
-        buffer.template rotate_append_cycle<k>(FASTA_Record<std::vector<char>>(id(), cycle->label()), cycle->min_vertex_idx());
+        buffer.template rotate_append_cycle<k>(FASTA_Record(id(), cycle->label()), cycle->min_vertex_idx());
 }
 
 
