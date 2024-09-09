@@ -4,7 +4,7 @@
 
 
 
-#include "Color_Coordinate.hpp"
+#include "Color_Encoding.hpp"
 #include "boost/unordered/concurrent_flat_map.hpp"
 
 #include <cstdint>

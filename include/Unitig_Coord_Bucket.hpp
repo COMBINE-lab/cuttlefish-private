@@ -175,36 +175,6 @@ inline void Unitig_Coord_Bucket<k>::add(const Path_Info<k>& path_info, const cha
 }
 
 
-// ============================================================================
-// Encoding of a color in a unitig: the offset in the unitig where the color
-// is, and the color's coordinate in the global color-repository.
-class Unitig_Color
-{
-private:
-
-    uint64_t bit_pack;  // Encoding of the offset and the color.
-
-public:
-
-    // Constructs a color-encoding for a unitig at its offset `off` and color-
-    // coordinate `c`.
-    Unitig_Color(const std::size_t off, const Color_Coordinate c):
-          bit_pack((c.as_u40() << 24) | off)
-    {
-        assert(off <= 0xFF'FF'FF);
-    }
-
-    // Returns the offset of the color in the unitig.
-    uint32_t off() const { return bit_pack & 0xFF'FF'FF; }
-
-    // Returns the coordinate of the color in the global color-repository.
-    uint64_t c() const { return bit_pack >> 24; }
-
-    // Sets the offset of thee color in the unitig to `s`.
-    void set_off(const uint32_t o) { assert(o <= 0xFF'FF'FF); bit_pack = (bit_pack & ~0xFF'FF'FFlu) | o; }
-};
-
-
 // =============================================================================
 // A bucket storing full coordinates for unitigs: for a specific unitig, it's
 // containing maximal unitig's unique ID, its rank in the maximal unitig in a

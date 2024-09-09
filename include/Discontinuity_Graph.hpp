@@ -120,40 +120,6 @@ public:
 };
 
 
-// Mapping between a vertex (in a given unitig bucket) and its color.
-class Vertex_Color_Mapping
-{
-private:
-
-    // TODO: consider packing `idx` and `off`?
-    uint32_t idx_;  // Index of the vertex's containing unitig in its bucket.
-    uint16_t off_;  // Offset of the vertex in the unitig label.
-    Color_Coordinate c_;    // Coordinate of the vertex's color in the color-repository.
-
-public:
-
-    // For some given unitig bucket, constructs a vertex-color mapping between
-    // the vertex at offset `off` in the unitig at index `idx` in the bucket
-    // and the color-coordinate `c`.
-    Vertex_Color_Mapping(const uint32_t idx, const uint16_t off, const Color_Coordinate& c):
-        idx_(idx), off_(off), c_(c)
-    {}
-
-    // Returns the index of the vertex's containing unitig in its bucket.
-    auto idx() const { return idx_; }
-
-    // Returns the offset of the vertex in the unitig label.
-    auto off() const { return off_; }
-
-    // Returns the coordinate of the vertex's color in the color-repository.
-    const auto& c() const { return c_; }
-
-    // Returns `true` iff this vertex precedes the associated vertex of `rhs`
-    // in their bucket.
-    bool operator<(const Vertex_Color_Mapping& rhs) const { return idx_ != rhs.idx_ ? (idx_ < rhs.idx_) : (off_ < rhs.off_); }
-};
-
-
 template <uint16_t k, bool Colored_> const Kmer<k> Discontinuity_Graph<k, Colored_>::phi_(phi_label);
 
 
