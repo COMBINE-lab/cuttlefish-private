@@ -6,7 +6,7 @@
 
 #include "Path_Info.hpp"
 #include "Ext_Mem_Bucket.hpp"
-#include "Color_Coordinate.hpp"
+#include "Color_Encoding.hpp"
 #include "Spin_Lock.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"

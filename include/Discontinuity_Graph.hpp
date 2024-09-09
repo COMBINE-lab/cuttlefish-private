@@ -9,7 +9,7 @@
 #include "Unitig_File.hpp"
 #include "Maximal_Unitig_Scratch.hpp"
 #include "Ext_Mem_Bucket.hpp"
-#include "Color_Coordinate.hpp"
+#include "Color_Encoding.hpp"
 #include "Build_Params.hpp"
 #include "parlay/parallel.h"
 #include "utility.hpp"
