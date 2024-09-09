@@ -117,6 +117,9 @@ public:
 
     // Sets the offset of thee color in the unitig to `s`.
     void set_off(const uint32_t o) { assert(o <= 0xFF'FF'FF); bit_pack = (bit_pack & ~0xFF'FF'FFlu) | o; }
+
+    // Returns the 64-bit representation of the unitig-color.
+    uint64_t to_u64() const { return bit_pack; }
 };
 
 }

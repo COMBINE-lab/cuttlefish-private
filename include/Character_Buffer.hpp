@@ -55,6 +55,7 @@ public:
 
     // Appends the content of the FASTA record `fasta_rec` to the buffer. Flushes
     // are possible.
+    template <bool Colored_ = false>
     void operator+=(const FASTA_Record& fasta_rec);
 
     // Appends the content of the FASTA record `fasta_cycle` to the buffer, that is
@@ -144,11 +145,17 @@ inline void Character_Buffer<T_sink_>::operator+=(const T_container_& str)
 
 
 template <typename T_sink_>
+template <bool Colored_>
 inline void Character_Buffer<T_sink_>::operator+=(const FASTA_Record& fasta_rec)
 {
-    ensure_space(fasta_rec.header_size() + 1 + fasta_rec.seq_size() + 1);   // Two extra bytes for the line-breaks.
+    if constexpr(!Colored_)
+        ensure_space(fasta_rec.header_size() + 1 + fasta_rec.seq_size() + 1);   // Two extra bytes for the line-breaks.
+    else
+        ensure_space(fasta_rec.header_size() + (18 + 1) * fasta_rec.color_list_size() + 1 + fasta_rec.seq_size() + 1);
 
     fasta_rec.append_header(buf);   // Append the header.
+    if constexpr(Colored_)
+        fasta_rec.append_color_list(buf);
     buf.push_back('\n');    // Break line.
     fasta_rec.append_seq(buf);  // Append the sequence.
     buf.push_back('\n');    // Break line.

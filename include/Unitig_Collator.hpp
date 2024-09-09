@@ -135,6 +135,9 @@ public:
     // Returns `true` iff the label is empty.
     auto empty() const { return sz == 0; }
 
+    // Returns the color-sequence.
+    const auto& color() const { return color_; }
+
     // Initializes the label with the sequence `unitig`. `rc` specifies whether
     // `unitig` needs to be put in its reverse-complemented form.
     void init(const std::string_view& unitig, bool rc);

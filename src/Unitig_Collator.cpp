@@ -330,10 +330,7 @@ void Unitig_Collator<k, Colored_>::reduce()
             if constexpr(!Colored_)
                 output += FASTA_Record(0, std::string_view(m_tig.data(), m_tig.size()));
             else
-            {
-                // TODO: output (offset, color-coord) pairs.
-                output += FASTA_Record(0, std::string_view(m_tig.data(), m_tig.size()));
-            }
+                output.template operator+=<true>(FASTA_Record(0, std::string_view(m_tig.data(), m_tig.size()), m_tig.color()));
 
             j = e;
         }
