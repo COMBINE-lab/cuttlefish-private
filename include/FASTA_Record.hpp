@@ -28,38 +28,36 @@ private:
 
     // Constructs a FASTA header with identifier `id`, along with the sequences
     // `seq` and `seq_add` (onward their indices `offset` and `offset_add`,
-    // respectively). Only constant references to the sequences are captured,
-    // so the record's correctness holds as long as the referred sequences themselves
-    // remains unaltered.
-    FASTA_Record(uint64_t id, const std::string_view& seq, const std::string_view& seq_add, std::size_t offset = 0, std::size_t offset_add = 0);
+    // respectively) and the color-list `color`.
+    FASTA_Record(uint64_t id, const std::string_view& seq, const std::string_view& seq_add, std::size_t offset = 0, std::size_t offset_add = 0, const color_list_t* color = nullptr);
 
 
 public:
 
-    // Constructs a FASTA header with identifier `id` and the sequence `seq`
-    // (onward its index `offset`). Only a constant reference to the sequence
-    // is captured, so the record's correctness holds as long as the referred
-    // sequence itself remains unaltered.
-    FASTA_Record(uint64_t id, const std::string& str, std::size_t offset = 0);
+    // Constructs a FASTA header with identifier `id` and the sequence `seq`.
+    // Only a constant reference to the sequence is captured, so the record's
+    // correctness holds as long as the referred sequence itself remains
+    // unaltered.
+    FASTA_Record(uint64_t id, const std::string& str);
 
-    // Constructs a FASTA header with identifier `id` and the sequence `seq`
-    // (onward its index `offset`). Only a constant reference to the sequence
-    // is captured, so the record's correctness holds as long as the referred
-    // sequence itself remains unaltered.
-    FASTA_Record(uint64_t id, const std::string_view& str, std::size_t offset = 0);
+    // Constructs a FASTA header with identifier `id` and the sequence `seq`.
+    // Only a constant reference to the sequence is captured, so the record's
+    // correctness holds as long as the referred sequence itself remains
+    // unaltered.
+    FASTA_Record(uint64_t id, const std::string_view& str);
 
     // Constructs a FASTA header with identifier `id`, along with the sequences
     // `seq` and `seq_add` (onward their indices `offset` and `offset_add`,
     // respectively). Only constant references to the sequences are captured,
     // so the record's correctness holds as long as the referred sequences themselves
     // remains unaltered.
-    FASTA_Record(uint64_t id, const std::string& seq, const std::string& seq_add, std::size_t offset = 0, std::size_t offset_add = 0);
+    FASTA_Record(uint64_t id, const std::string& seq, const std::string& seq_add, std::size_t offset, std::size_t offset_add);
 
     // Returns the length of the header line of the record.
-    std::size_t header_size() const;
+    std::size_t header_size() const { return id_.size() + 1; /* One additional byte for `>`. */ }
 
     // Returns the length of the sequence of the record.
-    std::size_t seq_size() const;
+    std::size_t seq_size() const { return (seq_.size() - offset_) + (!seq_add_.empty() ? (seq_add_.size() - offset_add_) : 0); }
 
     // Appends the header line to the `buffer`.
     void append_header(std::string& buffer) const;
@@ -76,13 +74,13 @@ public:
 };
 
 
-inline FASTA_Record::FASTA_Record(const uint64_t id, const std::string& seq, const std::size_t offset):
-    FASTA_Record(id, seq, std::string_view(), offset)
+inline FASTA_Record::FASTA_Record(const uint64_t id, const std::string& seq):
+    FASTA_Record(id, std::string_view(seq), std::string_view())
 {}
 
 
-inline FASTA_Record::FASTA_Record(const uint64_t id, const std::string_view& seq, const std::size_t offset):
-    FASTA_Record(id, seq, std::string_view(), offset)
+inline FASTA_Record::FASTA_Record(const uint64_t id, const std::string_view& seq):
+    FASTA_Record(id, seq, std::string_view())
 {}
 
 
@@ -98,18 +96,6 @@ inline FASTA_Record::FASTA_Record(const uint64_t id, const std::string_view& seq
     offset_(offset),
     offset_add_(offset_add)
 {}
-
-
-inline std::size_t FASTA_Record::header_size() const
-{
-    return  id_.size() + 1; // One additional byte for `>`.
-}
-
-
-inline std::size_t FASTA_Record::seq_size() const
-{
-    return (seq_.size() - offset_) + (!seq_add_.empty() ? (seq_add_.size() - offset_add_) : 0);
-}
 
 
 inline void FASTA_Record::append_header(std::string& buffer) const
