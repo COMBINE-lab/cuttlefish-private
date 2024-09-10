@@ -322,13 +322,21 @@ void Unitig_Collator<k, Colored_>::reduce()
                 m_tig.pop_back();
 
 
-            is_cycle ? m_tig.canonicalize_cycle(): m_tig.canonicalize();
+            // is_cycle ? m_tig.canonicalize_cycle(): m_tig.canonicalize();
 
             // TODO: decide record-ID choice.
             if constexpr(!Colored_)
+            {
+                is_cycle ? m_tig.canonicalize_cycle(): m_tig.canonicalize();
                 output += FASTA_Record(0, std::string_view(m_tig.data(), m_tig.size()));
+            }
             else
+            {
+                if(!is_cycle)
+                    m_tig.canonicalize();
+
                 output.template operator+=<true>(FASTA_Record(0, std::string_view(m_tig.data(), m_tig.size()), m_tig.color()));
+            }
 
             j = e;
         }
