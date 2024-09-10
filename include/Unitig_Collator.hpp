@@ -10,6 +10,7 @@
 #include "DNA_Utility.hpp"
 #include "Directed_Vertex.hpp"
 #include "Discontinuity_Graph.hpp"
+#include "Color_Encoding.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 
@@ -217,13 +218,17 @@ inline void Unitig_Collator<k, Colored_>::Maximal_Unitig::init(const std::string
         append<true>(unitig.data(), unitig.length());
 
         const auto vertex_c = unitig.length() - k + 1;
-        std::reverse(color_.begin(), color_.end());
-        std::for_each(color_.begin(), color_.end(),
-        [&](auto& c)
+        color_.emplace_back(vertex_c, Color_Coordinate());
+        for(std::size_t i = 0; i < color_.size() - 1; i++)
         {
-            assert(c.off() < vertex_c);
-            c.set_off((vertex_c - c.off()) - 1);
-        });
+            assert(color_[i].off() < color_[i + 1].off());
+            const auto off_r_to_l = color_[i + 1].off() - 1;    // Offset if the colors' RL-encoding is done right-to-left.
+            const auto off_rev_cmp = (vertex_c - off_r_to_l) - 1;   // Offset in the reverse-complemented form of the sequence.
+            color_[i].set_off(off_rev_cmp);
+        }
+        color_.pop_back();
+
+        std::reverse(color_.begin(), color_.end());
     }
 }
 
@@ -270,24 +275,31 @@ inline void Unitig_Collator<k, Colored_>::Maximal_Unitig::append(const std::stri
         [&](auto& c)
         {
             assert(c.off() < unitig_v_c);
-            c.set_off((prev_v_c + c.off()) - 1);    // Offsets from the new unitig gets left-shifted due to vertex-overlap.
+            c.set_off((prev_v_c + c.off()) - 1);    // Adjust based on the existing colors. Offsets from the new unitig gets left-shifted due to vertex-overlap.
         });
     }
     else
     {
         append<true>(unitig.data(), unitig.length() - k);
 
-        if(!color_.empty() && color_.back().c() == color[color_c - 1].c())
-            color_c--;
-
         color_.insert(color_.end(), color, color + color_c);
-        std::reverse(color_.begin() + prev_col_c, color_.end());
-        std::for_each(color_.begin() + prev_col_c, color_.end(),
-        [&](auto& c)
+        color_.emplace_back(unitig_v_c, Color_Coordinate());
+        for(std::size_t i = prev_col_c; i < color_.size() - 1; ++i)
         {
-            assert(c.off() < unitig_v_c);
-            c.set_off((prev_v_c + ((unitig_v_c - c.off()) - 1)) - 1);
-        });
+            assert(color_[i].off() < color_[i + 1].off());
+            const auto off_r_to_l = color_[i + 1].off() - 1;    // Offset if the colors' RL-encoding is done right-to-left.
+            const auto off_rev_cmp = (unitig_v_c - off_r_to_l) - 1; // Offset in the reverse-complemented form of the sequence.
+            const auto off_adjusted = (prev_v_c + off_rev_cmp) - 1; // Offset adjusted based on the existing colors.
+                                                                    // Offsets from the new unitig gets left-shifted due to vertex-overlap.
+
+            color_[i].set_off(off_adjusted);
+        }
+        color_.pop_back();
+
+        if(prev_col_c > 0 && color_[prev_col_c - 1].c() == color_.back().c())
+            color_.pop_back();
+
+        std::reverse(color_.begin() + prev_col_c, color_.end());
     }
 }
 
@@ -318,15 +330,18 @@ inline void Unitig_Collator<k, Colored_>::Maximal_Unitig::canonicalize()
 
             if constexpr(Colored_)
             {
-                std::reverse(color_.begin(), color_.end());
-
-                const int64_t v_c = sz - k + 1;
-                std::for_each(color_.begin(), color_.end(),
-                [&](auto& c)
+                const int64_t vertex_c = sz - k + 1;
+                color_.emplace_back(vertex_c, Color_Coordinate());
+                for(std::size_t i = 0; i < color_.size() - 1; ++i)
                 {
-                    assert(c.off() < v_c);
-                    c.set_off((v_c - c.off()) - 1);
-                });
+                    assert(color_[i].off() < color_[i + 1].off());
+                    const auto off_r_to_l = color_[i + 1].off() - 1;
+                    const auto off_rev_cmp = (vertex_c - off_r_to_l) - 1;
+                    color_[i].set_off(off_rev_cmp);
+                }
+                color_.pop_back();
+
+                std::reverse(color_.begin(), color_.end());
             }
 
             return;

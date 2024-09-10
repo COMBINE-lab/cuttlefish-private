@@ -166,10 +166,7 @@ void Unitig_Collator<k, Colored_>::map()
                             break;
                         else
                         {
-                            assert(v_c.off() <= uni_len - k);
-                            if(color.empty())
-                                assert(v_c.off() == 0);
-                            else
+                            if(!color.empty())
                                 assert(v_c.off() > v_c_map[color_idx - 1].off());
 
                             color.emplace_back(v_c.off(), v_c.c());
@@ -177,6 +174,7 @@ void Unitig_Collator<k, Colored_>::map()
                     }
 
                     assert(!color.empty());
+                    assert(color.front().off() == 0 && color.back().off() < uni_len - k + 1);
                 }
 
                 max_unitig_bucket[mapped_b_id].unwrap().add(M[idx], unitig.data(), uni_len, color);
@@ -410,8 +408,7 @@ void Unitig_Collator<k, Colored_>::emit_trivial_mtigs()
 
             assert(!color.empty());
 
-            // TODO: output (offset, color-coord) pairs.
-            output += FASTA_Record(0, std::string_view(unitig.data(), uni_len));
+            output.template operator+=<true>(FASTA_Record(0, std::string_view(unitig.data(), uni_len), color));
         }
 
         unitig_reader.remove_files();
