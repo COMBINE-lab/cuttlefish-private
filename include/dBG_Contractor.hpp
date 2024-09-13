@@ -49,8 +49,6 @@ private:
     const Build_Params params;  // Required parameters (wrapped inside).
     const Data_Logistics logistics; // Data logistics manager for the algorithm execution.
 
-    Discontinuity_Graph<k> G;   // The discontinuity graph.
-
     std::size_t n_disc_v;   // Number of discontinuity-vertices.
 
     // TODO: consider using padding.
@@ -63,6 +61,12 @@ private:
     op_buf_list_t op_buf;   // Worker-specific output buffers.
 
 
+    // Contracts the compacted de Bruijn graph from the parameters provided in
+    // the constructor. `Colored_` determines whether to color the compacted
+    // graph or not.
+    template <bool Colored_> void construct();
+
+
 public:
 
     dBG_Contractor(const dBG_Contractor&) = delete;
@@ -72,9 +76,8 @@ public:
     // required for the construction wrapped in `params`.
     dBG_Contractor(const Build_Params& params);
 
-    // Contracts the bootstrapped discontinuity graph generated from the
-    // compacted dBG at path `cdbg_path`. `l`-minimizers are used in generating
-    // the discontinuity graph.
+    // Contracts the compacted de Bruijn graph from the parameters provided in
+    // the constructor.
     void construct();
 };
 

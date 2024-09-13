@@ -54,16 +54,25 @@ void Unitig_File_Reader::remove_files()
 }
 
 
-Unitig_Write_Distributor::Unitig_Write_Distributor(const std::string& path_pref, const std::size_t writer_count, const std::size_t worker_count):
+Unitig_Write_Distributor::Unitig_Write_Distributor(const std::string& path_pref, const std::size_t writer_count, const std::size_t worker_count, const bool trivial_mtigs):
       writer_count(writer_count)
     , worker_count(worker_count)
     , writer_per_worker(writer_count / worker_count)
     , next_writer(worker_count, 0)
 {
     assert(writer_count >= worker_count);
+
+    writer.reserve(1 + writer_count);
     writer.emplace_back(std::string()); // Edge-partition 0 is symbolic, for edges that do not have any associated lm-tig (i.e. has weight > 1).
     for(std::size_t b = 1; b <= writer_count; ++b)
         writer.emplace_back(path_pref + "_" + std::to_string(b));
+
+    if(trivial_mtigs)
+    {
+        mtig_writer.reserve(worker_count);
+        for(std::size_t w = 0; w < worker_count; ++w)
+            mtig_writer.emplace_back(path_pref + "_" + std::to_string(writer.size() + w));
+    }
 }
 
 
@@ -71,6 +80,10 @@ void Unitig_Write_Distributor::close()
 {
     for(auto& w : writer)
         w.unwrap().close();
+
+    if(!mtig_writer.empty())
+        for(auto& w : mtig_writer)
+            w.unwrap().close();
 }
 
 }

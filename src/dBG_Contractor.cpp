@@ -1,6 +1,5 @@
 
 #include "dBG_Contractor.hpp"
-#include "Discontinuity_Graph_Bootstrap.hpp"
 #include "Graph_Partitioner.hpp"
 #include "State_Config.hpp"
 #include "Subgraphs_Manager.hpp"
@@ -8,7 +7,6 @@
 #include "Contracted_Graph_Expander.hpp"
 #include "Unitig_Collator.hpp"
 #include "globals.hpp"
-#include "utility.hpp"
 #include "profile.hpp"
 #include "parlay/parallel.h"
 
@@ -20,10 +18,9 @@ template <uint16_t k>
 dBG_Contractor<k>::dBG_Contractor(const Build_Params& params):
       params(params)
     , logistics(params)
-    , G(params.vertex_part_count(), params.lmtig_bucket_count(), logistics)
     , op_buf(parlay::num_workers(), op_buf_t(output_sink.sink()))
 {
-    cuttlefish::State_Config::set_edge_threshold(params.cutoff());
+    Edge_Frequency::set_edge_threshold(params.cutoff());
     std::cerr << "Edge frequency cutoff: " << params.cutoff() << ".\n";
 
     // TODO: no need to instantiate `G`, `P_v`, and `P_e` right away—waste of working memory.
@@ -43,6 +40,7 @@ dBG_Contractor<k>::dBG_Contractor(const Build_Params& params):
 
 
 template <uint16_t k>
+template <bool Colored_>
 void dBG_Contractor<k>::construct()
 {
     // Clear the output file and initialize the output sink.
@@ -50,12 +48,21 @@ void dBG_Contractor<k>::construct()
     clear_file(op_file_path);
     output_sink.init_sink(op_file_path);
 
+    Discontinuity_Graph<k, Colored_> G(params, logistics);  // The discontinuity graph.
+
     const auto t_0 = timer::now();
 
-    Subgraphs_Manager<k, false> subgraphs(logistics, params.subgraph_count(), params.min_len(), G, op_buf);
+    Subgraphs_Manager<k, Colored_> subgraphs(logistics, params.subgraph_count(), params.min_len(), G, op_buf);
 
-    Graph_Partitioner<k, false> super_kmer_splitter(subgraphs, logistics, params.min_len());
-    EXECUTE("partition", super_kmer_splitter.partition);
+    if(params.is_read_graph())
+    {
+        EXECUTE("partition", (Graph_Partitioner<k, true, Colored_>(subgraphs, logistics, params.min_len())).partition)
+    }
+    else
+    {
+        EXECUTE("partition", (Graph_Partitioner<k, false, Colored_>(subgraphs, logistics, params.min_len())).partition)
+    }
+
     subgraphs.finalize();
 
     const auto t_part = timer::now();
@@ -72,9 +79,8 @@ void dBG_Contractor<k>::construct()
     std::cerr << "Edge-matrix size: " << G.E().size() << "\n";
     std::cerr << "Phantom edge upper-bound: " << G.phantom_edge_upper_bound() << "\n";
     std::cerr << "Expecting at most " << ((G.E().row_size(0) + G.phantom_edge_upper_bound()) / 2) << " more non-DCC maximal unitigs\n";
-    return; // Perf-diagnose
 
-    Discontinuity_Graph_Contractor<k> contractor(G, P_v, logistics);
+    Discontinuity_Graph_Contractor<k, Colored_> contractor(G, P_v, logistics);
     EXECUTE("contract", contractor.contract)
 
     G.close_lmtig_stream();
@@ -82,13 +88,13 @@ void dBG_Contractor<k>::construct()
     const auto t_c = timer::now();
     std::cerr << "Discontinuity-graph contraction completed. Time taken: " << timer::duration(t_c - t_subg) << " seconds.\n";
 
-    Contracted_Graph_Expander<k> expander(G, P_v, P_e, logistics);
+    Contracted_Graph_Expander<k, Colored_> expander(G, P_v, P_e, logistics);
     EXECUTE("expand", expander.expand)
 
     const auto t_e = timer::now();
     std::cerr << "Expansion of contracted graph completed. Time taken: " << timer::duration(t_e - t_c) << " seconds.\n";
 
-    Unitig_Collator<k> collator(P_e, logistics, op_buf, params.gmtig_bucket_count());
+    Unitig_Collator<k, Colored_> collator(G, P_e, logistics, op_buf, params.gmtig_bucket_count());
     EXECUTE("collate", collator.collate);
 
     // Flush data and close the output sink.
@@ -98,6 +104,13 @@ void dBG_Contractor<k>::construct()
 
     const auto t_uc = timer::now();
     std::cerr << "Unitigs-collation completed. Time taken: " << timer::duration(t_uc - t_e) << " seconds.\n";
+}
+
+
+template <uint16_t k>
+void dBG_Contractor<k>::construct()
+{
+    params.color() ? construct<true>() : construct<false>();
 }
 
 }

@@ -39,7 +39,6 @@ set(PROJECT_SRC
         # Read_CdBG.cpp
         # Read_CdBG_Constructor.cpp
         # Read_CdBG_Extractor.cpp
-        Unitig_Scratch.cpp
         Maximal_Unitig_Scratch.cpp
         Unipaths_Meta_info.cpp
         Data_Logistics.cpp
@@ -73,6 +72,8 @@ set(PROJECT_SRC
         Contracted_Graph_Expander.cpp
         Unitig_Collator.cpp
         Unitig_Coord_Bucket.cpp
+        Color_Table.cpp
+        Color_Repo.cpp
         profile.cpp
         commands.cpp
     )
@@ -92,7 +93,7 @@ add_executable(test test.cpp)
 
 # Define dependencies between the targets.
 add_dependencies(rabbitfx prj_rapidgzip)
-add_dependencies(cfcore_static prj_parlaylib)
+add_dependencies(cfcore_static prj_parlaylib prj_boost)
 
 
 # Set the include directories for the targets.

@@ -9,11 +9,13 @@
 #include "globals.hpp"
 #include "utility.hpp"
 
+#include <cstdint>
 #include <cstddef>
 #include <limits>
 #include <cstring>
 #include <vector>
 #include <string>
+#include <utility>
 #include <fstream>
 #include <cstdlib>
 #include <cassert>
@@ -33,10 +35,10 @@ private:
 
     const std::string file_path;    // Path to the file for the unitig content.
 
-    std::vector<char> buf;  // In-memory buffer for the unitig content.
+    std::vector<char> buf;  // In-memory buffer for the unitig content. TODO: replace with `Buffer`.
 
     std::size_t total_sz;   // Total size of the added unitig content.
-    std::vector<uni_len_t> len; // Lengths of the unitigs in the file.
+    std::vector<uni_len_t> len; // Lengths of the unitigs in the file.  TODO: replace with `Buffer`.
     std::size_t unitig_c;   // Number of unitigs added.
     std::ofstream output; // The unitig file.
     std::ofstream output_len;   // The lengths file.
@@ -79,19 +81,14 @@ public:
 // Unitig-file reader manager.
 class Unitig_File_Reader
 {
-    typedef uint32_t uni_idx_t; // Type of the index of a unitig in a bucket.
-    // TODO: use `u16` after testing done with `u32`.
-    // typedef uint16_t uni_len_t; // Type of the length of a unitig in a bucket.
-    typedef uint32_t uni_len_t; // Type of the length of a unitig in a bucket.
-
 private:
 
     static constexpr std::streamsize in_memory_bytes = 16lu * 1024; // 16 KB.
 
     const std::string file_path;    // Path to the file with the unitig content.
 
-    std::vector<char> buf;  // In-memory buffer for the unitig content.
-    std::vector<uni_len_t> uni_len; // Sizes of the unitigs in the current buffer.
+    std::vector<char> buf;  // In-memory buffer for the unitig content. TODO: replace with `Buffer`.
+    std::vector<uni_len_t> uni_len; // Sizes of the unitigs in the current buffer.  TODO: replace with `Buffer`.
 
     std::ifstream input;    // The unitigs-file.
     Virtual_File<uni_len_t> len;    // The lengths-file.
@@ -138,24 +135,34 @@ private:
     const std::size_t writer_per_worker;    // Number of write-managers dedicated to a worker.
     std::vector<Padded<std::size_t>> next_writer;   // `next_writer[w]` contains the relative-ID of the next writer-manager to be used by worker `w`.
 
+    std::vector<Padded<Unitig_File_Writer>> mtig_writer;    // Collection of write-managers for trivially maximal unitigs.
+
 public:
 
     // Constructs a unitig-writer distributor to `writer_count` write-managers
-    // for `worker_count` workers. The files are at the path-prefix `path_pref`.
-    Unitig_Write_Distributor(const std::string& path_pref, std::size_t writer_count, std::size_t worker_count);
+    // for `worker_count` workers. The files are at path-prefix `path_pref`.
+    // `trivial_mtigs` denotes whether trivially maximal unitigs are to be
+    // written or not.
+    Unitig_Write_Distributor(const std::string& path_pref, std::size_t writer_count, std::size_t worker_count, bool trivial_mtigs);
 
-    // Adds the unitig content in the scratch `maximal_unitig` to the writer for
-    // the `w_id`'th worker.
-    template <uint16_t k> void add(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig);
+    // Adds the unitig content in the scratch `maximal_unitig` to the writer
+    // for the `w_id`'th worker. Returns the pair `(b, idx)` such that `b` is
+    // the ID of the bucket where the unitig is put in at the index `idx`.
+    template <uint16_t k> std::pair<std::size_t, std::size_t> add(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig);
 
     // Adds the k-mer content in `kmer` to the writer for the `w_id`'th worker.
-    template <uint16_t k> void add(std::size_t w_id, const Kmer<k>& kmer);
+    // Returns the pair `(b, idx)` such that `b` is the ID of the bucket where
+    // the unitig is put in at the index `idx`.
+    template <uint16_t k> std::pair<std::size_t, std::size_t> add(std::size_t w_id, const Kmer<k>& kmer);
 
-    // Returns the ID of the next unitig-file to write to for worker `w_id`.
-    std::size_t file_idx(std::size_t w_id) const;
+    // Adds the trivially maximal unitig in the scratch `maximal_unitig` to the
+    // writer for the `w_id`'th worker. Returns the pair `(b, idx)` such that
+    // `b` is the ID of the bucket where the unitig is put in at the index
+    // `idx`.
+    template <uint16_t k> std::pair<std::size_t, std::size_t> add_trivial_mtig(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig);
 
-    // Returns the number of unitigs added to the `b_id`'th file.
-    std::size_t unitig_count(std::size_t b_id) const;
+    // Returns the total number of buckets used for writing.
+    auto bucket_count() const { return  writer.size() + mtig_writer.size(); }
 
     // Closes the unitig-writer streams.
     void close();
@@ -274,10 +281,11 @@ inline std::size_t Unitig_File_Reader::read_next_unitig(Buffer<char>& unitig)
 
 
 template <uint16_t k>
-inline void Unitig_Write_Distributor::add(std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
+inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor::add(const std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
 {
     auto& next = next_writer[w_id].unwrap();
     const auto writer_id = w_id * writer_per_worker + next + 1; // +1 as edge-partition 0 conceptually contains edges without any associated lm-tig (i.e. with weight > 1)
+    // TODO: instead of rolling `writer_id` in every add, do it in batches (say of size 64) to enhance cache-performance.
     const auto range_size = (w_id < worker_count - 1 ? writer_per_worker : writer_count - (w_id * writer_per_worker));
     assert(range_size > 0);
     assert(next < range_size);
@@ -288,12 +296,16 @@ inline void Unitig_Write_Distributor::add(std::size_t w_id, const Maximal_Unitig
     const auto& u_f = maximal_unitig.unitig_label(side_t::front);
     const auto& u_b = maximal_unitig.unitig_label(side_t::back);
     assert(writer_id < writer.size());
-    writer[writer_id].unwrap().add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
+    auto& w = writer[writer_id].unwrap();
+    const auto idx = w.unitig_count();
+    w.add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
+
+    return {writer_id, idx};
 }
 
 
 template <uint16_t k>
-inline void Unitig_Write_Distributor::add(std::size_t w_id, const Kmer<k>& kmer)
+inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor::add(std::size_t w_id, const Kmer<k>& kmer)
 {
     auto& next = next_writer[w_id].unwrap();
     const auto writer_id = w_id * writer_per_worker + next + 1; // +1 as edge-partition 0 conceptually contains edges without any associated lm-tig (i.e. with weight > 1)
@@ -308,19 +320,25 @@ inline void Unitig_Write_Distributor::add(std::size_t w_id, const Kmer<k>& kmer)
     std::string label;
     kmer.get_label(label);
     assert(writer_id < writer.size());
-    writer[writer_id].unwrap().add(label.cbegin(), label.cend());
+    auto& w = writer[writer_id].unwrap();
+    const auto idx = w.unitig_count();
+    w.add(label.cbegin(), label.cend());
+
+    return {writer_id, idx};
 }
 
 
-inline std::size_t Unitig_Write_Distributor::file_idx(const std::size_t w_id) const
+template <uint16_t k>
+inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor::add_trivial_mtig(const std::size_t w_id, const Maximal_Unitig_Scratch<k>& maximal_unitig)
 {
-    return w_id * writer_per_worker + next_writer[w_id].unwrap() + 1;
-}
+    assert(w_id < mtig_writer.size());
+    const auto& u_f = maximal_unitig.unitig_label(side_t::front);
+    const auto& u_b = maximal_unitig.unitig_label(side_t::back);
+    auto& w = mtig_writer[w_id].unwrap();
+    const auto idx = w.unitig_count();
+    w.add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
 
-
-inline std::size_t Unitig_Write_Distributor::unitig_count(const std::size_t b_id) const
-{
-    return writer[b_id].unwrap().unitig_count();
+    return {writer.size() + w_id, idx};
 }
 
 }

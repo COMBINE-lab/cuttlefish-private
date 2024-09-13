@@ -55,8 +55,8 @@ public:
 
     // Appends the content of the FASTA record `fasta_rec` to the buffer. Flushes
     // are possible.
-    template <typename T_container_>
-    void operator+=(const FASTA_Record<T_container_>& fasta_rec);
+    template <bool Colored_ = false>
+    void operator+=(const FASTA_Record& fasta_rec);
 
     // Appends the content of the FASTA record `fasta_cycle` to the buffer, that is
     // supposed to be a cycle in a de Bruijn graph `G(·, k)`. The cyclic FASTA
@@ -64,8 +64,8 @@ public:
     // right-rotated so that the `pivot`-index character is at index 0 finally. A
     // line-break is added at the end of the sequence, since the user might not be
     // able to provide it with the "to be rotated" sequence.
-    template <uint16_t k, typename T_container_>
-    void rotate_append_cycle(const FASTA_Record<T_container_>& fasta_cycle, std::size_t pivot);
+    template <uint16_t k>
+    void rotate_append_cycle(const FASTA_Record& fasta_cycle, std::size_t pivot);
 
     // Returns the `len`-length suffix of the buffer.
     const char* suffix(std::size_t len) const;
@@ -145,12 +145,17 @@ inline void Character_Buffer<T_sink_>::operator+=(const T_container_& str)
 
 
 template <typename T_sink_>
-template <typename T_container_>
-inline void Character_Buffer<T_sink_>::operator+=(const FASTA_Record<T_container_>& fasta_rec)
+template <bool Colored_>
+inline void Character_Buffer<T_sink_>::operator+=(const FASTA_Record& fasta_rec)
 {
-    ensure_space(fasta_rec.header_size() + 1 + fasta_rec.seq_size() + 1);   // Two extra bytes for the line-breaks.
+    if constexpr(!Colored_)
+        ensure_space(fasta_rec.header_size() + 1 + fasta_rec.seq_size() + 1);   // Two extra bytes for the line-breaks.
+    else
+        ensure_space(fasta_rec.header_size() + (18 + 1) * fasta_rec.color_list_size() + 1 + fasta_rec.seq_size() + 1);
 
     fasta_rec.append_header(buf);   // Append the header.
+    if constexpr(Colored_)
+        fasta_rec.append_color_list(buf);
     buf.push_back('\n');    // Break line.
     fasta_rec.append_seq(buf);  // Append the sequence.
     buf.push_back('\n');    // Break line.
@@ -158,8 +163,8 @@ inline void Character_Buffer<T_sink_>::operator+=(const FASTA_Record<T_container
 
 
 template <typename T_sink_>
-template <uint16_t k, typename T_container_>
-inline void Character_Buffer<T_sink_>::rotate_append_cycle(const FASTA_Record<T_container_>& fasta_rec, const std::size_t pivot)
+template <uint16_t k>
+inline void Character_Buffer<T_sink_>::rotate_append_cycle(const FASTA_Record& fasta_rec, const std::size_t pivot)
 {
     ensure_space(fasta_rec.header_size() + 1 + fasta_rec.seq_size() + 1);   // Two extra bytes for two line-breaks.
 

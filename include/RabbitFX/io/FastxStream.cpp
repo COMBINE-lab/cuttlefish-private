@@ -227,13 +227,19 @@ namespace rabbit {
                 pos_++;
             } while (pos_ < size && data[pos_] != '>');
 
-            return data[pos_] == '>' ? true : false;
+            return pos_ == size ? false : (data[pos_] == '>');
         }
 
         bool FastaFileReader::ReadNextFaChunk_(FastaDataChunk *chunk_, SeqInfos &seqInfos, bool &continue_read) {
             (void)seqInfos;
 
+/*
             if (Eof()) {
+                chunk_->size = 0;
+                return false;
+            }
+*/
+            if (mFaReader->FinishRead() && bufferSize == 0) {
                 chunk_->size = 0;
                 return false;
             }
@@ -251,12 +257,14 @@ namespace rabbit {
             }
 
             // read the next chunk
-            int64 r = this->Read(data + chunk_->size, toRead);
+            // int64 r = this->Read(data + chunk_->size, toRead);
+            int64 r = mFaReader->Read(data + chunk_->size, toRead);
             // std::cout << "r is :" << r << std::endl;
             // std::cout << "toRead: " << toRead << std::endl;
 
             if (r > 0) {
-                if (r == toRead)  // somewhere before end
+                // if (r == toRead)  // somewhere before end
+                if(!mFaReader->FinishRead())
                 {
                     if (data[0] == '>') {
                         uint64 chunkEnd = 0, pos_ = 0;
@@ -297,9 +305,11 @@ namespace rabbit {
                     chunk_->size += r - 1;  // skip the last eof symbol
                     if (usesCrlf) chunk_->size -= 1;
                     eof = true;
+                    mFaReader->setEof();
                 }
             } else {
                 eof = true;
+                mFaReader->setEof();
             }
 
             return true;

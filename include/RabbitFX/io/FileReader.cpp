@@ -23,7 +23,7 @@ FileReader::FileReader(const std::string &fileName_, bool isZipped, const std::s
             return;
         }
 
-        printf("using igzip!!\n");
+        // printf("using igzip!!\n");
         mFile = fopen(fileName_.c_str(), "rb");
         if (mFile == NULL){
             throw RioException(

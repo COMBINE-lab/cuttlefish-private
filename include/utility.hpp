@@ -183,7 +183,7 @@ constexpr std::size_t ceil_pow_2(std::size_t x)
 // Wrapper class for a data-element of type `T_` to ensure that in a linear
 // collection of `T_`'s, each element is aligned to a cache-line boundary.
 template <typename T_>
-class alignas(2 * L1_CACHE_LINE_SIZE)
+class alignas(L1_CACHE_LINE_SIZE)
     Padded
 {
 private:
@@ -228,10 +228,23 @@ public:
         , cap_(0)
     {}
 
+    // Constructs a buffer with capacity `cap`.
+    Buffer(const std::size_t cap):
+          buf_(allocate<T_>(cap))
+        , cap_(cap)
+    {}
+
     ~Buffer() { deallocate(buf_); }
 
+    Buffer(Buffer&& rhs):
+          buf_(std::move(rhs.buf_))
+        , cap_(std::move(rhs.cap_))
+    {
+        rhs.buf_ = nullptr;
+        rhs.cap_ = 0;
+    }
+
     Buffer(const Buffer&) = delete;
-    Buffer(Buffer&&) = delete;
     Buffer& operator=(const Buffer&) = delete;
     Buffer& operator=(Buffer&&) = delete;
 

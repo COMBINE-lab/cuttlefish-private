@@ -1,10 +1,10 @@
 
 #include "Subgraph.hpp"
 #include "Super_Kmer_Bucket.hpp"
-#include "DNA.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
 
+#include <cstddef>
 #include <cassert>
 
 
@@ -13,8 +13,9 @@ namespace cuttlefish
 
 
 template <uint16_t k, bool Colored_>
-Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k>& G, op_buf_t& op_buf, Subgraphs_Scratch_Space<k>& space):
+Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinuity_Graph<k, Colored_>& G, op_buf_t& op_buf, Subgraphs_Scratch_Space<k, Colored_>& space):
       B(B)
+    , work_space(space)
     , M(space.map())
     , kmer_count_(0)
     , edge_c(0)
@@ -22,8 +23,10 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
     , disc_edge_c(0)
     , isolated(0)
     , G(G)
+    , mtig_c(0)
     , trivial_mtig_c(0)
     , icc_count_(0)
+    , color_shift_c(0)
     , op_buf(op_buf)
 {
     M.clear();
@@ -33,34 +36,28 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::construct()
 {
-    // Returns the `idx`'th base of the super k-mer label encoding `super_kmer`
-    // that has `word_count` words.
-    const auto get_base = [](const label_unit_t* const super_kmer, const std::size_t word_count, const std::size_t idx)
-    {
-        assert(idx / 32 < word_count);
-
-        const auto word_idx = idx >> 5;
-        const auto bit_idx  = (idx & 31) << 1;
-        return base_t((super_kmer[(word_count - 1) - word_idx] >> (62 - bit_idx)) & 0b11lu);
-    };
-
-
     auto super_kmer_it = B.iterator();  // Iterator over the weak super k-mers inducing this graph.
 
     typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
     const auto word_count = super_kmer_it.super_kmer_word_count();  // Fixed number of words in a super k-mer label.
 
-    Directed_Vertex<k> v;
-    Kmer<k> pred_v;
+    Directed_Vertex<k> v;   // Current vertex in a scan over some super k-mer.
+    Kmer<k> pred_v; // Previous vertex in a scan.
 
     Super_Kmer_Attributes<Colored_> att;
     label_unit_t* label;
+    source_id_t source = 0; // Source-ID of the current super k-mer.
     while(super_kmer_it.next(att, label))
     {
         const auto len = att.len();
         assert(len >= k);
         assert(len < 2 * (k - 1));
         kmer_count_ += len - (k - 1);
+
+        if constexpr(Colored_)
+            assert(att.source() >= source);
+        source = att.source();
+        (void)source;
 
         v.from_super_kmer(label, word_count);
         std::size_t kmer_idx = 0;
@@ -83,7 +80,8 @@ void Subgraph<k, Colored_>::construct()
             ht_router::update(M, v.canonical(),
                                  front, back,
                                  kmer_idx == 0 && att.left_discontinuous() ? v.entrance_side() : side_t::unspecified,
-                                 kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified);
+                                 kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified,
+                                 att.source());
 
             if(kmer_idx + k == len)
                 break;
@@ -179,8 +177,14 @@ void Subgraph<k, Colored_>::contract()
 {
     Maximal_Unitig_Scratch<k> maximal_unitig;   // Scratch space to be used to construct maximal unitigs.
     uint64_t vertex_count = 0;  // Count of vertices processed.
-    uint64_t unitig_count = 0;  // Count of maximal unitigs.
-    uint64_t non_isolated = 0;  // Count of non-isolated vertices.
+
+    std::vector<Kmer<k>> V; // Vertices in an lm-tig.
+    std::vector<uint64_t> H;    // Color-set hashes of the vertices in an lm-tig.
+
+    auto& C = work_space.color_map();   // Color-set map.
+    auto& in_process = work_space.in_process_arr();
+    if constexpr(Colored_)
+        in_process.clear();
 
     for(auto p = M.begin(); p != M.end(); ++p)
     {
@@ -200,14 +204,53 @@ void Subgraph<k, Colored_>::contract()
             continue;
         }
 
-        non_isolated++;
 
-
-        if(extract_maximal_unitig(v, maximal_unitig))
+        std::size_t b;  // Bucket-ID of the produced unitig-label.
+        std::size_t b_idx;  // Index of the unitig-label in the corresponding bucket.
+        if(extract_maximal_unitig(v, maximal_unitig, b, b_idx))
         {
             vertex_count += maximal_unitig.size();
-            unitig_count++;
             label_sz += maximal_unitig.size() + k - 1;
+            mtig_c++;
+
+            if constexpr(Colored_)
+            {
+                maximal_unitig.get_vertices_and_hashes(V, H);
+                assert(V.size() == H.size() && V.size() == maximal_unitig.size());
+
+                uint64_t h_last = ~H[0];
+                Color_Coordinate c;
+                const auto w_id = parlay::worker_id();
+                for(std::size_t i = 0; i < V.size(); ++i)
+                    if(H[i] != h_last)  // This is either a color-shifting vertex, or the first vertex in the lm-tig.
+                    {
+                        const LMTig_Coord lmtig_coord(b, b_idx, i);
+                        const auto color_status = C.mark_in_process(H[i], w_id, c);
+                        switch(color_status)
+                        {
+                        case Color_Status::undiscovered:    // Mark this vertex's color as of interest to extract later, and keep the vertex as pending.
+                        {
+                            M[V[i]].mark_new_color();
+                            in_process.emplace_back(lmtig_coord, H[i]);
+                            break;
+                        }
+
+                        case Color_Status::in_process:  // Keep this vertex pending and revisit it once its color is available.
+                            if(c.processing_worker() != w_id)   // The color is not new globally, but new to this worker.
+                                M[V[i]].mark_new_color();
+
+                            in_process.emplace_back(lmtig_coord, H[i]);
+                            break;
+
+                        case Color_Status::discovered:  // This vertex's color is available.
+                            G.add_color(b, b_idx, i, c);
+                            break;
+                        }
+
+                        h_last = H[i];
+                        color_shift_c++;
+                    }
+            }
         }
     }
 
@@ -216,75 +259,150 @@ void Subgraph<k, Colored_>::contract()
 
 
 template <uint16_t k, bool Colored_>
-std::size_t Subgraph<k, Colored_>::size() const
+void Subgraph<k, Colored_>::extract_new_colors()
 {
-    return M.size();
+if constexpr(Colored_)
+{
+    auto& color_rel = work_space.color_rel_arr();
+    color_rel.clear();
+
+    auto super_kmer_it = B.iterator();  // Iterator over the weak super k-mers inducing this graph.
+    typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
+    const auto word_count = super_kmer_it.super_kmer_word_count();  // Fixed number of words in a super k-mer label.
+
+    Directed_Vertex<k> v;   // Current vertex in a scan over some super k-mer.
+    Super_Kmer_Attributes<Colored_> att;
+    label_unit_t* label;
+
+    while(super_kmer_it.next(att, label))
+    {
+        const auto len = att.len();
+        assert(len >= k);
+        assert(len < 2 * (k - 1));
+        const auto source = att.source();
+
+        v.from_super_kmer(label, word_count);
+        std::size_t kmer_idx = 0;
+
+        while(true)
+        {
+            assert(kmer_idx + k - 1 < len);
+
+            if(M[v.canonical()].has_new_color())
+                color_rel.emplace_back(v.canonical(), source);
+
+            if(kmer_idx + k == len)
+                break;
+
+            const auto succ_base = get_base(label, word_count, kmer_idx + k);
+            v.roll_forward(succ_base);
+            kmer_idx++;
+        }
+    }
+
+
+    semisort(color_rel);
+
+    auto& C = work_space.color_map();
+    auto& color_bucket = work_space.color_repo().bucket();
+    std::vector<source_id_t> src;   // Sources of the current vertex.
+    for(std::size_t i = 0, j; i < color_rel.size(); i = j)
+    {
+        const auto& v = color_rel[i].first;
+        src.clear();
+        src.push_back(color_rel[i].second);
+        for(j = i + 1; j < color_rel.size(); ++j)
+        {
+            if(color_rel[j].first != v)
+                break;
+
+            assert(color_rel[j].second >= color_rel[j - 1].second); // Ensure sortedness of source-IDs.
+            if(color_rel[j].second != color_rel[j - 1].second)
+                src.push_back(color_rel[j].second);
+        }
+
+        const auto color_idx = color_bucket.size();
+        if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), color_idx)))
+        {
+            color_bucket.add(src.size());
+            color_bucket.add(src.data(), src.size());
+        }
+    }
+
+
+    auto& in_process = work_space.in_process_arr();
+    for(const auto& p : in_process)
+    {
+        const auto& lmtig_coord = p.first;
+        const auto& h = p.second;
+
+        const auto c = C.get(h);
+        G.add_color(lmtig_coord.b(), lmtig_coord.idx(), lmtig_coord.off(), c);
+    }
+
+    in_process.clear();
+}
 }
 
 
 template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::kmer_count() const
+void Subgraph<k, Colored_>::semisort(typename Subgraph::color_rel_arr_t& A)
 {
-    return kmer_count_;
+    std::sort(A.begin(), A.end());
 }
 
 
 template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::edge_count() const
-{
-    return edge_c;
-}
-
-
-template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::discontinuity_edge_count() const
-{
-    return disc_edge_c;
-}
-
-
-template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::trivial_mtig_count() const
-{
-    return trivial_mtig_c;
-}
-
-
-template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::icc_count() const
-{
-    return icc_count_;
-}
-
-
-template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::label_size() const
-{
-    return label_sz;
-}
-
-
-template <uint16_t k, bool Colored_>
-uint64_t Subgraph<k, Colored_>::isolated_vertex_count() const
-{
-    return isolated;
-}
-
-
-template <uint16_t k>
-Subgraphs_Scratch_Space<k>::Subgraphs_Scratch_Space(const std::size_t max_sz)
+Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t max_sz)
 {
     map_.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
-        HT_Router<k>::add_HT(map_, max_sz);
+        HT_Router<k, Colored_>::add_HT(map_, max_sz);
+
+    in_process_arr_.resize(parlay::num_workers());
+    color_rel_arr_.resize(parlay::num_workers());
 }
 
 
-template <uint16_t k>
-typename Subgraphs_Scratch_Space<k>::map_t& Subgraphs_Scratch_Space<k>::map()
+template <uint16_t k, bool Colored_>
+typename Subgraphs_Scratch_Space<k, Colored_>::map_t& Subgraphs_Scratch_Space<k, Colored_>::map()
 {
     assert(map_.size() == parlay::num_workers());
     return map_[parlay::worker_id()].unwrap();
+}
+
+
+template <uint16_t k, bool Colored_>
+Color_Table& Subgraphs_Scratch_Space<k, Colored_>::color_map()
+{
+    // assert(Colored_);
+    return M_c;
+}
+
+
+template <uint16_t k, bool Colored_>
+typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t& Subgraphs_Scratch_Space<k, Colored_>::in_process_arr()
+{
+    // assert(Colored_);
+    assert(in_process_arr_.size() == parlay::num_workers());
+    return in_process_arr_[parlay::worker_id()].unwrap();
+}
+
+
+template <uint16_t k, bool Colored_>
+typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t& Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr()
+{
+    // assert(Colored_);
+    assert(color_rel_arr_.size() == parlay::num_workers());
+    return color_rel_arr_[parlay::worker_id()].unwrap();
+}
+
+
+template <uint16_t k, bool Colored_>
+Color_Repo& Subgraphs_Scratch_Space<k, Colored_>::color_repo()
+{
+    assert(Colored_);
+    return color_repo_;
 }
 
 }
@@ -309,4 +427,4 @@ for b in B:    // B: collection of buckets
 
 // Template instantiations for the required instances.
 ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Subgraph)
-ENUMERATE(INSTANCE_COUNT, INSTANTIATE, cuttlefish::Subgraphs_Scratch_Space)
+ENUMERATE(INSTANCE_COUNT, INSTANTIATE_PER_BOOL, cuttlefish::Subgraphs_Scratch_Space)

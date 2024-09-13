@@ -1261,7 +1261,7 @@ int main(int argc, char** argv)
     // const std::size_t bin_c(std::atoi(argv[2]));
     // iterate_subgraphs<k>(bin_dir, bin_c);
     // cuttlefish::Parser(argv[1], std::atoi(argv[2])).parse();
-
+/*
 	auto file_reader = std::make_unique<StandardFileReader>(argv[1]);
 	const size_t thread_count = std::atoi(argv[2]);
 
@@ -1288,7 +1288,7 @@ int main(int argc, char** argv)
     delete[] chunk;
 
 	std::cerr << "Total bytes decompressed: " << total_bytes_read << ".\n";
-
+*/
     return 0;
 }
 

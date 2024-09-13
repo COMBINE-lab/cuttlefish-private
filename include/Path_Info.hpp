@@ -21,14 +21,9 @@ namespace cuttlefish
 template <uint16_t k>
 class Path_Info
 {
-public:
-
-    typedef max_unitig_id_t<k> path_id_t;
-
-
 private:
 
-    path_id_t p_;   // The path-ID.
+    path_id_t<k> p_;    // The path-ID.
     weight_t r_;    // The rank.
     side_t o_;  // The orientation of the object in its specified rank—the path traversal exits it through the side `o`.
     bool is_cycle_; // Whether the path is a cycle (abusing notation).
@@ -44,7 +39,7 @@ public:
     // and rank in the path is `r` when the path is traversed in the
     // orientation such that the traversal exits the object through its side
     // `o`. `is_cycle` denotes whether the path is a cycle (abusing notation).
-    Path_Info(const path_id_t p, const weight_t r, const side_t o, const bool is_cycle):
+    Path_Info(const path_id_t<k> p, const weight_t r, const side_t o, const bool is_cycle):
           p_(p)
         , r_(r)
         , o_(o)
@@ -86,10 +81,7 @@ private:
     T_ obj_;    // The object.
     Path_Info<k> path_info_;    // Path-information of the object.
 
-
 public:
-
-    typedef typename Path_Info<k>::path_id_t path_id_t;
 
     Obj_Path_Info_Pair()    // TODO: consider removing.
     {}
@@ -99,7 +91,7 @@ public:
     // traversed in the orientation such that the traversal exits the object
     // through its side `o`. `is_cycle` denotes whether the path is a cycle
     // (abusing notation).
-    Obj_Path_Info_Pair(const T_ obj, const path_id_t p, const weight_t r, const side_t o, const bool is_cycle):
+    Obj_Path_Info_Pair(const T_ obj, const path_id_t<k> p, const weight_t r, const side_t o, const bool is_cycle):
           obj_(obj)
         , path_info_(p, r, o, is_cycle)
     {}

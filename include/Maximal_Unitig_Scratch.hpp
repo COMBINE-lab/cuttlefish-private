@@ -4,13 +4,16 @@
 
 
 
+#include "Kmer.hpp"
 #include "Unitig_Scratch.hpp"
 #include "FASTA_Record.hpp"
 #include "Character_Buffer.hpp"
 
 #include <cstdint>
 #include <cstddef>
+#include <cstring>
 #include <vector>
+#include <cassert>
 
 
 // =============================================================================
@@ -49,7 +52,7 @@ public:
 
     // Returns the label of the unitig scratch `u_b` or `u_f`, based on `s` (see
     // note above class body).
-    const std::vector<char>& unitig_label(cuttlefish::side_t s) const;
+    const std::string& unitig_label(cuttlefish::side_t s) const;
 
     // Returns the unique ID of the maximal unitig.
     uint64_t id() const;
@@ -97,7 +100,7 @@ public:
 
     // Returns a FASTA record of the maximal unitig (in canonical form).
     // Applicable when the maximal unitig is linear.
-    const FASTA_Record<std::vector<char>> fasta_rec() const;
+    const FASTA_Record fasta_rec() const;
 
     // Adds a corresponding FASTA record for the maximal unitig into `buffer`.
     template <typename T_sink_> void add_fasta_rec_to_buffer(Character_Buffer<T_sink_>& buffer) const;
@@ -108,6 +111,10 @@ public:
 
     // Gets the literal label of the maximal unitig into `label`.
     void get_label(std::string& label) const;
+
+    // Gets the vertices of the maximal unitig and their associated hashes into
+    // `V` and `H` respectively.
+    void get_vertices_and_hashes(std::vector<Kmer<k>>& V, std::vector<uint64_t>& H) const;
 };
 
 
@@ -119,7 +126,7 @@ inline constexpr Unitig_Scratch<k>& Maximal_Unitig_Scratch<k>::unitig(const cutt
 
 
 template <uint16_t k>
-inline const std::vector<char>& Maximal_Unitig_Scratch<k>::unitig_label(const cuttlefish::side_t s) const
+inline const std::string& Maximal_Unitig_Scratch<k>::unitig_label(const cuttlefish::side_t s) const
 {
     return s == cuttlefish::side_t::back ? unitig_back.label() : unitig_front.label();
 }
@@ -199,8 +206,12 @@ inline void Maximal_Unitig_Scratch<k>::finalize()
             id_ = unitig_front.endpoint().hash(),
             unitig_front.reverse_complement();
         else
+        {
             id_ = unitig_back.endpoint().hash(),
             unitig_back.reverse_complement();
+            unitig_front.swap(unitig_back);
+            assert(is_canonical());
+        }
     }
     else
     {
@@ -230,11 +241,11 @@ inline bool Maximal_Unitig_Scratch<k>::is_cycle() const
 
 
 template <uint16_t k>
-inline const FASTA_Record<std::vector<char>> Maximal_Unitig_Scratch<k>::fasta_rec() const
+inline const FASTA_Record Maximal_Unitig_Scratch<k>::fasta_rec() const
 {
     return is_canonical() ?
-            FASTA_Record<std::vector<char>>(id(), unitig_front.label(), unitig_back.label(), 0, k) :
-            FASTA_Record<std::vector<char>>(id(), unitig_back.label(), unitig_front.label(), 0, k);
+            FASTA_Record(id(), unitig_front.label(), unitig_back.label(), 0, k) :
+            FASTA_Record(id(), unitig_back.label(), unitig_front.label(), 0, k);
 }
 
 
@@ -245,7 +256,7 @@ inline void Maximal_Unitig_Scratch<k>::add_fasta_rec_to_buffer(Character_Buffer<
     if(is_linear())
         buffer += fasta_rec();
     else
-        buffer.template rotate_append_cycle<k>(FASTA_Record<std::vector<char>>(id(), cycle->label()), cycle->min_vertex_idx());
+        buffer.template rotate_append_cycle<k>(FASTA_Record(id(), cycle->label()), cycle->min_vertex_idx());
 }
 
 
@@ -258,18 +269,28 @@ inline void Maximal_Unitig_Scratch<k>::get_canonical_label(std::string& label) c
     {
         const auto& u_f = unitig_front.label();
         const auto& u_b = unitig_back.label();
+        assert(u_f.size() >= k && u_b.size() >= k);
 
         if(is_canonical())
-            label.insert(label.end(), u_f.cbegin(), u_f.cend()),
+        {
+            assert(std::memcmp(u_f.data() + (u_f.size() - k), u_b.data(), k) == 0); // Overlap at meet-point.
+            label.insert(label.end(), u_f.cbegin(), u_f.cend());
             label.insert(label.end(), u_b.cbegin() + k, u_b.cend());
+        }
         else
-            label.insert(label.end(), u_b.cbegin(), u_b.cend()),
+        {
+            assert(std::memcmp(u_b.data() + (u_b.size() - k), u_f.data(), k) == 0); // Overlap at meet-point.
+            label.insert(label.end(), u_b.cbegin(), u_b.cend());
             label.insert(label.end(), u_f.cbegin() + k, u_f.cend());
+        }
     }
     else
     {
         const auto& u = cycle->label();
         const auto pivot = cycle->min_vertex_idx();
+        assert(u.size() >= k);
+
+        assert(std::memcmp(u.data() + (u.size() - (k - 1)), u.data(), k - 1) == 0); // (k - 1)-overlap at end-begin.
         label.insert(label.end(), u.cbegin() + pivot, u.cend()),
         label.insert(label.end(), u.cbegin() + k - 1, u.cbegin() + k - 1 + pivot);
     }
@@ -285,16 +306,59 @@ inline void Maximal_Unitig_Scratch<k>::get_label(std::string& label) const
     {
         const auto& u_f = unitig_front.label();
         const auto& u_b = unitig_back.label();
+        assert(u_f.size() >= k && u_b.size() >= k);
 
-        label.insert(label.end(), u_f.cbegin(), u_f.cend()),
+        assert(std::memcmp(u_f.data() + (u_f.size() - k), u_b.data(), k) == 0); // Overlap at meet-point.
+        label.insert(label.end(), u_f.cbegin(), u_f.cend());
         label.insert(label.end(), u_b.cbegin() + k, u_b.cend());
     }
     else
     {
         const auto& u = cycle->label();
         const auto pivot = cycle->min_vertex_idx();
-        label.insert(label.end(), u.cbegin() + pivot, u.cend()),
+        assert(u.size() >= k);
+
+        assert(std::memcmp(u.data() + (u.size() - (k - 1)), u.data(), k - 1) == 0); // (k - 1)-overlap at end-begin.
+        label.insert(label.end(), u.cbegin() + pivot, u.cend());
         label.insert(label.end(), u.cbegin() + k - 1, u.cbegin() + k - 1 + pivot);
+    }
+}
+
+
+template <uint16_t k>
+inline void Maximal_Unitig_Scratch<k>::get_vertices_and_hashes(std::vector<Kmer<k>>& V, std::vector<uint64_t>& H) const
+{
+    V.clear(), H.clear();
+
+    if(is_linear())
+    {
+        const auto& v_f = unitig_front.vertices();
+        const auto& v_b = unitig_back.vertices();
+        const auto& h_f = unitig_front.hash();
+        const auto& h_b = unitig_back.hash();
+        assert(!v_f.empty() && !v_b.empty() && h_f.size() == v_f.size() && h_b.size() == v_b.size());
+
+        assert(v_f.back() == v_b.front());  // Overlap at meet-point.
+        V.insert(V.end(), v_f.cbegin(), v_f.cend());
+        V.insert(V.end(), v_b.cbegin() + 1, v_b.cend());
+
+        assert(h_f.back() == h_b.front());  // Overlap at meet-point.
+        H.insert(H.end(), h_f.cbegin(), h_f.cend());
+        H.insert(H.end(), h_b.cbegin() + 1, h_b.cend());
+    }
+    else
+    {
+        const auto& v = cycle->vertices();
+        const auto& h = cycle->hash();
+        const auto pivot = cycle->min_vertex_idx();
+        assert(!v.empty() && h.size() == v.size());
+        assert(pivot < v.size());
+
+        V.insert(V.end(), v.cbegin() + pivot, v.cend());
+        V.insert(V.end(), v.cbegin(), v.cbegin() + pivot);
+
+        H.insert(H.end(), h.cbegin() + pivot, h.cend());
+        H.insert(H.end(), h.cbegin(), h.cbegin() + pivot);
     }
 }
 

@@ -95,14 +95,19 @@ namespace cuttlefish
 
     // Type of the ID of a maximal unitig.
     template <uint16_t k> using max_unitig_id_t = Kmer<k>;
+    template <uint16_t k> using path_id_t = max_unitig_id_t<k>;
 
-    // TODO: use `u16` and add assertion checks for limits in places.
     // Type of the index of a unitig in a bucket.
     typedef uint32_t uni_idx_t;
 
-    // TODO: use `u16` after testing done with `u32`.
-    // typedef uint16_t uni_len_t; // Type of the length of a lm-tig in a bucket.
-    typedef uint32_t uni_len_t; // Type of the length of a lm-tig in a bucket.
+    // Type of the length of a lm-tig in a bucket.
+    typedef uint16_t uni_len_t;
+
+    // Type of source-ID, i.e. color-units.
+    typedef uint32_t source_id_t;
+
+    // Seed for `l`-minimizer hashing.
+    static constexpr uint64_t min_seed = 0;
 }
 
 
@@ -131,7 +136,13 @@ namespace cuttlefish
 // alternate instances with `true` and `false`; i.e. it is an instantiator for
 // odd `k`-values and all the boolean values.
 #define INSTANTIATE_PER_BOOL(z, k, class_name)  template class class_name< 2 * k + 1, false>;\
-                                                // template class class_name< 2 * k + 1, true>;
+                                                template class class_name< 2 * k + 1, true>;
+
+// Generalization of `INSTANTIATE_PER_BOOL` one level higher.
+#define INSTANTIATE_PER_BOOL_L2(z, k, class_name)   template class class_name< 2 * k + 1, false, false>; \
+                                                    template class class_name< 2 * k + 1, false, true>; \
+                                                    template class class_name< 2 * k + 1, true, false>; \
+                                                    template class class_name< 2 * k + 1, true, true>;
 
 // Given some `x`, explicitly instantiates two instances of the class `class_name`, using the template parameter `k`
 // with `2x + 1` and `2x + 2`, i.e. it is an instantiator for both odd and even k-values.

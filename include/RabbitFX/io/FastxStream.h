@@ -91,6 +91,8 @@ namespace rabbit {
                     isZipped(isZippedNew),
                     mHalo(halo),
                     totalSeqs(0) {
+                        mFaReader = new FileReader(fileName_, isZipped);
+/*
                         // if(ends_with(fileName_,".gz"))
                         if (isZipped) {
                             mZipFile = gzopen(fileName_.c_str(), "r");
@@ -104,6 +106,7 @@ namespace rabbit {
                                         ("Can not open file to read: " + fileName_).c_str());  //--------------need to change----------//
                             }
                         }
+*/
                     }
 
                 /**
@@ -122,6 +125,8 @@ namespace rabbit {
                     isZipped(isZippedNew),
                     mHalo(halo),
                     totalSeqs(0) {
+                        mFaReader = new FileReader(fd, isZipped);
+/*
                         if (isZipped) {
                             mZipFile = gzdopen(fd, "r");
                             if (mZipFile == NULL) {
@@ -135,10 +140,16 @@ namespace rabbit {
                                 throw RioException("Can not open file to read!");  //--------------need to change----------//
                             }
                         }
+*/
                     }
+
+                FastaFileReader(const std::string &fileName_, FastaDataPool &pool_, bool isZippedNew = false, uint64 halo = 21):
+                    FastaFileReader(fileName_, &pool_, isZippedNew || ends_with(fileName_, ".gz"), halo)
+                {}
 
                 ~FastaFileReader() {
                     if (mFile != NULL || mZipFile != NULL) Close();
+                    if(mFaReader!=NULL)delete mFaReader;
                     // delete mFile;
                     // delete mZipFile;
                 }
@@ -189,6 +200,8 @@ namespace rabbit {
 
                 FILE *mFile = NULL;
                 gzFile mZipFile = NULL;
+
+                FileReader* mFaReader=NULL;
 
                 uint64 mHalo;
 
