@@ -55,8 +55,9 @@ void Subgraph<k, Colored_>::construct()
         kmer_count_ += len - (k - 1);
 
         if constexpr(Colored_)
+        {
             assert(att.source() >= source);
-        source = att.source();
+            source = att.source();
         (void)source;
 
         v.from_super_kmer(label, word_count);
@@ -81,7 +82,7 @@ void Subgraph<k, Colored_>::construct()
                                  front, back,
                                  kmer_idx == 0 && att.left_discontinuous() ? v.entrance_side() : side_t::unspecified,
                                  kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified,
-                                 att.source());
+                                 source);
 
             if(kmer_idx + k == len)
                 break;

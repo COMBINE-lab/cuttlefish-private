@@ -78,14 +78,15 @@ public:
 
     // Adds a super k-mer to the bucket with label `seq` and length `len`. The
     // markers `l_disc` and `r_disc` denote whether the left and the right ends
-    // of the (weak) super k-mer are discontinuous or not.
-    void add(const char* seq, std::size_t len, bool l_disc, bool r_disc);
+    // of the (weak) super k-mer are discontinuous or not. The associated super
+    // k-mer is to reside in the `g_id`'th subgraph.
+    void add(const char* seq, std::size_t len, bool l_disc, bool r_disc, uint16_t g_id);
 
     // Adds a super k-mer to the bucket with label `seq` and length `len` from
     // source-ID `source`. The markers `l_disc` and `r_disc` denote whether the
     // left and the right ends of the (weak) super k-mer are discontinuous or
-    // not.
-    void add(const char* seq, std::size_t len, source_id_t source, bool l_disc, bool r_disc);
+    // not. The associated super k-mer is to reside in the `g_id`'th subgraph.
+    void add(const char* seq, std::size_t len, source_id_t source, bool l_disc, bool r_disc, uint16_t g_id);
 
     // Collates the worker-local buffers into the external-memory bucket and
     // empties them.
@@ -174,13 +175,13 @@ inline void Super_Kmer_Bucket<false>::empty_w_local_chunk(const std::size_t w_id
 
 
 template <>
-inline void Super_Kmer_Bucket<false>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
+inline void Super_Kmer_Bucket<false>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc, const uint16_t g_id)
 {
     const auto w_id = parlay::worker_id();
     auto& c_w = chunk_w[w_id].unwrap(); // Worker-specific chunk.
 
     assert(c_w.size() < c_w.capacity());
-    c_w.add(seq, len, l_disc, r_disc);
+    c_w.add(seq, len, l_disc, r_disc, g_id);
 
     if(c_w.full())
         empty_w_local_chunk(w_id);
@@ -188,12 +189,12 @@ inline void Super_Kmer_Bucket<false>::add(const char* const seq, const std::size
 
 
 template <>
-inline void Super_Kmer_Bucket<true>::add(const char* const seq, const std::size_t len, const source_id_t source, const bool l_disc, const bool r_disc)
+inline void Super_Kmer_Bucket<true>::add(const char* const seq, const std::size_t len, const source_id_t source, const bool l_disc, const bool r_disc, const uint16_t g_id)
 {
     const auto w_id = parlay::worker_id();
     auto& c_w = chunk_w[w_id].unwrap(); // Worker-specific chunk.
 
-    c_w.add(seq, len, source, l_disc, r_disc);
+    c_w.add(seq, len, source, l_disc, r_disc, g_id);
     // No flush until collation is invoked explicitly from outside.
 }
 

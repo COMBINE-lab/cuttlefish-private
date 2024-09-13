@@ -100,14 +100,15 @@ public:
 
     // Adds a super k-mer to the chunk with label `seq` and length `len`. The
     // markers `l_disc` and `r_disc` denote whether the left and the right ends
-    // of the (weak) super k-mer are discontinuous or not.
-    void add(const char* seq, std::size_t len, bool l_disc, bool r_disc);
+    // of the (weak) super k-mer are discontinuous or not. The associated super
+    // k-mer is to reside in the `g_id`'th subgraph.
+    void add(const char* seq, std::size_t len, bool l_disc, bool r_disc, uint16_t g_id);
 
     // Adds a super k-mer to the chunk with label `seq` and length `len` from
     // source-ID `source`. The markers `l_disc` and `r_disc` denote whether the
     // left and the right ends of the (weak) super k-mer are discontinuous or
-    // not.
-    void add(const char* seq, std::size_t len, source_id_t source, bool l_disc, bool r_disc);
+    // not. The associated super k-mer is to reside in the `g_id`'th subgraph.
+    void add(const char* seq, std::size_t len, source_id_t source, bool l_disc, bool r_disc, const uint16_t g_id);
 
     // Appends the chunk `c`'s contents in the indices `[l, r)` to this chunk.
     void append(const Super_Kmer_Chunk& c, std::size_t l, std::size_t r);
@@ -162,26 +163,26 @@ inline void Super_Kmer_Chunk<Colored_>::resize(const std::size_t n)
 
 
 template <>
-inline void Super_Kmer_Chunk<false>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc)
+inline void Super_Kmer_Chunk<false>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc, const uint16_t g_id)
 {
     assert(len <= max_sup_kmer_len);
     assert(size() < cap_);
 
-    att_buf[size()] = Super_Kmer_Attributes<false>(len, l_disc, r_disc);
+    att_buf[size()] = Super_Kmer_Attributes<false>(len, l_disc, r_disc, g_id);
     add_encoded_label(seq, len);
     size_++;
 }
 
 
 template <>
-inline void Super_Kmer_Chunk<true>::add(const char* const seq, const std::size_t len, const source_id_t source, const bool l_disc, const bool r_disc)
+inline void Super_Kmer_Chunk<true>::add(const char* const seq, const std::size_t len, const source_id_t source, const bool l_disc, const bool r_disc, const uint16_t g_id)
 {
     assert(len <= max_sup_kmer_len);
 
     att_buf.reserve(size() + 1);
     label_buf.reserve(label_units() + sup_kmer_word_c);
 
-    att_buf[size()] = Super_Kmer_Attributes<true>(len, source, l_disc, r_disc);
+    att_buf[size()] = Super_Kmer_Attributes<true>(len, source, l_disc, r_disc, g_id);
     add_encoded_label(seq, len);
     size_++;
 }

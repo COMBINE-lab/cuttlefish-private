@@ -132,7 +132,7 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, 
     assert(len >= k);
 
     auto& bucket = subgraph_bucket[g].unwrap();
-    bucket.add(seq, len, l_disc, r_disc);
+    bucket.add(seq, len, l_disc, r_disc, g);
 
     // add_to_HLL(g, seq, len);
 }
@@ -145,7 +145,7 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, 
     assert(len >= k);
 
     auto& bucket = subgraph_bucket[g].unwrap();
-    bucket.add(seq, len, source, l_disc, r_disc);
+    bucket.add(seq, len, source, l_disc, r_disc, g);
 
     // add_to_HLL(g, seq, len);
 }

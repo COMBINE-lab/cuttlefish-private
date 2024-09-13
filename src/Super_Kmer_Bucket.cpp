@@ -47,6 +47,10 @@ Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs):
 template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::collate_buffers()
 {
+    assert(Colored_);
+
+if constexpr(Colored_)
+{
     std::size_t sz = 0; // Number of pending super k-mers in the worker-local buffers.
     auto src_min = std::numeric_limits<source_id_t>::max();
     auto src_max = std::numeric_limits<source_id_t>::min();
@@ -133,6 +137,7 @@ void Super_Kmer_Bucket<Colored_>::collate_buffers()
     });
 
     flush_chunk();
+}
 }
 
 
