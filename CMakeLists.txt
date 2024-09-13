@@ -130,6 +130,7 @@ add_compile_definitions(FMT_HEADER_ONLY)    # For `spdlog`.
 add_compile_definitions(WITH_ISAL)  # For `rapidgzip`.
 add_compile_definitions(WITH_RPMALLOC)  # For `rapidzip`.
 add_compile_definitions(USE_IGZIP)  # TODO: temporary for `rabbitfx`.
+add_compile_definitions(CMAKE_EXPORT_COMPILE_COMMANDS)  # For better `clangd` scanning.
 
 if(INSTANCE_COUNT)
     add_compile_definitions(INSTANCE_COUNT=${INSTANCE_COUNT})
