@@ -39,12 +39,14 @@ class Subgraphs_Manager
 {
 private:
 
+    static constexpr uint64_t atlas_count = 128;    // Number of subgraph atlases.
+    static constexpr uint64_t graph_count_ = atlas_count * atlas_count; // Number of subgraphs.
+
     const std::string path_pref;    // Path-prefix to the super k-mer buckets.
-    const std::size_t graph_count_; // Number of subgraphs; it needs to be a power of 2.
     const uint16_t l;   // `l`-minimizer size to partition the graph.
 
     typedef Super_Kmer_Bucket<Colored_> bucket_t;
-    std::vector<Padded<bucket_t>> subgraph_bucket;  // Super k-mer buckets for the subgraphs.
+    std::vector<Padded<bucket_t>> atlas;    // Super k-mer buckets for the subgraph atlases.
 
     std::vector<Padded<HyperLogLog>> HLL;   // `HLL[g]` is the cardinality-estimator for subgraph `g`.
 
@@ -63,6 +65,9 @@ private:
     const std::string color_path_pref;  // Path-prefix to the output color buckets.
 
 
+    // Returns the atlas-ID of the `g`'th subgraph.
+    uint64_t atlas_ID(const uint64_t g) const { return g >> 7; }
+
     // Adds the label `seq` and length `len` to the HLL estimate of the
     // subgraph `g` of the de Bruijn graph.
     void add_to_HLL(std::size_t g, const char* seq, std::size_t len);
@@ -71,12 +76,11 @@ private:
 public:
 
     // Constructs a manager for the subgraphs of a de Bruijn graph which is
-    // partitioned into `graph_count` subgraphs according to `l`-minimizers.
-    // `logistics` is the data-logistics manager for the algorithm execution.
-    // The discontinuity-graph is produced at `G` without false-phantom edges.
-    // Worker-specific trivially maximal unitigs are written to the buffers in
-    // `op_buf`.
-    Subgraphs_Manager(const Data_Logistics& logistics, std::size_t graph_count, uint16_t l, Discontinuity_Graph<k, Colored_>& G, op_buf_list_t& op_buf);
+    // partitioned according to `l`-minimizers. `logistics` is the data-
+    // logistics manager for the algorithm execution. The discontinuity-graph
+    // is produced at `G` without false-phantom edges. Worker-specific
+    // trivially maximal unitigs are written to the buffers in `op_buf`.
+    Subgraphs_Manager(const Data_Logistics& logistics, uint16_t l, Discontinuity_Graph<k, Colored_>& G, op_buf_list_t& op_buf);
 
     // Returns the number of subgraphs.
     auto graph_count() const { return graph_count_; }
@@ -131,7 +135,7 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, 
 {
     assert(len >= k);
 
-    auto& bucket = subgraph_bucket[g].unwrap();
+    auto& bucket = atlas[atlas_ID(g)].unwrap();
     bucket.add(seq, len, l_disc, r_disc, g);
 
     // add_to_HLL(g, seq, len);
@@ -144,7 +148,7 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, 
 {
     assert(len >= k);
 
-    auto& bucket = subgraph_bucket[g].unwrap();
+    auto& bucket = atlas[atlas_ID(g)].unwrap();
     bucket.add(seq, len, source, l_disc, r_disc, g);
 
     // add_to_HLL(g, seq, len);

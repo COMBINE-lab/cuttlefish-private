@@ -67,7 +67,9 @@ bool Discontinuity_Graph<k, Colored_>::is_discontinuity(const char* const seq) c
     min_it_t::minimizer(seq, params.min_len(), min_seed, min_l, h_l, idx_l);
     min_it_t::minimizer(seq + 1, params.min_len(), min_seed, min_r, h_r, idx_r);
 
-    const auto graph_id = [&](const auto h){ return h & (params.subgraph_count() - 1); };
+    // const auto graph_id = [&](const auto h){ return h & (params.subgraph_count() - 1); };
+    // TODO: update.
+    const auto graph_id = [&](const auto h){ return h & (128 * 128 - 1); };
     return graph_id(h_l) != graph_id(h_r);
 }
 

@@ -7,7 +7,6 @@
 #include "parlay/parallel.h"
 
 #include <atomic>
-#include <cstdint>
 #include <limits>
 #include <vector>
 #include <iostream>
@@ -19,35 +18,29 @@ namespace cuttlefish
 {
 
 template <uint16_t k, bool Colored_>
-Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistics, const std::size_t graph_count_, const uint16_t l, Discontinuity_Graph<k, Colored_>& G, op_buf_list_t& op_buf):
+Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistics, const uint16_t l, Discontinuity_Graph<k, Colored_>& G, op_buf_list_t& op_buf):
       path_pref(logistics.subgraphs_path())
-    , graph_count_(graph_count_)
     , l(l)
-    , HLL(graph_count_)
+    // , HLL(atlas_count)
     , G_(G)
     , trivial_mtig_count_(0)
     , icc_count_(0)
     , op_buf(op_buf)
     , color_path_pref(logistics.output_file_path())
 {
-    if((graph_count_ & (graph_count_ - 1)) != 0)
-    {
-        std::cerr << "Subgraph count needs to be a power of 2. Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-
-    subgraph_bucket.reserve(graph_count_);
-    for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
-        subgraph_bucket.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id)));
+    atlas.reserve(atlas_count);
+    for(std::size_t g_id = 0; g_id < atlas_count; ++g_id)
+        atlas.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id)));
 }
 
 
 template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::collate_super_kmer_buffers()
 {
-    parlay::parallel_for(0, graph_count_, [&](const std::size_t g_id)
+    parlay::parallel_for(0, atlas_count,
+    [&](const std::size_t i)
     {
-        subgraph_bucket[g_id].unwrap().collate_buffers();
+        atlas[i].unwrap().collate_buffers();
     });
 }
 
@@ -55,19 +48,25 @@ void Subgraphs_Manager<k, Colored_>::collate_super_kmer_buffers()
 template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::finalize()
 {
-    const auto close_bucket = [&](const std::size_t g_id) { subgraph_bucket[g_id].unwrap().close(); };
-    parlay::parallel_for(0, graph_count_, close_bucket);
+    parlay::parallel_for(0, atlas_count,
+    [&](const std::size_t i)
+    {
+        atlas[i].unwrap().close();
+    });
 }
 
 
 template <uint16_t k, bool Colored_>
 uint64_t Subgraphs_Manager<k, Colored_>::estimate_size_max() const
 {
+/*
     uint64_t max_est = 0;
     for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
         max_est = std::max(max_est, HLL[g_id].unwrap().estimate());
 
     return max_est;
+*/
+    return 0;   // TODO: temporary.
 }
 
 
@@ -95,10 +94,11 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::vector<Padded<uint64_t>> mtig_count(parlay::num_workers(), 0); // Number of locally maximal unitigs produced per worker.
     std::vector<Padded<std::size_t>> color_shift(parlay::num_workers(), 0); // Number of color-shifting vertices per worker.
 
-    const auto process_subgraph =
+    parlay::parallel_for(0, graph_count_,   // TODO: update
         [&](const std::size_t graph_id)
         {
-            auto& b = subgraph_bucket[graph_id].unwrap();
+            // auto& b = subgraph_bucket[graph_id].unwrap();
+            auto& b = atlas[graph_id].unwrap();   // TODO: update.
 
             const auto t_0 = timer::now();
             Subgraph<k, Colored_> sub_dBG(b, G_, op_buf[parlay::worker_id()].unwrap(), subgraphs_space);
@@ -143,9 +143,8 @@ void Subgraphs_Manager<k, Colored_>::process()
             t_bucket_rm[parlay::worker_id()].unwrap() += timer::duration(t_2 - t_1) + timer::duration(t_5 - t_4);
             t_contraction[parlay::worker_id()].unwrap()  += timer::duration(t_3 - t_2);
             t_color_extract[parlay::worker_id()].unwrap() += timer::duration(t_4 - t_3);
-        };
+        }, 1);
 
-    parlay::parallel_for(0, graph_count_, process_subgraph, 1);
     std::cerr << "\n";
 
     const auto sum_time = [&](const std::vector<Padded<double>>& T)
