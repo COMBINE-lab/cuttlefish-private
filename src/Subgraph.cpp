@@ -58,7 +58,7 @@ void Subgraph<k, Colored_>::construct()
         {
             assert(att.source() >= source);
             source = att.source();
-        (void)source;
+        }
 
         v.from_super_kmer(label, word_count);
         std::size_t kmer_idx = 0;
