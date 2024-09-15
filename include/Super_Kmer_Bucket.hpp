@@ -32,7 +32,6 @@ template <bool Colored_>
 class Super_Kmer_Bucket
 {
     class Iterator;
-    friend class Iterator;
 
 private:
 
@@ -100,7 +99,7 @@ public:
 
     // Returns an iterator over the super k-mers in the bucket. The bucket
     // should be closed before iteration.
-    Iterator iterator() const;
+    Iterator iterator() const { assert(chunk.empty()); return Iterator(*this); }
 };
 
 
@@ -112,7 +111,7 @@ class Super_Kmer_Bucket<Colored_>::Iterator
 
 private:
 
-    const Super_Kmer_Bucket<Colored_>& B;   // Bucket to iterate over.
+    const Super_Kmer_Bucket& B; // Bucket to iterate over.
     std::ifstream input;    // Input stream from the external-memory bucket.
 
     std::size_t idx;    // Current slot-index the iterator is in, i.e. next super k-mer to access.
@@ -140,7 +139,7 @@ public:
     // Moves the iterator to the next super k-mer in the bucket. Iff the bucket
     // is not depleted, the associated super k-mer's attribute and label-
     // encoding are put in `att` and `label` respectively, and returns `true`.
-    bool next(attribute_t& att, label_unit_t*& label);
+    bool next(attribute_t& att, const label_unit_t*& label);
 };
 
 
@@ -200,7 +199,7 @@ inline void Super_Kmer_Bucket<true>::add(const char* const seq, const std::size_
 
 
 template <bool Colored_>
-inline bool Super_Kmer_Bucket<Colored_>::Iterator::next(attribute_t& att, label_unit_t*& label)
+inline bool Super_Kmer_Bucket<Colored_>::Iterator::next(attribute_t& att, const label_unit_t*& label)
 {
     assert(idx <= B.size());
 

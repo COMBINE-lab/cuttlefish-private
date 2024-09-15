@@ -127,7 +127,7 @@ public:
 
     // Gets the `idx`'th super k-mer's (in the chunk) attributes to `att` and
     // label to `label`.
-    void get_super_kmer(std::size_t idx, attribute_t& att, label_unit_t*& label);
+    void get_super_kmer(std::size_t idx, attribute_t& att, const label_unit_t*& label);
 
     // Returns the attribute of the super k-mer at index `i`.
     const attribute_t& att_at(const std::size_t i) const { assert(i < size()); return att_buf[i]; }
@@ -245,7 +245,7 @@ inline void Super_Kmer_Chunk<Colored_>::move(const std::size_t dest_idx, const s
 
 
 template <bool Colored_>
-inline void Super_Kmer_Chunk<Colored_>::get_super_kmer(std::size_t idx, attribute_t& att, label_unit_t*& label)
+inline void Super_Kmer_Chunk<Colored_>::get_super_kmer(std::size_t idx, attribute_t& att, const label_unit_t*& label)
 {
     assert(idx < size());
 

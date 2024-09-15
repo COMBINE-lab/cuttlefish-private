@@ -45,7 +45,7 @@ void Subgraph<k, Colored_>::construct()
     Kmer<k> pred_v; // Previous vertex in a scan.
 
     Super_Kmer_Attributes<Colored_> att;
-    label_unit_t* label;
+    const label_unit_t* label;
     source_id_t source = 0; // Source-ID of the current super k-mer.
     while(super_kmer_it.next(att, label))
     {
@@ -273,7 +273,7 @@ if constexpr(Colored_)
 
     Directed_Vertex<k> v;   // Current vertex in a scan over some super k-mer.
     Super_Kmer_Attributes<Colored_> att;
-    label_unit_t* label;
+    const label_unit_t* label;
 
     while(super_kmer_it.next(att, label))
     {
