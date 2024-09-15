@@ -147,8 +147,7 @@ void Super_Kmer_Bucket<Colored_>::flush_chunk()
     if(!chunk.empty())
     {
         chunk.serialize(output);
-        if constexpr(Colored_)
-            chunk_sz.push_back(chunk.size());
+        chunk_sz.push_back(chunk.size());
 
         chunk.clear();
     }
@@ -213,9 +212,7 @@ std::size_t Super_Kmer_Bucket<Colored_>::Iterator::read_chunk()
 {
     assert(chunk_end_idx < B.size());
     assert(!Colored_ || chunk_id < B.chunk_sz.size());
-    const auto super_kmers_to_read = (!Colored_ ?
-                                        std::min(B.size() - chunk_end_idx, B.chunk.capacity()):
-                                        B.chunk_sz[chunk_id++]);
+    const auto super_kmers_to_read = B.chunk_sz[chunk_id++];
 
     B.chunk.deserialize(input, super_kmers_to_read);
 

@@ -50,7 +50,7 @@ private:
 
     std::vector<uint32_t> src_hist; // Frequency histogram of super k-mer sources currently committed to the chunk.
 
-    std::vector<uint32_t> chunk_sz; // Sizes of the flushed chunks; only applicable in the colored case.
+    std::vector<uint32_t> chunk_sz; // Sizes of the flushed chunks.
 
     Spin_Lock lock; // Lock to the chunk and the external-memory bucket.
 
@@ -118,7 +118,7 @@ private:
     std::size_t idx;    // Current slot-index the iterator is in, i.e. next super k-mer to access.
     std::size_t chunk_start_idx;    // Index into the bucket where the current in-memory chunk starts.
     std::size_t chunk_end_idx;  // Non-inclusive index into the bucket where the current in-memory chunk ends.
-    std::size_t chunk_id;   // Sequential-ID of the chunk being processed right now; only applicable in the colored case.
+    std::size_t chunk_id;   // Sequential-ID of the chunk being processed right now.
 
 
     // Constructs an iterator for the super k-mer bucket `B`.
