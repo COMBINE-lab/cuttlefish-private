@@ -21,7 +21,7 @@ Super_Kmer_Chunk<Colored_>::Super_Kmer_Chunk(const uint16_t k, const uint16_t l,
 {
     assert(k > l);
     assert(sup_kmer_word_c > 0);
-    assert(cap_ > 0 || !Colored_);  // A super k-mer bucket's "safe"-chunk is meaningless in the uncolored case.
+    assert(cap_ > 0);
 }
 
 
@@ -34,6 +34,16 @@ Super_Kmer_Chunk<Colored_>::Super_Kmer_Chunk(Super_Kmer_Chunk&& rhs):
     , att_buf(std::move(rhs.att_buf))
     , label_buf(std::move(rhs.label_buf))
 {}
+
+
+template <bool Colored_>
+void Super_Kmer_Chunk<Colored_>::free()
+{
+    att_buf.free();
+    label_buf.free();
+
+    size_ = cap_ = 0;
+}
 
 
 template <bool Colored_>
@@ -60,7 +70,7 @@ void Super_Kmer_Chunk<Colored_>::serialize(std::ofstream& os) const
 template <bool Colored_>
 void Super_Kmer_Chunk<Colored_>::deserialize(std::ifstream& is, const std::size_t sz)
 {
-    assert(sz <= cap_);
+    reserve_uninit(sz);
 
     size_ = sz;
 

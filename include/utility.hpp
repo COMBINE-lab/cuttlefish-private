@@ -273,6 +273,9 @@ public:
     // Resizes the buffer to have capacity `cap`. No guarantees are made for
     // the existing elements.
     void resize_uninit(const std::size_t cap) { deallocate(buf_); buf_ = allocate<T_>(cap); cap_ = cap; }
+
+    // Frees the buffer's memory.
+    void free() { deallocate(buf_); buf_ = nullptr; cap_ = 0; }
 };
 
 
