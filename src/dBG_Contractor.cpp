@@ -52,7 +52,7 @@ void dBG_Contractor<k>::construct()
 
     const auto t_0 = timer::now();
 
-    Subgraphs_Manager<k, Colored_> subgraphs(logistics, params.subgraph_count(), params.min_len(), G, op_buf);
+    Subgraphs_Manager<k, Colored_> subgraphs(logistics, params.min_len(), G, op_buf);
 
     if(params.is_read_graph())
     {
@@ -67,7 +67,7 @@ void dBG_Contractor<k>::construct()
 
     const auto t_part = timer::now();
     std::cerr << "Sequence splitting into subgraphs completed. Time taken: " << timer::duration(t_part - t_0) << " seconds.\n";
-
+return; // Perf-diagnose.
     EXECUTE("subgraphs", subgraphs.process);
 
     std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";

@@ -12,7 +12,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -33,7 +32,15 @@ class Super_Kmer_Bucket
 {
     class Iterator;
 
+    typedef typename Super_Kmer_Chunk<Colored_>::attribute_t attribute_t;
+    typedef typename Super_Kmer_Chunk<Colored_>::label_unit_t label_unit_t;
+
 private:
+
+    static constexpr uint64_t graph_per_atlas = 128;
+
+    const uint16_t k;   // k-mer length.
+    const uint16_t l;   // Minimizer size.
 
     const std::string path_;    // Path to the external-memory bucket.
     std::ofstream output;   // Output stream to the external-memory bucket.
@@ -41,8 +48,9 @@ private:
     uint64_t size_; // Number of super k-mers in the bucket. It's not necessarily correct before closing the bucket.
 
     typedef Super_Kmer_Chunk<Colored_> chunk_t;
+    // TODO: make informed choices for the chunk-sizes based on whether atlases are used or not.
     static constexpr std::size_t chunk_bytes = 128 * 1024;  // 128 KB chunk capacity.
-    static constexpr std::size_t w_chunk_bytes = 1 * 1024;  // 1 KB worker-chunk capacity.
+    static constexpr std::size_t w_chunk_bytes = 32 * 1024; // 32 KB worker-chunk capacity. // TODO: needs to smaller in-case graph-atlases aren't used.
     const std::size_t chunk_cap;    // Capacity (in number of super k-mers) of the chunk of the bucket.
     mutable chunk_t chunk;  // Super k-mer chunk for the bucket.    // TODO: maybe this is not required. `chunk_w[i]` can bypass this to disk.
     std::vector<Padded<chunk_t>> chunk_w;   // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
@@ -61,6 +69,9 @@ private:
     // Flushes the super k-mer chunk to the external-memory bucket.
     void flush_chunk();
 
+    // Shatters the super k-mer chunk `c` to the buckets in `B`.
+    void shatter_chunk(const Super_Kmer_Chunk<Colored_>& c, std::vector<Padded<Super_Kmer_Bucket>>& B);
+
 public:
 
     // Constructs a super k-mer bucket for `k`-mers and `l`-minimizers, at
@@ -70,6 +81,12 @@ public:
     Super_Kmer_Bucket(const Super_Kmer_Bucket&) = delete;
 
     Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs);
+
+    // Allocates the worker-local chunks' memories.
+    void allocate_worker_mem();
+
+    // Deallocates the worker-local chunks' memories.
+    void deallocate_worker_mem();
 
     // Returns the number of super k-mers in the bucket. It's not necessarily
     // correct before closing the bucket.
@@ -87,6 +104,10 @@ public:
     // not. The associated super k-mer is to reside in the `g_id`'th subgraph.
     void add(const char* seq, std::size_t len, source_id_t source, bool l_disc, bool r_disc, uint16_t g_id);
 
+    // Adds a super k-mer to the chunk with encoding `seq` and attributes
+    // `att`.
+    void add(const label_unit_t* seq, const attribute_t& att);
+
     // Collates the worker-local buffers into the external-memory bucket and
     // empties them.
     void collate_buffers();
@@ -100,6 +121,9 @@ public:
     // Returns an iterator over the super k-mers in the bucket. The bucket
     // should be closed before iteration.
     Iterator iterator() const { assert(chunk.empty()); return Iterator(*this); }
+
+    // Shatters the bucket into the buckets in `B`.
+    void shatter(std::vector<Padded<Super_Kmer_Bucket>>& B);
 };
 
 
@@ -195,6 +219,28 @@ inline void Super_Kmer_Bucket<true>::add(const char* const seq, const std::size_
 
     c_w.add(seq, len, source, l_disc, r_disc, g_id);
     // No flush until collation is invoked explicitly from outside.
+}
+
+
+template <>
+inline void Super_Kmer_Bucket<false>::add(const label_unit_t* const seq, const attribute_t& att)
+{
+    const auto w_id = parlay::worker_id();
+    auto& c_w = chunk_w[w_id].unwrap(); // Worker-specific chunk.
+
+    assert(c_w.size() < c_w.capacity());
+    c_w.add(seq, att);
+
+    if(c_w.full())
+        empty_w_local_chunk(w_id);
+}
+
+
+template <>
+inline void Super_Kmer_Bucket<true>::add(const label_unit_t* const seq, const attribute_t& att)
+{
+    // TODO: implement.
+    (void)seq, (void)att;
 }
 
 

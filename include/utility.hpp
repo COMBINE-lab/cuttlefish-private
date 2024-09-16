@@ -160,9 +160,15 @@ constexpr T_to_ as_int(const T_ enum_val)
     return static_cast<T_to_>(enum_val);
 }
 
+// Returns `true` iff `x` is a power of 2.
+constexpr bool is_pow_2(const uint64_t x)
+{
+    return (x > 0 ? ((x & (x - 1)) == 0) : false);
+}
+
 // Returns the smallest power of 2 at least as large as `x`. `x` must be in
 // `[1, 2^63]`.
-constexpr std::size_t ceil_pow_2(std::size_t x)
+constexpr std::size_t ceil_pow_2(uint64_t x)
 {
     assert(x > 0 && x <= (1lu << 63));
 

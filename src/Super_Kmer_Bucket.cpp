@@ -1,10 +1,9 @@
 
 #include "Super_Kmer_Bucket.hpp"
-#include "globals.hpp"
-#include "parlay/parallel.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <iosfwd>
 #include <utility>
 #include <cstdlib>
 #include <algorithm>
@@ -16,24 +15,25 @@ namespace cuttlefish
 
 template <bool Colored_>
 Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t l, const std::string& path):
-      path_(path)
+      k(k)
+    , l(l)
+    , path_(path)
     , output(path_, std::ios::out | std::ios::binary)
     , size_(0)
     , chunk_cap(chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l))
     , chunk(k, l, chunk_cap)
 {
-    assert(chunk_cap >= parlay::num_workers());
+    static_assert(is_pow_2(graph_per_atlas));
 
-    const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
-    chunk_w.reserve(parlay::num_workers());
-    for(std::size_t i = 0; i < parlay::num_workers(); ++i)
-        chunk_w.emplace_back(chunk_t(k, l, chunk_cap_per_w));
+    assert(chunk_cap >= parlay::num_workers());
 }
 
 
 template <bool Colored_>
 Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs):
-      path_(std::move(rhs.path_))
+      k(rhs.k)
+    , l(rhs.l)
+    , path_(std::move(rhs.path_))
     , output(std::move(rhs.output))
     , size_(std::move(rhs.size_))
     , chunk_cap(std::move(rhs.chunk_cap))
@@ -42,6 +42,24 @@ Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs):
     , src_hist(std::move(rhs.src_hist))
     , chunk_sz(std::move(rhs.chunk_sz))
 {}
+
+
+template <bool Colored_>
+void Super_Kmer_Bucket<Colored_>::allocate_worker_mem()
+{
+    const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
+    chunk_w.reserve(parlay::num_workers());
+    for(std::size_t i = 0; i < parlay::num_workers(); ++i)
+        chunk_w.emplace_back(chunk_t(k, l, chunk_cap_per_w));
+}
+
+
+template <bool Colored_>
+void Super_Kmer_Bucket<Colored_>::deallocate_worker_mem()
+{
+    for(std::size_t i = 0; i < chunk_w.size(); ++i)
+        chunk_w[i].unwrap().free();
+}
 
 
 template <bool Colored_>
@@ -176,6 +194,10 @@ void Super_Kmer_Bucket<Colored_>::close()
 template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::remove()
 {
+    deallocate_worker_mem();
+
+    chunk.free();
+
     if(output.is_open())
         output.close();
 
@@ -188,10 +210,68 @@ void Super_Kmer_Bucket<Colored_>::remove()
 
 
 template <bool Colored_>
-typename Super_Kmer_Bucket<Colored_>::Iterator Super_Kmer_Bucket<Colored_>::iterator() const
+void Super_Kmer_Bucket<Colored_>::shatter(std::vector<Padded<Super_Kmer_Bucket>>& B)
 {
-    assert(chunk.empty());
-    return Iterator(*this);
+    uint64_t super_kmers_read = 0;  // Total count of super k-mers read across workers.
+    std::size_t chunk_id = 0;   // Sequential-ID of the next chunk to read.
+    Spin_Lock lock; // Lock to file-position resources.
+
+    parlay::parallel_for(0, parlay::num_workers(),
+    [&](const std::size_t w_id)
+    {
+        std::ifstream is(path_, std::ios::in | std::ios::binary);
+        auto& c = chunk_w[w_id].unwrap();
+
+        bool data_remain = true;
+        while(true)
+        {
+            std::size_t super_kmers_to_read;
+            std::streampos read_off;    // Byte-offset into the bucket-file where to read from.
+
+            lock.lock();
+
+            if(super_kmers_read == size())
+                data_remain = false;
+            else
+            {
+                // Obtain read position and amount.
+                assert(chunk_id < chunk_sz.size());
+                read_off = super_kmers_read * chunk.record_size();
+                super_kmers_to_read = chunk_sz[chunk_id];
+
+                // Update read position and remaining amount for subsequent reads.
+                super_kmers_read += super_kmers_to_read;
+                chunk_id++;
+            }
+
+            lock.unlock();
+
+            if(!data_remain)
+                break;
+
+            is.seekg(read_off);
+            c.deserialize(is, super_kmers_to_read);
+
+            shatter_chunk(c, B);
+        }
+
+        c.clear();
+        is.close();
+    }, 1);
+}
+
+
+template <bool Colored_>
+void Super_Kmer_Bucket<Colored_>::shatter_chunk(const Super_Kmer_Chunk<Colored_>& c, std::vector<Padded<Super_Kmer_Bucket>>& B)
+{
+    auto super_kmer_it = c.iterator();
+    attribute_t att;
+    const label_unit_t* label;
+    while(super_kmer_it.next(att, label))
+    {
+        auto& bucket = B[att.g_id()].unwrap();
+        bucket.add(label, att);
+    }
 }
 
 
@@ -211,7 +291,7 @@ template <bool Colored_>
 std::size_t Super_Kmer_Bucket<Colored_>::Iterator::read_chunk()
 {
     assert(chunk_end_idx < B.size());
-    assert(!Colored_ || chunk_id < B.chunk_sz.size());
+    assert(chunk_id < B.chunk_sz.size());
     const auto super_kmers_to_read = B.chunk_sz[chunk_id++];
 
     B.chunk.deserialize(input, super_kmers_to_read);

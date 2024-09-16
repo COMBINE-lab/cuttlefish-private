@@ -39,14 +39,17 @@ class Subgraphs_Manager
 {
 private:
 
+    // TODO: centralize these params.
     static constexpr uint64_t atlas_count = 128;    // Number of subgraph atlases.
-    static constexpr uint64_t graph_count_ = atlas_count * atlas_count; // Number of subgraphs.
+    static constexpr uint64_t graph_per_atlas = 128;    // Number of subgraphs per atlas.
+    static constexpr uint64_t graph_count_ = atlas_count * graph_per_atlas; // Number of subgraphs.
 
     const std::string path_pref;    // Path-prefix to the super k-mer buckets.
     const uint16_t l;   // `l`-minimizer size to partition the graph.
 
     typedef Super_Kmer_Bucket<Colored_> bucket_t;
     std::vector<Padded<bucket_t>> atlas;    // Super k-mer buckets for the subgraph atlases.
+    std::vector<Padded<bucket_t>> subgraph_bucket;  // Super k-mer buckets for the subgraphs.
 
     std::vector<Padded<HyperLogLog>> HLL;   // `HLL[g]` is the cardinality-estimator for subgraph `g`.
 

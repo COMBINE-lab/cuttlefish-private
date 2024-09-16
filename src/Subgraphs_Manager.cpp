@@ -29,8 +29,19 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     , color_path_pref(logistics.output_file_path())
 {
     atlas.reserve(atlas_count);
-    for(std::size_t g_id = 0; g_id < atlas_count; ++g_id)
-        atlas.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id)));
+    for(std::size_t a_id = 0; a_id < atlas_count; ++a_id)
+        atlas.emplace_back(bucket_t(k, l, path_pref + "_atlas_" + std::to_string(a_id)));
+
+    parlay::parallel_for(0, atlas_count,
+    [&](const std::size_t i)
+    {
+        atlas[i].unwrap().allocate_worker_mem();
+    }, 1);
+
+
+    subgraph_bucket.reserve(graph_count_);
+    for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
+        subgraph_bucket.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id)));
 }
 
 
@@ -52,7 +63,59 @@ void Subgraphs_Manager<k, Colored_>::finalize()
     [&](const std::size_t i)
     {
         atlas[i].unwrap().close();
-    });
+    }, 1);
+
+
+    double t_shatter = 0;
+    double t_mem = 0;
+    for(std::size_t i = 0; i < atlas_count; ++i)
+    {
+        // TODO: why not reuse the same chunks' memories for the subgraphs coming from different atlases?
+
+        const auto t_0 = timer::now();
+        parlay::parallel_for(0, graph_per_atlas,
+        [&](const std::size_t j)
+        {
+            subgraph_bucket[i * graph_per_atlas + j].unwrap().allocate_worker_mem();
+        }, 1);
+        const auto t_1 = timer::now();
+        t_mem += timer::duration(t_1 - t_0);
+
+        atlas[i].unwrap().shatter(subgraph_bucket);
+        const auto t_2 = timer::now();
+        t_shatter += timer::duration(t_2 - t_1);
+
+        parlay::parallel_for(0, graph_per_atlas,
+        [&](const std::size_t j)
+        {
+            subgraph_bucket[i * graph_per_atlas + j].unwrap().deallocate_worker_mem();
+        }, 1);
+        const auto t_3 = timer::now();
+        t_mem += timer::duration(t_3 - t_2);
+    };
+
+    const auto t_0 = timer::now();
+    parlay::parallel_for(0, atlas_count,
+    [&](const std::size_t i)
+    {
+        atlas[i].unwrap().remove();
+    }, 1);
+    const auto t_1 = timer::now();
+    const auto t_atlas_rm = timer::duration(t_1 - t_0);
+
+    parlay::parallel_for(0, graph_count(),
+    [&](const std::size_t i)
+    {
+        subgraph_bucket[i].unwrap().close();
+    }, 1);
+    const auto t_2 = timer::now();
+    t_shatter += timer::duration(t_2 - t_1);
+
+
+    std::cerr << "Time taken to shatter the atlases: " << t_shatter << "s.\n";
+    std::cerr << "Time taken to for memory (de)allocation of subgraphs: " << t_mem << "s.\n";
+    std::cerr << "Time taken to remove the atlases: " << t_atlas_rm << "s.\n";
+
 }
 
 
