@@ -72,23 +72,32 @@ void Subgraphs_Manager<k, Colored_>::finalize()
     {
         // TODO: why not reuse the same chunks' memories for the subgraphs coming from different atlases?
 
+        const auto bucket_base_target = i * graph_per_atlas;
+
         const auto t_0 = timer::now();
-        parlay::parallel_for(0, graph_per_atlas,
+        parlay::parallel_for(bucket_base_target, bucket_base_target + graph_per_atlas,
         [&](const std::size_t j)
         {
-            subgraph_bucket[i * graph_per_atlas + j].unwrap().allocate_worker_mem();
+            subgraph_bucket[j].unwrap().allocate_worker_mem();
         }, 1);
         const auto t_1 = timer::now();
         t_mem += timer::duration(t_1 - t_0);
 
         atlas[i].unwrap().shatter(subgraph_bucket);
+
+        parlay::parallel_for(bucket_base_target, bucket_base_target + graph_per_atlas,
+        [&](const std::size_t j)
+        {
+            subgraph_bucket[j].unwrap().close();
+        }, 1);
+
         const auto t_2 = timer::now();
         t_shatter += timer::duration(t_2 - t_1);
 
-        parlay::parallel_for(0, graph_per_atlas,
+        parlay::parallel_for(bucket_base_target, bucket_base_target + graph_per_atlas,
         [&](const std::size_t j)
         {
-            subgraph_bucket[i * graph_per_atlas + j].unwrap().deallocate_worker_mem();
+            subgraph_bucket[j].unwrap().deallocate_worker_mem();
         }, 1);
         const auto t_3 = timer::now();
         t_mem += timer::duration(t_3 - t_2);
@@ -102,14 +111,6 @@ void Subgraphs_Manager<k, Colored_>::finalize()
     }, 1);
     const auto t_1 = timer::now();
     const auto t_atlas_rm = timer::duration(t_1 - t_0);
-
-    parlay::parallel_for(0, graph_count(),
-    [&](const std::size_t i)
-    {
-        subgraph_bucket[i].unwrap().close();
-    }, 1);
-    const auto t_2 = timer::now();
-    t_shatter += timer::duration(t_2 - t_1);
 
 
     std::cerr << "Time taken to shatter the atlases: " << t_shatter << "s.\n";
@@ -157,11 +158,10 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::vector<Padded<uint64_t>> mtig_count(parlay::num_workers(), 0); // Number of locally maximal unitigs produced per worker.
     std::vector<Padded<std::size_t>> color_shift(parlay::num_workers(), 0); // Number of color-shifting vertices per worker.
 
-    parlay::parallel_for(0, graph_count_,   // TODO: update
+    parlay::parallel_for(0, graph_count_,
         [&](const std::size_t graph_id)
         {
-            // auto& b = subgraph_bucket[graph_id].unwrap();
-            auto& b = atlas[graph_id].unwrap();   // TODO: update.
+            auto& b = subgraph_bucket[graph_id].unwrap();
 
             const auto t_0 = timer::now();
             Subgraph<k, Colored_> sub_dBG(b, G_, op_buf[parlay::worker_id()].unwrap(), subgraphs_space);
