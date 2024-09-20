@@ -20,7 +20,7 @@
 #include "thread_id_pool.h"
 #include "portability.h"
 //#include "range.h"
-#include "type_traits.h"
+#include "parlay/type_traits.h"
 
 
 namespace parlay {

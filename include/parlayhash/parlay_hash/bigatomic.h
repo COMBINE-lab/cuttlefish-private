@@ -13,8 +13,8 @@
 
 #include <atomic>
 #include <functional>
-#include <parlay/primitives.h>
-#include <parlay/sequence.h>
+#include "parlay/primitives.h"
+#include "parlay/sequence.h"
 #include <utils/lock.h>
 
 namespace parlay {

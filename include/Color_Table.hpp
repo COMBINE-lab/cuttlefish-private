@@ -6,6 +6,7 @@
 
 #include "Color_Encoding.hpp"
 #include "boost/unordered/concurrent_flat_map.hpp"
+#include "parlayhash/parlay_hash/unordered_map.h"
 
 #include <cstdint>
 #include <cstddef>

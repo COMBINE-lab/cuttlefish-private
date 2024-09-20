@@ -359,8 +359,8 @@ struct parlay_hash {
       //if (PrintGrow) std::cout << "initial size: " << size << std::endl;
       buckets = (bucket*) malloc(sizeof(bucket)*size);
       block_status = (std::atomic<status>*) malloc(sizeof(std::atomic<status>) * size/block_size);
-      parallel_for(size, [&] (long i) { initialize(buckets[i]);});
-      parallel_for(size/block_size, [&] (long i) { block_status[i] = Empty;});
+      parallel_for(0, size, [&] (long i) { initialize(buckets[i]);});
+      parallel_for(0, size/block_size, [&] (long i) { block_status[i] = Empty;});
     }
 
     // expanded table version copied from smaller version t
@@ -541,7 +541,7 @@ struct parlay_hash {
   void clear_buckets() {
     table_version* ht = current_table_version.load();
     // clear buckets from current and future versions
-    parallel_for(ht->size, [&] (size_t i) {
+    parallel_for(0, ht->size, [&] (size_t i) {
 	clear_bucket_rec(ht, i);});
   }
   

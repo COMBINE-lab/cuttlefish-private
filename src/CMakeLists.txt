@@ -86,6 +86,11 @@ add_library(cfcore_static STATIC ${PROJECT_SRC})
 aux_source_directory(${INCLUDE_DIR}/RabbitFX/io RABBITFX_SRC)
 add_library(rabbitfx STATIC ${RABBITFX_SRC})
 
+# Define required includes for `parlayhash`.
+set(PARLAYHASH_INCLUDE ${INCLUDE_DIR}/parlayhash)
+list(APPEND INCLUDE_DIR ${PARLAYHASH_INCLUDE})
+
+
 # Define an executable from the driver program.
 add_executable(${PROJECT_NAME} main.cpp)
 add_executable(test test.cpp)
