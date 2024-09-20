@@ -60,7 +60,7 @@
 #include <type_traits>
 #include <utility>
 // Needed for parlay::my_thread_id of parlay::num_thread_ids
-#include "threads/thread_specific.h"
+#include "parlay/thread_specific.h"
 
 #ifndef PARLAY_EPOCH_H_
 #define PARLAY_EPOCH_H_
