@@ -27,6 +27,9 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
     , trivial_mtig_c(0)
     , icc_count_(0)
     , color_shift_c(0)
+    , v_new_col_c(0)
+    , v_old_col_c(0)
+    , color_rel_sorted_c(0)
     , op_buf(op_buf)
 {
     M.clear();
@@ -232,18 +235,21 @@ void Subgraph<k, Colored_>::contract()
                         {
                             M[V[i]].mark_new_color();
                             in_process.emplace_back(lmtig_coord, H[i]);
+                            v_new_col_c++;
                             break;
                         }
 
                         case Color_Status::in_process:  // Keep this vertex pending and revisit it once its color is available.
                             if(c.processing_worker() != w_id)   // The color is not new globally, but new to this worker.
-                                M[V[i]].mark_new_color();
+                                M[V[i]].mark_new_color(),
+                                v_new_col_c++;
 
                             in_process.emplace_back(lmtig_coord, H[i]);
                             break;
 
                         case Color_Status::discovered:  // This vertex's color is available.
                             G.add_color(b, b_idx, i, c);
+                            v_old_col_c++;
                             break;
                         }
 
@@ -301,7 +307,11 @@ if constexpr(Colored_)
     }
 
 
+    const auto t_0 = timer::now();
     semisort(color_rel);
+    const auto t_1 = timer::now();
+    t_sort += timer::duration(t_1 - t_0);
+    color_rel_sorted_c += color_rel.size();
 
     auto& C = work_space.color_map();
     auto& color_bucket = work_space.color_repo().bucket();

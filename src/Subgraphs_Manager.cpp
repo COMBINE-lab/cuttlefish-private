@@ -94,6 +94,10 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::vector<Padded<std::size_t>> label_sz(parlay::num_workers(), 0);    // Sum label size produced per worker.
     std::vector<Padded<uint64_t>> mtig_count(parlay::num_workers(), 0); // Number of locally maximal unitigs produced per worker.
     std::vector<Padded<std::size_t>> color_shift(parlay::num_workers(), 0); // Number of color-shifting vertices per worker.
+    std::vector<Padded<uint64_t>> new_colored_vertex(parlay::num_workers(), 0); // Number of vertices attempting addition to the global color-table per worker.
+    std::vector<Padded<uint64_t>> old_colored_vertex(parlay::num_workers(), 0); // Number of vertices with existing colors from the global color-table per worker.
+    std::vector<Padded<uint64_t>> color_rel_sorted(parlay::num_workers(), 0);   // Number of color-relationships sorted in color-extraction per worker.
+    std::vector<Padded<double>> sort_time(parlay::num_workers(), 0);    // Time taken to sort the color-relationships during color-extraction per worker.
 
     const auto process_subgraph =
         [&](const std::size_t graph_id)
@@ -124,6 +128,11 @@ void Subgraphs_Manager<k, Colored_>::process()
             auto& min_sz = min_size[parlay::worker_id()].unwrap();
             auto& mtig_c = mtig_count[parlay::worker_id()].unwrap();
             auto& color_shift_c = color_shift[parlay::worker_id()].unwrap();
+            auto& v_new_col_c = new_colored_vertex[parlay::worker_id()].unwrap();
+            auto& v_old_col_c = old_colored_vertex[parlay::worker_id()].unwrap();
+            auto& color_rel_c = color_rel_sorted[parlay::worker_id()].unwrap();
+            auto& t_sort = sort_time[parlay::worker_id()].unwrap();
+
             max_kmer_c = std::max(max_kmer_c, sub_dBG.kmer_count());
             min_kmer_c = std::min(min_kmer_c, sub_dBG.kmer_count());
             sz += sub_dBG.size();
@@ -132,6 +141,10 @@ void Subgraphs_Manager<k, Colored_>::process()
             l_sz += sub_dBG.label_size();
             mtig_c += sub_dBG.mtig_count();
             color_shift_c += sub_dBG.color_shift_count();
+            v_new_col_c += sub_dBG.new_colored_vertex();
+            v_old_col_c += sub_dBG.old_colored_vertex();
+            color_rel_c += sub_dBG.color_rel_sorted();
+            t_sort += sub_dBG.sort_time();
 
             trivial_mtig_count_ += sub_dBG.trivial_mtig_count();
             icc_count_ += sub_dBG.icc_count();
@@ -164,10 +177,10 @@ void Subgraphs_Manager<k, Colored_>::process()
         [&](){  std::size_t min_sz = std::numeric_limits<uint64_t>::max();
                 std::for_each(min_kmer_count.cbegin(), min_kmer_count.cend(), [&](const auto& v){ min_sz = std::min(min_sz, v.unwrap()); });
                 return min_sz; }() << ".\n";
-    std::cerr << "Sum graph size: " <<
-        [&](){  std::size_t sz = 0;
+    const auto sum_g_sz = [&](){ std::size_t sz = 0;
                 std::for_each(size.cbegin(), size.cend(), [&](const auto& v){ sz += v.unwrap(); });
-                return sz; }() << ".\n";
+                return sz; }();
+    std::cerr << "Sum graph size: " << sum_g_sz << ".\n";
     std::cerr << "Largest graph size: " <<
         [&](){  std::size_t max_sz = 0;
                 std::for_each(max_size.cbegin(), max_size.cend(), [&](const auto& v){ max_sz = std::max(max_sz, v.unwrap()); });
@@ -186,9 +199,26 @@ void Subgraphs_Manager<k, Colored_>::process()
                 return c; }() << ".\n";
     if constexpr(Colored_)
     {
-        std::cerr << "Color-shifting vertex count: " <<
-            [&](){  std::size_t c = 0;
+        const auto color_shift_c = [&](){ std::size_t c = 0;
                     std::for_each(color_shift.cbegin(), color_shift.cend(), [&](const auto& v){ c += v.unwrap(); });
+                    return c; }();
+        std::cerr << "Color-shifting vertex count: " << color_shift_c << ".\n";
+        std::cerr << "Number of vertices attempting new color-extraction: " <<
+            [&](){  std::size_t c = 0;
+                    std::for_each(new_colored_vertex.cbegin(), new_colored_vertex.cend(), [&](const auto& v){ c += v.unwrap(); });
+                    return c; }() << ".\n";
+        std::cerr << "Number of vertices with colors already available: " <<
+            [&](){  std::size_t c = 0;
+                    std::for_each(old_colored_vertex.cbegin(), old_colored_vertex.cend(), [&](const auto& v){ c += v.unwrap(); });
+                    return c; }() << ".\n";
+        std::cerr << "Number of vertices skipped from color-consideration: " << (sum_g_sz - color_shift_c) << ".\n";
+        std::cerr << "Number of (k-mer, source) pairs sorted: " <<
+            [&](){  std::size_t c = 0;
+                    std::for_each(color_rel_sorted.cbegin(), color_rel_sorted.cend(), [&](const auto& v){ c += v.unwrap(); });
+                    return c; }() << ".\n";
+        std::cerr << "Total work in sorting: " <<
+            [&](){  double c = 0;
+                    std::for_each(sort_time.cbegin(), sort_time.cend(), [&](const auto& v){ c += v.unwrap(); });
                     return c; }() << ".\n";
 
         std::cerr << "Color count: " << subgraphs_space.color_map().size() << ".\n";

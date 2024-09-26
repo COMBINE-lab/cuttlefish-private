@@ -131,6 +131,11 @@ private:
     uint64_t icc_count_;    // Number of trivial maximal unitigs in the graph that are ICCs.
 
     uint64_t color_shift_c; // Number of vertices in the graph that either shift color or is the first vertex in an lm-tig.
+    uint64_t v_new_col_c;   // Number of vertices in the graph attempting introduction of new colors to the global color-table.
+    uint64_t v_old_col_c;   // Number of vertices in the graph with existing colors from the global color-table.
+    uint64_t color_rel_sorted_c;    // Number of color-relationships (i.e. (k-mer, source) pairs) sorted in color-extraction.
+
+    double t_sort = 0;  // Time taken to sort the color-relationships during color-extraction.
 
 
     // TODO: move the following out to a central location.
@@ -219,6 +224,22 @@ public:
     // Returns the number of vertices in the graph that either shift color or
     // is the first vertex in an lm-tig.
     uint64_t color_shift_count() const { return color_shift_c; }
+
+    // Returns the number of vertices in the graph attempting introduction of
+    // new colors to the global color-table.
+    auto new_colored_vertex() const { return v_new_col_c; }
+
+    // Returns the number of vertices in the graph with existing colors from
+    // the global color-table.
+    auto old_colored_vertex() const { return v_old_col_c; }
+
+    // Returns the number of color-relationships (i.e. (k-mer, source) pairs)
+    // sorted in color-extraction.
+    auto color_rel_sorted() const { return color_rel_sorted_c; }
+
+    // Returns the time taken to sort the color-relationships during color-
+    // extraction.
+    auto sort_time() const { return t_sort; }
 
     // Returns the total number of characters in the literal representations of
     // all the maximal unitigs.
