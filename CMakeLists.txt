@@ -131,6 +131,7 @@ add_compile_definitions(WITH_ISAL)  # For `rapidgzip`.
 add_compile_definitions(WITH_RPMALLOC)  # For `rapidzip`.
 add_compile_definitions(USE_IGZIP)  # TODO: temporary for `rabbitfx`.
 add_compile_definitions(CMAKE_EXPORT_COMPILE_COMMANDS)  # For better `clangd` scanning.
+add_compile_definitions(USE_PARLAY) # For `parlayhash`.
 
 if(INSTANCE_COUNT)
     add_compile_definitions(INSTANCE_COUNT=${INSTANCE_COUNT})

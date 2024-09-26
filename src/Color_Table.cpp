@@ -6,7 +6,7 @@ namespace cuttlefish
 {
 
 Color_Table::Color_Table():
-      M()
+      M(map_sz_init)
 {}
 
 }
