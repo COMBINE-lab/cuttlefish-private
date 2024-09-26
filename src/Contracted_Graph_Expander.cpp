@@ -88,7 +88,7 @@ void Contracted_Graph_Expander<k, Colored_>::expand()
                 diag_exp_time += duration(t_e - t_s);
 
 
-                std::size_t cur_col = i + 1;    // Column of the current block of edges to be processed.
+                std::size_t cur_col = i + 1;    // Column of the current block of edges to be processed.    // TODO: read from different blocks parallely, instead of halting for read.
                 auto edge_c_curr = (cur_col <= v_part_c ?   // Count of edges to process in the current batch.
                                                     G.E().read_block(i, cur_col, ((cur_col & 1) == 0 ? buf : swap_buf)) : 0);
                 std::size_t edge_c_next;    // Count of edges to process in the next batch.

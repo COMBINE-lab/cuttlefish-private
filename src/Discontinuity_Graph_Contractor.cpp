@@ -56,7 +56,7 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract()
         t_e = now();
         diag_comp_time += duration(t_e - t_s);
 
-        std::size_t batch = 0;  // Batch order of processing non-diagonal edges.
+        std::size_t batch = 0;  // Batch order of processing non-diagonal edges.    // TODO: read from different blocks parallely, instead of halting for read.
         auto edge_c_curr = G.E().read_column_buffered(j, buf);  // Count of edges to process in the current batch.
         std::size_t edge_c_next;    // Count of edges to process in the next batch.
         while(true)
