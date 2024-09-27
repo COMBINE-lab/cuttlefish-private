@@ -133,9 +133,12 @@ private:
     uint64_t color_shift_c; // Number of vertices in the graph that either shift color or is the first vertex in an lm-tig.
     uint64_t v_new_col_c;   // Number of vertices in the graph attempting introduction of new colors to the global color-table.
     uint64_t v_old_col_c;   // Number of vertices in the graph with existing colors from the global color-table.
-    uint64_t color_rel_sorted_c;    // Number of color-relationships (i.e. (k-mer, source) pairs) sorted in color-extraction.
+    uint64_t color_rel_c;   // Number of color-relationships (i.e. (k-mer, source) pairs) sorted in color-extraction.
 
-    double t_sort = 0;  // Time taken to sort the color-relationships during color-extraction.
+    double t_collect_rels = 0;  // Time taken to collect color-relationships.
+    double t_sort = 0;  // Time taken to semi-sort color-relationships.
+    double t_collect_sets = 0;  // Time taken to collect color-sets.
+    double t_attach = 0;    // Time taken to attach the color-sets to vertices appropriately.
 
 
     // TODO: move the following out to a central location.
@@ -163,9 +166,20 @@ private:
     // discontinuous side; in which case that vertex is stored in `exit_v`.
     termination_t walk_unitig(const Kmer<k>& v_hat, side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v);
 
-    // Semisorts color-relationship array `A` by the vertices, and sorts each
-    // vertex's sources by their IDs.
-    static void semisort(color_rel_arr_t& A);
+    // Collects color-relationships of vertices with potentially new colors.
+    void collect_color_relations();
+
+    // Semi-sorts the color-relationship array of vertices with potentially new
+    // colors.
+    void semi_sort();
+
+    // Collects the color-sets of vertices from the sorted color-relationship
+    // array.
+    void collect_color_sets();
+
+    // Attaches extracted colors to vertices.
+    void attach_colors_to_vertices();
+
 
 
 public:
@@ -235,11 +249,20 @@ public:
 
     // Returns the number of color-relationships (i.e. (k-mer, source) pairs)
     // sorted in color-extraction.
-    auto color_rel_sorted() const { return color_rel_sorted_c; }
+    auto color_rel_sorted() const { return color_rel_c; }
 
-    // Returns the time taken to sort the color-relationships during color-
-    // extraction.
+    // Returns the time taken to collect color-relationships.
+    auto collect_rels_time() const { return t_collect_rels; }
+
+    // Returns the time taken to sort color-relationships.
     auto sort_time() const { return t_sort; }
+
+    // Returns the time taken to collect color-sets.
+    auto collect_sets_time() const { return t_collect_sets; }
+
+    // Returns the time taken to attach the color-sets to vertices
+    // appropriately.
+    auto attach_time() const { return t_attach; }
 
     // Returns the total number of characters in the literal representations of
     // all the maximal unitigs.

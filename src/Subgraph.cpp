@@ -29,7 +29,7 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
     , color_shift_c(0)
     , v_new_col_c(0)
     , v_old_col_c(0)
-    , color_rel_sorted_c(0)
+    , color_rel_c(0)
     , op_buf(op_buf)
 {
     M.clear();
@@ -267,6 +267,29 @@ void Subgraph<k, Colored_>::contract()
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::extract_new_colors()
 {
+    const auto t_0 = timer::now();
+
+    collect_color_relations();
+    const auto t_1 = timer::now();
+    t_collect_rels += timer::duration(t_1 - t_0);
+
+    semi_sort();
+    const auto t_2 = timer::now();
+    t_sort += timer::duration(t_2 - t_1);
+
+    collect_color_sets();
+    const auto t_3 = timer::now();
+    t_collect_sets += timer::duration(t_3 - t_2);
+
+    attach_colors_to_vertices();
+    const auto t_4 = timer::now();
+    t_attach += timer::duration(t_4 - t_3);
+}
+
+
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::collect_color_relations()
+{
 if constexpr(Colored_)
 {
     auto& color_rel = work_space.color_rel_arr();
@@ -306,16 +329,29 @@ if constexpr(Colored_)
         }
     }
 
+    color_rel_c += color_rel.size();
+}
+}
 
-    const auto t_0 = timer::now();
-    semisort(color_rel);
-    const auto t_1 = timer::now();
-    t_sort += timer::duration(t_1 - t_0);
-    color_rel_sorted_c += color_rel.size();
 
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::semi_sort()
+{
+    auto& A = work_space.color_rel_arr();
+    std::sort(A.begin(), A.end());
+}
+
+
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::collect_color_sets()
+{
+if constexpr(Colored_)
+{
+    auto& color_rel = work_space.color_rel_arr();
     auto& C = work_space.color_map();
     auto& color_bucket = work_space.color_repo().bucket();
     std::vector<source_id_t> src;   // Sources of the current vertex.
+
     for(std::size_t i = 0, j; i < color_rel.size(); i = j)
     {
         const auto& v = color_rel[i].first;
@@ -338,9 +374,15 @@ if constexpr(Colored_)
             color_bucket.add(src.data(), src.size());
         }
     }
+}
+}
 
 
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::attach_colors_to_vertices()
+{
     auto& in_process = work_space.in_process_arr();
+    auto& C = work_space.color_map();
     for(const auto& p : in_process)
     {
         const auto& lmtig_coord = p.first;
@@ -351,14 +393,6 @@ if constexpr(Colored_)
     }
 
     in_process.clear();
-}
-}
-
-
-template <uint16_t k, bool Colored_>
-void Subgraph<k, Colored_>::semisort(typename Subgraph::color_rel_arr_t& A)
-{
-    std::sort(A.begin(), A.end());
 }
 
 
