@@ -10,6 +10,7 @@
 #include "RabbitFX/io/Globals.h"
 #include "parlay/parallel.h"
 
+#include <iterator>
 #include <algorithm>
 #include <cassert>
 
@@ -20,7 +21,7 @@ namespace cuttlefish
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k, Colored_>& subgraphs, const Data_Logistics& logistics, const uint16_t l):
       subgraphs(subgraphs)
-    , seqs(logistics.input_paths_collection())
+    //, seqs(logistics.input_paths_collection())
     , l_(l)
     , sup_km1_mer_len_th(2 * (k - 1) - l_)
     , chunk_pool_sz(parlay::num_workers() * (Is_FASTQ_ ? 2 : 4))    // TODO: make a more informed choice.
@@ -29,7 +30,11 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
     , parsed_chunk_w(parlay::num_workers())
     , subgraphs_path_pref(logistics.subgraphs_path())
     , stat_w(parlay::num_workers())
-{}
+{
+    auto& input_paths = logistics.input_paths_collection();
+    //std::cerr << "num input paths = " << std::distance(input_paths.begin(), input_paths.end()) << "\n";
+    seqs = std::deque<std::string>(input_paths.begin(), input_paths.end());
+}
 
 
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
@@ -89,41 +94,138 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
         [&](){ double t = 0; std::for_each(stat_w.cbegin(), stat_w.cend(), [&](const auto& s){ t = std::max(t, s.unwrap().process_time); }); return t; }() << "s.\n";
 }
 
-
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
 {
     const auto t_s = timer::now();
-    uint64_t chunk_count = 0;   // Number of read chunks.
+    std::atomic<uint64_t> chunk_count{0};   // Number of read chunks.
+    std::atomic<uint64_t> bytes_pushed{0};                                            
+    std::atomic<uint64_t> last_checkpoint{0};                                            
     rabbit::int64 source_id = 1;    // Source (i.e. file) ID of a chunk.
+    constexpr size_t num_read_threads = 4;
+    size_t n_files = seqs.size();
 
-    for(const auto& file_path : seqs)
-    {
-        // TODO: address memory-reuse issue within a reader for every new instance.
-        typename RabbitFX_DS_type<Is_FASTQ_>::reader_t reader(file_path, chunk_pool);
-        const auto push_chunk = [&](auto const chunk)
-        {
-            if(chunk == NULL)
-                return false;
+    // mutex to control obtaining the next file to read from the queue
+    std::mutex fp_mutex;
+    std::vector<std::thread> reader_threads;
 
-            chunk_q.Push(source_id, chunk);
-            chunk_count++;
-            return true;
-        };
+    // TODO: make the number of readers dynamic and based on the workload between 
+    // the reading and parsing / super-kmerization
+    for (size_t t = 0; t < num_read_threads; ++t) {
+        reader_threads.push_back(std::thread([&]{
+            using reader_t = typename RabbitFX_DS_type<Is_FASTQ_>::reader_t;
+            std::unique_ptr<reader_t> reader;
+            // keep reading (we will break when we have read all of the 
+            // data from all of the files).
+            while(true) {
+                // the `m_do_reading` variable controls if we want to pause 
+                // reading of new files (to give the super-kmerization threads
+                // a chance to process data that has already been read and avoid
+                // the read queue growing too large).
+                if (!Colored_ || m_do_reading) {
+                    // get the next input file's name
+                    std::string next_file;
+                    fp_mutex.lock();
+                    bool done = seqs.empty();
+                    size_t current_source_id = source_id;
+                    if (!done) {
+                        source_id++;
+                        max_read_source_id++;
+                        next_file = seqs.front();
+                        seqs.pop_front();
+                    }
+                    fp_mutex.unlock();
+                    // if there are no more files to read, then this
+                    // thread is done
+                    if (done) { break; }
 
-        bool chunks_remain = true;
-        while(chunks_remain)
-            if constexpr(Is_FASTQ_)
-                chunks_remain = push_chunk(reader.readNextChunk());
-            else
-                chunks_remain = push_chunk(reader.readNextChunkList());
+                    // if we don't have a reader for this thread yet, then 
+                    // make one, otherwise assign the existing reader the 
+                    // next file.
+                    if (!reader) { 
+                        reader = std::make_unique<reader_t>(next_file, chunk_pool);
+                    } else {
+                        reader->set_new_file(next_file);
+                    }
 
-        source_id++;
+                    // lambda to handle pushing a chunk (either FASTQ or FASTA)
+                    // to the data chunk queue.
+                    const auto push_chunk = [&](auto const chunk)
+                    {
+                        if(chunk == NULL)
+                            return false;
+
+                        // for FASTA chunks
+                        if constexpr(!Is_FASTQ_) {
+                            // NOTE: The metadata in the RabbitFX::io::FastaChunk
+                            // is not filled in when it is read (i.e. start, end, nseqs).
+                            // So, to get the total number of bytes here, we actually have to 
+                            // walk the list of data chunks produced.
+
+                            // get the first RabitFX::io::core::DataChunk
+                            auto* dchunk = chunk->chunk;
+                            uint64_t nb = 0;
+
+                            // while we've not reached the end of the list, accumulate
+                            // the total number of bytes.
+                            while (dchunk != nullptr) {
+                                nb += dchunk->size;
+                                dchunk = dchunk->next;
+                            }
+
+                            // keeping track of the number of bytes pushed into
+                            // the queue.
+                            bytes_pushed += nb;
+
+                            // if we've processed > bytes_per_batch since the last check, 
+                            // then print it out and pause reading of further files until
+                            // these files are done.
+                            // NOTE: multiple threads could enter this condition before we set
+                            // m_do_reading = false; may not be a problem, but think about this.
+                            if (bytes_pushed > (last_checkpoint + bytes_per_batch)) {
+                                last_checkpoint.store(bytes_pushed.load());
+                                std::cerr << "Pushed " << (bytes_pushed/ (1024 * 1024)) << "MB of uncompressed input data.\n";
+                                m_do_reading = false;
+                            }
+                        }
+                        // regardless of the chunk type, push it.
+                        chunk_q.Push(current_source_id, chunk);
+                        chunk_count++;
+                        return true;
+                    };
+
+                    // for the current file, read all of the chunks and 
+                    // push them onto the queue.
+                    bool chunks_remain = true;
+                    while(chunks_remain) {
+                        if constexpr(Is_FASTQ_) {
+                            chunks_remain = push_chunk(reader->readNextChunk());
+                        } else {
+                            chunks_remain = push_chunk(reader->readNextChunkList());
+                        }
+                    }
+
+                    // increment the source id
+                    //source_id++;
+                    // keep track of the maximum source
+                    // id we've read so far.
+                    //max_read_source_id++;
+                }
+            }
+        }));
     }
 
+    // wait for all of our reader threads to 
+    // finish.
+    for (auto& r: reader_threads) {
+        r.join();
+    }
+
+    // we're done with the queue, so signal that nothing further 
+    // will be pushed.
     chunk_q.SetCompleted();
     const auto t_e = timer::now();
-    std::cerr << "\nRead " << chunk_count << " chunks in total from " << seqs.size() << " files. Time elapsed: " << timer::duration(t_e - t_s) << " s.\n";
+    std::cerr << "\nRead " << chunk_count << " chunks in total from " << n_files << " files. Time elapsed: " << timer::duration(t_e - t_s) << " s.\n";
 }
 
 
@@ -132,18 +234,30 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_uncolored_chunks()
 {
     assert(!Colored_);
 
-    rabbit::int64 source_id;    // Source (i.e. file) ID of a chunk.
-    chunk_t* chunk; // Current chunk.
+    rabbit::int64 source_id = 0;    // Source (i.e. file) ID of a chunk.
+    chunk_t* chunk = nullptr; // Current chunk.
     rabbit::int64 last_source = 0;  // Source ID of the last chunk processed.
     (void)last_source;
 
-    while(chunk_q.Pop(source_id, chunk))
-    {
-        assert(source_id >= last_source);
+    // while things can still be put into the queue
+    while(!chunk_q.IsCompleted()) {
+        // try and get a chunk out
+        // bool saw_max_id = false;
+        while(chunk_q.Pop(source_id, chunk)) {
+            assert(source_id >= last_source);
 
-        process_chunk(chunk, source_id);
-        last_source = source_id;
+            bytes_consumed += process_chunk(chunk, source_id);
+            last_source = source_id;
+
+            if (last_source >= max_read_source_id - 1) { 
+                m_do_reading = true; 
+            } else {
+                //std::cerr << "last_source = " << last_source << ", max_read_source_id = " << max_read_source_id << "\n";
+            }
+        }
+
     }
+
 }
 
 
@@ -170,6 +284,9 @@ bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_colored_chunks()
 
         bytes_consumed += process_chunk(chunk, source_id);
         last_source = source_id;
+        if (last_source == max_read_source_id) {
+            m_do_reading = true;
+        }
     }
 
     return data_remain;
