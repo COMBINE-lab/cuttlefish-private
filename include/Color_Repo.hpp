@@ -38,6 +38,9 @@ public:
 
     // Returns the size of the color-repository in bytes.
     std::size_t bytes() const;
+
+    // Closes the color-repository.
+    void close();
 };
 
 }

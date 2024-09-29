@@ -35,4 +35,14 @@ std::size_t Color_Repo::bytes() const
     return sz * sizeof(source_id_t);
 }
 
+
+void Color_Repo::close()
+{
+    parlay::parallel_for(0, parlay::num_workers(),
+        [&](const std::size_t w)
+        {
+            B[w].unwrap().serialize();
+        }, 1);
+}
+
 }

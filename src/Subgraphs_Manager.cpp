@@ -168,6 +168,9 @@ void Subgraphs_Manager<k, Colored_>::process()
     parlay::parallel_for(0, graph_count_, process_subgraph, 1);
     std::cerr << "\n";
 
+    if constexpr(Colored_)
+        subgraphs_space.color_repo().close();
+
     const auto sum_time = [&](const std::vector<Padded<double>>& T)
         { double t = 0; std::for_each(T.cbegin(), T.cend(), [&t](const auto& v){ t += v.unwrap(); }); return t; };
     std::cerr << "Total work in graph construction: " << sum_time(t_construction) << " (s).\n";
