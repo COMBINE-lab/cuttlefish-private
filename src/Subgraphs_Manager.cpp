@@ -232,6 +232,7 @@ void Subgraphs_Manager<k, Colored_>::process()
         });
 
         std::cerr << "Color count: " << subgraphs_space.color_map().size() << ".\n";
+        std::cerr << "Color-repository size: " << subgraphs_space.color_repo().bytes() << " bytes.\n";
 
         std::cerr << "Color timings:\n";
         std::cerr << "\t Total work in collecting color-relationships:   " << t[0] << "s.\n";

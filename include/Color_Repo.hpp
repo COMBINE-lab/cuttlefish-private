@@ -9,6 +9,7 @@
 #include "utility.hpp"
 #include "parlay/parallel.h"
 
+#include <cstddef>
 #include <string>
 #include <vector>
 #include <cassert>
@@ -34,14 +35,10 @@ public:
 
     // Returns the appropriate color-bucket for the worker.
     bucket_t& bucket();
+
+    // Returns the size of the color-repository in bytes.
+    std::size_t bytes() const;
 };
-
-
-inline typename Color_Repo::bucket_t& Color_Repo::bucket()
-{
-    assert(B.size() == parlay::num_workers());
-    return B[parlay::worker_id()].unwrap();
-}
 
 }
 
