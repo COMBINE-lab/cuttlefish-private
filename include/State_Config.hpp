@@ -172,6 +172,8 @@ private:
 
     static constexpr uint32_t new_color = 0b0000'1000;  // Flag to denote a vertex as having a new color.
 
+    static constexpr uint32_t colored = 0b0001'0000;    // Flag to denote whether a vertex has been colored yet.
+
     uint64_t color_hash_;   // Hash of the associated color-set.
 
 public:
@@ -200,6 +202,19 @@ public:
 
     // Returns whether the associated vertex has a new color or not.
     bool has_new_color() const { return status & new_color; }
+
+    // Returns `true` iff the associated vertex has been colored.
+    bool is_colored() const { return status & colored; }
+
+    // Sets the source ID `source` as the latest color of this state.
+    void set_latest_color(const source_id_t source)
+    {
+        assert(source <= (source_mask >> source_pos));
+        status = (status & ~source_mask) | (source << source_pos) | colored;
+    }
+
+    // Returns the latest color (source ID) of the associated vertex.
+    source_id_t latest_color() const { return (status & source_mask) >> source_pos; }
 };
 
 

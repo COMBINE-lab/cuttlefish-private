@@ -317,8 +317,14 @@ if constexpr(Colored_)
         {
             assert(kmer_idx + k - 1 < len);
 
-            if(M[v.canonical()].has_new_color())
-                color_rel.emplace_back(v.canonical(), source);
+            auto& st = M[v.canonical()];
+            if(st.has_new_color())
+                if(!st.is_colored() || st.latest_color() != source)
+                {
+                    color_rel.emplace_back(v.canonical(), source);
+
+                    st.set_latest_color(source);
+                }
 
             if(kmer_idx + k == len)
                 break;
@@ -363,8 +369,7 @@ if constexpr(Colored_)
                 break;
 
             assert(color_rel[j].second >= color_rel[j - 1].second); // Ensure sortedness of source-IDs.
-            if(color_rel[j].second != color_rel[j - 1].second)
-                src.push_back(color_rel[j].second);
+            src.push_back(color_rel[j].second);
         }
 
         const auto color_idx = color_bucket.size();
