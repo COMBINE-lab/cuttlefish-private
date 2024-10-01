@@ -11,6 +11,7 @@ last modified by Zekun Yin 2020/5/18
 
 #include <iostream>
 #include <string>
+#include <cassert>
 
 #include "Reference.h"
 #include "FastxStream.h"
@@ -680,6 +681,7 @@ namespace rabbit {
             if (r > 0) {
             if(!mFqReader->FinishRead())
             {
+                assert(r == toRead);
                 cbufSize = r + chunk_->size;
                 uint64 chunkEnd = cbufSize - (cbufSize < GetNxtBuffSize ? cbufSize: GetNxtBuffSize);
                 chunkEnd = GetNextRecordPos_(data, chunkEnd, cbufSize);

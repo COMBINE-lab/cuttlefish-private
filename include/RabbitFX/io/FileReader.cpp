@@ -178,7 +178,13 @@ int64 FileReader::Read(byte *memory_, uint64 size_) {
     if (isZipped) {
 #if defined(USE_IGZIP)			
         if(par_deflate)
-            return par_gzip_reader->read(reinterpret_cast<char*>(memory_), size_);
+        {
+            const auto r = par_gzip_reader->read(reinterpret_cast<char*>(memory_), size_);
+            if(r < size_)
+                setEof();
+
+            return r;
+        }
 
         int64 n = igzip_read(mFile, memory_, size_);
 #else
