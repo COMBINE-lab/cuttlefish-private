@@ -55,6 +55,8 @@ public:
     typedef std::vector<in_process_t> in_process_arr_t;
 
     typedef std::vector<std::pair<Kmer<k>, source_id_t>> color_rel_arr_t;
+    typedef std::vector<Kmer<k>> kmer_arr_t;
+    typedef std::vector<uint64_t> source_arr_t; // TODO: if the `x86-simd-sort` library is properly used, source-ID can remain 32-bit.
 
     // Constructs working space for workers, supporting capacity of at least
     // `max_sz` vertices.
@@ -72,7 +74,15 @@ public:
 
     // Returns the appropriate container for (vertex, source-ID) relationships
     // for a worker.
-    color_rel_arr_t& color_rel_arr();
+    // color_rel_arr_t& color_rel_arr();
+
+    // Returns the appropriate container for keys in the (vertex, source-ID)
+    // relationships for a worker.
+    kmer_arr_t& color_rel_vertex_arr();
+
+    // Returns the appropriate container for values in the (vertex, source-ID)
+    // relationships for a worker.
+    source_arr_t& color_rel_source_arr();
 
     // Returns the external-memory color repository.
     Color_Repo& color_repo();
@@ -90,7 +100,15 @@ private:
 
     // Collection of containers for (vertex, source-ID) relationships, for
     // different workers.
-    std::vector<Padded<color_rel_arr_t>> color_rel_arr_;
+    // std::vector<Padded<color_rel_arr_t>> color_rel_arr_;
+
+    // Collection of containers for keys in the (vertex, source-ID)
+    // relationships, for different workers.
+    std::vector<Padded<kmer_arr_t>> kmer_arr_;
+
+    // Collection of containers for values in the (vertex, source-ID)
+    // relationships, for different workers.
+    std::vector<Padded<source_arr_t>> source_arr_;
 
     // External-memory color repository.
     Color_Repo color_repo_;
@@ -106,6 +124,8 @@ class Subgraph
     typedef Walk_Termination termination_t;
     typedef typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t in_process_arr_t;
     typedef typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t color_rel_arr_t;
+    typedef typename Subgraphs_Scratch_Space<k, Colored_>::kmer_arr_t kmer_arr_t;
+    typedef typename Subgraphs_Scratch_Space<k, Colored_>::source_arr_t source_arr_t;
 
 private:
 
