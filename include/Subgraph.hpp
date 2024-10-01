@@ -55,6 +55,8 @@ public:
     typedef std::vector<in_process_t> in_process_arr_t;
 
     typedef std::vector<std::pair<Kmer<k>, source_id_t>> color_rel_arr_t;
+    typedef std::vector<Kmer<k>> kmer_arr_t;
+    typedef std::vector<uint64_t> source_arr_t; // TODO: if the `x86-simd-sort` library is properly used, source-ID can remain 32-bit.
 
     // Constructs working space for workers, supporting capacity of at least
     // `max_sz` vertices.
@@ -72,7 +74,15 @@ public:
 
     // Returns the appropriate container for (vertex, source-ID) relationships
     // for a worker.
-    color_rel_arr_t& color_rel_arr();
+    // color_rel_arr_t& color_rel_arr();
+
+    // Returns the appropriate container for keys in the (vertex, source-ID)
+    // relationships for a worker.
+    kmer_arr_t& color_rel_vertex_arr();
+
+    // Returns the appropriate container for values in the (vertex, source-ID)
+    // relationships for a worker.
+    source_arr_t& color_rel_source_arr();
 
     // Returns the external-memory color repository.
     Color_Repo& color_repo();
@@ -90,7 +100,15 @@ private:
 
     // Collection of containers for (vertex, source-ID) relationships, for
     // different workers.
-    std::vector<Padded<color_rel_arr_t>> color_rel_arr_;
+    // std::vector<Padded<color_rel_arr_t>> color_rel_arr_;
+
+    // Collection of containers for keys in the (vertex, source-ID)
+    // relationships, for different workers.
+    std::vector<Padded<kmer_arr_t>> kmer_arr_;
+
+    // Collection of containers for values in the (vertex, source-ID)
+    // relationships, for different workers.
+    std::vector<Padded<source_arr_t>> source_arr_;
 
     // External-memory color repository.
     Color_Repo color_repo_;
@@ -106,6 +124,8 @@ class Subgraph
     typedef Walk_Termination termination_t;
     typedef typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t in_process_arr_t;
     typedef typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t color_rel_arr_t;
+    typedef typename Subgraphs_Scratch_Space<k, Colored_>::kmer_arr_t kmer_arr_t;
+    typedef typename Subgraphs_Scratch_Space<k, Colored_>::source_arr_t source_arr_t;
 
 private:
 
@@ -133,9 +153,12 @@ private:
     uint64_t color_shift_c; // Number of vertices in the graph that either shift color or is the first vertex in an lm-tig.
     uint64_t v_new_col_c;   // Number of vertices in the graph attempting introduction of new colors to the global color-table.
     uint64_t v_old_col_c;   // Number of vertices in the graph with existing colors from the global color-table.
-    uint64_t color_rel_sorted_c;    // Number of color-relationships (i.e. (k-mer, source) pairs) sorted in color-extraction.
+    uint64_t color_rel_c;   // Number of color-relationships (i.e. (k-mer, source) pairs) sorted in color-extraction.
 
-    double t_sort = 0;  // Time taken to sort the color-relationships during color-extraction.
+    double t_collect_rels = 0;  // Time taken to collect color-relationships.
+    double t_sort = 0;  // Time taken to semi-sort color-relationships.
+    double t_collect_sets = 0;  // Time taken to collect color-sets.
+    double t_attach = 0;    // Time taken to attach the color-sets to vertices appropriately.
 
 
     // TODO: move the following out to a central location.
@@ -163,9 +186,20 @@ private:
     // discontinuous side; in which case that vertex is stored in `exit_v`.
     termination_t walk_unitig(const Kmer<k>& v_hat, side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v);
 
-    // Semisorts color-relationship array `A` by the vertices, and sorts each
-    // vertex's sources by their IDs.
-    static void semisort(color_rel_arr_t& A);
+    // Collects color-relationships of vertices with potentially new colors.
+    void collect_color_relations();
+
+    // Semi-sorts the color-relationship array of vertices with potentially new
+    // colors.
+    void semi_sort();
+
+    // Collects the color-sets of vertices from the sorted color-relationship
+    // array.
+    void collect_color_sets();
+
+    // Attaches extracted colors to vertices.
+    void attach_colors_to_vertices();
+
 
 
 public:
@@ -235,11 +269,20 @@ public:
 
     // Returns the number of color-relationships (i.e. (k-mer, source) pairs)
     // sorted in color-extraction.
-    auto color_rel_sorted() const { return color_rel_sorted_c; }
+    auto color_rel_sorted() const { return color_rel_c; }
 
-    // Returns the time taken to sort the color-relationships during color-
-    // extraction.
+    // Returns the time taken to collect color-relationships.
+    auto collect_rels_time() const { return t_collect_rels; }
+
+    // Returns the time taken to sort color-relationships.
     auto sort_time() const { return t_sort; }
+
+    // Returns the time taken to collect color-sets.
+    auto collect_sets_time() const { return t_collect_sets; }
+
+    // Returns the time taken to attach the color-sets to vertices
+    // appropriately.
+    auto attach_time() const { return t_attach; }
 
     // Returns the total number of characters in the literal representations of
     // all the maximal unitigs.

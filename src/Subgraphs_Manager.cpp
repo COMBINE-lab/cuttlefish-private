@@ -8,6 +8,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <vector>
 #include <iostream>
@@ -97,7 +98,9 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::vector<Padded<uint64_t>> new_colored_vertex(parlay::num_workers(), 0); // Number of vertices attempting addition to the global color-table per worker.
     std::vector<Padded<uint64_t>> old_colored_vertex(parlay::num_workers(), 0); // Number of vertices with existing colors from the global color-table per worker.
     std::vector<Padded<uint64_t>> color_rel_sorted(parlay::num_workers(), 0);   // Number of color-relationships sorted in color-extraction per worker.
-    std::vector<Padded<double>> sort_time(parlay::num_workers(), 0);    // Time taken to sort the color-relationships during color-extraction per worker.
+
+    std::vector<Padded<double[4]>> color_time(parlay::num_workers());   // Time taken in various steps of coloring.
+    std::for_each(color_time.begin(), color_time.end(), [&](auto& c){ std::memset(c.unwrap(), 0, 4 * sizeof(double)); });
 
     const auto process_subgraph =
         [&](const std::size_t graph_id)
@@ -131,7 +134,7 @@ void Subgraphs_Manager<k, Colored_>::process()
             auto& v_new_col_c = new_colored_vertex[parlay::worker_id()].unwrap();
             auto& v_old_col_c = old_colored_vertex[parlay::worker_id()].unwrap();
             auto& color_rel_c = color_rel_sorted[parlay::worker_id()].unwrap();
-            auto& t_sort = sort_time[parlay::worker_id()].unwrap();
+            auto& t_color = color_time[parlay::worker_id()].unwrap();
 
             max_kmer_c = std::max(max_kmer_c, sub_dBG.kmer_count());
             min_kmer_c = std::min(min_kmer_c, sub_dBG.kmer_count());
@@ -144,7 +147,11 @@ void Subgraphs_Manager<k, Colored_>::process()
             v_new_col_c += sub_dBG.new_colored_vertex();
             v_old_col_c += sub_dBG.old_colored_vertex();
             color_rel_c += sub_dBG.color_rel_sorted();
-            t_sort += sub_dBG.sort_time();
+
+            t_color[0] += sub_dBG.collect_rels_time();
+            t_color[1] += sub_dBG.sort_time();
+            t_color[2] += sub_dBG.collect_sets_time();
+            t_color[3] += sub_dBG.attach_time();
 
             trivial_mtig_count_ += sub_dBG.trivial_mtig_count();
             icc_count_ += sub_dBG.icc_count();
@@ -160,6 +167,9 @@ void Subgraphs_Manager<k, Colored_>::process()
 
     parlay::parallel_for(0, graph_count_, process_subgraph, 1);
     std::cerr << "\n";
+
+    if constexpr(Colored_)
+        subgraphs_space.color_repo().close();
 
     const auto sum_time = [&](const std::vector<Padded<double>>& T)
         { double t = 0; std::for_each(T.cbegin(), T.cend(), [&t](const auto& v){ t += v.unwrap(); }); return t; };
@@ -216,12 +226,22 @@ void Subgraphs_Manager<k, Colored_>::process()
             [&](){  std::size_t c = 0;
                     std::for_each(color_rel_sorted.cbegin(), color_rel_sorted.cend(), [&](const auto& v){ c += v.unwrap(); });
                     return c; }() << ".\n";
-        std::cerr << "Total work in sorting: " <<
-            [&](){  double c = 0;
-                    std::for_each(sort_time.cbegin(), sort_time.cend(), [&](const auto& v){ c += v.unwrap(); });
-                    return c; }() << ".\n";
+
+        double t[4] = {0, 0, 0, 0};
+        std::for_each(color_time.cbegin(), color_time.cend(), [&](const auto& c)
+        {
+            const auto& c_t = c.unwrap();
+            for(std::size_t i = 0; i < 4; ++i)  t[i] += c_t[i];
+        });
 
         std::cerr << "Color count: " << subgraphs_space.color_map().size() << ".\n";
+        std::cerr << "Color-repository size: " << subgraphs_space.color_repo().bytes() << " bytes.\n";
+
+        std::cerr << "Color timings:\n";
+        std::cerr << "\t Total work in collecting color-relationships:   " << t[0] << "s.\n";
+        std::cerr << "\t Total work in semi-sorting color-relationships: " << t[1] << "s.\n";
+        std::cerr << "\t Total work in collecting color-sets:            " << t[2] << "s.\n";
+        std::cerr << "\t Total work in attaching color-sets to vertices: " << t[3] << "s.\n";
     }
 }
 

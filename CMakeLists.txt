@@ -31,6 +31,10 @@ set(GCC_VERSION_MIN "9.1")
 set(CLANG_VERSION_MIN "9.0")
 
 if(ASAN OR MSAN OR UBSAN)
+    set(CLANG TRUE)
+endif()
+
+if(CLANG)
     set(CMAKE_C_COMPILER clang)
     set(CMAKE_CXX_COMPILER clang++)
     # set(CMAKE_LINKER_TYPE LLD)
@@ -60,8 +64,8 @@ set(CLANG_SUPPRESS_WARNING_FLAGS    -Wno-unknown-attributes
                                     -Wno-c++20-attribute-extensions
                                     -Wno-gnu-zero-variadic-macro-arguments)
 
-if(ASAN OR MSAN OR UBSAN)
-    set(SUPPRESS_WARNING_FLAGS ${SUPPRESS_WARNING_FLAGS} ${CLANG_SUPPRESS_WARNING_FLAGS})
+if(CLANG)
+    list(APPEND SUPPRESS_WARNING_FLAGS ${CLANG_SUPPRESS_WARNING_FLAGS})
 endif()
 
 # Bundle debugging information flags that we want to conditionally
@@ -90,7 +94,7 @@ set(OPTIMIZE_FLAGS -funroll-loops -march=native)
 
 # Bundle miscellaneous required flags.
 # `-fconstexpr-ops-limit` for compile-time computations in `rapidgzip`.
-if(ASAN OR MSAN OR UBSAN)
+if(CLANG)
     set(MISC_FLAGS -fconstexpr-steps=99000100)
 else()
     set(MISC_FLAGS -fconstexpr-ops-limit=99000100)

@@ -3,8 +3,8 @@
 #include "Super_Kmer_Bucket.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
+#include "x86-simd-sort/avx512-64bit-keyvaluesort.hpp"
 
-#include <cstddef>
 #include <cassert>
 
 
@@ -29,7 +29,7 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
     , color_shift_c(0)
     , v_new_col_c(0)
     , v_old_col_c(0)
-    , color_rel_sorted_c(0)
+    , color_rel_c(0)
     , op_buf(op_buf)
 {
     M.clear();
@@ -267,10 +267,36 @@ void Subgraph<k, Colored_>::contract()
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::extract_new_colors()
 {
+    const auto t_0 = timer::now();
+
+    collect_color_relations();
+    const auto t_1 = timer::now();
+    t_collect_rels += timer::duration(t_1 - t_0);
+
+    semi_sort();
+    const auto t_2 = timer::now();
+    t_sort += timer::duration(t_2 - t_1);
+
+    collect_color_sets();
+    const auto t_3 = timer::now();
+    t_collect_sets += timer::duration(t_3 - t_2);
+
+    attach_colors_to_vertices();
+    const auto t_4 = timer::now();
+    t_attach += timer::duration(t_4 - t_3);
+}
+
+
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::collect_color_relations()
+{
 if constexpr(Colored_)
 {
-    auto& color_rel = work_space.color_rel_arr();
-    color_rel.clear();
+    // auto& color_rel = work_space.color_rel_arr();
+    // color_rel.clear();
+    auto& kmer_arr = work_space.color_rel_vertex_arr();
+    auto& source_arr = work_space.color_rel_source_arr();
+    kmer_arr.clear(), source_arr.clear();
 
     auto super_kmer_it = B.iterator();  // Iterator over the weak super k-mers inducing this graph.
     typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
@@ -294,8 +320,16 @@ if constexpr(Colored_)
         {
             assert(kmer_idx + k - 1 < len);
 
-            if(M[v.canonical()].has_new_color())
-                color_rel.emplace_back(v.canonical(), source);
+            auto& st = M[v.canonical()];
+            if(st.has_new_color())
+                if(!st.is_colored() || st.latest_color() != source)
+                {
+                    // color_rel.emplace_back(v.canonical(), source);
+                    kmer_arr.push_back(v.canonical()),
+                    source_arr.push_back(source);
+
+                    st.set_latest_color(source);
+                }
 
             if(kmer_idx + k == len)
                 break;
@@ -306,29 +340,46 @@ if constexpr(Colored_)
         }
     }
 
+    // color_rel_c += color_rel.size();
+    color_rel_c += kmer_arr.size();
+}
+}
 
-    const auto t_0 = timer::now();
-    semisort(color_rel);
-    const auto t_1 = timer::now();
-    t_sort += timer::duration(t_1 - t_0);
-    color_rel_sorted_c += color_rel.size();
 
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::semi_sort()
+{
+    auto& kmer_arr = work_space.color_rel_vertex_arr();
+    auto& source_arr = work_space.color_rel_source_arr();
+    avx512_qsort_kv(reinterpret_cast<uint64_t*>(kmer_arr.data()), source_arr.data(), kmer_arr.size());
+}
+
+
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::collect_color_sets()
+{
+if constexpr(Colored_)
+{
+    // auto& color_rel = work_space.color_rel_arr();
+    auto& kmer_arr = work_space.color_rel_vertex_arr();
+    auto& source_arr = work_space.color_rel_source_arr();
     auto& C = work_space.color_map();
     auto& color_bucket = work_space.color_repo().bucket();
     std::vector<source_id_t> src;   // Sources of the current vertex.
-    for(std::size_t i = 0, j; i < color_rel.size(); i = j)
+
+    for(std::size_t i = 0, j; i < kmer_arr.size(); i = j)
     {
-        const auto& v = color_rel[i].first;
+        const auto& v = kmer_arr[i];
         src.clear();
-        src.push_back(color_rel[i].second);
-        for(j = i + 1; j < color_rel.size(); ++j)
+        src.push_back(source_arr[i]);
+
+        for(j = i + 1; j < kmer_arr.size(); ++j)
         {
-            if(color_rel[j].first != v)
+            if(kmer_arr[j] != v)
                 break;
 
-            assert(color_rel[j].second >= color_rel[j - 1].second); // Ensure sortedness of source-IDs.
-            if(color_rel[j].second != color_rel[j - 1].second)
-                src.push_back(color_rel[j].second);
+            // assert(source_arr[j] >= source_arr[j - 1]); // Ensure sortedness of source-IDs.
+            src.push_back(source_arr[j]);
         }
 
         const auto color_idx = color_bucket.size();
@@ -338,9 +389,15 @@ if constexpr(Colored_)
             color_bucket.add(src.data(), src.size());
         }
     }
+}
+}
 
 
+template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::attach_colors_to_vertices()
+{
     auto& in_process = work_space.in_process_arr();
+    auto& C = work_space.color_map();
     for(const auto& p : in_process)
     {
         const auto& lmtig_coord = p.first;
@@ -352,25 +409,18 @@ if constexpr(Colored_)
 
     in_process.clear();
 }
-}
 
 
 template <uint16_t k, bool Colored_>
-void Subgraph<k, Colored_>::semisort(typename Subgraph::color_rel_arr_t& A)
-{
-    std::sort(A.begin(), A.end());
-}
-
-
-template <uint16_t k, bool Colored_>
-Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t max_sz)
+Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t max_sz):
+      in_process_arr_(parlay::num_workers())
+    // , color_rel_arr_(parlay::num_workers())
+    , kmer_arr_(parlay::num_workers())
+    , source_arr_(parlay::num_workers())
 {
     map_.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
         HT_Router<k, Colored_>::add_HT(map_, max_sz);
-
-    in_process_arr_.resize(parlay::num_workers());
-    color_rel_arr_.resize(parlay::num_workers());
 }
 
 
@@ -399,12 +449,32 @@ typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t& Subgraphs_Scrat
 }
 
 
+/*
 template <uint16_t k, bool Colored_>
 typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t& Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr()
 {
     // assert(Colored_);
     assert(color_rel_arr_.size() == parlay::num_workers());
     return color_rel_arr_[parlay::worker_id()].unwrap();
+}
+*/
+
+
+template <uint16_t k, bool Colored_>
+typename Subgraphs_Scratch_Space<k, Colored_>::kmer_arr_t& Subgraphs_Scratch_Space<k, Colored_>::color_rel_vertex_arr()
+{
+    // assert(Colored_);
+    assert(kmer_arr_.size() == parlay::num_workers());
+    return kmer_arr_[parlay::worker_id()].unwrap();
+}
+
+
+template <uint16_t k, bool Colored_>
+typename Subgraphs_Scratch_Space<k, Colored_>::source_arr_t& Subgraphs_Scratch_Space<k, Colored_>::color_rel_source_arr()
+{
+    // assert(Colored_);
+    assert(source_arr_.size() == parlay::num_workers());
+    return source_arr_[parlay::worker_id()].unwrap();
 }
 
 
