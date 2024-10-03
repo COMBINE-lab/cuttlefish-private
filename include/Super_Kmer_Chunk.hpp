@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
-#include <fstream>
+#include <iostream>
 #include <cassert>
 
 
@@ -93,10 +93,12 @@ public:
     static std::size_t record_size(uint16_t k, uint16_t l);
 
     // Serializes the chunk to the stream `os`.
-    void serialize(std::ofstream& os) const;
+    template <typename T_os_>
+    void serialize(T_os_& os) const;
 
     // Deserializes a chunk from the stream `is` with `sz` super k-mers.
-    void deserialize(std::ifstream& is, std::size_t sz);
+    template <typename T_is_>
+    void deserialize(T_is_& is, std::size_t sz);
 
     // Adds a super k-mer to the chunk with label `seq` and length `len`. The
     // markers `l_disc` and `r_disc` denote whether the left and the right ends
@@ -158,6 +160,43 @@ inline void Super_Kmer_Chunk<Colored_>::resize(const std::size_t n)
         reserve(n);
 
     size_ = n;
+}
+
+
+template <bool Colored_>
+template <typename T_os_>
+inline void Super_Kmer_Chunk<Colored_>::serialize(T_os_& os) const
+{
+    os.write(reinterpret_cast<const char*>(att_buf.data()), size() * sizeof(attribute_t));
+    os.write(reinterpret_cast<const char*>(label_buf.data()), label_units() * sizeof(label_unit_t));
+
+    if(!os)
+    {
+        std::cerr << "Serialization of super k-mer chunk of size " << size() << " failed. Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+}
+
+
+template <bool Colored_>
+template <typename T_is_>
+inline void Super_Kmer_Chunk<Colored_>::deserialize(T_is_& is, const std::size_t sz)
+{
+    assert(sz <= cap_);
+
+    size_ = sz;
+
+    is.read(reinterpret_cast<char*>(att_buf.data()), size() * sizeof(attribute_t));
+    assert(static_cast<std::size_t>(is.gcount()) == size() * sizeof(attribute_t));
+
+    is.read(reinterpret_cast<char*>(label_buf.data()), label_units() * sizeof(label_unit_t));
+    assert(static_cast<std::size_t>(is.gcount()) == label_units() * sizeof(label_unit_t));
+
+    if(!is)
+    {
+        std::cerr << "Deserialization of super k-mer chunk of size " << size() << " failed. Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 
