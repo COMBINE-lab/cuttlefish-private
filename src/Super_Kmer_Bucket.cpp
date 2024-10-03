@@ -5,7 +5,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <utility>
 #include <cstdlib>
 #include <algorithm>
 #include <cassert>
@@ -17,7 +16,9 @@ namespace cuttlefish
 template <bool Colored_>
 Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t l, const std::string& path):
       path_(path)
-    , output(path_, std::ios::out | std::ios::binary)
+    // , output(path_, std::ios::out | std::ios::binary)
+    , os(path_, std::ios::out | std::ios::binary)
+    , output(os)
     , size_(0)
     , chunk_cap(chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l))
     , chunk(k, l, chunk_cap)
@@ -158,8 +159,9 @@ void Super_Kmer_Bucket<Colored_>::close()
 template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::remove()
 {
-    if(output.is_open())
-        output.close();
+    // if(output.is_open())
+    //     output.close();
+    output.close();
 
     if(!output || !remove_file(path_))
     {
@@ -180,7 +182,9 @@ typename Super_Kmer_Bucket<Colored_>::Iterator Super_Kmer_Bucket<Colored_>::iter
 template <bool Colored_>
 Super_Kmer_Bucket<Colored_>::Iterator::Iterator(const Super_Kmer_Bucket& B):
       B(B)
-    , input(B.path_, std::ios::in | std::ios::binary)
+    // , input(B.path_, std::ios::in | std::ios::binary)
+    , is(B.path_, std::ios::in | std::ios::binary)
+    , input(is)
     , idx(0)
     , chunk_start_idx(0)
     , chunk_end_idx(0)

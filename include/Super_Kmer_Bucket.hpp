@@ -9,10 +9,10 @@
 #include "utility.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
+#include "lz4_stream/lz4_stream.h"
 
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -37,7 +37,9 @@ class Super_Kmer_Bucket
 private:
 
     const std::string path_;    // Path to the external-memory bucket.
-    std::ofstream output;   // Output stream to the external-memory bucket.
+    // std::ofstream output;   // Output stream to the external-memory bucket.
+    std::ofstream os;   // Output stream to the external-memory bucket.
+    lz4_stream::ostream output; // lz4 stream to the external-memory bucket.
 
     uint64_t size_; // Number of super k-mers in the bucket. It's not necessarily correct before closing the bucket.
 
@@ -112,7 +114,9 @@ class Super_Kmer_Bucket<Colored_>::Iterator
 private:
 
     const Super_Kmer_Bucket<Colored_>& B;   // Bucket to iterate over.
-    std::ifstream input;    // Input stream from the external-memory bucket.
+    // std::ifstream input;    // Input stream from the external-memory bucket.
+    std::ifstream is;   // Input stream from the external-memory bucket.
+    lz4_stream::istream input;  // lz4 stream from the external-memory bucket.
 
     std::size_t idx;    // Current slot-index the iterator is in, i.e. next super k-mer to access.
     std::size_t chunk_start_idx;    // Index into the bucket where the current in-memory chunk starts.
