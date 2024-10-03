@@ -193,7 +193,7 @@ template <bool Colored_>
 std::size_t Super_Kmer_Bucket<Colored_>::Iterator::read_chunk()
 {
     assert(chunk_end_idx < B.size());
-    assert(!Colored_ || chunk_id < B.chunk_sz.size());
+    assert(chunk_id < B.chunk_sz.size());
     const auto super_kmers_to_read = B.chunk_sz[chunk_id++];
 
     B.chunk.deserialize(input, super_kmers_to_read);
