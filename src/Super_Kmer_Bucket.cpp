@@ -32,19 +32,6 @@ Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t 
 
 
 template <bool Colored_>
-Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs):
-      path_(std::move(rhs.path_))
-    , output(std::move(rhs.output))
-    , size_(std::move(rhs.size_))
-    , chunk_cap(std::move(rhs.chunk_cap))
-    , chunk(std::move(rhs.chunk))
-    , chunk_w(std::move(rhs.chunk_w))
-    , src_hist(std::move(rhs.src_hist))
-    , chunk_sz(std::move(rhs.chunk_sz))
-{}
-
-
-template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::collate_buffers()
 {
     std::size_t sz = 0; // Number of pending super k-mers in the worker-local buffers.

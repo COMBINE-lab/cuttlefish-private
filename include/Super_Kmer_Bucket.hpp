@@ -70,7 +70,7 @@ public:
 
     Super_Kmer_Bucket(const Super_Kmer_Bucket&) = delete;
 
-    Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs);
+    Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs) = delete;
 
     // Returns the number of super k-mers in the bucket. It's not necessarily
     // correct before closing the bucket.

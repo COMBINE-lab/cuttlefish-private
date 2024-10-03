@@ -24,6 +24,7 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
       path_pref(logistics.subgraphs_path())
     , graph_count_(graph_count_)
     , l(l)
+    , subgraph_bucket(allocate<Padded<bucket_t>>(graph_count_))
     , HLL(graph_count_)
     , G_(G)
     , trivial_mtig_count_(0)
@@ -37,9 +38,22 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
         std::exit(EXIT_FAILURE);
     }
 
-    subgraph_bucket.reserve(graph_count_);
-    for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
-        subgraph_bucket.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id)));
+    parlay::parallel_for(0, graph_count_, [&](const auto g_id)
+    {
+        new (subgraph_bucket + g_id) bucket_t(k, l, path_pref + "_" + std::to_string(g_id));
+    });
+}
+
+
+template <uint16_t k, bool Colored_>
+Subgraphs_Manager<k, Colored_>::~Subgraphs_Manager()
+{
+    parlay::parallel_for(0, graph_count_, [&](const auto g_id)
+    {
+        subgraph_bucket[g_id].~Padded();
+    });
+
+    deallocate(subgraph_bucket);
 }
 
 
