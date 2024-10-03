@@ -294,6 +294,11 @@ if(NOT JEMALLOC_FOUND)
 endif()
 
 
+# Prepare the `lz4` library. It provides extremely fast compression.
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LZ4 REQUIRED liblz4)
+
+
 # Prepare the `kmc` library — required by the Cuttlefish algorithm implementation.
 # NOTE: do something more intelligent below than the -j4
 #[[
