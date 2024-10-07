@@ -40,11 +40,6 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     subgraph_bucket.reserve(graph_count_);
     for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
         subgraph_bucket.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id)));
-
-    // Separation between these two loops is crucial for `lz4stream` to work.
-
-    for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
-        subgraph_bucket[g_id].unwrap().open();
 }
 
 
