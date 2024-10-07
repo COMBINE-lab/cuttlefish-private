@@ -32,9 +32,6 @@ namespace cuttlefish
 template <bool Colored_>
 class Super_Kmer_Bucket
 {
-    class Iterator;
-    friend class Iterator;
-
 private:
 
     const std::string path_;    // Path to the external-memory bucket.
@@ -69,13 +66,18 @@ private:
 
 public:
 
+    class Iterator;
+    friend class Iterator;
+
     // Constructs a super k-mer bucket for `k`-mers and `l`-minimizers, at
     // external-memory path `path`.
     Super_Kmer_Bucket(uint16_t k, uint16_t l, const std::string& path);
 
-    Super_Kmer_Bucket(const Super_Kmer_Bucket&) = delete;
-
     Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs);
+
+    Super_Kmer_Bucket(const Super_Kmer_Bucket&) = delete;
+    Super_Kmer_Bucket& operator=(const Super_Kmer_Bucket&) = delete;
+    Super_Kmer_Bucket& operator=(Super_Kmer_Bucket&&) = delete;
 
     // Returns the number of super k-mers in the bucket. It's not necessarily
     // correct before closing the bucket.
@@ -107,10 +109,6 @@ public:
 
     // Removes the bucket.
     void remove();
-
-    // Returns an iterator over the super k-mers in the bucket. The bucket
-    // should be closed before iteration.
-    Iterator iterator() const;
 };
 
 
@@ -133,18 +131,22 @@ private:
     std::size_t chunk_id;   // Sequential-ID of the chunk being processed right now.
 
 
-    // Constructs an iterator for the super k-mer bucket `B`.
-    Iterator(const Super_Kmer_Bucket& B);
-
     // Reads in the next super k-mer chunk from the bucket and returns the
     // number of super k-mers read.
     std::size_t read_chunk();
-
 
 public:
 
     typedef typename Super_Kmer_Chunk<Colored_>::attribute_t attribute_t;
     typedef typename Super_Kmer_Chunk<Colored_>::label_unit_t label_unit_t;
+
+    // Constructs an iterator for the super k-mer bucket `B`.
+    Iterator(const Super_Kmer_Bucket& B);
+
+    Iterator(const Iterator&) = delete;
+    Iterator& operator=(const Iterator&) = delete;
+    Iterator(Iterator&&) = delete;
+    Iterator& operator=(Iterator&&) = delete;
 
     // Return the number of 64-bit words in super k-mer encodings.
     auto super_kmer_word_count() const { return B.chunk.super_kmer_word_count(); }

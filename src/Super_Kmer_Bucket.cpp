@@ -207,14 +207,6 @@ void Super_Kmer_Bucket<Colored_>::remove()
 
 
 template <bool Colored_>
-typename Super_Kmer_Bucket<Colored_>::Iterator Super_Kmer_Bucket<Colored_>::iterator() const
-{
-    assert(chunk.empty());
-    return Iterator(*this);
-}
-
-
-template <bool Colored_>
 Super_Kmer_Bucket<Colored_>::Iterator::Iterator(const Super_Kmer_Bucket& B):
       B(B)
     // , input(B.path_, std::ios::in | std::ios::binary)
@@ -233,6 +225,7 @@ Super_Kmer_Bucket<Colored_>::Iterator::Iterator(const Super_Kmer_Bucket& B):
 template <bool Colored_>
 std::size_t Super_Kmer_Bucket<Colored_>::Iterator::read_chunk()
 {
+    assert(is); assert(*input);
     assert(chunk_end_idx < B.size());
     assert(chunk_id < B.chunk_sz.size());
     const auto super_kmers_to_read = B.chunk_sz[chunk_id++];
