@@ -17,9 +17,8 @@ template <bool Colored_>
 Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t l, const std::string& path):
       path_(path)
     // , output(path_, std::ios::out | std::ios::binary)
-    , os(path_, std::ios::out | std::ios::binary)
-    , output(os)
     , size_(0)
+    , open_(false)
     , chunk_cap(chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l))
     , chunk(k, l, chunk_cap)
 {
@@ -30,6 +29,37 @@ Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t 
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
         chunk_w.emplace_back(chunk_t(k, l, chunk_cap_per_w));
 }
+
+
+template <bool Colored_>
+Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs):
+      path_(std::move(rhs.path_))
+    , os(std::move(rhs.os))
+    , output(std::move(rhs.output))
+    , size_(rhs.size_)
+    , open_(rhs.open_)
+    , chunk_cap(rhs.chunk_cap)
+    , chunk(std::move(rhs.chunk))
+    , chunk_w(std::move(rhs.chunk_w))
+    , src_hist(std::move(rhs.src_hist))
+    , chunk_sz(std::move(rhs.chunk_sz))
+{
+    assert(!open_);
+}
+
+
+template <bool Colored_>
+void Super_Kmer_Bucket<Colored_>::open()
+{
+    assert(!is_open());
+
+    os.open(path_, std::ios::binary);
+    output = std::make_unique<lz4_stream::ostream>(os);
+
+    assert(os); assert(*output);
+    open_ = true;
+}
+
 
 
 template <bool Colored_>
@@ -127,9 +157,11 @@ void Super_Kmer_Bucket<Colored_>::collate_buffers()
 template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::flush_chunk()
 {
+    assert(is_open());
     if(!chunk.empty())
     {
-        chunk.serialize(output);
+        assert(os); assert(*output);
+        chunk.serialize(*output);
         chunk_sz.push_back(chunk.size());
 
         chunk.clear();
@@ -152,18 +184,21 @@ void Super_Kmer_Bucket<Colored_>::close()
     else
         collate_buffers();
 
-    output.close();
+    output->close();
+    open_ = false;
 }
 
 
 template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::remove()
 {
-    // if(output.is_open())
-    //     output.close();
-    output.close();
+    if(is_open())
+    {
+        output->close();
+        open_ = false;
+    }
 
-    if(!output || !remove_file(path_))
+    if(!*output || !remove_file(path_))
     {
         std::cerr << "Error removing file at " << path_ << ". Aborting.\n";
         std::exit(EXIT_FAILURE);
@@ -184,12 +219,14 @@ Super_Kmer_Bucket<Colored_>::Iterator::Iterator(const Super_Kmer_Bucket& B):
       B(B)
     // , input(B.path_, std::ios::in | std::ios::binary)
     , is(B.path_, std::ios::in | std::ios::binary)
-    , input(is)
+    , input(std::make_unique<lz4_stream::istream>(is))
     , idx(0)
     , chunk_start_idx(0)
     , chunk_end_idx(0)
     , chunk_id(0)
-{}
+{
+    assert(is); assert(*input);
+}
 
 
 // TODO: inline.
@@ -200,7 +237,7 @@ std::size_t Super_Kmer_Bucket<Colored_>::Iterator::read_chunk()
     assert(chunk_id < B.chunk_sz.size());
     const auto super_kmers_to_read = B.chunk_sz[chunk_id++];
 
-    B.chunk.deserialize(input, super_kmers_to_read);
+    B.chunk.deserialize(*input, super_kmers_to_read);
 
     return super_kmers_to_read;
 }

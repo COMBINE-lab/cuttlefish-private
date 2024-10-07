@@ -16,6 +16,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <memory>
 #include <fstream>
 #include <algorithm>
 #include <cassert>
@@ -39,9 +40,11 @@ private:
     const std::string path_;    // Path to the external-memory bucket.
     // std::ofstream output;   // Output stream to the external-memory bucket.
     std::ofstream os;   // Output stream to the external-memory bucket.
-    lz4_stream::ostream output; // lz4 stream to the external-memory bucket.
+    std::unique_ptr<lz4_stream::ostream> output;    // lz4 stream to the external-memory bucket.
 
     uint64_t size_; // Number of super k-mers in the bucket. It's not necessarily correct before closing the bucket.
+
+    bool open_; // Whether the associated streams are opened or not.
 
     typedef Super_Kmer_Chunk<Colored_> chunk_t;
     static constexpr std::size_t chunk_bytes = 128 * 1024;  // 128 KB chunk capacity.
@@ -72,11 +75,17 @@ public:
 
     Super_Kmer_Bucket(const Super_Kmer_Bucket&) = delete;
 
-    Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs) = delete;
+    Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs);
 
     // Returns the number of super k-mers in the bucket. It's not necessarily
     // correct before closing the bucket.
     auto size() const { return size_; }
+
+    // Returns whether the associated streams are opened or not.
+    bool is_open() const { return open_; }
+
+    // Opens the associated streams.
+    void open();
 
     // Adds a super k-mer to the bucket with label `seq` and length `len`. The
     // markers `l_disc` and `r_disc` denote whether the left and the right ends
@@ -116,7 +125,7 @@ private:
     const Super_Kmer_Bucket<Colored_>& B;   // Bucket to iterate over.
     // std::ifstream input;    // Input stream from the external-memory bucket.
     std::ifstream is;   // Input stream from the external-memory bucket.
-    lz4_stream::istream input;  // lz4 stream from the external-memory bucket.
+    std::unique_ptr<lz4_stream::istream> input; // lz4 stream from the external-memory bucket.
 
     std::size_t idx;    // Current slot-index the iterator is in, i.e. next super k-mer to access.
     std::size_t chunk_start_idx;    // Index into the bucket where the current in-memory chunk starts.

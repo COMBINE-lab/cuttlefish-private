@@ -44,7 +44,7 @@ private:
     const uint16_t l;   // `l`-minimizer size to partition the graph.
 
     typedef Super_Kmer_Bucket<Colored_> bucket_t;
-    Padded<bucket_t>* subgraph_bucket;  // Super k-mer buckets for the subgraphs.
+    std::vector<Padded<bucket_t>> subgraph_bucket;  // Super k-mer buckets for the subgraphs.
 
     std::vector<Padded<HyperLogLog>> HLL;   // `HLL[g]` is the cardinality-estimator for subgraph `g`.
 
@@ -77,8 +77,6 @@ public:
     // Worker-specific trivially maximal unitigs are written to the buffers in
     // `op_buf`.
     Subgraphs_Manager(const Data_Logistics& logistics, std::size_t graph_count, uint16_t l, Discontinuity_Graph<k, Colored_>& G, op_buf_list_t& op_buf);
-
-    ~Subgraphs_Manager();
 
     // Returns the number of subgraphs.
     auto graph_count() const { return graph_count_; }
