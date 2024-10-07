@@ -15,7 +15,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
-#include <memory>
+#include <utility>
 #include <fstream>
 #include <algorithm>
 #include <cassert>
@@ -48,7 +48,7 @@ private:
     std::vector<uint32_t> src_hist; // Frequency histogram of super k-mer sources currently committed to the chunk.
 
     std::vector<uint32_t> chunk_sz; // Sizes of the flushed chunks.
-
+    std::vector<std::pair<int32_t, int32_t>> cmp_bytes; // Sizes (in bytes) of the compressed chunks' attributes and labels.
     Spin_Lock lock; // Lock to the chunk and the external-memory bucket.
 
 
