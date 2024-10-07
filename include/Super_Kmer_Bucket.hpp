@@ -49,6 +49,10 @@ private:
 
     std::vector<uint32_t> chunk_sz; // Sizes of the flushed chunks.
     std::vector<std::pair<int32_t, int32_t>> cmp_bytes; // Sizes (in bytes) of the compressed chunks' attributes and labels.
+
+    std::size_t bytes_; // Total number of bytes in the bucket. Not necessarily exact before closing.
+    std::size_t compressed_bytes_;  // Total number of bytes in the compressed bucket. Not necessarily exact before closing.
+
     Spin_Lock lock; // Lock to the chunk and the external-memory bucket.
 
 
@@ -77,6 +81,14 @@ public:
     // Returns the number of super k-mers in the bucket. It's not necessarily
     // correct before closing the bucket.
     auto size() const { return size_; }
+
+    // Returns the total number of bytes in the bucket. Not necessarily exact
+    // before closing.
+    auto bytes() const { return bytes_; }
+
+    // Returns the total number of bytes in the compressed bucket. Not
+    // necessarily exact before closing.
+    auto compressed_bytes() const { return compressed_bytes_; }
 
     // Adds a super k-mer to the bucket with label `seq` and length `len`. The
     // markers `l_disc` and `r_disc` denote whether the left and the right ends

@@ -93,6 +93,8 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::vector<Padded<std::size_t>> max_size(parlay::num_workers(), 0);   // Largest graph size processed per worker.
     std::vector<Padded<std::size_t>> min_size(parlay::num_workers(), std::numeric_limits<std::size_t>::max()); // Smallest graph size processed per worker.
     std::vector<Padded<std::size_t>> label_sz(parlay::num_workers(), 0);    // Sum label size produced per worker.
+    std::vector<Padded<std::size_t>> bytes(parlay::num_workers(), 0);   // Total number of bytes in the super k-mer buckets.
+    std::vector<Padded<std::size_t>> cmp_bytes(parlay::num_workers(), 0);   // Total number of bytes in the compressed super k-mer buckets.
     std::vector<Padded<uint64_t>> mtig_count(parlay::num_workers(), 0); // Number of locally maximal unitigs produced per worker.
     std::vector<Padded<std::size_t>> color_shift(parlay::num_workers(), 0); // Number of color-shifting vertices per worker.
     std::vector<Padded<uint64_t>> new_colored_vertex(parlay::num_workers(), 0); // Number of vertices attempting addition to the global color-table per worker.
@@ -127,6 +129,8 @@ void Subgraphs_Manager<k, Colored_>::process()
             auto& min_kmer_c = min_kmer_count[parlay::worker_id()].unwrap();
             auto& sz = size[parlay::worker_id()].unwrap();
             auto& l_sz = label_sz[parlay::worker_id()].unwrap();
+            auto& b_bytes = bytes[parlay::worker_id()].unwrap();
+            auto& b_cmp_bytes = cmp_bytes[parlay::worker_id()].unwrap();
             auto& max_sz = max_size[parlay::worker_id()].unwrap();
             auto& min_sz = min_size[parlay::worker_id()].unwrap();
             auto& mtig_c = mtig_count[parlay::worker_id()].unwrap();
@@ -142,6 +146,8 @@ void Subgraphs_Manager<k, Colored_>::process()
             max_sz = std::max(max_sz, sub_dBG.size());
             min_sz = std::min(min_sz, sub_dBG.size());
             l_sz += sub_dBG.label_size();
+            b_bytes += b.bytes();
+            b_cmp_bytes += b.compressed_bytes();
             mtig_c += sub_dBG.mtig_count();
             color_shift_c += sub_dBG.color_shift_count();
             v_new_col_c += sub_dBG.new_colored_vertex();
@@ -202,6 +208,14 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::cerr << "Sum label size: " <<
         [&](){  std::size_t sz = 0;
                 std::for_each(label_sz.cbegin(), label_sz.cend(), [&](const auto& v){ sz += v.unwrap(); });
+                return sz; }() << ".\n";
+    std::cerr << "Bytes in super k-mer buckets: " <<
+        [&](){  std::size_t sz = 0;
+                std::for_each(bytes.cbegin(), bytes.cend(), [&](const auto& v){ sz += v.unwrap(); });
+                return sz; }() << ".\n";
+    std::cerr << "Bytes in compressed super k-mer buckets: " <<
+        [&](){  std::size_t sz = 0;
+                std::for_each(cmp_bytes.cbegin(), cmp_bytes.cend(), [&](const auto& v){ sz += v.unwrap(); });
                 return sz; }() << ".\n";
     std::cerr << "lm-tig count: " <<
         [&](){  uint64_t c = 0;

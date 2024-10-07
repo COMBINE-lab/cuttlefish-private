@@ -84,6 +84,9 @@ public:
     // Returns the number of units, i.e. 64-bit words, in the label buffer.
     auto label_units() const { return size() * sup_kmer_word_c; }
 
+    // Returns the total number of bytes in the chunk.
+    auto bytes() const { return size() * sizeof(attribute_t) + label_units() * sizeof(label_unit_t); }
+
     // Reserves sufficient space for at least `cap` many super k-mers.
     void reserve(std::size_t cap);
 

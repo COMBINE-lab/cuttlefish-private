@@ -145,6 +145,9 @@ void Super_Kmer_Bucket<Colored_>::flush_chunk()
         cmp_bytes.push_back(chunk.serialize_compressed(output));
         chunk_sz.push_back(chunk.size());
 
+        bytes_ += chunk.bytes();
+        compressed_bytes_ += (cmp_bytes.back().first + cmp_bytes.back().second);
+
         chunk.clear();
     }
 }
