@@ -81,6 +81,9 @@ public:
     // Returns the number of units, i.e. 64-bit words, in the label buffer.
     auto label_units() const { return size() * sup_kmer_word_c; }
 
+    // Returns the total number of bytes in the chunk.
+    auto bytes() const { return size() * sizeof(attribute_t) + label_units() * sizeof(label_unit_t); }
+
     // Reserves sufficient space for at least `cap` many super k-mers.
     void reserve(std::size_t cap);
 
@@ -243,7 +246,13 @@ inline void Super_Kmer_Chunk<true>::add(const char* const seq, const std::size_t
 template <bool Colored_>
 inline void Super_Kmer_Chunk<Colored_>::add(const label_unit_t* const seq, const attribute_t& att)
 {
-    assert(size() < cap_);
+    if constexpr(!Colored_)
+        assert(size() < cap_);
+    else
+    {
+        att_buf.reserve(size() + 1);
+        label_buf.reserve(label_units() + sup_kmer_word_c);
+    }
 
     att_buf[size()] = att;
     std::memcpy(label_buf.data() + label_units(), seq, sup_kmer_word_c * sizeof(label_unit_t));

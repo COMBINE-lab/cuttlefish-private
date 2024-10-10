@@ -123,8 +123,9 @@ public:
     // should be closed before iteration.
     Iterator iterator() const { assert(chunk.empty()); return Iterator(*this); }
 
-    // Shatters the bucket into the buckets in `B`.
-    void shatter(std::vector<Padded<Super_Kmer_Bucket>>& B);
+    // Shatters the bucket into the buckets in `B`. In the colored case, the
+    // buckets in range `[b, e)` are source-ID collated.
+    void shatter(std::vector<Padded<Super_Kmer_Bucket>>& B, std::size_t b, std::size_t e);
 };
 
 
@@ -204,9 +205,7 @@ inline void Super_Kmer_Bucket<false>::add(const char* const seq, const std::size
     const auto w_id = parlay::worker_id();
     auto& c_w = chunk_w[w_id].unwrap(); // Worker-specific chunk.
 
-    assert(c_w.size() < c_w.capacity());
     c_w.add(seq, len, l_disc, r_disc, g_id);
-
     if(c_w.full())
         empty_w_local_chunk(w_id);
 }
@@ -223,25 +222,17 @@ inline void Super_Kmer_Bucket<true>::add(const char* const seq, const std::size_
 }
 
 
-template <>
-inline void Super_Kmer_Bucket<false>::add(const label_unit_t* const seq, const attribute_t& att)
+template <bool Colored_>
+inline void Super_Kmer_Bucket<Colored_>::add(const label_unit_t* const seq, const attribute_t& att)
 {
     const auto w_id = parlay::worker_id();
     auto& c_w = chunk_w[w_id].unwrap(); // Worker-specific chunk.
 
-    assert(c_w.size() < c_w.capacity());
     c_w.add(seq, att);
-
-    if(c_w.full())
-        empty_w_local_chunk(w_id);
-}
-
-
-template <>
-inline void Super_Kmer_Bucket<true>::add(const label_unit_t* const seq, const attribute_t& att)
-{
-    // TODO: implement.
-    (void)seq, (void)att;
+    if constexpr(!Colored_)
+        if(c_w.full())
+            empty_w_local_chunk(w_id);
+    // else no flush until collation is invoked explicitly from outside.
 }
 
 

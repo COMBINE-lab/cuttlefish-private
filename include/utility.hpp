@@ -4,6 +4,7 @@
 
 
 
+#include <cstdint>
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -168,7 +169,7 @@ constexpr bool is_pow_2(const uint64_t x)
 
 // Returns the smallest power of 2 at least as large as `x`. `x` must be in
 // `[1, 2^63]`.
-constexpr std::size_t ceil_pow_2(uint64_t x)
+constexpr uint64_t ceil_pow_2(uint64_t x)
 {
     assert(x > 0 && x <= (1lu << 63));
 
@@ -183,6 +184,13 @@ constexpr std::size_t ceil_pow_2(uint64_t x)
     x |= (x >> 32);
 
     return x + 1;
+}
+
+// Returns the floor of 2-based logarithm of `x`.
+constexpr uint64_t log_2(uint64_t x)
+{
+    assert(x > 0);
+    return (x == 1 ? 0 : 1 + log_2(x >> 1));
 }
 
 
