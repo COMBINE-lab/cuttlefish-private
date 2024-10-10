@@ -334,6 +334,8 @@ void Unitig_Collator<k, Colored_>::reduce()
             {
                 if(!is_cycle)
                     m_tig.canonicalize();
+                else // NOTE: ONLY FOR TESTING COLORED OUTPUT
+                    m_tig.canonicalize_cycle();
 
                 output.template operator+=<true>(FASTA_Record(0, std::string_view(m_tig.data(), m_tig.size()), m_tig.color()));
             }

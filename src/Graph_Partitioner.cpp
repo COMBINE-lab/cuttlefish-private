@@ -184,7 +184,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
                             // m_do_reading = false; may not be a problem, but think about this.
                             if (bytes_pushed > (last_checkpoint + bytes_per_batch)) {
                                 last_checkpoint.store(bytes_pushed.load());
-                                // std::cerr << "Pushed " << (bytes_pushed/ (1024 * 1024)) << "MB of uncompressed input data.\n";
+                                //std::cerr << "Pushed " << (bytes_pushed/ (1024 * 1024)) << "MB of uncompressed input data.\n";
                                 m_do_reading = false;
                             }
                         }
@@ -204,6 +204,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
                             chunks_remain = push_chunk(reader->readNextChunkList());
                         }
                     }
+                    m_do_reading = true;
 
                     // increment the source id
                     //source_id++;
