@@ -69,7 +69,7 @@ private:
 
 
     // Returns the atlas-ID of the `g`'th subgraph.
-    uint64_t atlas_ID(const uint64_t g) const { return g >> 7; }
+    uint64_t atlas_ID(const uint64_t g) const { return g >> log_2(atlas_count); }
 
     // Adds the label `seq` and length `len` to the HLL estimate of the
     // subgraph `g` of the de Bruijn graph.
