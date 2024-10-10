@@ -83,7 +83,7 @@ void Subgraphs_Manager<k, Colored_>::finalize()
         const auto t_1 = timer::now();
         t_mem += timer::duration(t_1 - t_0);
 
-        atlas[i].unwrap().shatter(subgraph_bucket);
+        atlas[i].unwrap().shatter(subgraph_bucket, bucket_base_target, bucket_base_target + graph_per_atlas);
 
         parlay::parallel_for(bucket_base_target, bucket_base_target + graph_per_atlas,
         [&](const std::size_t j)
