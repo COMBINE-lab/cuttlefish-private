@@ -16,9 +16,7 @@ namespace cuttlefish
 
 template <bool Colored_>
 Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t l, const std::string& path):
-      k(k)
-    , l(l)
-    , path_(path)
+      path_(path)
     , output(path_, std::ios::out | std::ios::binary)
     , size_(0)
     , chunk_cap(chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l))
@@ -27,27 +25,7 @@ Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t 
     static_assert(is_pow_2(graph_per_atlas));
 
     assert(chunk_cap >= parlay::num_workers());
-}
 
-
-template <bool Colored_>
-Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs):
-      k(rhs.k)
-    , l(rhs.l)
-    , path_(std::move(rhs.path_))
-    , output(std::move(rhs.output))
-    , size_(std::move(rhs.size_))
-    , chunk_cap(std::move(rhs.chunk_cap))
-    , chunk(std::move(rhs.chunk))
-    , chunk_w(std::move(rhs.chunk_w))
-    , src_hist(std::move(rhs.src_hist))
-    , chunk_sz(std::move(rhs.chunk_sz))
-{}
-
-
-template <bool Colored_>
-void Super_Kmer_Bucket<Colored_>::allocate_worker_mem()
-{
     const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
     chunk_w.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
@@ -56,11 +34,16 @@ void Super_Kmer_Bucket<Colored_>::allocate_worker_mem()
 
 
 template <bool Colored_>
-void Super_Kmer_Bucket<Colored_>::deallocate_worker_mem()
-{
-    for(std::size_t i = 0; i < chunk_w.size(); ++i)
-        chunk_w[i].unwrap().free();
-}
+Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs):
+      path_(std::move(rhs.path_))
+    , output(std::move(rhs.output))
+    , size_(std::move(rhs.size_))
+    , chunk_cap(std::move(rhs.chunk_cap))
+    , chunk(std::move(rhs.chunk))
+    , chunk_w(std::move(rhs.chunk_w))
+    , src_hist(std::move(rhs.src_hist))
+    , chunk_sz(std::move(rhs.chunk_sz))
+{}
 
 
 template <bool Colored_>
@@ -198,8 +181,7 @@ void Super_Kmer_Bucket<Colored_>::close()
 template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::remove()
 {
-    deallocate_worker_mem();
-
+    force_free(chunk_w);
     chunk.free();
 
     if(output.is_open())

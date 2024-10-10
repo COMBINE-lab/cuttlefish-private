@@ -39,9 +39,6 @@ private:
 
     static constexpr uint64_t graph_per_atlas = 128;
 
-    const uint16_t k;   // k-mer length.
-    const uint16_t l;   // Minimizer size.
-
     const std::string path_;    // Path to the external-memory bucket.
     std::ofstream output;   // Output stream to the external-memory bucket.
 
@@ -81,12 +78,6 @@ public:
     Super_Kmer_Bucket(const Super_Kmer_Bucket&) = delete;
 
     Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs);
-
-    // Allocates the worker-local chunks' memories.
-    void allocate_worker_mem();
-
-    // Deallocates the worker-local chunks' memories.
-    void deallocate_worker_mem();
 
     // Returns the number of super k-mers in the bucket. It's not necessarily
     // correct before closing the bucket.

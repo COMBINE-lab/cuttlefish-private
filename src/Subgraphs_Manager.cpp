@@ -32,13 +32,6 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     for(std::size_t a_id = 0; a_id < atlas_count; ++a_id)
         atlas.emplace_back(bucket_t(k, l, path_pref + "_atlas_" + std::to_string(a_id)));
 
-    parlay::parallel_for(0, atlas_count,
-    [&](const std::size_t i)
-    {
-        atlas[i].unwrap().allocate_worker_mem();
-    }, 1);
-
-
     subgraph_bucket.reserve(graph_count_);
     for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
         subgraph_bucket.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id)));
@@ -67,7 +60,6 @@ void Subgraphs_Manager<k, Colored_>::finalize()
 
 
     double t_shatter = 0;
-    double t_mem = 0;
     for(std::size_t i = 0; i < atlas_count; ++i)
     {
         // TODO: why not reuse the same chunks' memories for the subgraphs coming from different atlases?
@@ -75,14 +67,6 @@ void Subgraphs_Manager<k, Colored_>::finalize()
         const auto bucket_base_target = i * graph_per_atlas;
 
         const auto t_0 = timer::now();
-        parlay::parallel_for(bucket_base_target, bucket_base_target + graph_per_atlas,
-        [&](const std::size_t j)
-        {
-            subgraph_bucket[j].unwrap().allocate_worker_mem();
-        }, 1);
-        const auto t_1 = timer::now();
-        t_mem += timer::duration(t_1 - t_0);
-
         atlas[i].unwrap().shatter(subgraph_bucket, bucket_base_target, bucket_base_target + graph_per_atlas);
 
         parlay::parallel_for(bucket_base_target, bucket_base_target + graph_per_atlas,
@@ -91,16 +75,8 @@ void Subgraphs_Manager<k, Colored_>::finalize()
             subgraph_bucket[j].unwrap().close();
         }, 1);
 
-        const auto t_2 = timer::now();
-        t_shatter += timer::duration(t_2 - t_1);
-
-        parlay::parallel_for(bucket_base_target, bucket_base_target + graph_per_atlas,
-        [&](const std::size_t j)
-        {
-            subgraph_bucket[j].unwrap().deallocate_worker_mem();
-        }, 1);
-        const auto t_3 = timer::now();
-        t_mem += timer::duration(t_3 - t_2);
+        const auto t_1 = timer::now();
+        t_shatter += timer::duration(t_1 - t_0);
     };
 
     const auto t_0 = timer::now();
@@ -114,7 +90,7 @@ void Subgraphs_Manager<k, Colored_>::finalize()
 
 
     std::cerr << "Time taken to shatter the atlases: " << t_shatter << "s.\n";
-    std::cerr << "Time taken to for memory (de)allocation of subgraphs: " << t_mem << "s.\n";
+    // std::cerr << "Time taken to for memory (de)allocation of subgraphs: " << t_mem << "s.\n";
     std::cerr << "Time taken to remove the atlases: " << t_atlas_rm << "s.\n";
 
 }
