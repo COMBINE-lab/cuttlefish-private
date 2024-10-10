@@ -244,6 +244,28 @@ inline void Super_Kmer_Bucket<true>::add(const label_unit_t* const seq, const at
 }
 
 
+template <>
+inline void Super_Kmer_Bucket<false>::shatter_chunk(const Super_Kmer_Chunk<false>& c, std::vector<Padded<Super_Kmer_Bucket>>& B)
+{
+    auto super_kmer_it = c.iterator();
+    attribute_t att;
+    const label_unit_t* label;
+    while(super_kmer_it.next(att, label))
+    {
+        auto& bucket = B[att.g_id()].unwrap();
+        bucket.add(label, att);
+    }
+}
+
+
+template <>
+inline void Super_Kmer_Bucket<true>::shatter_chunk(const Super_Kmer_Chunk<true>& c, std::vector<Padded<Super_Kmer_Bucket>>& B)
+{
+    // TODO: implement.
+    (void)c, (void)B;
+}
+
+
 template <bool Colored_>
 inline bool Super_Kmer_Bucket<Colored_>::Iterator::next(attribute_t& att, const label_unit_t*& label)
 {

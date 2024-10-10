@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <atomic>
 #include <iosfwd>
 #include <utility>
 #include <cstdlib>
@@ -209,8 +210,8 @@ void Super_Kmer_Bucket<Colored_>::remove()
 }
 
 
-template <bool Colored_>
-void Super_Kmer_Bucket<Colored_>::shatter(std::vector<Padded<Super_Kmer_Bucket>>& B)
+template <>
+void Super_Kmer_Bucket<false>::shatter(std::vector<Padded<Super_Kmer_Bucket>>& B)
 {
     uint64_t super_kmers_read = 0;  // Total count of super k-mers read across workers.
     std::size_t chunk_id = 0;   // Sequential-ID of the next chunk to read.
@@ -219,7 +220,7 @@ void Super_Kmer_Bucket<Colored_>::shatter(std::vector<Padded<Super_Kmer_Bucket>>
     parlay::parallel_for(0, parlay::num_workers(),
     [&](const std::size_t w_id)
     {
-        std::ifstream is(path_, std::ios::in | std::ios::binary);
+        std::ifstream is(path_, std::ios::binary);
         auto& c = chunk_w[w_id].unwrap();
 
         bool data_remain = true;
@@ -236,6 +237,7 @@ void Super_Kmer_Bucket<Colored_>::shatter(std::vector<Padded<Super_Kmer_Bucket>>
             {
                 // Obtain read position and amount.
                 assert(chunk_id < chunk_sz.size());
+                // TODO: needs (prefix-sum based) update with compressed buckets.
                 read_off = super_kmers_read * chunk.record_size();
                 super_kmers_to_read = chunk_sz[chunk_id];
 
@@ -258,6 +260,77 @@ void Super_Kmer_Bucket<Colored_>::shatter(std::vector<Padded<Super_Kmer_Bucket>>
         c.clear();
         is.close();
     }, 1);
+}
+
+
+template <>
+void Super_Kmer_Bucket<true>::shatter(std::vector<Padded<Super_Kmer_Bucket>>& B)
+{
+    uint64_t super_kmers_read = 0;  // Total count of super k-mers read across workers.
+    std::size_t chunk_id = 0;   // Sequential ID of the next chunk to read.
+    Spin_Lock lock; // Lock to file-position resources.
+
+    std::vector<Padded<std::ifstream>> input;
+    for(std::size_t w_id = 0; w_id < parlay::num_workers(); ++w_id)
+        input.emplace_back(std::ifstream(path_, std::ios::binary));
+
+    std::atomic_uint16_t finished_workers = 0;
+    constexpr uint64_t bytes_per_batch = 128 * 1024 * 1024lu;   // 128MB per input batch, at least.
+    static uint64_t bytes_processed = 0;
+    while(finished_workers < parlay::num_workers())
+    {
+        std::atomic_uint64_t bytes_consumed = 0;    // Count of bytes consumed from this bucket across all workers in this iteration.
+        parlay::parallel_for(0, parlay::num_workers(),
+        [&](const std::size_t w_id)
+        {
+            std::ifstream& is = input[w_id].unwrap();
+            auto& c = chunk_w[w_id].unwrap();
+
+            bool data_remain = true;
+            while(data_remain && bytes_consumed < bytes_per_batch)
+            {
+                std::size_t super_kmers_to_read;
+                std::streampos read_off;    // Byte-offset into the bucket-file where to read from.
+
+                lock.lock();
+
+                if(super_kmers_read == size())
+                    data_remain = false;
+                else
+                {
+                    // Obtain read position and amount.
+                    assert(chunk_id < chunk_sz.size());
+                    // TODO: needs (prefix-sum based) update with compressed buckets.
+                    read_off = super_kmers_read * chunk.record_size();
+                    super_kmers_to_read = chunk_sz[chunk_id];
+
+                    // Update read position and remaining amount for subsequent reads.
+                    super_kmers_read += super_kmers_to_read;
+                    chunk_id++;
+                }
+
+                lock.unlock();
+
+                if(!data_remain)
+                {
+                    finished_workers++;
+                    c.clear();
+                    is.close();
+                }
+                else
+                {
+                    is.seekg(read_off);
+                    c.deserialize(is, super_kmers_to_read);
+
+                    shatter_chunk(c, B);
+                    bytes_consumed += c.bytes();
+                }
+            }
+        }, 1);
+
+        bytes_processed += bytes_consumed;
+        std::cerr << "\rProcessed " << (bytes_processed / (1024 * 1024)) << "MB of uncompressed atlas data.";
+    }
 }
 
 
