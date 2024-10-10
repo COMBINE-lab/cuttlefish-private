@@ -84,6 +84,9 @@ if constexpr(Colored_)
         }
     });
 
+    if(CF_UNLIKELY(sz == 0))
+        return;
+
     chunk.resize(sz);
     size_ += sz;
 
@@ -211,7 +214,7 @@ void Super_Kmer_Bucket<Colored_>::remove()
 
 
 template <>
-void Super_Kmer_Bucket<false>::shatter(std::vector<Padded<Super_Kmer_Bucket>>& B)
+void Super_Kmer_Bucket<false>::shatter(std::vector<Padded<Super_Kmer_Bucket>>& B, std::size_t, std::size_t)
 {
     uint64_t super_kmers_read = 0;  // Total count of super k-mers read across workers.
     std::size_t chunk_id = 0;   // Sequential-ID of the next chunk to read.
@@ -264,7 +267,7 @@ void Super_Kmer_Bucket<false>::shatter(std::vector<Padded<Super_Kmer_Bucket>>& B
 
 
 template <>
-void Super_Kmer_Bucket<true>::shatter(std::vector<Padded<Super_Kmer_Bucket>>& B)
+void Super_Kmer_Bucket<true>::shatter(std::vector<Padded<Super_Kmer_Bucket>>& B, const std::size_t b, const std::size_t e)
 {
     uint64_t super_kmers_read = 0;  // Total count of super k-mers read across workers.
     std::size_t chunk_id = 0;   // Sequential ID of the next chunk to read.
@@ -326,6 +329,12 @@ void Super_Kmer_Bucket<true>::shatter(std::vector<Padded<Super_Kmer_Bucket>>& B)
                     bytes_consumed += c.bytes();
                 }
             }
+        }, 1);
+
+        parlay::parallel_for(b, e,
+        [&](const auto b_id)
+        {
+            B[b_id].unwrap().collate_buffers();
         }, 1);
 
         bytes_processed += bytes_consumed;
