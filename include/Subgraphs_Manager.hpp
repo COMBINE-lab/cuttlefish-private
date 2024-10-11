@@ -4,6 +4,7 @@
 
 
 
+#include "Atlas.hpp"
 #include "Super_Kmer_Bucket.hpp"
 #include "HyperLogLog.hpp"
 #include "Directed_Vertex.hpp"
@@ -39,11 +40,6 @@ class Subgraphs_Manager
 {
 private:
 
-    // TODO: centralize these params.
-    static constexpr uint64_t atlas_count = 128;    // Number of subgraph atlases.
-    static constexpr uint64_t graph_per_atlas = 128;    // Number of subgraphs per atlas.
-    static constexpr uint64_t graph_count_ = atlas_count * graph_per_atlas; // Number of subgraphs.
-
     const std::string path_pref;    // Path-prefix to the super k-mer buckets.
     const uint16_t l;   // `l`-minimizer size to partition the graph.
 
@@ -77,9 +73,6 @@ private:
     // Allocates space for the chunks and worker-local chunks of different
     // subgraphs in an atlas.
     void allocate_chunks();
-
-    // Returns the atlas-ID of the `g`'th subgraph.
-    uint64_t atlas_ID(const uint64_t g) const { return g >> log_2(atlas_count); }
 
     // Adds the label `seq` and length `len` to the HLL estimate of the
     // subgraph `g` of the de Bruijn graph.
