@@ -15,21 +15,30 @@ namespace cuttlefish
 {
 
 template <bool Colored_>
-Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t l, const std::string& path):
+Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t l, const std::string& path, const std::size_t chunk_cap, const std::size_t chunk_cap_per_w):
       path_(path)
-    , output(path_, std::ios::out | std::ios::binary)
+    , output(path_, std::ios::binary)
     , size_(0)
-    , chunk_cap(chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l))
+    , chunk_cap(chunk_cap)
     , chunk(k, l, chunk_cap)
 {
     static_assert(is_pow_2(graph_per_atlas));
 
     assert(chunk_cap >= parlay::num_workers());
 
-    const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
     chunk_w.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
         chunk_w.emplace_back(chunk_t(k, l, chunk_cap_per_w));
+}
+
+
+template <bool Colored_>
+Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const std::string& path):
+      path_(path)
+    , output(path_, std::ios::binary)
+    , size_(0)
+{
+    static_assert(is_pow_2(graph_per_atlas));
 }
 
 

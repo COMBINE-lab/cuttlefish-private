@@ -28,13 +28,16 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     , op_buf(op_buf)
     , color_path_pref(logistics.output_file_path())
 {
+    const auto chunk_cap = chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
+    const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
+
     atlas.reserve(atlas_count);
     for(std::size_t a_id = 0; a_id < atlas_count; ++a_id)
-        atlas.emplace_back(bucket_t(k, l, path_pref + "_atlas_" + std::to_string(a_id)));
+        atlas.emplace_back(bucket_t(k, l, path_pref + "_atlas_" + std::to_string(a_id), chunk_cap, chunk_cap_per_w));
 
     subgraph_bucket.reserve(graph_count_);
     for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
-        subgraph_bucket.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id)));
+        subgraph_bucket.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id), chunk_cap, chunk_cap_per_w));
 }
 
 

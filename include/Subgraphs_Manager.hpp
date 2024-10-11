@@ -51,6 +51,9 @@ private:
     std::vector<Padded<bucket_t>> atlas;    // Super k-mer buckets for the subgraph atlases.
     std::vector<Padded<bucket_t>> subgraph_bucket;  // Super k-mer buckets for the subgraphs.
 
+    static constexpr std::size_t chunk_bytes = 128 * 1024;  // 128 KB chunk capacity.
+    static constexpr std::size_t w_chunk_bytes = 32 * 1024; // 32 KB worker-chunk capacity. // TODO: needs to be smaller in-case graph-atlases aren't used.
+
     std::vector<Padded<HyperLogLog>> HLL;   // `HLL[g]` is the cardinality-estimator for subgraph `g`.
 
     Discontinuity_Graph<k, Colored_>& G_;   // The discontinuity graph.

@@ -45,10 +45,7 @@ private:
     uint64_t size_; // Number of super k-mers in the bucket. It's not necessarily correct before closing the bucket.
 
     typedef Super_Kmer_Chunk<Colored_> chunk_t;
-    // TODO: make informed choices for the chunk-sizes based on whether atlases are used or not.
-    static constexpr std::size_t chunk_bytes = 128 * 1024;  // 128 KB chunk capacity.
-    static constexpr std::size_t w_chunk_bytes = 32 * 1024; // 32 KB worker-chunk capacity. // TODO: needs to smaller in-case graph-atlases aren't used.
-    const std::size_t chunk_cap;    // Capacity (in number of super k-mers) of the chunk of the bucket.
+    std::size_t chunk_cap;  // Capacity (in number of super k-mers) of the chunk of the bucket.
     mutable chunk_t chunk;  // Super k-mer chunk for the bucket.    // TODO: maybe this is not required. `chunk_w[i]` can bypass this to disk.
     std::vector<Padded<chunk_t>> chunk_w;   // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
 
@@ -73,7 +70,11 @@ public:
 
     // Constructs a super k-mer bucket for `k`-mers and `l`-minimizers, at
     // external-memory path `path`.
-    Super_Kmer_Bucket(uint16_t k, uint16_t l, const std::string& path);
+    Super_Kmer_Bucket(uint16_t k, uint16_t l, const std::string& path, std::size_t chunk_cap, std::size_t chunk_cap_per_w);
+
+    // Constructs a super k-mer bucket at external-memory path `path`. The
+    // chunk memory allocations need to be ported in before use.
+    Super_Kmer_Bucket(const std::string& path);
 
     Super_Kmer_Bucket(const Super_Kmer_Bucket&) = delete;
 
