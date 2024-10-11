@@ -26,8 +26,7 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     , trivial_mtig_count_(0)
     , icc_count_(0)
     , op_buf(op_buf)
-    , color_path_pref(logistics.output_file_path())
-{
+    , color_path_pref(logistics.output_file_path()) {
     const auto chunk_cap = chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
     const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
 
@@ -55,6 +54,24 @@ void Subgraphs_Manager<k, Colored_>::collate_super_kmer_buffers()
 template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::finalize()
 {
+    std::deque<uint64_t> remove_queue_;
+    std::atomic_bool all_removes_scheduled_{false}; 
+
+    std::thread remover_thread([&, this]() {
+        while (!all_removes_scheduled_.load()) {
+            while (!remove_queue_.empty()) {
+                uint64_t atlas_idx = remove_queue_.front();
+                this->atlas[atlas_idx].unwrap().remove();
+                remove_queue_.pop_front();
+            }
+        }
+        while (!remove_queue_.empty()) {
+            uint64_t atlas_idx = remove_queue_.front();
+            this->atlas[atlas_idx].unwrap().remove();
+            remove_queue_.pop_front();
+        }
+    });
+
     parlay::parallel_for(0, atlas_count,
     [&](const std::size_t i)
     {
@@ -77,6 +94,8 @@ void Subgraphs_Manager<k, Colored_>::finalize()
         const auto t_0 = timer::now();
         atlas[i].unwrap().shatter(subgraph_bucket, bucket_base_target, bucket_base_target + graph_per_atlas);
 
+        remove_queue_.push_back(i);
+
         parlay::parallel_for(bucket_base_target, bucket_base_target + graph_per_atlas,
         [&](const std::size_t j)
         {
@@ -89,21 +108,19 @@ void Subgraphs_Manager<k, Colored_>::finalize()
         const auto t_1 = timer::now();
         t_shatter += timer::duration(t_1 - t_0);
     };
+    all_removes_scheduled_.store(true);
 
     const auto t_0 = timer::now();
-    parlay::parallel_for(0, atlas_count,
-    [&](const std::size_t i)
-    {
-        atlas[i].unwrap().remove();
-    }, 1);
+
+    remover_thread.join();
+
     const auto t_1 = timer::now();
     const auto t_atlas_rm = timer::duration(t_1 - t_0);
-
 
     std::cerr << "\n";
     std::cerr << "Time taken to shatter the atlases: " << t_shatter << "s.\n";
     // std::cerr << "Time taken to for memory (de)allocation of subgraphs: " << t_mem << "s.\n";
-    std::cerr << "Time taken to remove the atlases: " << t_atlas_rm << "s.\n";
+    std::cerr << "Time waiting for atlast removal to complete: " << t_atlas_rm << "s.\n";
 
 }
 

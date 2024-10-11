@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <deque>
 #include <limits>
 #include <atomic>
 #include <string>
@@ -50,7 +51,7 @@ private:
     typedef Super_Kmer_Bucket<Colored_> bucket_t;
     std::vector<Padded<bucket_t>> atlas;    // Super k-mer buckets for the subgraph atlases.
     std::vector<Padded<bucket_t>> subgraph_bucket;  // Super k-mer buckets for the subgraphs.
-
+    
     static constexpr std::size_t chunk_bytes = 128 * 1024;  // 128 KB chunk capacity.
     static constexpr std::size_t w_chunk_bytes = 32 * 1024; // 32 KB worker-chunk capacity. // TODO: needs to be smaller in-case graph-atlases aren't used.
     typedef Super_Kmer_Chunk<Colored_> chunk_t;
@@ -72,7 +73,6 @@ private:
     op_buf_list_t& op_buf; // Worker-specific output buffers.
 
     const std::string color_path_pref;  // Path-prefix to the output color buckets.
-
 
     // Allocates space for the chunks and worker-local chunks of different
     // subgraphs in an atlas.
