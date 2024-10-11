@@ -58,10 +58,12 @@ public:
     // maximum capacity `cap` in number of super k-mers.
     Super_Kmer_Chunk(uint16_t k, uint16_t l, std::size_t cap);
 
-    Super_Kmer_Chunk(const Super_Kmer_Chunk&) = delete;
     Super_Kmer_Chunk(Super_Kmer_Chunk&&);
+
+    Super_Kmer_Chunk& operator=(Super_Kmer_Chunk&&);
+
+    Super_Kmer_Chunk(const Super_Kmer_Chunk&) = delete;
     Super_Kmer_Chunk& operator=(const Super_Kmer_Chunk&) = delete;
-    Super_Kmer_Chunk& operator=(Super_Kmer_Chunk&&) = delete;
 
     // Returns the number of 64-bit words in super k-mer encodings.
     auto super_kmer_word_count() const { return sup_kmer_word_c; }

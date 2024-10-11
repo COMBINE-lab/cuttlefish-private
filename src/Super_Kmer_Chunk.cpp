@@ -33,7 +33,27 @@ Super_Kmer_Chunk<Colored_>::Super_Kmer_Chunk(Super_Kmer_Chunk&& rhs):
     , size_(rhs.size_)
     , att_buf(std::move(rhs.att_buf))
     , label_buf(std::move(rhs.label_buf))
-{}
+{
+    rhs.cap_ = rhs.att_buf.capacity();
+    rhs.size_ = 0;
+}
+
+
+template <bool Colored_>
+auto Super_Kmer_Chunk<Colored_>::operator=(Super_Kmer_Chunk&& rhs) -> Super_Kmer_Chunk&
+{
+    max_sup_kmer_len = rhs.max_sup_kmer_len;
+    sup_kmer_word_c = rhs.sup_kmer_word_c;
+    cap_= rhs.cap_;
+    size_= rhs.size_;
+    att_buf = std::move(rhs.att_buf);
+    label_buf = std::move(rhs.label_buf);
+
+    rhs.cap_ = rhs.att_buf.capacity();
+    rhs.size_ = 0;
+
+    return *this;
+}
 
 
 template <bool Colored_>
