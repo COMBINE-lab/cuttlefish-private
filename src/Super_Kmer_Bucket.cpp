@@ -60,6 +60,10 @@ void Super_Kmer_Bucket<Colored_>::port_chunks(chunk_t&& c, std::vector<Padded<ch
 {
     chunk = std::move(c);
     chunk_w = std::move(c_w);
+
+    chunk.clear();
+    for(auto& c_w : chunk_w)
+        c_w.unwrap().clear();
 }
 
 
@@ -204,10 +208,17 @@ void Super_Kmer_Bucket<Colored_>::close()
 
 
 template <bool Colored_>
+void Super_Kmer_Bucket<Colored_>::free_chunks()
+{
+    chunk.free();
+    force_free(chunk_w);
+}
+
+
+template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::remove()
 {
-    force_free(chunk_w);
-    chunk.free();
+    free_chunks();
 
     if(output.is_open())
         output.close();

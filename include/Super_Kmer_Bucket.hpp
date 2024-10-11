@@ -119,6 +119,9 @@ public:
     // Closes the bucket—no more content should be added afterwards.
     void close();
 
+    // Frees up the chunk-memory used by this bucket.
+    void free_chunks();
+
     // Removes the bucket.
     void remove();
 
