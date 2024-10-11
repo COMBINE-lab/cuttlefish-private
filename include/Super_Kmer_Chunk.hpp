@@ -34,11 +34,11 @@ public:
 
 private:
 
-    const std::size_t max_sup_kmer_len; // Maximum length of the (weak) super k-mers.
-    const std::size_t sup_kmer_word_c;  // Number of 64-bit words in super k-mer encodings.
+    std::size_t max_sup_kmer_len;   // Maximum length of the (weak) super k-mers.
+    std::size_t sup_kmer_word_c;    // Number of 64-bit words in super k-mer encodings.
 
-    std::size_t cap_;   // Maximum capacity of the chunk in number of super k-mers.
-    std::size_t size_;  // Size of the chunk in number of super k-mers.
+    std::size_t cap_ = 0;   // Maximum capacity of the chunk in number of super k-mers.
+    std::size_t size_ = 0;  // Size of the chunk in number of super k-mers.
 
     Buffer<attribute_t> att_buf;    // Buffer of attributes of the super k-mers.
     Buffer<label_unit_t> label_buf; // Buffer of concatenated labels of the super k-mers.
@@ -51,14 +51,19 @@ private:
 
 public:
 
+    // Constructs a placeholder chunk.
+    Super_Kmer_Chunk(){}
+
     // Constructs a super k-mer chunk for `k`-mers and `l`-minimizers, with
     // maximum capacity `cap` in number of super k-mers.
     Super_Kmer_Chunk(uint16_t k, uint16_t l, std::size_t cap);
 
-    Super_Kmer_Chunk(const Super_Kmer_Chunk&) = delete;
     Super_Kmer_Chunk(Super_Kmer_Chunk&&);
+
+    Super_Kmer_Chunk& operator=(Super_Kmer_Chunk&&);
+
+    Super_Kmer_Chunk(const Super_Kmer_Chunk&) = delete;
     Super_Kmer_Chunk& operator=(const Super_Kmer_Chunk&) = delete;
-    Super_Kmer_Chunk& operator=(Super_Kmer_Chunk&&) = delete;
 
     // Returns the number of 64-bit words in super k-mer encodings.
     auto super_kmer_word_count() const { return sup_kmer_word_c; }

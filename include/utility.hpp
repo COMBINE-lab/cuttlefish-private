@@ -250,17 +250,20 @@ public:
 
     ~Buffer() { deallocate(buf_); }
 
-    Buffer(Buffer&& rhs):
-          buf_(std::move(rhs.buf_))
-        , cap_(std::move(rhs.cap_))
+    Buffer(Buffer&& rhs) { *this = std::move(rhs); }
+
+    Buffer& operator=(Buffer&& rhs)
     {
+        buf_ = rhs.buf_;
+        cap_ = rhs.cap_;
         rhs.buf_ = nullptr;
         rhs.cap_ = 0;
+
+        return *this;
     }
 
     Buffer(const Buffer&) = delete;
     Buffer& operator=(const Buffer&) = delete;
-    Buffer& operator=(Buffer&&) = delete;
 
     // Returns the memory region of the buffer.
     T_* data() { return buf_; }
