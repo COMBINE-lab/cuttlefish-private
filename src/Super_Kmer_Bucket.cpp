@@ -56,6 +56,22 @@ Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs):
 
 
 template <bool Colored_>
+void Super_Kmer_Bucket<Colored_>::port_chunks(chunk_t&& c, std::vector<Padded<chunk_t>>&& c_w)
+{
+    chunk = std::move(c);
+    chunk_w = std::move(c_w);
+}
+
+
+template <bool Colored_>
+void Super_Kmer_Bucket<Colored_>::deport_chunks(chunk_t& c, std::vector<Padded<chunk_t>>& c_w)
+{
+    c = std::move(chunk);
+    c_w = std::move(chunk_w);
+}
+
+
+template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::collate_buffers()
 {
     assert(Colored_);

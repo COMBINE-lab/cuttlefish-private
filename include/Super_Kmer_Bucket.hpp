@@ -80,9 +80,21 @@ public:
 
     Super_Kmer_Bucket(Super_Kmer_Bucket&& rhs);
 
+    // Ports the chunk `c` and the worker-local chunk collection `c_w` to this
+    // bucket.
+    void port_chunks(chunk_t&& c, std::vector<Padded<chunk_t>>&& c_w);
+
+    // Deports this bucket's chunk and the worker-local chunk collection to `c`
+    // and `c_w` respectively.
+    void deport_chunks(chunk_t& c, std::vector<Padded<chunk_t>>& c_w);
+
     // Returns the number of super k-mers in the bucket. It's not necessarily
     // correct before closing the bucket.
     auto size() const { return size_; }
+
+    // Returns the size of the bucket in bytes. It's not necessarily correct
+    // before closing the bucket.
+    auto bytes() const { return size() * chunk.record_size(); }
 
     // Adds a super k-mer to the bucket with label `seq` and length `len`. The
     // markers `l_disc` and `r_disc` denote whether the left and the right ends

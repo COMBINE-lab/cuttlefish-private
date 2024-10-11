@@ -37,7 +37,7 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
 
     subgraph_bucket.reserve(graph_count_);
     for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
-        subgraph_bucket.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id), chunk_cap, chunk_cap_per_w));
+        subgraph_bucket.emplace_back(bucket_t(path_pref + "_" + std::to_string(g_id)));
 }
 
 
@@ -61,13 +61,18 @@ void Subgraphs_Manager<k, Colored_>::finalize()
         atlas[i].unwrap().close();
     }, 1);
 
+    uint64_t bytes = 0;
+    std::for_each(atlas.cbegin(), atlas.cend(), [&](const auto& a){ bytes += a.unwrap().bytes(); });
+    std::cerr << "Total atlas size in bytes: " << bytes << ".\n";
+
+    allocate_chunks();
 
     double t_shatter = 0;
     for(std::size_t i = 0; i < atlas_count; ++i)
     {
-        // TODO: why not reuse the same chunks' memories for the subgraphs coming from different atlases?
-
         const auto bucket_base_target = i * graph_per_atlas;
+        for(std::size_t g_id = 0; g_id < graph_per_atlas; ++g_id)
+            subgraph_bucket[bucket_base_target + g_id].unwrap().port_chunks(std::move(chunk[g_id].unwrap()), std::move(chunk_w[g_id].unwrap()));
 
         const auto t_0 = timer::now();
         atlas[i].unwrap().shatter(subgraph_bucket, bucket_base_target, bucket_base_target + graph_per_atlas);
@@ -77,6 +82,9 @@ void Subgraphs_Manager<k, Colored_>::finalize()
         {
             subgraph_bucket[j].unwrap().close();
         }, 1);
+
+        for(std::size_t g_id = 0; g_id < graph_per_atlas; ++g_id)
+            subgraph_bucket[bucket_base_target + g_id].unwrap().deport_chunks(chunk[g_id].unwrap(), chunk_w[g_id].unwrap());
 
         const auto t_1 = timer::now();
         t_shatter += timer::duration(t_1 - t_0);
@@ -92,10 +100,29 @@ void Subgraphs_Manager<k, Colored_>::finalize()
     const auto t_atlas_rm = timer::duration(t_1 - t_0);
 
 
+    std::cerr << "\n";
     std::cerr << "Time taken to shatter the atlases: " << t_shatter << "s.\n";
     // std::cerr << "Time taken to for memory (de)allocation of subgraphs: " << t_mem << "s.\n";
     std::cerr << "Time taken to remove the atlases: " << t_atlas_rm << "s.\n";
 
+}
+
+
+template <uint16_t k, bool Colored_>
+void Subgraphs_Manager<k, Colored_>::allocate_chunks()
+{
+    const auto chunk_cap = chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
+    const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
+
+    const auto c = std::max(graph_per_atlas, parlay::num_workers());
+
+    chunk_w.resize(c);
+    for(std::size_t i = 0; i < c; ++i)
+    {
+        chunk.emplace_back(chunk_t(k, l, chunk_cap));
+        for(std::size_t j = 0; j < parlay::num_workers(); ++j)
+            chunk_w[i].unwrap().emplace_back(chunk_t(k, l, chunk_cap_per_w));
+    }
 }
 
 
@@ -141,13 +168,17 @@ void Subgraphs_Manager<k, Colored_>::process()
         [&](const std::size_t graph_id)
         {
             auto& b = subgraph_bucket[graph_id].unwrap();
+            b.port_chunks(std::move(chunk[parlay::worker_id()].unwrap()), std::move(chunk_w[parlay::worker_id()].unwrap()));
 
             const auto t_0 = timer::now();
             Subgraph<k, Colored_> sub_dBG(b, G_, op_buf[parlay::worker_id()].unwrap(), subgraphs_space);
             sub_dBG.construct();
             const auto t_1 = timer::now();
             if constexpr(!Colored_)
+            {
+                b.deport_chunks(chunk[parlay::worker_id()].unwrap(), chunk_w[parlay::worker_id()].unwrap());
                 b.remove();
+            }
             const auto t_2 = timer::now();
             sub_dBG.contract();  // Perf-diagnose.
             const auto t_3 = timer::now();
@@ -155,7 +186,10 @@ void Subgraphs_Manager<k, Colored_>::process()
                 sub_dBG.extract_new_colors();
             const auto t_4 = timer::now();
             if constexpr(Colored_)
+            {
+                b.deport_chunks(chunk[parlay::worker_id()].unwrap(), chunk_w[parlay::worker_id()].unwrap());
                 b.remove();
+            }
             const auto t_5 = timer::now();
 
             auto& max_kmer_c = max_kmer_count[parlay::worker_id()].unwrap();
