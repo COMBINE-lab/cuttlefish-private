@@ -18,7 +18,7 @@ static constexpr uint64_t graph_count_ = atlas_count * graph_per_atlas; // Numbe
 
 
 // Returns the atlas-ID of the `g`'th subgraph.
-inline auto atlas_ID(const uint64_t g) { return g >> log_2(atlas_count); }
+inline auto atlas_ID(const uint64_t g) { return g >> log_2(graph_per_atlas); }
 
 }
 
