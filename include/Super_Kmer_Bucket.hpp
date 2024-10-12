@@ -37,8 +37,6 @@ class Super_Kmer_Bucket
 
 private:
 
-    static constexpr uint64_t graph_per_atlas = 128;
-
     const std::string path_;    // Path to the external-memory bucket.
     std::ofstream output;   // Output stream to the external-memory bucket.
 

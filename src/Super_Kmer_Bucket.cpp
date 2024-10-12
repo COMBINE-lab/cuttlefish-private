@@ -22,8 +22,6 @@ Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t 
     , chunk_cap(chunk_cap)
     , chunk(k, l, chunk_cap)
 {
-    static_assert(is_pow_2(graph_per_atlas));
-
     assert(chunk_cap >= parlay::num_workers());
 
     chunk_w.reserve(parlay::num_workers());
@@ -37,9 +35,7 @@ Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const std::string& path):
       path_(path)
     , output(path_, std::ios::binary)
     , size_(0)
-{
-    static_assert(is_pow_2(graph_per_atlas));
-}
+{}
 
 
 template <bool Colored_>
