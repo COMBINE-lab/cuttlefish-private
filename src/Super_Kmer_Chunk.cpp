@@ -26,16 +26,9 @@ Super_Kmer_Chunk<Colored_>::Super_Kmer_Chunk(const uint16_t k, const uint16_t l,
 
 
 template <bool Colored_>
-Super_Kmer_Chunk<Colored_>::Super_Kmer_Chunk(Super_Kmer_Chunk&& rhs):
-      max_sup_kmer_len(rhs.max_sup_kmer_len)
-    , sup_kmer_word_c(rhs.sup_kmer_word_c)
-    , cap_(rhs.cap_)
-    , size_(rhs.size_)
-    , att_buf(std::move(rhs.att_buf))
-    , label_buf(std::move(rhs.label_buf))
+Super_Kmer_Chunk<Colored_>::Super_Kmer_Chunk(Super_Kmer_Chunk&& rhs)
 {
-    rhs.cap_ = rhs.att_buf.capacity();
-    rhs.size_ = 0;
+    *this = std::move(rhs);
 }
 
 
