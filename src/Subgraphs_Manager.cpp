@@ -31,12 +31,14 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     const auto chunk_cap = chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
     const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
 
-    atlas.reserve(atlas_count);
-    for(std::size_t a_id = 0; a_id < atlas_count; ++a_id)
+    const auto atlas_c = Atlas<Colored_>::atlas_count();
+    atlas.reserve(atlas_c);
+    for(std::size_t a_id = 0; a_id < atlas_c; ++a_id)
         atlas.emplace_back(bucket_t(k, l, path_pref + "_atlas_" + std::to_string(a_id), chunk_cap, chunk_cap_per_w));
 
-    subgraph_bucket.reserve(graph_count_);
-    for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
+    const auto graph_c = Atlas<Colored_>::graph_count();
+    subgraph_bucket.reserve(graph_c);
+    for(std::size_t g_id = 0; g_id < graph_c; ++g_id)
         subgraph_bucket.emplace_back(bucket_t(path_pref + "_" + std::to_string(g_id)));
 }
 
@@ -44,7 +46,7 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
 template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::collate_super_kmer_buffers()
 {
-    parlay::parallel_for(0, atlas_count,
+    parlay::parallel_for(0, atlas.size(),
     [&](const std::size_t i)
     {
         atlas[i].unwrap().collate_buffers();
@@ -55,7 +57,7 @@ void Subgraphs_Manager<k, Colored_>::collate_super_kmer_buffers()
 template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::finalize()
 {
-    parlay::parallel_for(0, atlas_count,
+    parlay::parallel_for(0, atlas.size(),
     [&](const std::size_t i)
     {
         atlas[i].unwrap().close();
@@ -68,8 +70,9 @@ void Subgraphs_Manager<k, Colored_>::finalize()
     allocate_chunks();
 
     double t_shatter = 0;
-    for(std::size_t i = 0; i < atlas_count; ++i)
+    for(std::size_t i = 0; i < atlas.size(); ++i)
     {
+        constexpr auto graph_per_atlas = Atlas<Colored_>::graph_per_atlas();
         const auto bucket_base_target = i * graph_per_atlas;
         for(std::size_t g_id = 0; g_id < graph_per_atlas; ++g_id)
             subgraph_bucket[bucket_base_target + g_id].unwrap().port_chunks(std::move(chunk[g_id].unwrap()), std::move(chunk_w[g_id].unwrap()));
@@ -92,7 +95,7 @@ void Subgraphs_Manager<k, Colored_>::finalize()
     };
 
     const auto t_0 = timer::now();
-    parlay::parallel_for(0, atlas_count,
+    parlay::parallel_for(0, atlas.size(),
     [&](const std::size_t i)
     {
         atlas[i].unwrap().remove();
@@ -115,7 +118,7 @@ void Subgraphs_Manager<k, Colored_>::allocate_chunks()
     const auto chunk_cap = chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
     const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
 
-    const auto c = std::max(graph_per_atlas, parlay::num_workers());
+    const auto c = std::max(Atlas<Colored_>::graph_per_atlas(), parlay::num_workers());
 
     chunk_w.resize(c);
     for(std::size_t i = 0; i < c; ++i)
@@ -165,7 +168,7 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::vector<Padded<uint64_t>> mtig_count(parlay::num_workers(), 0); // Number of locally maximal unitigs produced per worker.
     std::vector<Padded<std::size_t>> color_shift(parlay::num_workers(), 0); // Number of color-shifting vertices per worker.
 
-    parlay::parallel_for(0, graph_count_,
+    parlay::parallel_for(0, subgraph_bucket.size(),
         [&](const std::size_t graph_id)
         {
             auto& b = subgraph_bucket[graph_id].unwrap();

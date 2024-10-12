@@ -89,7 +89,7 @@ public:
     Subgraphs_Manager(const Data_Logistics& logistics, uint16_t l, Discontinuity_Graph<k, Colored_>& G, op_buf_list_t& op_buf);
 
     // Returns the number of subgraphs.
-    auto graph_count() const { return graph_count_; }
+    auto graph_count() const { return Atlas<Colored_>::graph_count(); }
 
     // Returns the discontinuity graph.
     const auto& G() const { return G_; }
@@ -131,7 +131,7 @@ public:
     uint64_t icc_count() const;
 
     // Returns the subgraph ID for a minimizer with 64-bit hash value `h`.
-    uint64_t graph_ID(uint64_t h) const { return h & (graph_count_ - 1); }
+    uint64_t graph_ID(uint64_t h) const { return h & (Atlas<Colored_>::graph_count() - 1); }
 };
 
 
@@ -141,7 +141,8 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, 
 {
     assert(len >= k);
 
-    auto& bucket = atlas[atlas_ID(g)].unwrap();
+    const auto a = Atlas<Colored_>::atlas_ID(g);
+    auto& bucket = atlas[a].unwrap();
     bucket.add(seq, len, l_disc, r_disc, g);
 
     // add_to_HLL(g, seq, len);
@@ -154,7 +155,8 @@ inline void Subgraphs_Manager<k, Colored_>::add_super_kmer(const std::size_t g, 
 {
     assert(len >= k);
 
-    auto& bucket = atlas[atlas_ID(g)].unwrap();
+    const auto a = Atlas<Colored_>::atlas_ID(g);
+    auto& bucket = atlas[a].unwrap();
     bucket.add(seq, len, source, l_disc, r_disc, g);
 
     // add_to_HLL(g, seq, len);
