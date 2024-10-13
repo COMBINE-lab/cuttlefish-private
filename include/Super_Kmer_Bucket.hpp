@@ -94,6 +94,9 @@ public:
     // before closing the bucket.
     auto bytes() const { return size() * chunk.record_size(); }
 
+    // Issues prefetch request for the end of the chunk.
+    void fetch_end() { chunk.fetch_end(); }
+
     // Adds a super k-mer to the bucket with label `seq` and length `len`. The
     // markers `l_disc` and `r_disc` denote whether the left and the right ends
     // of the (weak) super k-mer are discontinuous or not. The associated super

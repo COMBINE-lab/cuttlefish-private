@@ -100,6 +100,14 @@ void Super_Kmer_Chunk<Colored_>::deserialize(std::ifstream& is, const std::size_
     }
 }
 
+
+template <bool Colored_>
+void Super_Kmer_Chunk<Colored_>::fetch_end() const
+{
+    __builtin_prefetch(att_buf.data() + size(), 1);
+    __builtin_prefetch(label_buf.data() + label_units(), 1);
+}
+
 }
 
 
