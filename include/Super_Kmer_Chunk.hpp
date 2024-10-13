@@ -165,6 +165,9 @@ public:
     // Returns the attribute of the super k-mer at the back of the chunk.
     const attribute_t& back_att() const { return att_at(size() - 1); }
 
+    // Returns the location of the label of the super k-mer at index `i`.
+    const label_unit_t* label_at(const std::size_t i) const { assert(i < size()); return label_buf.data() + i * sup_kmer_word_c; }
+
     // Returns an iterator over the super k-mers in the chunk.
     Iterator iterator() const { return Iterator(*this); }
 };

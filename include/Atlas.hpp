@@ -107,8 +107,8 @@ public:
     // Closes the atlas—no more content should be added afterwards.
     void close();
 
-    // Removes the atlas.
-    void remove();
+    // Returns the super k-mer bucket of the `g`'th subgraph in the atlas.
+    auto& bucket(const std::size_t g) { return subgraph[g]; }
 };
 
 

@@ -34,12 +34,7 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     const auto atlas_c = Atlas<Colored_>::atlas_count();
     atlas.reserve(atlas_c);
     for(std::size_t a_id = 0; a_id < atlas_c; ++a_id)
-        atlas.emplace_back(bucket_t(k, l, path_pref + "_atlas_" + std::to_string(a_id), chunk_cap, chunk_cap_per_w));
-
-    const auto graph_c = Atlas<Colored_>::graph_count();
-    subgraph_bucket.reserve(graph_c);
-    for(std::size_t g_id = 0; g_id < graph_c; ++g_id)
-        subgraph_bucket.emplace_back(bucket_t(path_pref + "_" + std::to_string(g_id)));
+        atlas.emplace_back(atlas_t(k, l, path_pref + "_atlas_" + std::to_string(a_id), chunk_cap, chunk_cap_per_w));
 }
 
 
@@ -49,7 +44,8 @@ void Subgraphs_Manager<k, Colored_>::collate_super_kmer_buffers()
     parlay::parallel_for(0, atlas.size(),
     [&](const std::size_t i)
     {
-        atlas[i].unwrap().collate_buffers();
+        (void)i;
+        // atlas[i].unwrap().collate_buffers();
     });
 }
 
@@ -168,32 +164,27 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::vector<Padded<uint64_t>> mtig_count(parlay::num_workers(), 0); // Number of locally maximal unitigs produced per worker.
     std::vector<Padded<std::size_t>> color_shift(parlay::num_workers(), 0); // Number of color-shifting vertices per worker.
 
-    parlay::parallel_for(0, subgraph_bucket.size(),
-        [&](const std::size_t graph_id)
+    parlay::parallel_for(0, Atlas<Colored_>::graph_count(),
+        [&](const std::size_t g)
         {
-            auto& b = subgraph_bucket[graph_id].unwrap();
-            b.port_chunks(std::move(chunk[parlay::worker_id()].unwrap()), std::move(chunk_w[parlay::worker_id()].unwrap()));
+            const auto a_id = Atlas<Colored_>::atlas_ID(g);
+            const auto g_id = Atlas<Colored_>::graph_ID(g);
+            auto& b = atlas[a_id].unwrap().bucket(g_id);
 
             const auto t_0 = timer::now();
             Subgraph<k, Colored_> sub_dBG(b, G_, op_buf[parlay::worker_id()].unwrap(), subgraphs_space);
             sub_dBG.construct();
             const auto t_1 = timer::now();
             if constexpr(!Colored_)
-            {
-                b.deport_chunks(chunk[parlay::worker_id()].unwrap(), chunk_w[parlay::worker_id()].unwrap());
                 b.remove();
-            }
             const auto t_2 = timer::now();
-            sub_dBG.contract();  // Perf-diagnose.
+            sub_dBG.contract();
             const auto t_3 = timer::now();
             if constexpr(Colored_)
                 sub_dBG.extract_new_colors();
             const auto t_4 = timer::now();
             if constexpr(Colored_)
-            {
-                b.deport_chunks(chunk[parlay::worker_id()].unwrap(), chunk_w[parlay::worker_id()].unwrap());
                 b.remove();
-            }
             const auto t_5 = timer::now();
 
             auto& max_kmer_c = max_kmer_count[parlay::worker_id()].unwrap();

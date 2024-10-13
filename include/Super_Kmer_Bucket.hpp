@@ -256,6 +256,7 @@ template <bool Colored_>
 inline void Super_Kmer_Bucket<Colored_>::add_direct(const label_unit_t* const seq, const attribute_t& att)
 {
     chunk.add(seq, att);
+    size_++;
     if constexpr(!Colored_)
         if(chunk.full())
             flush_chunk();

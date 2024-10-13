@@ -33,6 +33,27 @@ Atlas<Colored_>::Atlas(Atlas&& rhs):
     , subgraph(std::move(rhs.subgraph))
 {}
 
+
+template <bool Colored_>
+void Atlas<Colored_>::close()
+{
+    if constexpr(!Colored_)
+    {
+        for(std::size_t w_id = 0; w_id < parlay::num_workers(); ++w_id)
+            empty_w_local_chunk(w_id);
+
+        flush_chunk();
+    }
+    // else
+    //     collate_buffers();
+
+    parlay::parallel_for(0, graph_per_atlas(),
+    [&](const auto g)
+    {
+        subgraph[g].close();
+    }, 1);
+}
+
 }
 
 

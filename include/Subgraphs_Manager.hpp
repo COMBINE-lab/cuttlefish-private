@@ -5,7 +5,6 @@
 
 
 #include "Atlas.hpp"
-#include "Super_Kmer_Bucket.hpp"
 #include "HyperLogLog.hpp"
 #include "Directed_Vertex.hpp"
 #include "DNA_Utility.hpp"
@@ -43,15 +42,10 @@ private:
     const std::string path_pref;    // Path-prefix to the super k-mer buckets.
     const uint16_t l;   // `l`-minimizer size to partition the graph.
 
-    typedef Super_Kmer_Bucket<Colored_> bucket_t;
-    std::vector<Padded<bucket_t>> atlas;    // Super k-mer buckets for the subgraph atlases.
-    std::vector<Padded<bucket_t>> subgraph_bucket;  // Super k-mer buckets for the subgraphs.
-
-    static constexpr std::size_t chunk_bytes = 128 * 1024;  // 128 KB chunk capacity.
-    static constexpr std::size_t w_chunk_bytes = 32 * 1024; // 32 KB worker-chunk capacity. // TODO: needs to be smaller in-case graph-atlases aren't used.
-    typedef Super_Kmer_Chunk<Colored_> chunk_t;
-    std::vector<Padded<chunk_t>> chunk; // Chunks to port into different buckets in an atlas.
-    std::vector<Padded<std::vector<Padded<chunk_t>>>> chunk_w;  // Worker-local chunk collections to port into different buckets in an atlas.
+    typedef Atlas<Colored_> atlas_t;
+    static constexpr std::size_t chunk_bytes = 128 * 1024;  // 128 KB chunk capacity for each atlas.
+    static constexpr std::size_t w_chunk_bytes = 32 * 1024; // 32 KB worker-local chunk capacity in each atlas.
+    std::vector<Padded<atlas_t>> atlas; // Super k-mer buckets for the subgraph atlases.
 
     std::vector<Padded<HyperLogLog>> HLL;   // `HLL[g]` is the cardinality-estimator for subgraph `g`.
 
@@ -68,11 +62,6 @@ private:
     op_buf_list_t& op_buf; // Worker-specific output buffers.
 
     const std::string color_path_pref;  // Path-prefix to the output color buckets.
-
-
-    // Allocates space for the chunks and worker-local chunks of different
-    // subgraphs in an atlas.
-    void allocate_chunks();
 
     // Adds the label `seq` and length `len` to the HLL estimate of the
     // subgraph `g` of the de Bruijn graph.

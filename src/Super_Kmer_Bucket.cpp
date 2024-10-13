@@ -6,8 +6,8 @@
 #include <atomic>
 #include <iosfwd>
 #include <utility>
-#include <cstdlib>
 #include <algorithm>
+#include <cstdlib>
 #include <cassert>
 
 
@@ -22,8 +22,6 @@ Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t 
     , chunk_cap(chunk_cap)
     , chunk(k, l, chunk_cap)
 {
-    assert(chunk_cap >= parlay::num_workers());
-
     chunk_w.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
         chunk_w.emplace_back(chunk_t(k, l, chunk_cap_per_w));
@@ -209,6 +207,10 @@ void Super_Kmer_Bucket<Colored_>::close()
     else
         collate_buffers();
 
+template <bool Colored_>
+void Super_Kmer_Bucket<Colored_>::close()
+{
+    flush_chunk();
     output.close();
 }
 
