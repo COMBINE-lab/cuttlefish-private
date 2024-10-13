@@ -113,6 +113,10 @@ public:
     // `att`.
     void add(const label_unit_t* seq, const attribute_t& att);
 
+    // Adds a super k-mer directly to the chunk with encoding `seq` and
+    // attributes `att`.
+    void add_direct(const label_unit_t* seq, const attribute_t& att);
+
     // Collates the worker-local buffers into the external-memory bucket and
     // empties them.
     void collate_buffers();
@@ -239,6 +243,17 @@ inline void Super_Kmer_Bucket<Colored_>::add(const label_unit_t* const seq, cons
     if constexpr(!Colored_)
         if(c_w.full())
             empty_w_local_chunk(w_id);
+    // else no flush until collation is invoked explicitly from outside.
+}
+
+
+template <bool Colored_>
+inline void Super_Kmer_Bucket<Colored_>::add_direct(const label_unit_t* const seq, const attribute_t& att)
+{
+    chunk.add(seq, att);
+    if constexpr(!Colored_)
+        if(chunk.full())
+            flush_chunk();
     // else no flush until collation is invoked explicitly from outside.
 }
 
