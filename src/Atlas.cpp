@@ -17,6 +17,10 @@ Atlas<Colored_>::Atlas(uint16_t k, uint16_t l, const std::string& path, std::siz
     chunk_w.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
         chunk_w.emplace_back(chunk_t(k, l, chunk_cap_per_w));
+
+    subgraph.reserve(graph_per_atlas());
+    for(std::size_t i = 0; i < graph_per_atlas(); ++i)
+        subgraph.emplace_back(k, l, path + "_G_" + std::to_string(i), subgraph_chunk_cap_bytes / chunk.record_size(), 0);
 }
 
 
@@ -26,6 +30,7 @@ Atlas<Colored_>::Atlas(Atlas&& rhs):
     , size_(rhs.size_)
     , chunk(std::move(rhs.chunk))
     , chunk_w(std::move(rhs.chunk_w))
+    , subgraph(std::move(rhs.subgraph))
 {}
 
 }

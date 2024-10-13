@@ -5,6 +5,7 @@
 
 
 #include "Super_Kmer_Chunk.hpp"
+#include "Super_Kmer_Bucket.hpp"
 #include "Spin_Lock.hpp"
 #include "utility.hpp"
 #include "parlay/parallel.h"
@@ -42,6 +43,17 @@ private:
 
     Spin_Lock lock; // Lock to the chunk.
 
+    // Byte-capacity of the chunk of each subgraph in the atlas: 32KB.
+    static constexpr std::size_t subgraph_chunk_cap_bytes = 32 * 1024;
+    std::vector<Super_Kmer_Bucket<Colored_>> subgraph;  // Subgraphs in the atlas.
+
+
+    // Empties the local chunk of worker `w_id` to the chunk of the bucket in a
+    // thread-safe manner.
+    void empty_w_local_chunk(std::size_t w_id);
+
+    // Flushes the super k-mers from the chunk to the appropriate subgraphs.
+    void flush_chunk();
 
 public:
 
@@ -98,6 +110,77 @@ public:
     // Removes the atlas.
     void remove();
 };
+
+
+template <>
+inline void Atlas<false>::empty_w_local_chunk(const std::size_t w_id)
+{
+    auto& c_w = chunk_w[w_id].unwrap();
+    if(CF_UNLIKELY(c_w.empty()))
+        return;
+
+    lock.lock();
+
+    const auto break_idx = std::min(c_w.size(), chunk.free_capacity());
+    chunk.append(c_w, 0, break_idx);
+    if(chunk.full())
+    {
+        flush_chunk();
+
+        if(break_idx < c_w.size())
+            assert(chunk.capacity() >= c_w.size() - break_idx),
+            chunk.append(c_w, break_idx, c_w.size());
+    }
+
+    size_ += c_w.size();
+
+    lock.unlock();
+
+    c_w.clear();
+}
+
+
+
+template <bool Colored_>
+void Atlas<Colored_>::flush_chunk()
+{
+    if(!chunk.empty())
+    {
+        for(std::size_t g = 0; g < graph_per_atlas(); ++g)
+            subgraph[g].fetch_end();
+
+        for(std::size_t i = 0; i < chunk.size(); ++i)
+        {
+            const auto g = graph_ID(chunk.att_at(i).g_id());
+            subgraph[g].add_direct(chunk.label_at(i), chunk.att_at(i));
+        }
+
+        chunk.clear();
+    }
+}
+
+
+template <>
+inline void Atlas<false>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc, const uint16_t g_id)
+{
+    const auto w_id = parlay::worker_id();
+    auto& c_w = chunk_w[w_id].unwrap(); // Worker-specific chunk.
+
+    c_w.add(seq, len, l_disc, r_disc, g_id);
+    if(c_w.full())
+        empty_w_local_chunk(w_id);
+}
+
+
+template <>
+inline void Atlas<true>::add(const char* const seq, const std::size_t len, const source_id_t source, const bool l_disc, const bool r_disc, const uint16_t g_id)
+{
+    const auto w_id = parlay::worker_id();
+    auto& c_w = chunk_w[w_id].unwrap(); // Worker-specific chunk.
+
+    c_w.add(seq, len, source, l_disc, r_disc, g_id);
+    // No flush until collation is invoked explicitly from outside.
+}
 
 }
 
