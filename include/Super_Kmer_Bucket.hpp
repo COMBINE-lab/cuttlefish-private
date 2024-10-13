@@ -70,6 +70,11 @@ public:
     // external-memory path `path`.
     Super_Kmer_Bucket(uint16_t k, uint16_t l, const std::string& path, std::size_t chunk_cap, std::size_t chunk_cap_per_w);
 
+    // Constructs a super k-mer bucket for `k`-mers and `l`-minimizers, at
+    // external-memory path `path`. The super k-mer chunk of the bucket has
+    // soft capacity of `chunk_cap`.
+    Super_Kmer_Bucket(uint16_t k, uint16_t l, const std::string& path, std::size_t chunk_cap);
+
     // Constructs a super k-mer bucket at external-memory path `path`. The
     // chunk memory allocations need to be ported in before use.
     Super_Kmer_Bucket(const std::string& path);
