@@ -47,6 +47,8 @@ private:
     static constexpr std::size_t subgraph_chunk_cap_bytes = 32 * 1024;
     std::vector<Super_Kmer_Bucket<Colored_>> subgraph;  // Subgraphs in the atlas.
 
+    std::vector<uint32_t> src_hist; // Frequency histogram of super k-mer sources currently in the chunk.
+
 
     // Empties the local chunk of worker `w_id` to the chunk of the bucket in a
     // thread-safe manner.
@@ -104,6 +106,10 @@ public:
     // not. The associated super k-mer is to reside in the `g_id`'th subgraph.
     void add(const char* seq, std::size_t len, source_id_t source, bool l_disc, bool r_disc, uint16_t g_id);
 
+    // Collates the worker-local super k-mers in the bucket per their source-ID
+    // and flushes them to the subgraphs in the atlas.
+    void flush_collated();
+
     // Closes the atlas—no more content should be added afterwards.
     void close();
 
@@ -137,26 +143,6 @@ inline void Atlas<false>::empty_w_local_chunk(const std::size_t w_id)
     lock.unlock();
 
     c_w.clear();
-}
-
-
-
-template <bool Colored_>
-void Atlas<Colored_>::flush_chunk()
-{
-    if(!chunk.empty())
-    {
-        for(std::size_t g = 0; g < graph_per_atlas(); ++g)
-            subgraph[g].fetch_end();
-
-        for(std::size_t i = 0; i < chunk.size(); ++i)
-        {
-            const auto g = graph_ID(chunk.att_at(i).g_id());
-            subgraph[g].add_direct(chunk.label_at(i), chunk.att_at(i));
-        }
-
-        chunk.clear();
-    }
 }
 
 

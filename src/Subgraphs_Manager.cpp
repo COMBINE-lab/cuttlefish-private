@@ -41,12 +41,14 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
 template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::collate_super_kmer_buffers()
 {
+if constexpr(Colored_)
+{
     parlay::parallel_for(0, atlas.size(),
     [&](const std::size_t i)
     {
-        (void)i;
-        // atlas[i].unwrap().collate_buffers();
+        atlas[i].unwrap().flush_collated();
     });
+}
 }
 
 

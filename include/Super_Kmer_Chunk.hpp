@@ -99,6 +99,10 @@ public:
     // Resizes the chunk to `n` many super k-mers.
     void resize(std::size_t n);
 
+    // Resizes the chunk to `n` many super k-mers. No guarantees are made for
+    // the existing elements.
+    void resize_uninit(std::size_t n);
+
     // Clears the chunk.
     void clear() { size_ = 0; }
 
@@ -223,6 +227,17 @@ inline void Super_Kmer_Chunk<Colored_>::resize(const std::size_t n)
 {
     if(n > capacity())
         reserve(n);
+
+    size_ = n;
+}
+
+
+
+template <bool Colored_>
+inline void Super_Kmer_Chunk<Colored_>::resize_uninit(const std::size_t n)
+{
+    if(n > capacity())
+        reserve_uninit(n);
 
     size_ = n;
 }

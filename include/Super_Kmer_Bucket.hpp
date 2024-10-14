@@ -257,10 +257,8 @@ inline void Super_Kmer_Bucket<Colored_>::add_direct(const label_unit_t* const se
 {
     chunk.add(seq, att);
     size_++;
-    if constexpr(!Colored_)
-        if(chunk.full())
-            flush_chunk();
-    // else no flush until collation is invoked explicitly from outside.
+    if(chunk.full())
+        flush_chunk();
 }
 
 
