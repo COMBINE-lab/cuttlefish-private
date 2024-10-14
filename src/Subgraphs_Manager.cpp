@@ -62,67 +62,6 @@ void Subgraphs_Manager<k, Colored_>::finalize()
     uint64_t bytes = 0;
     std::for_each(atlas.cbegin(), atlas.cend(), [&](const auto& a){ bytes += a.unwrap().bytes(); });
     std::cerr << "Total atlas size in bytes: " << bytes << ".\n";
-
-    allocate_chunks();
-
-    double t_shatter = 0;
-    for(std::size_t i = 0; i < atlas.size(); ++i)
-    {
-        constexpr auto graph_per_atlas = Atlas<Colored_>::graph_per_atlas();
-        const auto bucket_base_target = i * graph_per_atlas;
-        for(std::size_t g_id = 0; g_id < graph_per_atlas; ++g_id)
-            subgraph_bucket[bucket_base_target + g_id].unwrap().port_chunks(std::move(chunk[g_id].unwrap()), std::move(chunk_w[g_id].unwrap()));
-
-        const auto t_0 = timer::now();
-        atlas[i].unwrap().shatter(subgraph_bucket, bucket_base_target, bucket_base_target + graph_per_atlas);
-        atlas[i].unwrap().free_chunks();
-
-        parlay::parallel_for(bucket_base_target, bucket_base_target + graph_per_atlas,
-        [&](const std::size_t j)
-        {
-            subgraph_bucket[j].unwrap().close();
-        }, 1);
-
-        for(std::size_t g_id = 0; g_id < graph_per_atlas; ++g_id)
-            subgraph_bucket[bucket_base_target + g_id].unwrap().deport_chunks(chunk[g_id].unwrap(), chunk_w[g_id].unwrap());
-
-        const auto t_1 = timer::now();
-        t_shatter += timer::duration(t_1 - t_0);
-    };
-
-    const auto t_0 = timer::now();
-    parlay::parallel_for(0, atlas.size(),
-    [&](const std::size_t i)
-    {
-        atlas[i].unwrap().remove();
-    }, 1);
-    const auto t_1 = timer::now();
-    const auto t_atlas_rm = timer::duration(t_1 - t_0);
-
-
-    std::cerr << "\n";
-    std::cerr << "Time taken to shatter the atlases: " << t_shatter << "s.\n";
-    // std::cerr << "Time taken to for memory (de)allocation of subgraphs: " << t_mem << "s.\n";
-    std::cerr << "Time taken to remove the atlases: " << t_atlas_rm << "s.\n";
-
-}
-
-
-template <uint16_t k, bool Colored_>
-void Subgraphs_Manager<k, Colored_>::allocate_chunks()
-{
-    const auto chunk_cap = chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
-    const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
-
-    const auto c = std::max(Atlas<Colored_>::graph_per_atlas(), parlay::num_workers());
-
-    chunk_w.resize(c);
-    for(std::size_t i = 0; i < c; ++i)
-    {
-        chunk.emplace_back(chunk_t(k, l, chunk_cap));
-        for(std::size_t j = 0; j < parlay::num_workers(); ++j)
-            chunk_w[i].unwrap().emplace_back(chunk_t(k, l, chunk_cap_per_w));
-    }
 }
 
 

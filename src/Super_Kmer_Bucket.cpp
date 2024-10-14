@@ -195,21 +195,6 @@ void Super_Kmer_Bucket<Colored_>::flush_chunk()
 template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::close()
 {
-    if constexpr(!Colored_)
-    {
-        // TODO: no need to empty or serialize the chunks—the subsequent iteration over the bucket should
-        // handle the buffered in-memory content. This would skip #buckets many syscalls.
-        for(std::size_t w_id = 0; w_id < parlay::num_workers(); ++w_id)
-            empty_w_local_chunk(w_id);
-
-        flush_chunk();
-    }
-    else
-        collate_buffers();
-
-template <bool Colored_>
-void Super_Kmer_Bucket<Colored_>::close()
-{
     flush_chunk();
     output.close();
 }
