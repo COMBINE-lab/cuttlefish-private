@@ -46,7 +46,7 @@ void Atlas<Colored_>::flush_chunk()
         for(std::size_t i = 0; i < chunk.size(); ++i)
         {
             const auto g = graph_ID(chunk.att_at(i).g_id());
-            subgraph[g].add_direct(chunk.label_at(i), chunk.att_at(i));
+            subgraph[g].add(chunk.label_at(i), chunk.att_at(i));
         }
 
         chunk.clear();
@@ -158,8 +158,6 @@ void Atlas<Colored_>::close()
 
         flush_chunk();
     }
-    // else
-    //     collate_buffers();
 
     parlay::parallel_for(0, graph_per_atlas(),
     [&](const auto g)

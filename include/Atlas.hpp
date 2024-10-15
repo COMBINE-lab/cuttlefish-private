@@ -127,6 +127,7 @@ inline void Atlas<false>::empty_w_local_chunk(const std::size_t w_id)
 
     lock.lock();
 
+    assert(chunk.capacity() >= c_w.capacity());
     const auto break_idx = std::min(c_w.size(), chunk.free_capacity());
     chunk.append(c_w, 0, break_idx);
     if(chunk.full())
