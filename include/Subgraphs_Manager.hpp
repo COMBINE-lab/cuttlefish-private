@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <deque>
 #include <limits>
 #include <atomic>
 #include <string>

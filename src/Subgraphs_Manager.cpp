@@ -26,8 +26,7 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     , trivial_mtig_count_(0)
     , icc_count_(0)
     , op_buf(op_buf)
-    , color_path_pref(logistics.output_file_path())
-{
+    , color_path_pref(logistics.output_file_path()) {
     const auto chunk_cap = chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
     const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
 

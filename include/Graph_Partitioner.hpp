@@ -17,7 +17,7 @@
 #include <atomic>
 #include <string>
 #include <vector>
-
+#include <deque>
 
 namespace cuttlefish
 {
@@ -74,7 +74,9 @@ private:
     typedef typename RabbitFX_DS_type<Is_FASTQ_>::chunk_q_t chunk_q_t;  // Type of queue of read chunks.
     typedef typename RabbitFX_DS_type<Is_FASTQ_>::ref_t parsed_rec_t;   // Type of parsed records.
 
-    const std::vector<std::string> seqs;    // Input sequence collection.
+    std::deque<std::string> seqs;    // Input sequence collection.
+    std::atomic_bool m_do_reading{true}; // Signal if it's ok to continue reading input, or if we should wait
+    std::atomic<int64_t> max_read_source_id{1};
 
     const uint16_t l_;  // Size of minimizers for the super k-mers.
     const std::size_t sup_km1_mer_len_th;   // Length threshold of super (k - 1)-mers.

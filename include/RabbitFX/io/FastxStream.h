@@ -91,8 +91,9 @@ namespace rabbit {
                     isZipped(isZippedNew),
                     mHalo(halo),
                     totalSeqs(0) {
-                        mFaReader = new FileReader(fileName_, isZipped);
+                        mFaReader = std::make_unique<FileReader>(fileName_, isZipped);
 /*
+                        mFaReader = new FileReader(fileName_, isZipped);
                         // if(ends_with(fileName_,".gz"))
                         if (isZipped) {
                             mZipFile = gzopen(fileName_.c_str(), "r");
@@ -108,6 +109,17 @@ namespace rabbit {
                         }
 */
                     }
+
+                
+                void set_new_file(const std::string& fileName_, bool isZipped = false) {
+                    mFaReader.reset(new FileReader(fileName_, isZipped));
+                }
+
+
+                void set_new_file(int fd, bool isZipped = false, uint64 halo = 21) {
+                    (void)halo;
+                    mFaReader.reset(new FileReader(fd, isZipped));
+                }
 
                 /**
                  * @brief FastaFileReader Constructor
@@ -125,7 +137,7 @@ namespace rabbit {
                     isZipped(isZippedNew),
                     mHalo(halo),
                     totalSeqs(0) {
-                        mFaReader = new FileReader(fd, isZipped);
+                        mFaReader = std::make_unique<FileReader>(fd, isZipped);
 /*
                         if (isZipped) {
                             mZipFile = gzdopen(fd, "r");
@@ -149,7 +161,7 @@ namespace rabbit {
 
                 ~FastaFileReader() {
                     if (mFile != NULL || mZipFile != NULL) Close();
-                    if(mFaReader!=NULL)delete mFaReader;
+                    //if(mFaReader!=NULL)delete mFaReader;
                     // delete mFile;
                     // delete mZipFile;
                 }
@@ -201,7 +213,7 @@ namespace rabbit {
                 FILE *mFile = NULL;
                 gzFile mZipFile = NULL;
 
-                FileReader* mFaReader=NULL;
+                std::unique_ptr<FileReader> mFaReader{nullptr};
 
                 uint64 mHalo;
 
@@ -328,9 +340,9 @@ namespace rabbit {
                     isZipped(isZippedNew),
                     recordsPool(pool_),
                     numParts(0) {
-                        mFqReader = new FileReader(fileName_, isZipped, worker_count);
+                        mFqReader = std::make_unique<FileReader>(fileName_, isZipped, worker_count);
                         if(fileName2_ != ""){
-                            mFqReader2 = new FileReader(fileName2_, isZipped, worker_count);
+                            mFqReader2 = std::make_unique<FileReader>(fileName2_, isZipped, worker_count);
                         }
                     }
 
@@ -365,10 +377,15 @@ namespace rabbit {
                         }
                     }
 
+                void set_new_file(const std::string& fileName_, bool isZippedNew = false) {
+                    mFqReader.reset(new FileReader(fileName_, isZippedNew, m_worker_count));
+                }
+                /*
                 ~FastqFileReader() {
                     if(mFqReader!=NULL)delete mFqReader;
                     if(mFqReader2!=NULL)delete mFqReader2;		
                 }
+                */
 
 
                 // added from fastxIO.h
@@ -406,8 +423,9 @@ namespace rabbit {
                 FILE *mFile = NULL;
                 gzFile mZipFile = NULL;
 
-                FileReader* mFqReader=NULL;
-                FileReader* mFqReader2=NULL;
+                std::unique_ptr<FileReader> mFqReader{nullptr};
+                std::unique_ptr<FileReader> mFqReader2{nullptr};
+                std::size_t m_worker_count{1};
 
                 // added from fastxIO.h
                 FastqDataPool &recordsPool;
