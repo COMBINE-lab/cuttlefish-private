@@ -48,7 +48,7 @@ void Subgraph<k, Colored_>::construct()
     Kmer<k> pred_v; // Previous vertex in a scan.
 
     Super_Kmer_Attributes<Colored_> att;
-    label_unit_t* label;
+    const label_unit_t* label;
     source_id_t source = 0; // Source-ID of the current super k-mer.
     while(super_kmer_it.next(att, label))
     {
@@ -58,9 +58,10 @@ void Subgraph<k, Colored_>::construct()
         kmer_count_ += len - (k - 1);
 
         if constexpr(Colored_)
+        {
             assert(att.source() >= source);
-        source = att.source();
-        (void)source;
+            source = att.source();
+        }
 
         v.from_super_kmer(label, word_count);
         std::size_t kmer_idx = 0;
@@ -84,7 +85,7 @@ void Subgraph<k, Colored_>::construct()
                                  front, back,
                                  kmer_idx == 0 && att.left_discontinuous() ? v.entrance_side() : side_t::unspecified,
                                  kmer_idx + k == len && att.right_discontinuous() ? v.exit_side() : side_t::unspecified,
-                                 att.source());
+                                 source);
 
             if(kmer_idx + k == len)
                 break;
@@ -304,7 +305,7 @@ if constexpr(Colored_)
 
     Directed_Vertex<k> v;   // Current vertex in a scan over some super k-mer.
     Super_Kmer_Attributes<Colored_> att;
-    label_unit_t* label;
+    const label_unit_t* label;
 
     while(super_kmer_it.next(att, label))
     {

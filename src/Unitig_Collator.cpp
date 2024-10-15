@@ -68,9 +68,9 @@ void Unitig_Collator<k, Colored_>::collate()
         emit_trivial_mtigs();
         const auto t_3 = timer::now();
         std::cerr << "Time taken in trivial-mtigs emission: " << timer::duration(t_3 - t_2) << "s.\n";
-    }
 
-    std::cerr << "Found " << phantom_c_ << " phantom unitigs.\n";
+        std::cerr << "Found " << phantom_c_ << " phantom unitigs.\n";
+    }
 
     // TODO: print meta-information over the maximal unitigs'.
 }

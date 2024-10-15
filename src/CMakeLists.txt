@@ -59,6 +59,7 @@ set(PROJECT_SRC
         dBG_Contractor.cpp
         Parser.cpp
         Graph_Partitioner.cpp
+        Atlas.cpp
         Super_Kmer_Bucket.cpp
         Super_Kmer_Chunk.cpp
         HyperLogLog.cpp

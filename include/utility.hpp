@@ -4,6 +4,7 @@
 
 
 
+#include <cstdint>
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -160,9 +161,15 @@ constexpr T_to_ as_int(const T_ enum_val)
     return static_cast<T_to_>(enum_val);
 }
 
+// Returns `true` iff `x` is a power of 2.
+constexpr bool is_pow_2(const uint64_t x)
+{
+    return (x > 0 ? ((x & (x - 1)) == 0) : false);
+}
+
 // Returns the smallest power of 2 at least as large as `x`. `x` must be in
 // `[1, 2^63]`.
-constexpr std::size_t ceil_pow_2(std::size_t x)
+constexpr uint64_t ceil_pow_2(uint64_t x)
 {
     assert(x > 0 && x <= (1lu << 63));
 
@@ -177,6 +184,13 @@ constexpr std::size_t ceil_pow_2(std::size_t x)
     x |= (x >> 32);
 
     return x + 1;
+}
+
+// Returns the floor of 2-based logarithm of `x`.
+constexpr uint64_t log_2(uint64_t x)
+{
+    assert(x > 0);
+    return (x == 1 ? 0 : 1 + log_2(x >> 1));
 }
 
 
@@ -236,17 +250,20 @@ public:
 
     ~Buffer() { deallocate(buf_); }
 
-    Buffer(Buffer&& rhs):
-          buf_(std::move(rhs.buf_))
-        , cap_(std::move(rhs.cap_))
+    Buffer(Buffer&& rhs) { *this = std::move(rhs); }
+
+    Buffer& operator=(Buffer&& rhs)
     {
+        buf_ = rhs.buf_;
+        cap_ = rhs.cap_;
         rhs.buf_ = nullptr;
         rhs.cap_ = 0;
+
+        return *this;
     }
 
     Buffer(const Buffer&) = delete;
     Buffer& operator=(const Buffer&) = delete;
-    Buffer& operator=(Buffer&&) = delete;
 
     // Returns the memory region of the buffer.
     T_* data() { return buf_; }
@@ -273,6 +290,9 @@ public:
     // Resizes the buffer to have capacity `cap`. No guarantees are made for
     // the existing elements.
     void resize_uninit(const std::size_t cap) { deallocate(buf_); buf_ = allocate<T_>(cap); cap_ = cap; }
+
+    // Frees the buffer's memory.
+    void free() { deallocate(buf_); buf_ = nullptr; cap_ = 0; }
 };
 
 

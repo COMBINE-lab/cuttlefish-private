@@ -7,8 +7,6 @@
 #include "parlay/parallel.h"
 
 #include <atomic>
-#include <cstdint>
-#include <cstring>
 #include <limits>
 #include <vector>
 #include <iostream>
@@ -20,55 +18,66 @@ namespace cuttlefish
 {
 
 template <uint16_t k, bool Colored_>
-Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistics, const std::size_t graph_count_, const uint16_t l, Discontinuity_Graph<k, Colored_>& G, op_buf_list_t& op_buf):
+Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistics, const uint16_t l, Discontinuity_Graph<k, Colored_>& G, op_buf_list_t& op_buf):
       path_pref(logistics.subgraphs_path())
-    , graph_count_(graph_count_)
     , l(l)
-    , HLL(graph_count_)
+    // , HLL(atlas_count)
     , G_(G)
     , trivial_mtig_count_(0)
     , icc_count_(0)
     , op_buf(op_buf)
     , color_path_pref(logistics.output_file_path())
 {
-    if((graph_count_ & (graph_count_ - 1)) != 0)
-    {
-        std::cerr << "Subgraph count needs to be a power of 2. Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
+    const auto chunk_cap = chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
+    const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
 
-    subgraph_bucket.reserve(graph_count_);
-    for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
-        subgraph_bucket.emplace_back(bucket_t(k, l, path_pref + "_" + std::to_string(g_id)));
+    const auto atlas_c = Atlas<Colored_>::atlas_count();
+    atlas.reserve(atlas_c);
+    for(std::size_t a_id = 0; a_id < atlas_c; ++a_id)
+        atlas.emplace_back(atlas_t(k, l, path_pref + "_atlas_" + std::to_string(a_id), chunk_cap, chunk_cap_per_w));
 }
 
 
 template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::collate_super_kmer_buffers()
 {
-    parlay::parallel_for(0, graph_count_, [&](const std::size_t g_id)
+if constexpr(Colored_)
+{
+    parlay::parallel_for(0, atlas.size(),
+    [&](const std::size_t i)
     {
-        subgraph_bucket[g_id].unwrap().collate_buffers();
+        atlas[i].unwrap().flush_collated();
     });
+}
 }
 
 
 template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::finalize()
 {
-    const auto close_bucket = [&](const std::size_t g_id) { subgraph_bucket[g_id].unwrap().close(); };
-    parlay::parallel_for(0, graph_count_, close_bucket);
+    parlay::parallel_for(0, atlas.size(),
+    [&](const std::size_t i)
+    {
+        atlas[i].unwrap().close();
+    }, 1);
+
+    uint64_t bytes = 0;
+    std::for_each(atlas.cbegin(), atlas.cend(), [&](const auto& a){ bytes += a.unwrap().bytes(); });
+    std::cerr << "Total atlas size in bytes: " << bytes << ".\n";
 }
 
 
 template <uint16_t k, bool Colored_>
 uint64_t Subgraphs_Manager<k, Colored_>::estimate_size_max() const
 {
+/*
     uint64_t max_est = 0;
     for(std::size_t g_id = 0; g_id < graph_count_; ++g_id)
         max_est = std::max(max_est, HLL[g_id].unwrap().estimate());
 
     return max_est;
+*/
+    return 0;   // TODO: temporary.
 }
 
 
@@ -102,70 +111,71 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::vector<Padded<double[4]>> color_time(parlay::num_workers());   // Time taken in various steps of coloring.
     std::for_each(color_time.begin(), color_time.end(), [&](auto& c){ std::memset(c.unwrap(), 0, 4 * sizeof(double)); });
 
-    const auto process_subgraph =
-        [&](const std::size_t graph_id)
-        {
-            auto& b = subgraph_bucket[graph_id].unwrap();
+    parlay::parallel_for(0, Atlas<Colored_>::graph_count(),
+    [&](const std::size_t g)
+    {
+        const auto a_id = Atlas<Colored_>::atlas_ID(g);
+        const auto g_id = Atlas<Colored_>::graph_ID(g);
+        auto& b = atlas[a_id].unwrap().bucket(g_id);
 
-            const auto t_0 = timer::now();
-            Subgraph<k, Colored_> sub_dBG(b, G_, op_buf[parlay::worker_id()].unwrap(), subgraphs_space);
-            sub_dBG.construct();
-            const auto t_1 = timer::now();
-            if constexpr(!Colored_)
-                b.remove();
-            const auto t_2 = timer::now();
-            sub_dBG.contract();  // Perf-diagnose.
-            const auto t_3 = timer::now();
-            if constexpr(Colored_)
-                sub_dBG.extract_new_colors();
-            const auto t_4 = timer::now();
-            if constexpr(Colored_)
-                b.remove();
-            const auto t_5 = timer::now();
+        const auto t_0 = timer::now();
+        Subgraph<k, Colored_> sub_dBG(b, G_, op_buf[parlay::worker_id()].unwrap(), subgraphs_space);
+        sub_dBG.construct();
+        const auto t_1 = timer::now();
+        if constexpr(!Colored_)
+            b.remove();
+        const auto t_2 = timer::now();
+        sub_dBG.contract();
+        const auto t_3 = timer::now();
+        if constexpr(Colored_)
+            sub_dBG.extract_new_colors();
+        const auto t_4 = timer::now();
+        if constexpr(Colored_)
+            b.remove();
+        const auto t_5 = timer::now();
 
-            auto& max_kmer_c = max_kmer_count[parlay::worker_id()].unwrap();
-            auto& min_kmer_c = min_kmer_count[parlay::worker_id()].unwrap();
-            auto& sz = size[parlay::worker_id()].unwrap();
-            auto& l_sz = label_sz[parlay::worker_id()].unwrap();
-            auto& max_sz = max_size[parlay::worker_id()].unwrap();
-            auto& min_sz = min_size[parlay::worker_id()].unwrap();
-            auto& mtig_c = mtig_count[parlay::worker_id()].unwrap();
-            auto& color_shift_c = color_shift[parlay::worker_id()].unwrap();
-            auto& v_new_col_c = new_colored_vertex[parlay::worker_id()].unwrap();
-            auto& v_old_col_c = old_colored_vertex[parlay::worker_id()].unwrap();
-            auto& color_rel_c = color_rel_sorted[parlay::worker_id()].unwrap();
-            auto& t_color = color_time[parlay::worker_id()].unwrap();
+        auto& max_kmer_c = max_kmer_count[parlay::worker_id()].unwrap();
+        auto& min_kmer_c = min_kmer_count[parlay::worker_id()].unwrap();
+        auto& sz = size[parlay::worker_id()].unwrap();
+        auto& l_sz = label_sz[parlay::worker_id()].unwrap();
+        auto& max_sz = max_size[parlay::worker_id()].unwrap();
+        auto& min_sz = min_size[parlay::worker_id()].unwrap();
+        auto& mtig_c = mtig_count[parlay::worker_id()].unwrap();
+        auto& color_shift_c = color_shift[parlay::worker_id()].unwrap();
+        auto& v_new_col_c = new_colored_vertex[parlay::worker_id()].unwrap();
+        auto& v_old_col_c = old_colored_vertex[parlay::worker_id()].unwrap();
+        auto& color_rel_c = color_rel_sorted[parlay::worker_id()].unwrap();
+        auto& t_color = color_time[parlay::worker_id()].unwrap();
 
-            max_kmer_c = std::max(max_kmer_c, sub_dBG.kmer_count());
-            min_kmer_c = std::min(min_kmer_c, sub_dBG.kmer_count());
-            sz += sub_dBG.size();
-            max_sz = std::max(max_sz, sub_dBG.size());
-            min_sz = std::min(min_sz, sub_dBG.size());
-            l_sz += sub_dBG.label_size();
-            mtig_c += sub_dBG.mtig_count();
-            color_shift_c += sub_dBG.color_shift_count();
-            v_new_col_c += sub_dBG.new_colored_vertex();
-            v_old_col_c += sub_dBG.old_colored_vertex();
-            color_rel_c += sub_dBG.color_rel_sorted();
+        max_kmer_c = std::max(max_kmer_c, sub_dBG.kmer_count());
+        min_kmer_c = std::min(min_kmer_c, sub_dBG.kmer_count());
+        sz += sub_dBG.size();
+        max_sz = std::max(max_sz, sub_dBG.size());
+        min_sz = std::min(min_sz, sub_dBG.size());
+        l_sz += sub_dBG.label_size();
+        mtig_c += sub_dBG.mtig_count();
+        color_shift_c += sub_dBG.color_shift_count();
+        v_new_col_c += sub_dBG.new_colored_vertex();
+        v_old_col_c += sub_dBG.old_colored_vertex();
+        color_rel_c += sub_dBG.color_rel_sorted();
 
-            t_color[0] += sub_dBG.collect_rels_time();
-            t_color[1] += sub_dBG.sort_time();
-            t_color[2] += sub_dBG.collect_sets_time();
-            t_color[3] += sub_dBG.attach_time();
+        t_color[0] += sub_dBG.collect_rels_time();
+        t_color[1] += sub_dBG.sort_time();
+        t_color[2] += sub_dBG.collect_sets_time();
+        t_color[3] += sub_dBG.attach_time();
 
-            trivial_mtig_count_ += sub_dBG.trivial_mtig_count();
-            icc_count_ += sub_dBG.icc_count();
+        trivial_mtig_count_ += sub_dBG.trivial_mtig_count();
+        icc_count_ += sub_dBG.icc_count();
 
-            if(++solved % 8 == 0)
-                std::cerr << "\rSolved " << solved << " subgraphs.";
+        if(++solved % 8 == 0)
+            std::cerr << "\rSolved " << solved << " subgraphs.";
 
-            t_construction[parlay::worker_id()].unwrap() += timer::duration(t_1 - t_0);
-            t_bucket_rm[parlay::worker_id()].unwrap() += timer::duration(t_2 - t_1) + timer::duration(t_5 - t_4);
-            t_contraction[parlay::worker_id()].unwrap()  += timer::duration(t_3 - t_2);
-            t_color_extract[parlay::worker_id()].unwrap() += timer::duration(t_4 - t_3);
-        };
+        t_construction[parlay::worker_id()].unwrap() += timer::duration(t_1 - t_0);
+        t_bucket_rm[parlay::worker_id()].unwrap() += timer::duration(t_2 - t_1) + timer::duration(t_5 - t_4);
+        t_contraction[parlay::worker_id()].unwrap()  += timer::duration(t_3 - t_2);
+        t_color_extract[parlay::worker_id()].unwrap() += timer::duration(t_4 - t_3);
+    }, 1);
 
-    parlay::parallel_for(0, graph_count_, process_subgraph, 1);
     std::cerr << "\n";
 
     if constexpr(Colored_)
