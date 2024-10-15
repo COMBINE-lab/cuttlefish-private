@@ -11,6 +11,8 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <vector>
+#include <utility>
 #include <fstream>
 #include <cassert>
 
@@ -25,8 +27,6 @@ namespace cuttlefish
 template <bool Colored_>
 class Super_Kmer_Bucket
 {
-    class Iterator;
-
     typedef typename Super_Kmer_Chunk<Colored_>::attribute_t attribute_t;
     typedef typename Super_Kmer_Chunk<Colored_>::label_unit_t label_unit_t;
 
@@ -42,12 +42,19 @@ private:
     mutable chunk_t chunk;  // Super k-mer chunk for the bucket.
 
     std::vector<uint32_t> chunk_sz; // Sizes of the flushed chunks.
+    std::vector<std::pair<int32_t, int32_t>> cmp_bytes; // Sizes (in bytes) of the compressed chunks' attributes and labels.
+
+    std::size_t bytes_; // Total number of bytes in the bucket. Not necessarily exact before closing.
+    std::size_t compressed_bytes_;  // Total number of bytes in the compressed bucket. Not necessarily exact before closing.
 
 
     // Flushes the super k-mer chunk to the external-memory bucket.
     void flush_chunk();
 
 public:
+
+    class Iterator;
+    friend class Iterator;
 
     // Constructs a super k-mer bucket for `k`-mers and `l`-minimizers, at
     // external-memory path `path`. The super k-mer chunk of the bucket has
@@ -64,9 +71,13 @@ public:
     // correct before closing the bucket.
     auto size() const { return size_; }
 
-    // Returns the size of the bucket in bytes. It's not necessarily correct
-    // before closing the bucket.
-    auto bytes() const { return size() * chunk.record_size(); }
+    // Returns the total number of bytes in the bucket. Not necessarily exact
+    // before closing.
+    auto bytes() const { return bytes_; }
+
+    // Returns the total number of bytes in the compressed bucket. Not
+    // necessarily exact before closing.
+    auto compressed_bytes() const { return compressed_bytes_; }
 
     // Issues prefetch request for the end of the chunk.
     void fetch_end() { chunk.fetch_end(); }
@@ -80,10 +91,6 @@ public:
 
     // Removes the bucket.
     void remove();
-
-    // Returns an iterator over the super k-mers in the bucket. The bucket
-    // should be closed before iteration.
-    Iterator iterator() const { assert(chunk.empty()); return Iterator(*this); }
 };
 
 
@@ -104,18 +111,22 @@ private:
     std::size_t chunk_id;   // Sequential-ID of the chunk being processed right now.
 
 
-    // Constructs an iterator for the super k-mer bucket `B`.
-    Iterator(const Super_Kmer_Bucket& B);
-
     // Reads in the next super k-mer chunk from the bucket and returns the
     // number of super k-mers read.
     std::size_t read_chunk();
-
 
 public:
 
     typedef typename Super_Kmer_Chunk<Colored_>::attribute_t attribute_t;
     typedef typename Super_Kmer_Chunk<Colored_>::label_unit_t label_unit_t;
+
+    // Constructs an iterator for the super k-mer bucket `B`.
+    Iterator(const Super_Kmer_Bucket& B);
+
+    Iterator(const Iterator&) = delete;
+    Iterator& operator=(const Iterator&) = delete;
+    Iterator(Iterator&&) = delete;
+    Iterator& operator=(Iterator&&) = delete;
 
     // Return the number of 64-bit words in super k-mer encodings.
     auto super_kmer_word_count() const { return B.chunk.super_kmer_word_count(); }

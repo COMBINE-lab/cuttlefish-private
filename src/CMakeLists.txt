@@ -136,6 +136,9 @@ target_link_libraries(cfcore_static PRIVATE ${CMAKE_DL_LIBS})
 # Link to `zlib`, required to support `gzip` files.
 target_link_libraries(cfcore_static PRIVATE ZLIB::ZLIB)
 
+# Link to `lz4`, for fast (de)compression of some intermedediate data.
+target_link_libraries(cfcore_static INTERFACE ${LZ4_LIBRARIES})
+
 # Link to the threads library of the platform.
 target_link_libraries(cfcore_static PRIVATE Threads::Threads)
 

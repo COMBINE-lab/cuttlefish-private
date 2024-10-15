@@ -3,7 +3,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <iosfwd>
 #include <cstdlib>
 #include <iostream>
 #include <cassert>
@@ -27,8 +26,13 @@ void Super_Kmer_Bucket<Colored_>::flush_chunk()
 {
     if(!chunk.empty())
     {
-        chunk.serialize(output);
+        assert(output);
+        // chunk.serialize(output);
+        cmp_bytes.push_back(chunk.serialize_compressed(output));
         chunk_sz.push_back(chunk.size());
+
+        bytes_ += chunk.bytes();
+        compressed_bytes_ += (cmp_bytes.back().first + cmp_bytes.back().second);
 
         chunk.clear();
     }
@@ -67,7 +71,9 @@ Super_Kmer_Bucket<Colored_>::Iterator::Iterator(const Super_Kmer_Bucket& B):
     , chunk_start_idx(0)
     , chunk_end_idx(0)
     , chunk_id(0)
-{}
+{
+    assert(input);
+}
 
 
 // TODO: inline.
@@ -76,9 +82,11 @@ std::size_t Super_Kmer_Bucket<Colored_>::Iterator::read_chunk()
 {
     assert(chunk_end_idx < B.size());
     assert(chunk_id < B.chunk_sz.size());
-    const auto super_kmers_to_read = B.chunk_sz[chunk_id++];
+    const auto super_kmers_to_read = B.chunk_sz[chunk_id];
 
-    B.chunk.deserialize(input, super_kmers_to_read);
+    // B.chunk.deserialize(input, super_kmers_to_read);
+    B.chunk.deserialize_decompressed(input, super_kmers_to_read, B.cmp_bytes[chunk_id]);
+    chunk_id++;
 
     return super_kmers_to_read;
 }

@@ -39,7 +39,7 @@ Subgraph<k, Colored_>::Subgraph(const Super_Kmer_Bucket<Colored_>& B, Discontinu
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::construct()
 {
-    auto super_kmer_it = B.iterator();  // Iterator over the weak super k-mers inducing this graph.
+    typename Super_Kmer_Bucket<Colored_>::Iterator super_kmer_it(B);    // Iterator over the weak super k-mers inducing this graph.
 
     typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
     const auto word_count = super_kmer_it.super_kmer_word_count();  // Fixed number of words in a super k-mer label.
@@ -299,7 +299,7 @@ if constexpr(Colored_)
     auto& source_arr = work_space.color_rel_source_arr();
     kmer_arr.clear(), source_arr.clear();
 
-    auto super_kmer_it = B.iterator();  // Iterator over the weak super k-mers inducing this graph.
+    typename Super_Kmer_Bucket<Colored_>::Iterator super_kmer_it(B);    // Iterator over the weak super k-mers inducing this graph.
     typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
     const auto word_count = super_kmer_it.super_kmer_word_count();  // Fixed number of words in a super k-mer label.
 

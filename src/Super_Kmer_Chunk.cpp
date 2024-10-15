@@ -3,7 +3,6 @@
 #include "utility.hpp"
 
 #include <cstdlib>
-#include <iostream>
 #include <cassert>
 
 
@@ -55,6 +54,8 @@ void Super_Kmer_Chunk<Colored_>::free()
     att_buf.free();
     label_buf.free();
 
+    cmp_buf.free();
+
     size_ = cap_ = 0;
 }
 
@@ -64,42 +65,6 @@ std::size_t Super_Kmer_Chunk<Colored_>::record_size(const uint16_t k, const uint
 {
     return sizeof(attribute_t) + (((2 * (k - 1) - l + 2) + 31) / 32) * sizeof(label_unit_t);
 }
-
-
-template <bool Colored_>
-void Super_Kmer_Chunk<Colored_>::serialize(std::ofstream& os) const
-{
-    os.write(reinterpret_cast<const char*>(att_buf.data()), size() * sizeof(attribute_t));
-    os.write(reinterpret_cast<const char*>(label_buf.data()), label_units() * sizeof(label_unit_t));
-
-    if(!os)
-    {
-        std::cerr << "Serialization of super k-mer chunk of size " << size() << " failed. Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-}
-
-
-template <bool Colored_>
-void Super_Kmer_Chunk<Colored_>::deserialize(std::ifstream& is, const std::size_t sz)
-{
-    reserve_uninit(sz);
-
-    size_ = sz;
-
-    is.read(reinterpret_cast<char*>(att_buf.data()), size() * sizeof(attribute_t));
-    assert(static_cast<std::size_t>(is.gcount()) == size() * sizeof(attribute_t));
-
-    is.read(reinterpret_cast<char*>(label_buf.data()), label_units() * sizeof(label_unit_t));
-    assert(static_cast<std::size_t>(is.gcount()) == label_units() * sizeof(label_unit_t));
-
-    if(!is)
-    {
-        std::cerr << "Deserialization of super k-mer chunk of size " << size() << " failed. Aborting.\n";
-        std::exit(EXIT_FAILURE);
-    }
-}
-
 
 template <bool Colored_>
 void Super_Kmer_Chunk<Colored_>::fetch_end() const
