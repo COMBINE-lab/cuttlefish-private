@@ -5,6 +5,8 @@
 #include "parlay/parallel.h"
 #include "x86-simd-sort/avx512-64bit-keyvaluesort.hpp"
 
+#include "color_sets/hybrid.hpp"
+
 #include <cassert>
 
 
@@ -355,12 +357,14 @@ void Subgraph<k, Colored_>::semi_sort()
     avx512_qsort_kv(reinterpret_cast<uint64_t*>(kmer_arr.data()), source_arr.data(), kmer_arr.size());
 }
 
-
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::collect_color_sets()
 {
 if constexpr(Colored_)
 {
+    fulgor::color_set_builder builder(25000);
+    fulgor::bit_vector_builder bvb;
+
     // auto& color_rel = work_space.color_rel_arr();
     auto& kmer_arr = work_space.color_rel_vertex_arr();
     auto& source_arr = work_space.color_rel_source_arr();
@@ -382,12 +386,16 @@ if constexpr(Colored_)
             // assert(source_arr[j] >= source_arr[j - 1]); // Ensure sortedness of source-IDs.
             src.push_back(source_arr[j]);
         }
+        std::sort(src.begin(), src.end());
+
+        builder.process(src.data(), src.size(), bvb);
 
         const auto color_idx = color_bucket.size();
         if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), color_idx)))
         {
-            color_bucket.add(src.size());
-            color_bucket.add(src.data(), src.size());
+            auto& bit_vec_words = bvb.bits();
+            //color_bucket.add(bit_vec_words.size());//compressed_output.size());//src.size());
+            color_bucket.add(bit_vec_words.data(), bit_vec_words.size());
         }
     }
 }

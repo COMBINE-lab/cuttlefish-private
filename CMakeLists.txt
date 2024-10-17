@@ -90,7 +90,7 @@ set(UBSAN_FLAGS -fsanitize=undefined
 # Bundle the extra optimization flags (not associated with the `-O` levels)
 # that we want to pass on to the compiler.
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
-set(OPTIMIZE_FLAGS -funroll-loops -march=native)
+set(OPTIMIZE_FLAGS -funroll-loops -march=native -mavx -msse4.1 -msse3)
 
 # Bundle miscellaneous required flags.
 # `-fconstexpr-ops-limit` for compile-time computations in `rapidgzip`.
@@ -225,7 +225,6 @@ set(EXT_LIB ${CMAKE_SOURCE_DIR}/external/lib/)
 set(EXT_INCLUDE ${CMAKE_SOURCE_DIR}/external/include/)
 
 file(MAKE_DIRECTORY ${EXT_LIB} ${EXT_INCLUDE})
-
 
 # Build instrumented `libc++` to avoid false-positives from memory sanitizers.
 # Ref for some of the fixes: https://github.com/google/sanitizers/issues/1685#issuecomment-1734197581

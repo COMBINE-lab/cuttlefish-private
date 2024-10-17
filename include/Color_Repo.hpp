@@ -21,7 +21,7 @@ namespace cuttlefish
 // External-memory repository for color-sets.
 class Color_Repo
 {
-    typedef Ext_Mem_Bucket<source_id_t> bucket_t;
+    typedef Ext_Mem_Bucket<uint64_t> bucket_t;
 
 private:
 
