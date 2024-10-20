@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <memory>
 
 
 namespace cuttlefish
@@ -38,13 +39,16 @@ private:
     uint64_t size_; // Number of super k-mers in the atlas. It's not necessarily correct before closing it.
 
     typedef Super_Kmer_Chunk<Colored_> chunk_t;
-    chunk_t chunk;  // Super k-mer chunk for the bucket.
+    const std::size_t chunk_cap;    // Capacity of the super k-mer chunk of the bucket.
+    std::unique_ptr<chunk_t> chunk; // Super k-mer chunk of the bucket for the worker-local chunks to dump to.
+    std::unique_ptr<chunk_t> flush_buf; // Super k-mer chunk acting as buffer between the main chunk and the subgraphs.
     std::vector<Padded<chunk_t>> chunk_w;   // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
 
-    Spin_Lock lock; // Lock to the chunk.
+    Spin_Lock chunk_lock;   // Lock to the chunk.
+    Spin_Lock flush_lock;   // Lock to the flush buffer.
 
-    // Byte-capacity of the chunk of each subgraph in the atlas: 32KB.
-    static constexpr std::size_t subgraph_chunk_cap_bytes = 32 * 1024;
+    // Byte-capacity of the chunk of each subgraph in the atlas: 64KB.
+    static constexpr std::size_t subgraph_chunk_cap_bytes = 64 * 1024;
     std::vector<Super_Kmer_Bucket<Colored_>> subgraph;  // Subgraphs in the atlas.
 
     std::vector<uint32_t> src_hist; // Frequency histogram of super k-mer sources currently in the chunk.
@@ -54,8 +58,8 @@ private:
     // thread-safe manner.
     void empty_w_local_chunk(std::size_t w_id);
 
-    // Flushes the super k-mers from the chunk to the appropriate subgraphs.
-    void flush_chunk();
+    // Flushes the super k-mers from the chunk `c` to the appropriate subgraphs.
+    void flush_chunk(chunk_t& c);
 
 public:
 
@@ -92,7 +96,7 @@ public:
 
     // Returns the size of the atlas in bytes. It's not necessarily correct
     // before closing the bucket.
-    auto bytes() const { return size() * chunk.record_size(); }
+    auto bytes() const { return size() * chunk->record_size(); }
 
     // Adds a super k-mer to the atlas with label `seq` and length `len`. The
     // markers `l_disc` and `r_disc` denote whether the left and the right ends
@@ -125,8 +129,8 @@ inline void Atlas<false>::empty_w_local_chunk(const std::size_t w_id)
     if(CF_UNLIKELY(c_w.empty()))
         return;
 
-    lock.lock();
-
+    chunk_lock.lock();
+/*
     assert(chunk.capacity() >= c_w.capacity());
     const auto break_idx = std::min(c_w.size(), chunk.free_capacity());
     chunk.append(c_w, 0, break_idx);
@@ -138,12 +142,26 @@ inline void Atlas<false>::empty_w_local_chunk(const std::size_t w_id)
             assert(chunk.capacity() >= c_w.size() - break_idx),
             chunk.append(c_w, break_idx, c_w.size());
     }
-
+*/
+    chunk->append(c_w);
     size_ += c_w.size();
 
-    lock.unlock();
+    const bool to_flush = (chunk->size() >= chunk_cap);
+    if(to_flush)
+    {
+        flush_lock.lock();
+        chunk.swap(flush_buf);
+    }
+
+    chunk_lock.unlock();
 
     c_w.clear();
+
+    if(to_flush)
+    {
+        flush_chunk(*flush_buf);
+        flush_lock.unlock();
+    }
 }
 
 

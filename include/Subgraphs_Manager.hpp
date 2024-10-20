@@ -44,7 +44,7 @@ private:
     const uint16_t l;   // `l`-minimizer size to partition the graph.
 
     typedef Atlas<Colored_> atlas_t;
-    static constexpr std::size_t chunk_bytes = 128 * 1024;  // 128 KB chunk capacity for each atlas.
+    static constexpr std::size_t chunk_bytes = 1024 * 1024; // 1 MB chunk capacity for each atlas.
     static constexpr std::size_t w_chunk_bytes = 32 * 1024; // 32 KB worker-local chunk capacity in each atlas.
     std::vector<Padded<atlas_t>> atlas; // Super k-mer buckets for the subgraph atlases.
 

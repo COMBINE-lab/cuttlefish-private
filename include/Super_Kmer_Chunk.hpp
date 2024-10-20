@@ -377,10 +377,7 @@ inline void Super_Kmer_Chunk<Colored_>::add(const label_unit_t* const seq, const
     if constexpr(!Colored_)
         assert(size() < cap_);
     else
-    {
-        att_buf.reserve(size() + 1);
-        label_buf.reserve(label_units() + sup_kmer_word_c);
-    }
+        reserve(size() + 1);
 
     att_buf[size()] = att;
     std::memcpy(label_buf.data() + label_units(), seq, sup_kmer_word_c * sizeof(label_unit_t));
@@ -408,6 +405,7 @@ inline void Super_Kmer_Chunk<Colored_>::append(const Super_Kmer_Chunk& c, const 
     assert(r >= l);
 
     const auto n = r - l;
+    reserve(size() + n);
     assert(size() + n <= cap_);
 
     std::memcpy(att_buf.data() + size(), c.att_buf.data() + l, n * sizeof(attribute_t));
