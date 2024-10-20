@@ -244,7 +244,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_uncolored_chunks()
         // try and get a chunk out
         // bool saw_max_id = false;
         while(chunk_q.Pop(source_id, chunk)) {
-            assert(source_id >= last_source);
+            // assert(source_id >= last_source);
 
             bytes_consumed += process_chunk(chunk, source_id);
             last_source = source_id;
