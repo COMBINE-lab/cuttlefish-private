@@ -18,6 +18,8 @@ Super_Kmer_Bucket<Colored_>::Super_Kmer_Bucket(const uint16_t k, const uint16_t 
     , size_(0)
     , chunk_cap(chunk_cap)
     , chunk(k, l, chunk_cap)
+    , bytes_(0)
+    , compressed_bytes_(0)
 {}
 
 
