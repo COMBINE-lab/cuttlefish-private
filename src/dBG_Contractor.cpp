@@ -68,10 +68,12 @@ void dBG_Contractor<k>::construct()
     const auto t_part = timer::now();
     std::cerr << "Sequence splitting into subgraphs completed. Time taken: " << timer::duration(t_part - t_0) << " seconds.\n";
 
-    EXECUTE("subgraphs", subgraphs.process);
+    {
+        EXECUTE("subgraphs", subgraphs.process);
 
-    std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";
-    std::cerr << "Trivial ICC count: " << subgraphs.icc_count() << ".\n";
+        std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";
+        std::cerr << "Trivial ICC count: " << subgraphs.icc_count() << ".\n";
+    }
 
     const auto t_subg = timer::now();
     std::cerr << "Subgraphs construction and contraction completed. Time taken: " << timer::duration(t_subg - t_part) << " seconds.\n";
@@ -80,22 +82,28 @@ void dBG_Contractor<k>::construct()
     std::cerr << "Phantom edge upper-bound: " << G.phantom_edge_upper_bound() << "\n";
     std::cerr << "Expecting at most " << ((G.E().row_size(0) + G.phantom_edge_upper_bound()) / 2) << " more non-DCC maximal unitigs\n";
 
-    Discontinuity_Graph_Contractor<k, Colored_> contractor(G, P_v, logistics);
-    EXECUTE("contract", contractor.contract)
+    {
+        Discontinuity_Graph_Contractor<k, Colored_> contractor(G, P_v, logistics);
+        EXECUTE("contract", contractor.contract)
+    }
 
     G.close_lmtig_stream();
 
     const auto t_c = timer::now();
     std::cerr << "Discontinuity-graph contraction completed. Time taken: " << timer::duration(t_c - t_subg) << " seconds.\n";
 
-    Contracted_Graph_Expander<k, Colored_> expander(G, P_v, P_e, logistics);
-    EXECUTE("expand", expander.expand)
+    {
+        Contracted_Graph_Expander<k, Colored_> expander(G, P_v, P_e, logistics);
+        EXECUTE("expand", expander.expand)
+    }
 
     const auto t_e = timer::now();
     std::cerr << "Expansion of contracted graph completed. Time taken: " << timer::duration(t_e - t_c) << " seconds.\n";
 
-    Unitig_Collator<k, Colored_> collator(G, P_e, logistics, op_buf, params.gmtig_bucket_count());
-    EXECUTE("collate", collator.collate);
+    {
+        Unitig_Collator<k, Colored_> collator(G, P_e, logistics, op_buf, params.gmtig_bucket_count());
+        EXECUTE("collate", collator.collate);
+    }
 
     // Flush data and close the output sink.
     parlay::parallel_for(0, parlay::num_workers(),
