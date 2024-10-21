@@ -100,8 +100,11 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
     std::cerr << "Total work in processing records: " << stat.process_time << "s.\n";
     std::cerr << "Max work in processing records: " <<
         [&](){ double t = 0; std::for_each(stat_w.cbegin(), stat_w.cend(), [&](const auto& s){ t = std::max(t, s.unwrap().process_time); }); return t; }() << "s.\n";
-    std::cerr << "Time taken in processing colored chunks: " << t_part << "s.\n";
-    std::cerr << "Time taken in collating colored chunks:  " << t_collate << "s.\n";
+    if constexpr(Colored_)
+    {
+        std::cerr << "Time taken in processing colored chunks: " << t_part << "s.\n";
+        std::cerr << "Time taken in collating colored chunks:  " << t_collate << "s.\n";
+    }
 }
 
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
@@ -266,9 +269,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_uncolored_chunks()
                 //std::cerr << "last_source = " << last_source << ", max_read_source_id = " << max_read_source_id << "\n";
             }
         }
-
     }
-
 }
 
 
