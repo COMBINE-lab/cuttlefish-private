@@ -39,6 +39,9 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 {
+    double t_part = 0;
+    double t_collate = 0;
+
     parlay::par_do(
         [&]()
         {
@@ -61,16 +64,22 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
                 uint64_t bytes_processed = 0;
                 while(finished_workers < parlay::num_workers() - 1)
                 {
+                    const auto t_0 = timer::now();
                     bytes_consumed = 0;
                     parlay::parallel_for(0, parlay::num_workers() - 1,
                         [&](auto)
                         {
                             finished_workers += !process_colored_chunks();
                         }, 1);
+                    const auto t_1 = timer::now();
+                    t_part += timer::duration(t_1 - t_0);
 
                     // Collate and flush all buckets.
                     subgraphs.collate_super_kmer_buffers();
                     bytes_processed += bytes_consumed;
+                    const auto t_2 = timer::now();
+                    t_collate += timer::duration(t_2 - t_1);
+
                     std::cerr << "\rProcessed " << (bytes_processed / (1024 * 1024)) << "MB of uncompressed input data.";
                 }
 
@@ -91,6 +100,8 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
     std::cerr << "Total work in processing records: " << stat.process_time << "s.\n";
     std::cerr << "Max work in processing records: " <<
         [&](){ double t = 0; std::for_each(stat_w.cbegin(), stat_w.cend(), [&](const auto& s){ t = std::max(t, s.unwrap().process_time); }); return t; }() << "s.\n";
+    std::cerr << "Time taken in processing colored chunks: " << t_part << "s.\n";
+    std::cerr << "Time taken in collating colored chunks:  " << t_collate << "s.\n";
 }
 
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
