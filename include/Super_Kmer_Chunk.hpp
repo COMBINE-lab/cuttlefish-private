@@ -279,17 +279,19 @@ inline auto Super_Kmer_Chunk<Colored_>::serialize_compressed(std::ofstream& os) 
     const auto max_att_bytes = LZ4_compressBound(size() * sizeof(attribute_t));
     const auto max_label_bytes = LZ4_compressBound(label_units() * sizeof(label_unit_t));
     assert(max_att_bytes > 0 && max_label_bytes > 0);
-    cmp_buf.reserve_uninit(2 * std::max(max_att_bytes, max_label_bytes));
+
+    cmp_buf.reserve_uninit(2 * (max_att_bytes + max_label_bytes));
     auto* const sink = reinterpret_cast<char*>(cmp_buf.data());
 
-    const auto att_bytes = LZ4_compress_default(reinterpret_cast<const char*>(att_buf.data()), sink, size() * sizeof(attribute_t), cmp_buf.capacity());
+    auto* const sink_att = sink;
+    const auto att_bytes = LZ4_compress_default(reinterpret_cast<const char*>(att_buf.data()), sink_att, size() * sizeof(attribute_t), cmp_buf.capacity());
     assert(att_bytes > 0);
-    os.write(sink, att_bytes);
 
-    const auto label_bytes = LZ4_compress_default(reinterpret_cast<const char*>(label_buf.data()), sink, label_units() * sizeof(label_unit_t), cmp_buf.capacity());
+    auto* const sink_label = sink + att_bytes;
+    const auto label_bytes = LZ4_compress_default(reinterpret_cast<const char*>(label_buf.data()), sink_label, label_units() * sizeof(label_unit_t), cmp_buf.capacity() - att_bytes);
     assert(label_bytes > 0);
-    os.write(sink, label_bytes);
 
+    os.write(sink, att_bytes + label_bytes);
     if(!os)
     {
         std::cerr << "Serialization of compressed super k-mer chunk of size " << size() << " failed. Aborting.\n";
@@ -326,20 +328,21 @@ template <bool Colored_>
 inline void Super_Kmer_Chunk<Colored_>::deserialize_decompressed(std::ifstream& is, const std::size_t sz, const std::pair<int32_t, int32_t> cmp_bytes)
 {
     assert(sz <= cap_);
-
     size_ = sz;
-    cmp_buf.reserve_uninit(2 * std::max(cmp_bytes.first, cmp_bytes.second));
+
+    cmp_buf.reserve_uninit(cmp_bytes.first + cmp_bytes.second);
     auto* const src = reinterpret_cast<char*>(cmp_buf.data());
 
-    is.read(src, cmp_bytes.first);
-    assert(is.gcount() == static_cast<std::streamsize>(cmp_bytes.first));
-    const auto att_bytes = LZ4_decompress_safe(src, reinterpret_cast<char*>(att_buf.data()), cmp_bytes.first, att_buf.capacity() * sizeof(attribute_t));
+    is.read(src, cmp_bytes.first + cmp_bytes.second);
+    assert(is.gcount() == static_cast<std::streamsize>(cmp_bytes.first + cmp_bytes.second));
+
+    const auto src_att = src;
+    const auto att_bytes = LZ4_decompress_safe(src_att, reinterpret_cast<char*>(att_buf.data()), cmp_bytes.first, att_buf.capacity() * sizeof(attribute_t));
     assert(att_bytes >= 0); (void)att_bytes;
     assert(static_cast<std::size_t>(att_bytes) == size() * sizeof(attribute_t));
 
-    is.read(src, cmp_bytes.second);
-    assert(is.gcount() == static_cast<std::streamsize>(cmp_bytes.second));
-    const auto label_bytes = LZ4_decompress_safe(src, reinterpret_cast<char*>(label_buf.data()), cmp_bytes.second, label_buf.capacity() * sizeof(label_unit_t));
+    const auto src_label = src + cmp_bytes.first;
+    const auto label_bytes = LZ4_decompress_safe(src_label, reinterpret_cast<char*>(label_buf.data()), cmp_bytes.second, label_buf.capacity() * sizeof(label_unit_t));
     assert(label_bytes >= 0);   (void)label_bytes;
     assert(static_cast<std::size_t>(label_bytes) == label_units() * sizeof(label_unit_t));
 }
