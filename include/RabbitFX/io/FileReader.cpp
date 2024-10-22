@@ -54,11 +54,11 @@ FileReader::FileReader(const std::string &fileName_, bool isZipped, const std::s
         gzrewind(mZipFile);
 #endif			
     }else {
-        mFile = FOPEN(fileName_.c_str(), "rb");
+        // mFile = FOPEN(fileName_.c_str(), "rb");
         if (fileName_ != "") {
             mFile = FOPEN(fileName_.c_str(), "rb");
             if (mFile == NULL)
-                throw RioException("Can not open file to read: ");  
+                throw RioException(("Can not open file to read: " + fileName_).c_str());  
         }
         if (mFile == NULL) {
             throw RioException(
