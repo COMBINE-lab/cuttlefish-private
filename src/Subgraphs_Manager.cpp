@@ -1,14 +1,19 @@
 
 #include "Subgraphs_Manager.hpp"
+#include "Atlas.hpp"
+#include "Spin_Lock.hpp"
 #include "Subgraph.hpp"
 #include "Data_Logistics.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 #include "parlay/parallel.h"
 
+#include <array>
 #include <atomic>
+#include <cstdint>
 #include <limits>
 #include <vector>
+#include <utility>
 #include <iostream>
 #include <cstdlib>
 #include <algorithm>
@@ -112,8 +117,7 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::vector<Padded<double[4]>> color_time(parlay::num_workers());   // Time taken in various steps of coloring.
     std::for_each(color_time.begin(), color_time.end(), [&](auto& c){ std::memset(c.unwrap(), 0, 4 * sizeof(double)); });
 
-    parlay::parallel_for(0, Atlas<Colored_>::graph_count(),
-    [&](const std::size_t g)
+    const auto process_graph = [&](const std::size_t g)
     {
         const auto a_id = Atlas<Colored_>::atlas_ID(g);
         const auto g_id = Atlas<Colored_>::graph_ID(g);
@@ -179,6 +183,39 @@ void Subgraphs_Manager<k, Colored_>::process()
         t_bucket_rm[parlay::worker_id()].unwrap() += timer::duration(t_2 - t_1) + timer::duration(t_5 - t_4);
         t_contraction[parlay::worker_id()].unwrap()  += timer::duration(t_3 - t_2);
         t_color_extract[parlay::worker_id()].unwrap() += timer::duration(t_4 - t_3);
+    };
+
+
+    std::array<std::pair<uint64_t, uint64_t>, Atlas<Colored_>::graph_count()> A;
+    parlay::parallel_for(0, A.size(),
+    [&](const auto g){
+        const auto a_id = Atlas<Colored_>::atlas_ID(g);
+        const auto g_id = Atlas<Colored_>::graph_ID(g);
+        const auto& b = atlas[a_id].unwrap().bucket(g_id);
+        A[g] = {b.bytes(), g};
+    });
+
+    std::sort(A.begin(), A.end(), std::greater<>());
+    std::size_t next_g = 0;
+    Spin_Lock g_lock;
+    parlay::parallel_for(0, parlay::num_workers(),
+    [&](auto)
+    {
+        while(true)
+        {
+            g_lock.lock();
+
+            if(next_g == A.size())
+            {
+                g_lock.unlock();
+                break;
+            }
+
+            const auto g = A[next_g++].second;
+            g_lock.unlock();
+
+            process_graph(g);
+        }
     }, 1);
 
     std::cerr << "\n";
