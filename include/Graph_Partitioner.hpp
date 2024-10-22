@@ -92,6 +92,8 @@ private:
     std::atomic_uint64_t bytes_consumed;    // Counts of input bytes consumed across all workers in one batch in the colored-case.
     constexpr static uint64_t bytes_per_batch = 1024 * 1024 * 1024lu;    // 128MB per input batch, at least.
 
+    const std::size_t reader_c; // Number of working doing input-reads.
+
     struct Worker_Stats
     {
         uint64_t chunk_count = 0;   // Number of chunks processed from the input.

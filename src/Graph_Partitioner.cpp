@@ -28,6 +28,7 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
     , chunk_q(chunk_pool_sz)
     , parsed_chunk_w(parlay::num_workers())
     , subgraphs_path_pref(logistics.subgraphs_path())
+    , reader_c(parlay::num_workers() < 32 ? 2 : 4)
     , stat_w(parlay::num_workers())
 {
     auto& input_paths = logistics.input_paths_collection();
@@ -50,7 +51,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
         [&]()
         {
             if constexpr(!Colored_)
-                parlay::parallel_for(0, parlay::num_workers(),
+                parlay::parallel_for(0, parlay::num_workers() - (reader_c - 1),
                     [&](auto)
                     {
                         process_uncolored_chunks();
@@ -115,7 +116,6 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
     std::atomic<uint64_t> bytes_pushed{0};
     std::atomic<uint64_t> last_checkpoint{0};
     rabbit::int64 source_id = 1;    // Source (i.e. file) ID of a chunk.
-    constexpr size_t num_read_threads = 4;
     size_t n_files = seqs.size();
 
     // mutex to control obtaining the next file to read from the queue
@@ -124,7 +124,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
 
     // TODO: make the number of readers dynamic and based on the workload between 
     // the reading and parsing / super-kmerization
-    for (size_t t = 0; t < num_read_threads; ++t) {
+    for (size_t t = 0; t < reader_c; ++t) {
         reader_threads.push_back(std::thread([&]{
             using reader_t = typename RabbitFX_DS_type<Is_FASTQ_>::reader_t;
             std::unique_ptr<reader_t> reader;
