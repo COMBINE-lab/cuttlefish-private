@@ -114,6 +114,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
     const auto t_s = timer::now();
     std::atomic<uint64_t> chunk_count{0};   // Number of read chunks.
     std::atomic<uint64_t> bytes_pushed{0};
+    std::atomic<uint64_t> last_update{0};
     std::atomic<uint64_t> last_checkpoint{0};
     rabbit::int64 source_id = 1;    // Source (i.e. file) ID of a chunk.
     size_t n_files = seqs.size();
@@ -200,10 +201,17 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
                                 //std::cerr << "Pushed " << (bytes_pushed/ (1024 * 1024)) << "MB of uncompressed input data.\n";
                                 m_do_reading = false;
                             }
+                        } else {
+                            bytes_pushed += chunk->size;
                         }
                         // regardless of the chunk type, push it.
                         chunk_q.Push(current_source_id, chunk);
                         chunk_count++;
+
+                        if (bytes_pushed >= (last_update + 500 * 1024 * 1024)) {
+                            last_update.store(bytes_pushed.load());
+                            std::cerr << "\rPushed " << last_update.load() / (1024 * 1024) << "MB of parsed data onto chunk queue.";
+                        }
                         return true;
                     };
 
@@ -239,7 +247,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
     // will be pushed.
     chunk_q.SetCompleted();
     const auto t_e = timer::now();
-    std::cerr << "\nRead " << chunk_count << " chunks in total from " << n_files << " files. Time elapsed: " << timer::duration(t_e - t_s) << " s.\n";
+    std::cerr << "\n\nRead " << chunk_count << " chunks in total from " << n_files << " files. Time elapsed: " << timer::duration(t_e - t_s) << " s.\n";
 }
 
 
