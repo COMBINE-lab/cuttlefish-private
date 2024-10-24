@@ -50,15 +50,16 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
         },
         [&]()
         {
+            assert(parlay::num_workers() >= (reader_c - 1));
+            const auto consumer_c = parlay::num_workers() - (reader_c - 1);
             if constexpr(!Colored_)
-                parlay::parallel_for(0, parlay::num_workers() - (reader_c - 1),
+                parlay::parallel_for(0, consumer_c,
                     [&](auto)
                     {
                         process_uncolored_chunks();
                     }, 1);
             else
             {
-                assert(parlay::num_workers() > (reader_c - 1));
                 std::cerr << "\n";
 
                 std::atomic_uint16_t finished_workers = 0;
@@ -72,7 +73,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
                     source_id_t max_source = 0;
                     std::mutex source_lock;
                     m_do_reading = true;
-                    parlay::parallel_for(0, parlay::num_workers() - (reader_c - 1),
+                    parlay::parallel_for(0, consumer_c,
                         [&](auto)
                         {
                             source_id_t smallest_src = std::numeric_limits<source_id_t>::max();
@@ -95,7 +96,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
                     const auto t_2 = timer::now();
                     t_collate += timer::duration(t_2 - t_1);
 
-                    std::cerr << "\rProcessed " << (bytes_processed / (1024 * 1024)) << "MB of uncompressed input data. Source range [" << min_source << ", " << max_source << "], finished_workers = " << finished_workers << " / " << (parlay::num_workers() - (reader_c - 1));
+                    std::cerr << "\rProcessed " << (bytes_processed / (1024 * 1024)) << "MB of uncompressed input data. Source range [" << min_source << ", " << max_source << "], finished_workers = " << finished_workers << " / " << consumer_c;
                 }
 
                 std::cerr << "\n";
