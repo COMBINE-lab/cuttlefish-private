@@ -3,6 +3,7 @@
 #include "Super_Kmer_Bucket.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
+#include "color_sets/hybrid.hpp"
 
 #include <cassert>
 
@@ -383,6 +384,9 @@ void Subgraph<k, Colored_>::collect_color_sets()
 {
 if constexpr(Colored_)
 {
+    fulgor::color_set_builder builder(G.max_source_id() + 1);
+    fulgor::bit_vector_builder bvb;
+
     auto& color_rel = work_space.color_rel_arr();
     auto& C = work_space.color_map();
     auto& color_bucket = work_space.color_repo().bucket();
@@ -409,8 +413,44 @@ if constexpr(Colored_)
         const auto color_idx = color_bucket.size();
         if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), color_idx)))
         {
-            color_bucket.add(src.size());
-            color_bucket.add(src.data(), src.size());
+            bvb.clear();
+            builder.process(src.data(), src.size(), bvb);
+            auto& bit_vec_words = bvb.bits();
+            //color_bucket.add(bit_vec_words.size());//compressed_output.size());//src.size());
+            color_bucket.add(bit_vec_words.data(), bit_vec_words.size());
+            // validate the color encoding
+            /* 
+            auto bvit = fulgor::bit_vector_iterator(bit_vec_words.data(), bit_vec_words.size());
+            fulgor::forward_iterator fit(bvit, G.max_source_id() + 1);
+            std::vector<source_id_t> check;
+            check.reserve(src.size());
+            if (fit.size() != src.size()) {
+                std::cerr << "fit.num_colors = " << fit.num_colors() << ", but src.size = " << src.size() << "\n";
+                std::exit(1);
+            }
+            for (size_t l = 0; l < fit.size(); ++fit, ++l) {
+                check.push_back(fit.value());
+            }
+            if (check != src) {
+                std::stringstream ss;
+                ss << "pre-encoded colors != post-decoded colors\n";
+                ss << "fit.num_colors = " << fit.size() << ", but src.size = " << src.size() << "\n";
+                ss << "pre-encoded = [";
+                for (auto it = src.begin(); it != src.end(); ++it) {
+                    ss << *it;
+                    if (it + 1 != src.end()) { ss << ", "; }
+                }
+                ss << "]\n";
+                ss << "post-encoded = [";
+                for (auto it = check.begin(); it != check.end(); ++it) {
+                    ss << *it;
+                    if (it + 1 != check.end()) { ss << ", "; }
+                }
+                ss << "]\n";
+                std::cerr << ss.str();
+                std::exit(1);
+            }
+            */
         }
     }
 }
