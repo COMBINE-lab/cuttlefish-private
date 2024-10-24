@@ -77,6 +77,7 @@ private:
     std::deque<std::string> seqs;    // Input sequence collection.
     std::atomic_bool m_do_reading{true}; // Signal if it's ok to continue reading input, or if we should wait
     std::atomic_bool m_pushed_all_data{false}; // Signal if it's ok to continue reading input, or if we should wait
+    std::atomic<uint64_t> last_checkpoint{0};
     std::atomic<int64_t> max_read_source_id{1};
 
     const uint16_t l_;  // Size of minimizers for the super k-mers.

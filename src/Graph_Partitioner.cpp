@@ -71,6 +71,10 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
                     source_id_t min_source = std::numeric_limits<source_id_t>::max();
                     source_id_t max_source = 0;
                     std::mutex source_lock;
+                    auto last_cp_count = last_checkpoint.load();
+                    if (bytes_processed > last_checkpoint.load()) {
+                        last_checkpoint.compare_exchange_strong(last_cp_count, bytes_processed);
+                    }
                     m_do_reading = true;
                     parlay::parallel_for(0, parlay::num_workers() - (reader_c - 1),
                         [&](auto)
@@ -129,7 +133,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
     std::atomic<uint64_t> chunk_count{0};   // Number of read chunks.
     std::atomic<uint64_t> bytes_pushed{0};
     std::atomic<uint64_t> last_update{0};
-    std::atomic<uint64_t> last_checkpoint{0};
+    //std::atomic<uint64_t> last_checkpoint{0};
     rabbit::int64 source_id = 1;    // Source (i.e. file) ID of a chunk.
     size_t n_files = seqs.size();
 
@@ -225,10 +229,12 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
                         chunk_q.Push(current_source_id, chunk);
                         chunk_count++;
 
-                        //if (bytes_pushed >= (last_update + 500 * 1024 * 1024)) {
-                        //last_update.store(bytes_pushed.load());
-                            //std::cerr << "\rPushed " << last_update.load() / (1024 * 1024) << "MB of parsed data onto chunk queue.";
-                        //}
+                        if constexpr(!Colored_) {
+                            if (bytes_pushed >= (last_update + 500 * 1024 * 1024)) {
+                                last_update.store(bytes_pushed.load());
+                                //std::cerr << "\rPushed " << last_update.load() / (1024 * 1024) << "MB of parsed data onto chunk queue.";
+                            }
+                        }
                         return true;
                     };
 
@@ -322,6 +328,8 @@ bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_colored_chunks(source_id
             last_source = source_id;
             if (last_source < min_source_id) { min_source_id = last_source; }
             if (last_source > max_source_id) { max_source_id = last_source; }
+        } else if (m_pushed_all_data) {
+            return false;
         }
     }
 
