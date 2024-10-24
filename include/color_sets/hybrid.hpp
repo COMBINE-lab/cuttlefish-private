@@ -5,7 +5,7 @@
 #include "integer_codes.hpp"
 
 namespace fulgor {
-
+    enum list_type { delta_gaps, bitmap, complement_delta_gaps, differential_list };
 //struct hybrid {
     //static const bool meta_colored = false;
     //static const bool differential_colored = false;
@@ -143,164 +143,180 @@ namespace fulgor {
         //std::vector<uint64_t> m_offsets;
     };
     
-    
-    //struct forward_iterator {
-    //    forward_iterator() {}
-
-    //    forward_iterator(hybrid const* ptr, uint64_t begin)
-    //        : m_ptr(ptr)
-    //        , m_bitmap_begin(begin)
-    //        , m_colors_begin(begin)
-    //        , m_num_colors(ptr->m_num_colors) {
-    //        rewind();
-    //    }
-
-    //    void rewind() {
-    //        m_pos_in_list = 0;
-    //        m_pos_in_comp_list = 0;
-    //        m_comp_list_size = 0;
-    //        m_comp_val = -1;
-    //        m_prev_val = -1;
-    //        m_curr_val = 0;
-    //        m_it = bit_vector_iterator((m_ptr->m_colors).data(), (m_ptr->m_colors).size(),
-    //                                   m_colors_begin);
-    //        m_size = util::read_delta(m_it);
-    //        /* set m_type and read the first value */
-    //        if (m_size < m_ptr->m_sparse_set_threshold_size) {
-    //            m_type = list_type::delta_gaps;
-    //            m_curr_val = util::read_delta(m_it);
-    //        } else if (m_size < m_ptr->m_very_dense_set_threshold_size) {
-    //            m_type = list_type::bitmap;
-    //            m_bitmap_begin = m_it.position();  // after m_size
-    //            m_it.at_and_clear_low_bits(m_bitmap_begin);
-    //            uint64_t pos = m_it.next();
-    //            assert(pos >= m_bitmap_begin);
-    //            m_curr_val = pos - m_bitmap_begin;
-    //        } else {
-    //            m_type = list_type::complement_delta_gaps;
-    //            m_comp_list_size = m_num_colors - m_size;
-    //            if (m_comp_list_size > 0) m_comp_val = util::read_delta(m_it);
-    //            next_comp_val();
-    //        }
-    //    }
-
-    //    /* this is needed to annul the next_comp_val() done in the constructor
-    //       if we want to iterate through the complemented set */
-    //    void reinit_for_complemented_set_iteration() {
-    //        assert(m_type == list_type::complement_delta_gaps);
-    //        m_pos_in_comp_list = 0;
-    //        m_prev_val = -1;
-    //        m_curr_val = 0;
-    //        m_it = bit_vector_iterator((m_ptr->m_colors).data(), (m_ptr->m_colors).size(),
-    //                                   m_colors_begin);
-    //        util::read_delta(m_it); /* skip m_size */
-    //        if (m_comp_list_size > 0) {
-    //            m_comp_val = util::read_delta(m_it);
-    //        } else {
-    //            m_comp_val = m_num_colors;
-    //        }
-    //    }
-
-    //    uint64_t value() const { return m_curr_val; }
-    //    uint64_t comp_value() const { return m_comp_val; }
-    //    uint64_t operator*() const { return value(); }
-
-    //    void next() {
-    //        if (m_type == list_type::complement_delta_gaps) {
-    //            ++m_curr_val;
-    //            if (m_curr_val >= m_num_colors) {  // saturate
-    //                m_curr_val = m_num_colors;
-    //                return;
-    //            }
-    //            next_comp_val();
-    //        } else if (m_type == list_type::delta_gaps) {
-    //            m_pos_in_list += 1;
-    //            if (m_pos_in_list >= m_size) {  // saturate
-    //                m_curr_val = m_num_colors;
-    //                return;
-    //            }
-    //            m_prev_val = m_curr_val;
-    //            m_curr_val = util::read_delta(m_it) + (m_prev_val + 1);
-    //        } else {
-    //            assert(m_type == list_type::bitmap);
-    //            m_pos_in_list += 1;
-    //            if (m_pos_in_list >= m_size) {  // saturate
-    //                m_curr_val = m_num_colors;
-    //                return;
-    //            }
-    //            uint64_t pos = m_it.next();
-    //            assert(pos >= m_bitmap_begin);
-    //            m_curr_val = pos - m_bitmap_begin;
-    //        }
-    //    }
-
-    //    void next_comp() {
-    //        ++m_pos_in_comp_list;
-    //        if (m_pos_in_comp_list >= m_comp_list_size) {  // saturate
-    //            m_comp_val = m_num_colors;
-    //            return;
-    //        }
-    //        m_prev_val = m_comp_val;
-    //        m_comp_val = util::read_delta(m_it) + (m_prev_val + 1);
-    //    }
-
-    //    void operator++() { next(); }
-
-    //    /* update the state of the iterator to the element
-    //       which is greater-than or equal-to lower_bound */
-    //    void next_geq(const uint64_t lower_bound) {
-    //        assert(lower_bound <= num_colors());
-    //        if (m_type == list_type::complement_delta_gaps) {
-    //            if (value() > lower_bound) return;
-    //            next_geq_comp_val(lower_bound);
-    //            m_curr_val = lower_bound + (m_comp_val == lower_bound);
-    //        } else {
-    //            while (value() < lower_bound) next();
-    //        }
-    //        assert(value() >= lower_bound);
-    //    }
-
-    //    uint32_t size() const { return m_size; }
-    //    uint32_t num_colors() const { return m_num_colors; }
-    //    int type() const { return m_type; }
-
-    //private:
-    //    hybrid const* m_ptr;
-    //    uint64_t m_bitmap_begin;
-    //    uint64_t m_colors_begin;
-    //    uint32_t m_num_colors;
-    //    int m_type;
-
+   
+    //struct color_set_decoder {
+    //    uint64_t m_num_colors;
     //    bit_vector_iterator m_it;
-    //    uint32_t m_pos_in_list;
-    //    uint32_t m_size;
 
-    //    uint32_t m_pos_in_comp_list;
-    //    uint32_t m_comp_list_size;
-
-    //    uint32_t m_comp_val;
-    //    uint32_t m_prev_val;
-    //    uint32_t m_curr_val;
-
-    //    void next_comp_val() {
-    //        while (m_curr_val == m_comp_val) {
-    //            ++m_curr_val;
-    //            ++m_pos_in_comp_list;
-    //            if (m_pos_in_comp_list >= m_comp_list_size) break;
-    //            m_prev_val = m_comp_val;
-    //            m_comp_val = util::read_delta(m_it) + (m_prev_val + 1);
-    //        }
+    //    color_set_decoder(bit_vector_iterator it, uint64_t num_colors) : m_it(it), m_num_colors(num_colors) {
     //    }
 
-    //    void next_geq_comp_val(const uint64_t lower_bound) {
-    //        while (m_comp_val < lower_bound) {
-    //            ++m_pos_in_comp_list;
-    //            if (m_pos_in_comp_list >= m_comp_list_size) break;
-    //            m_prev_val = m_comp_val;
-    //            m_comp_val = util::read_delta(m_it) + (m_prev_val + 1);
-    //        }
-    //    }
-    //};
+    //}
+
+    struct forward_iterator {
+        forward_iterator() {}
+
+        forward_iterator(bit_vector_iterator it, uint64_t num_colors)
+            : m_it(it)
+            , m_bitmap_begin(0)
+            , m_colors_begin(0)
+            , m_num_colors(num_colors) {
+            m_sparse_set_threshold_size = 0.25 * m_num_colors;
+            m_very_dense_set_threshold_size = 0.75 * m_num_colors;
+            rewind();
+        }
+
+        void rewind() {
+            m_pos_in_list = 0;
+            m_pos_in_comp_list = 0;
+            m_comp_list_size = 0;
+            m_comp_val = -1;
+            m_prev_val = -1;
+            m_curr_val = 0;
+            //m_it = bit_vector_iterator((m_ptr->m_colors).data(), (m_ptr->m_colors).size(),
+            //                          m_colors_begin);
+            m_size = util::read_delta(m_it);
+            /* set m_type and read the first value */
+            if (m_size < m_sparse_set_threshold_size) {
+                //std::cerr << "m_size = " << m_size << " :: sparse set\n";
+                m_type = list_type::delta_gaps;
+                m_curr_val = util::read_delta(m_it);
+            } else if (m_size < m_very_dense_set_threshold_size) {
+                //std::cerr << "m_size = " << m_size << " :: middle set\n";
+                m_type = list_type::bitmap;
+                m_bitmap_begin = m_it.position();  // after m_size
+                m_it.at_and_clear_low_bits(m_bitmap_begin);
+                uint64_t pos = m_it.next();
+                assert(pos >= m_bitmap_begin);
+                m_curr_val = pos - m_bitmap_begin;
+            } else {
+                //std::cerr << "m_size = " << m_size << " :: dense set\n";
+                m_type = list_type::complement_delta_gaps;
+                m_comp_list_size = m_num_colors - m_size;
+                if (m_comp_list_size > 0) m_comp_val = util::read_delta(m_it);
+                next_comp_val();
+            }
+        }
+
+        /* this is needed to annul the next_comp_val() done in the constructor
+           if we want to iterate through the complemented set */
+        void reinit_for_complemented_set_iteration() {
+            assert(m_type == list_type::complement_delta_gaps);
+            m_pos_in_comp_list = 0;
+            m_prev_val = -1;
+            m_curr_val = 0;
+            m_it.at(0);//= bit_vector_iterator((m_ptr->m_colors).data(), (m_ptr->m_colors).size(),
+                       //                m_colors_begin);
+            util::read_delta(m_it); /* skip m_size */
+            if (m_comp_list_size > 0) {
+                m_comp_val = util::read_delta(m_it);
+            } else {
+                m_comp_val = m_num_colors;
+            }
+        }
+
+        uint64_t value() const { return m_curr_val; }
+        uint64_t comp_value() const { return m_comp_val; }
+        uint64_t operator*() const { return value(); }
+
+        void next() {
+            if (m_type == list_type::complement_delta_gaps) {
+                ++m_curr_val;
+                if (m_curr_val >= m_num_colors) {  // saturate
+                    m_curr_val = m_num_colors;
+                    return;
+                }
+                next_comp_val();
+            } else if (m_type == list_type::delta_gaps) {
+                m_pos_in_list += 1;
+                if (m_pos_in_list >= m_size) {  // saturate
+                    m_curr_val = m_num_colors;
+                    return;
+                }
+                m_prev_val = m_curr_val;
+                m_curr_val = util::read_delta(m_it) + (m_prev_val + 1);
+            } else {
+                assert(m_type == list_type::bitmap);
+                m_pos_in_list += 1;
+                if (m_pos_in_list >= m_size) {  // saturate
+                    m_curr_val = m_num_colors;
+                    return;
+                }
+                uint64_t pos = m_it.next();
+                assert(pos >= m_bitmap_begin);
+                m_curr_val = pos - m_bitmap_begin;
+            }
+        }
+
+        void next_comp() {
+            ++m_pos_in_comp_list;
+            if (m_pos_in_comp_list >= m_comp_list_size) {  // saturate
+                m_comp_val = m_num_colors;
+                return;
+            }
+            m_prev_val = m_comp_val;
+            m_comp_val = util::read_delta(m_it) + (m_prev_val + 1);
+        }
+
+        void operator++() { next(); }
+
+        /* update the state of the iterator to the element
+           which is greater-than or equal-to lower_bound */
+        void next_geq(const uint64_t lower_bound) {
+            assert(lower_bound <= num_colors());
+            if (m_type == list_type::complement_delta_gaps) {
+                if (value() > lower_bound) return;
+                next_geq_comp_val(lower_bound);
+                m_curr_val = lower_bound + (m_comp_val == lower_bound);
+            } else {
+                while (value() < lower_bound) next();
+            }
+            assert(value() >= lower_bound);
+        }
+
+        uint32_t size() const { return m_size; }
+        uint32_t num_colors() const { return m_num_colors; }
+        int type() const { return m_type; }
+
+    private:
+        //hybrid const* m_ptr;
+        uint64_t m_bitmap_begin;
+        uint64_t m_colors_begin;
+        uint32_t m_num_colors;
+        int m_type;
+        uint32_t m_sparse_set_threshold_size;
+        uint32_t m_very_dense_set_threshold_size;
+ 
+        bit_vector_iterator m_it;
+        uint32_t m_pos_in_list;
+        uint32_t m_size;
+
+        uint32_t m_pos_in_comp_list;
+        uint32_t m_comp_list_size;
+
+        uint32_t m_comp_val;
+        uint32_t m_prev_val;
+        uint32_t m_curr_val;
+
+        void next_comp_val() {
+            while (m_curr_val == m_comp_val) {
+                ++m_curr_val;
+                ++m_pos_in_comp_list;
+                if (m_pos_in_comp_list >= m_comp_list_size) break;
+                m_prev_val = m_comp_val;
+                m_comp_val = util::read_delta(m_it) + (m_prev_val + 1);
+            }
+        }
+
+        void next_geq_comp_val(const uint64_t lower_bound) {
+            while (m_comp_val < lower_bound) {
+                ++m_pos_in_comp_list;
+                if (m_pos_in_comp_list >= m_comp_list_size) break;
+                m_prev_val = m_comp_val;
+                m_comp_val = util::read_delta(m_it) + (m_prev_val + 1);
+            }
+        }
+    };
     
 
     //typedef forward_iterator iterator_type;
