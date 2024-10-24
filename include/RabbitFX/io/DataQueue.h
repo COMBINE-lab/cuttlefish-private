@@ -117,6 +117,28 @@ class TDataQueue {
     return false;
   }
 
+  bool TryPop(int64 &partId_, DataType *&part_) {
+    th::unique_lock<th::mutex> lock(mutex);
+
+    if (parts.size() == 0) {
+      return false;
+    } else {
+      partId_ = parts.front().first;
+      part_ = parts.front().second;
+      partNum--;
+      parts.pop();
+      queueFullCondition.notify_one();
+      return true;
+    }
+
+    // assure this is impossible
+    ASSERT(currentThreadMask == completedThreadMask);
+    ASSERT(parts.size() == 0);
+    return false;
+  }
+
+
+
   void Reset() {
     ASSERT(currentThreadMask == completedThreadMask);
 
