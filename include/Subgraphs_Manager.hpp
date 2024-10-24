@@ -99,8 +99,9 @@ public:
     void add_super_kmer(std::size_t g, const char* seq, std::size_t len, source_id_t source, bool l_disc, bool r_disc);
 
     // Collates the current super k-mer buffers in each subgraph per their
-    // source-IDs into external-memory buckets.
-    void collate_super_kmer_buffers();
+    // source-IDs into external-memory buckets. The source-IDs are supposed to
+    // be in the range `[src_min, src_max]`.
+    void collate_super_kmer_buffers(source_id_t src_min, source_id_t src_max);
 
     // Finalizes the subgraphs for iteration—no more content should be added
     // after this.

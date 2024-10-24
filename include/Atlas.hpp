@@ -7,6 +7,7 @@
 #include "Super_Kmer_Chunk.hpp"
 #include "Super_Kmer_Bucket.hpp"
 #include "Spin_Lock.hpp"
+#include "globals.hpp"
 #include "utility.hpp"
 #include "parlay/parallel.h"
 
@@ -111,8 +112,9 @@ public:
     void add(const char* seq, std::size_t len, source_id_t source, bool l_disc, bool r_disc, uint16_t g_id);
 
     // Collates the worker-local super k-mers in the bucket per their source-ID
-    // and flushes them to the subgraphs in the atlas.
-    void flush_collated();
+    // and flushes them to the subgraphs in the atlas. The source-IDs are
+    // supposed to be in the range `[src_min, src_max]`.
+    void flush_collated(source_id_t src_min, source_id_t src_max);
 
     // Closes the atlas—no more content should be added afterwards.
     void close();

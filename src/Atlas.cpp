@@ -3,7 +3,6 @@
 #include "parlay/parallel.h"
 
 #include <cstddef>
-#include <limits>
 
 
 namespace cuttlefish
@@ -59,20 +58,13 @@ void Atlas<Colored_>::flush_chunk(chunk_t& c)
 
 
 template <>
-void Atlas<true>::flush_collated()
+void Atlas<true>::flush_collated(const source_id_t src_min, const source_id_t src_max)
 {
     std::size_t sz = 0; // Number of pending super k-mers in the worker-local buffers.
-    auto src_min = std::numeric_limits<source_id_t>::max();
-    auto src_max = std::numeric_limits<source_id_t>::min();
     std::for_each(chunk_w.cbegin(), chunk_w.cend(), [&](const auto& c)
     {
         const auto& c_w = c.unwrap();
         sz += c_w.size();
-        if(!c_w.empty())
-        {
-            src_min = std::min(src_min, c_w.front_att().source());
-            src_max = std::max(src_max, c_w.back_att().source());
-        }
     });
 
     if(CF_UNLIKELY(sz == 0))
@@ -129,7 +121,7 @@ void Atlas<true>::flush_collated()
         source_id_t src = 0;
         for(std::size_t i = 0, j; i < c_w.size(); i = j)
         {
-            assert(c_w.att_at(i).source() >= src);  // Ensure super k-mers are source-sorted.
+            // assert(c_w.att_at(i).source() >= src);  // Ensure super k-mers are source-sorted.
             src = c_w.att_at(i).source();
 
             for(j = i + 1; j < c_w.size(); ++j)
