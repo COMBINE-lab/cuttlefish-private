@@ -116,11 +116,6 @@ namespace rabbit {
                 }
 
 
-                void set_new_file(int fd, bool isZipped = false, uint64 halo = 21) {
-                    (void)halo;
-                    mFaReader.reset(new FileReader(fd, isZipped));
-                }
-
                 /**
                  * @brief FastaFileReader Constructor
                  * @param fd Fasta file descriptor (if fasta file is opened)
@@ -338,11 +333,12 @@ namespace rabbit {
                     eof(false),
                     usesCrlf(false),
                     isZipped(isZippedNew),
+                    m_worker_count(worker_count),
                     recordsPool(pool_),
                     numParts(0) {
-                        mFqReader = std::make_unique<FileReader>(fileName_, isZipped, worker_count);
+                        mFqReader = std::make_unique<FileReader>(fileName_, isZipped, m_worker_count);
                         if(fileName2_ != ""){
-                            mFqReader2 = std::make_unique<FileReader>(fileName2_, isZipped, worker_count);
+                            mFqReader2 = std::make_unique<FileReader>(fileName2_, isZipped, m_worker_count);
                         }
                     }
 

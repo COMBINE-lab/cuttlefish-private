@@ -76,6 +76,7 @@ private:
 
     std::deque<std::string> seqs;    // Input sequence collection.
     std::atomic_bool m_do_reading{true}; // Signal if it's ok to continue reading input, or if we should wait
+    std::atomic_bool m_pushed_all_data{false}; // Signal if it's ok to continue reading input, or if we should wait
     std::atomic<int64_t> max_read_source_id{1};
 
     const uint16_t l_;  // Size of minimizers for the super k-mers.
@@ -90,7 +91,9 @@ private:
     const std::string subgraphs_path_pref;  // Path prefix for the subgraphs' super k-mer buckets.
 
     std::atomic_uint64_t bytes_consumed;    // Counts of input bytes consumed across all workers in one batch in the colored-case.
-    constexpr static uint64_t bytes_per_batch = 128 * 1024 * 1024lu;    // 128MB per input batch, at least.
+    constexpr static uint64_t bytes_per_batch = 1024 * 1024 * 1024lu;   // 1GB per input batch, at least.
+
+    const std::size_t reader_c; // Number of working doing input-reads.
 
     struct Worker_Stats
     {
@@ -125,7 +128,7 @@ private:
     // chunks to the chunk memory pool for colored graphs until total bytes
     // processed across all workers reaches a certain threshold. Returns
     // `false` if no data remain anymore in the queue after this processing.
-    bool process_colored_chunks();
+    bool process_colored_chunks(source_id_t& min_source, source_id_t& max_source);
 
     // Processes the chunk `chunk` with source-ID `source_id`. The parsed
     // sequences are stored in `parsed_chunk`. Returns the count of bytes in

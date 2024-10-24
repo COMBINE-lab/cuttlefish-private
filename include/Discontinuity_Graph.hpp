@@ -11,6 +11,7 @@
 #include "Ext_Mem_Bucket.hpp"
 #include "Color_Encoding.hpp"
 #include "Build_Params.hpp"
+#include "globals.hpp"
 #include "parlay/parallel.h"
 #include "utility.hpp"
 
@@ -54,6 +55,7 @@ private:
     // TODO: check logs to see if this is a bottleneck.
     std::atomic_uint64_t phantom_edge_count_;   // Number of potential phantom edges identified.
 
+    const source_id_t max_source_id_;   // Maximum source-ID, used for coloring.
     std::vector<Padded<Ext_Mem_Bucket<Vertex_Color_Mapping>>> vertex_color_map_;    // Buckets of vertex-color mappings.
 
 
@@ -73,6 +75,9 @@ public:
 
     // Returns the edge-matrix of the graph.
     Edge_Matrix<k>& E() { return E_; }
+
+    // Returns the maximum source-ID, used for coloring.
+    auto max_source_id() const { return max_source_id_; }
 
     // Returns the number of potential phantom edges identified.
     uint64_t phantom_edge_upper_bound() const;

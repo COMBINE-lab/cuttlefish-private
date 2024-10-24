@@ -28,6 +28,7 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
     , chunk_q(chunk_pool_sz)
     , parsed_chunk_w(parlay::num_workers())
     , subgraphs_path_pref(logistics.subgraphs_path())
+    , reader_c(parlay::num_workers() < 32 ? 2 : 4)
     , stat_w(parlay::num_workers())
 {
     auto& input_paths = logistics.input_paths_collection();
@@ -39,6 +40,9 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 {
+    double t_part = 0;
+    double t_collate = 0;
+
     parlay::par_do(
         [&]()
         {
@@ -47,31 +51,51 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
         [&]()
         {
             if constexpr(!Colored_)
-                parlay::parallel_for(0, parlay::num_workers(),
+                parlay::parallel_for(0, parlay::num_workers() - (reader_c - 1),
                     [&](auto)
                     {
                         process_uncolored_chunks();
                     }, 1);
             else
             {
-                assert(parlay::num_workers() > 1);
+                assert(parlay::num_workers() > (reader_c - 1));
                 std::cerr << "\n";
 
                 std::atomic_uint16_t finished_workers = 0;
                 uint64_t bytes_processed = 0;
-                while(finished_workers < parlay::num_workers() - 1)
+                while(!m_pushed_all_data) //finished_workers < parlay::num_workers() - 1)
                 {
+                    const auto t_0 = timer::now();
                     bytes_consumed = 0;
-                    parlay::parallel_for(0, parlay::num_workers() - 1,
+
+                    source_id_t min_source = std::numeric_limits<source_id_t>::max();
+                    source_id_t max_source = 0;
+                    std::mutex source_lock;
+                    m_do_reading = true;
+                    parlay::parallel_for(0, parlay::num_workers() - (reader_c - 1),
                         [&](auto)
                         {
-                            finished_workers += !process_colored_chunks();
+                            source_id_t smallest_src = std::numeric_limits<source_id_t>::max();
+                            source_id_t largest_src = 0;
+                            finished_workers += !process_colored_chunks(smallest_src, largest_src);
+                            source_lock.lock();
+                            min_source = std::min(smallest_src, min_source);
+                            max_source = std::max(largest_src, max_source);
+                            source_lock.unlock();
+
                         }, 1);
 
+                    const auto t_1 = timer::now();
+                    t_part += timer::duration(t_1 - t_0);
+
                     // Collate and flush all buckets.
-                    subgraphs.collate_super_kmer_buffers();
+                    if(max_source > 0)
+                        subgraphs.collate_super_kmer_buffers(min_source, max_source);
                     bytes_processed += bytes_consumed;
-                    std::cerr << "\rProcessed " << (bytes_processed / (1024 * 1024)) << "MB of uncompressed input data.";
+                    const auto t_2 = timer::now();
+                    t_collate += timer::duration(t_2 - t_1);
+
+                    std::cerr << "\rProcessed " << (bytes_processed / (1024 * 1024)) << "MB of uncompressed input data. Source range [" << min_source << ", " << max_source << "], finished_workers = " << finished_workers << " / " << (parlay::num_workers() - (reader_c - 1));
                 }
 
                 std::cerr << "\n";
@@ -91,6 +115,11 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
     std::cerr << "Total work in processing records: " << stat.process_time << "s.\n";
     std::cerr << "Max work in processing records: " <<
         [&](){ double t = 0; std::for_each(stat_w.cbegin(), stat_w.cend(), [&](const auto& s){ t = std::max(t, s.unwrap().process_time); }); return t; }() << "s.\n";
+    if constexpr(Colored_)
+    {
+        std::cerr << "Time taken in processing colored chunks: " << t_part << "s.\n";
+        std::cerr << "Time taken in collating colored chunks:  " << t_collate << "s.\n";
+    }
 }
 
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
@@ -99,9 +128,9 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
     const auto t_s = timer::now();
     std::atomic<uint64_t> chunk_count{0};   // Number of read chunks.
     std::atomic<uint64_t> bytes_pushed{0};
+    std::atomic<uint64_t> last_update{0};
     std::atomic<uint64_t> last_checkpoint{0};
     rabbit::int64 source_id = 1;    // Source (i.e. file) ID of a chunk.
-    constexpr size_t num_read_threads = 4;
     size_t n_files = seqs.size();
 
     // mutex to control obtaining the next file to read from the queue
@@ -110,7 +139,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
 
     // TODO: make the number of readers dynamic and based on the workload between 
     // the reading and parsing / super-kmerization
-    for (size_t t = 0; t < num_read_threads; ++t) {
+    for (size_t t = 0; t < reader_c; ++t) {
         reader_threads.push_back(std::thread([&]{
             using reader_t = typename RabbitFX_DS_type<Is_FASTQ_>::reader_t;
             std::unique_ptr<reader_t> reader;
@@ -136,7 +165,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
                     fp_mutex.unlock();
                     // if there are no more files to read, then this
                     // thread is done
-                    if (done) { break; }
+                    if (done) { m_do_reading = false; break; }
 
                     // if we don't have a reader for this thread yet, then 
                     // make one, otherwise assign the existing reader the 
@@ -161,6 +190,9 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
                             // So, to get the total number of bytes here, we actually have to 
                             // walk the list of data chunks produced.
 
+                            if (chunk->chunk == nullptr) {
+                                return false;
+                            }
                             // get the first RabitFX::io::core::DataChunk
                             auto* dchunk = chunk->chunk;
                             uint64_t nb = 0;
@@ -183,13 +215,20 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
                             // m_do_reading = false; may not be a problem, but think about this.
                             if (bytes_pushed > (last_checkpoint + bytes_per_batch)) {
                                 last_checkpoint.store(bytes_pushed.load());
-                                //std::cerr << "Pushed " << (bytes_pushed/ (1024 * 1024)) << "MB of uncompressed input data.\n";
+                                //std::cerr << "::Pushed " << (bytes_pushed/ (1024 * 1024)) << "MB of uncompressed input data.\n";
                                 m_do_reading = false;
                             }
+                        } else {
+                            bytes_pushed += chunk->size;
                         }
                         // regardless of the chunk type, push it.
                         chunk_q.Push(current_source_id, chunk);
                         chunk_count++;
+
+                        //if (bytes_pushed >= (last_update + 500 * 1024 * 1024)) {
+                        //last_update.store(bytes_pushed.load());
+                            //std::cerr << "\rPushed " << last_update.load() / (1024 * 1024) << "MB of parsed data onto chunk queue.";
+                        //}
                         return true;
                     };
 
@@ -203,7 +242,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
                             chunks_remain = push_chunk(reader->readNextChunkList());
                         }
                     }
-                    m_do_reading = true;
+                    //m_do_reading = true;
 
                     // increment the source id
                     //source_id++;
@@ -223,9 +262,11 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
 
     // we're done with the queue, so signal that nothing further 
     // will be pushed.
+    m_do_reading = false;
     chunk_q.SetCompleted();
+    m_pushed_all_data = true;
     const auto t_e = timer::now();
-    std::cerr << "\nRead " << chunk_count << " chunks in total from " << n_files << " files. Time elapsed: " << timer::duration(t_e - t_s) << " s.\n";
+    std::cerr << "\n\nRead " << chunk_count << " chunks in total from " << n_files << " files. Time elapsed: " << timer::duration(t_e - t_s) << " s.\n";
 }
 
 
@@ -244,7 +285,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_uncolored_chunks()
         // try and get a chunk out
         // bool saw_max_id = false;
         while(chunk_q.Pop(source_id, chunk)) {
-            assert(source_id >= last_source);
+            // assert(source_id >= last_source);
 
             bytes_consumed += process_chunk(chunk, source_id);
             last_source = source_id;
@@ -255,14 +296,12 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_uncolored_chunks()
                 //std::cerr << "last_source = " << last_source << ", max_read_source_id = " << max_read_source_id << "\n";
             }
         }
-
     }
-
 }
 
 
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
-bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_colored_chunks()
+bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_colored_chunks(source_id_t& min_source_id, source_id_t& max_source_id)
 {
     assert(Colored_);
 
@@ -271,25 +310,23 @@ bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_colored_chunks()
     rabbit::int64 last_source = 0;  // Source ID of the last chunk processed.
     (void)last_source;
 
-    bool data_remain = true;
-    while(data_remain && bytes_consumed < bytes_per_batch)
+    // while there may still be things pushing into the queue 
+    // or the queue still has things in it
+    while(m_do_reading || !chunk_q.IsEmpty())
     {
-        if(!chunk_q.Pop(source_id, chunk))
-        {
-            data_remain = false;
-            break;
-        }
+        // if we can get something out
+        if(chunk_q.TryPop(source_id, chunk)) {
+            //assert(source_id >= last_source);
 
-        assert(source_id >= last_source);
-
-        bytes_consumed += process_chunk(chunk, source_id);
-        last_source = source_id;
-        if (last_source == max_read_source_id) {
-            m_do_reading = true;
+            bytes_consumed += process_chunk(chunk, source_id);
+            last_source = source_id;
+            if (last_source < min_source_id) { min_source_id = last_source; }
+            if (last_source > max_source_id) { max_source_id = last_source; }
         }
     }
 
-    return data_remain;
+    //if (saw_last_source) { m_do_reading = true; }
+    return !chunk_q.IsCompleted();
 }
 
 

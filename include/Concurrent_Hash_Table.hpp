@@ -27,6 +27,8 @@ class Concurrent_Hash_Table
     class Iterator;
     friend class Iterator;
 
+    static constexpr bool atomic_read = (sizeof(T_key_) <= 8);  // Whether reads are atomic. TODO: do it based on arch.
+
 private:
 
     struct Key_Val_Pair
@@ -90,34 +92,29 @@ public:
 
     // Inserts the key `key` with value `val` into the table. Returns `false` if
     // the key already exists in the table. Otherwise returns `true` iff the
-    // insertion succeeds, i.e. free space was found for the insertion. `mt_`
-    // denotes whether multiple threads may access the hash table or not.
-    template <bool mt_ = true> bool insert(T_key_ key, T_val_ val);
+    // insertion succeeds, i.e. free space was found for the insertion.
+    bool insert(T_key_ key, T_val_ val);
 
     // Inserts the key `key` with value `val` into the table. Returns `false` if
     // the key already exists in the table; and in that case, the address of the
     // existing value for the key is stored in `val_add`. Otherwise returns
     // `true` iff the insertion succeeds, i.e. free space was found for the
-    // insertion. `mt_` denotes whether multiple threads may access the hash
-    // table or not.
-    template <bool mt_ = true> bool insert(T_key_ key, T_val_ val, T_val_*& val_add);
+    // insertion.
+    bool insert(T_key_ key, T_val_ val, T_val_*& val_add);
 
     // Inserts the key `key` with value `val` into the table. Returns `false` if
     // the key already exists in the table; and in that case, the existing value
     // associated to `key` is overwritten with `val`. Otherwise returns `true`
     // iff the insertion succeeds, i.e. free space was found for the insertion.
-    // `mt_` denotes whether multiple threads may access the hash table or not.
-    template <bool mt_ = true> bool insert_overwrite(T_key_ key, T_val_ val);
+    bool insert_overwrite(T_key_ key, T_val_ val);
 
     // Searches for `key` in the table and returns the address of the value
-    // associated to it iff it is found. Returns `nullptr` otherwise. `mt_`
-    // denotes whether multiple threads may be updating the hash table or not.
-    template <bool mt_ = true> const T_val_* find(T_key_ key) const;
+    // associated to it iff it is found. Returns `nullptr` otherwise.
+    const T_val_* find(T_key_ key) const;
 
     // Searches for `key` in the table and returns the address of the value
-    // associated to it iff it is found. Returns `nullptr` otherwise. `mt_`
-    // denotes whether multiple threads may be updating the hash table or not.
-    template <bool mt_ = true> T_val_* find(T_key_ key);
+    // associated to it iff it is found. Returns `nullptr` otherwise.
+    T_val_* find(T_key_ key);
 
     // Searches for `key` in the table and returns `true` iff it is found. If
     // found, the associated value is stored in `val`. `val` remains unchanged
@@ -205,7 +202,6 @@ inline void Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::clear()
 
 
 template <typename T_key_, typename T_val_, typename T_hasher_>
-template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key_ key, const T_val_ val)
 {
 #ifndef NDEBUG
@@ -218,13 +214,15 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key
     {
         assert(++tried_slots <= capacity_);
 
+    if constexpr(atomic_read)
+    {
         if(T[i].key == empty_key_)  // TODO: check atomic-read / partial-read guarantees.
         {
-            if constexpr(mt_)   lock[i].lock();
+            lock[i].lock();
             if(T[i].key == empty_key_)
                 T[i].key = key, T[i].val = val,
                 success = true;
-            if constexpr(mt_)   lock[i].unlock();
+            lock[i].unlock();
 
             if(success)
                 return true;
@@ -233,13 +231,33 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key
         if(T[i].key == key) // TODO: check atomic-read / partial-read guarantees.
             return false;
     }
+    else
+    {
+        lock[i].lock();
+
+        if(T[i].key == empty_key_)
+        {
+            T[i].key = key, T[i].val = val;
+
+            lock[i].unlock();
+            return true;
+        }
+
+        if(T[i].key == key)
+        {
+            lock[i].unlock();
+            return false;
+        }
+
+        lock[i].unlock();
+    }
+    }
 
     return false;
 }
 
 
 template <typename T_key_, typename T_val_, typename T_hasher_>
-template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key_ key, const T_val_ val, T_val_*& val_add)
 {
 #ifndef NDEBUG
@@ -252,13 +270,15 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key
     {
         assert(++tried_slots <= capacity_);
 
+    if constexpr(atomic_read)
+    {
         if(T[i].key == empty_key_)  // TODO: check atomic-read / partial-read guarantees.
         {
-            if constexpr(mt_)   lock[i].lock();
+            lock[i].lock();
             if(T[i].key == empty_key_)
                 T[i].key = key, T[i].val = val,
                 success = true;
-            if constexpr(mt_)   lock[i].unlock();
+            lock[i].unlock();
 
             if(success)
                 return true;
@@ -266,12 +286,35 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key
 
         if(T[i].key == key) // TODO: check atomic-read / partial-read guarantees.
         {
-            if constexpr(mt_)   lock[i].lock();
+            lock[i].lock(); // Some other worker can be manipulating the value.
             val_add = &T[i].val;
-            if constexpr(mt_)   lock[i].unlock();
+            lock[i].unlock();
 
             return false;
         }
+    }
+    else
+    {
+        lock[i].lock();
+
+        if(T[i].key == empty_key_)
+        {
+            T[i].key = key, T[i].val = val;
+
+            lock[i].unlock();
+            return true;
+        }
+
+        if(T[i].key == key)
+        {
+            val_add = &T[i].val;
+
+            lock[i].unlock();
+            return false;
+        }
+
+        lock[i].unlock();
+    }
     }
 
     return false;
@@ -279,7 +322,6 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key
 
 
 template <typename T_key_, typename T_val_, typename T_hasher_>
-template <bool mt_>
 inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_overwrite(const T_key_ key, const T_val_ val)
 {
 #ifndef NDEBUG
@@ -292,13 +334,15 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_overwrite(c
     {
         assert(++tried_slots <= capacity_);
 
+    if constexpr(atomic_read)
+    {
         if(T[i].key == empty_key_)  // TODO: check atomic-read / partial-read guarantees.
         {
-            if constexpr(mt_)   lock[i].lock();
+            lock[i].lock();
             if(T[i].key == empty_key_)
                 T[i].key = key, T[i].val = val,
                 success = true;
-            if constexpr(mt_)   lock[i].unlock();
+            lock[i].unlock();
 
             if(success)
                 return true;
@@ -306,12 +350,35 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_overwrite(c
 
         if(T[i].key == key) // TODO: check atomic-read / partial-read guarantees.
         {
-            if constexpr(mt_)   lock[i].lock();
+            lock[i].lock();
             T[i].val = val;
-            if constexpr(mt_)   lock[i].unlock();
+            lock[i].unlock();
 
             return false;
         }
+    }
+    else
+    {
+        lock[i].lock();
+
+        if(T[i].key == empty_key_)
+        {
+            T[i].key = key, T[i].val = val;
+
+            lock[i].unlock();
+            return true;
+        }
+
+        if(T[i].key == key)
+        {
+            T[i].val = val;
+
+            lock[i].unlock();
+            return false;
+        }
+
+        lock[i].unlock();
+    }
     }
 
     return false;
@@ -319,7 +386,6 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_overwrite(c
 
 
 template <typename T_key_, typename T_val_, typename T_hasher_>
-template <bool mt_>
 inline T_val_* Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(const T_key_ key)
 {
 #ifndef NDEBUG
@@ -328,25 +394,47 @@ inline T_val_* Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(const T_ke
 
     T_val_* val_add = nullptr;
     for(std::size_t i = hash_to_idx(hash(key)); ; i = next_index(i))
+    if constexpr(atomic_read)
+    {
         if(T[i].key == key) // TODO: check atomic-read / partial-read guarantees.
         {
-            if constexpr(mt_) lock[i].lock();   // To ensure that some other thread is not updating this val atm—a stable value is guaranteed.
-                                                // This only works correctly because in our use-case of this table, a key is accessed only twice.
+            lock[i].lock(); // To ensure that some other thread is not updating this val atm—a stable value is guaranteed.
+                            // This only works correctly because in our use-case of this table, a key is accessed only twice.
             val_add = &T[i].val;
-            if constexpr(mt_) lock[i].unlock();
+            lock[i].unlock();
             break;
         }
         else if(T[i].key == empty_key_) // TODO: check atomic-read / partial-read guarantees.
             break;
         else
             assert(++tried_slots <= capacity_);
+    }
+    else
+    {
+        lock[i].lock();
+
+        if(T[i].key == key)
+        {
+            val_add = &T[i].val;    // This only works correctly because in our use-case of this table, a key is accessed only twice.
+            lock[i].unlock();
+            break;
+        }
+        else if(T[i].key == empty_key_)
+        {
+            lock[i].unlock();
+            break;
+        }
+        else
+            assert(++tried_slots <= capacity_);
+
+        lock[i].unlock();
+    }
 
     return val_add;
 }
 
 
 template <typename T_key_, typename T_val_, typename T_hasher_>
-template <bool mt_>
 inline const T_val_* Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::find(const T_key_ key) const
 {
     return const_cast<Concurrent_Hash_Table*>(this)->find(key);

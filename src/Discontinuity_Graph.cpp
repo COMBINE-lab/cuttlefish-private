@@ -16,6 +16,7 @@ Discontinuity_Graph<k, Colored_>::Discontinuity_Graph(const Build_Params& params
     , E_(params.vertex_part_count(), logistics.edge_matrix_path())
     , lmtigs(logistics.lmtig_buckets_path(), params.lmtig_bucket_count(), parlay::num_workers(), Colored_)
     , phantom_edge_count_(0)
+    , max_source_id_(logistics.input_paths_collection().size())
 {
     if constexpr(Colored_)
     {

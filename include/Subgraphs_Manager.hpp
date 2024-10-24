@@ -44,7 +44,7 @@ private:
     const uint16_t l;   // `l`-minimizer size to partition the graph.
 
     typedef Atlas<Colored_> atlas_t;
-    static constexpr std::size_t chunk_bytes = 128 * 1024;  // 128 KB chunk capacity for each atlas.
+    static constexpr std::size_t chunk_bytes = 1024 * 1024; // 1 MB chunk capacity for each atlas.
     static constexpr std::size_t w_chunk_bytes = 32 * 1024; // 32 KB worker-local chunk capacity in each atlas.
     std::vector<Padded<atlas_t>> atlas; // Super k-mer buckets for the subgraph atlases.
 
@@ -99,8 +99,9 @@ public:
     void add_super_kmer(std::size_t g, const char* seq, std::size_t len, source_id_t source, bool l_disc, bool r_disc);
 
     // Collates the current super k-mer buffers in each subgraph per their
-    // source-IDs into external-memory buckets.
-    void collate_super_kmer_buffers();
+    // source-IDs into external-memory buckets. The source-IDs are supposed to
+    // be in the range `[src_min, src_max]`.
+    void collate_super_kmer_buffers(source_id_t src_min, source_id_t src_max);
 
     // Finalizes the subgraphs for iteration—no more content should be added
     // after this.

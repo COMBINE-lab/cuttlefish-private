@@ -3,8 +3,6 @@
 #include "Super_Kmer_Bucket.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
-#include "x86-simd-sort/avx512-64bit-keyvaluesort.hpp"
-
 #include "color_sets/hybrid.hpp"
 
 #include <cassert>
@@ -352,10 +350,34 @@ if constexpr(Colored_)
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::semi_sort()
 {
-    auto& kmer_arr = work_space.color_rel_vertex_arr();
-    auto& source_arr = work_space.color_rel_source_arr();
-    avx512_qsort_kv(reinterpret_cast<uint64_t*>(kmer_arr.data()), source_arr.data(), kmer_arr.size());
+    const auto& kmer_arr = work_space.color_rel_vertex_arr();
+    const auto& source_arr = work_space.color_rel_source_arr();
+    auto& count_map = work_space.count_map();
+    auto& color_rel = work_space.color_rel_arr();
+
+    count_map.clear();
+    for(const auto& key : kmer_arr)
+        count_map[key]++;
+
+    uint32_t pref_sum = 0;
+    for(auto& kmer_count : count_map)
+    {
+        const auto temp = kmer_count.second;
+        kmer_count.second = pref_sum;
+        pref_sum += temp;
+    }
+
+
+    color_rel.reserve_uninit(kmer_arr.size());
+    for(std::size_t i = 0; i < kmer_arr.size(); ++i)
+    {
+        auto& off = count_map[kmer_arr[i]];
+        assert(off < kmer_arr.size());
+        color_rel[off] = {kmer_arr[i], source_arr[i]};
+        off++;
+    }
 }
+
 
 template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::collect_color_sets()
@@ -365,26 +387,27 @@ if constexpr(Colored_)
     fulgor::color_set_builder builder(25000);
     fulgor::bit_vector_builder bvb;
 
-    // auto& color_rel = work_space.color_rel_arr();
-    auto& kmer_arr = work_space.color_rel_vertex_arr();
-    auto& source_arr = work_space.color_rel_source_arr();
+    auto& color_rel = work_space.color_rel_arr();
     auto& C = work_space.color_map();
     auto& color_bucket = work_space.color_repo().bucket();
     std::vector<source_id_t> src;   // Sources of the current vertex.
+    const auto color_rel_c = work_space.color_rel_vertex_arr().size();
 
-    for(std::size_t i = 0, j; i < kmer_arr.size(); i = j)
+    for(std::size_t i = 0, j; i < color_rel_c; i = j)
     {
-        const auto& v = kmer_arr[i];
+        // const auto& v = kmer_arr[i];
+        const auto& v = color_rel[i].first;
         src.clear();
-        src.push_back(source_arr[i]);
+        // src.push_back(source_arr[i]);
+        src.push_back(color_rel[i].second);
 
-        for(j = i + 1; j < kmer_arr.size(); ++j)
+        for(j = i + 1; j < color_rel_c; ++j)
         {
-            if(kmer_arr[j] != v)
+            if(color_rel[j].first != v)
                 break;
 
-            // assert(source_arr[j] >= source_arr[j - 1]); // Ensure sortedness of source-IDs.
-            src.push_back(source_arr[j]);
+            assert(color_rel[j].second >= color_rel[j - 1].second); // Ensure sortedness of source-IDs.
+            src.push_back(color_rel[j].second);
         }
         std::sort(src.begin(), src.end());
 
@@ -423,9 +446,10 @@ void Subgraph<k, Colored_>::attach_colors_to_vertices()
 template <uint16_t k, bool Colored_>
 Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t max_sz):
       in_process_arr_(parlay::num_workers())
-    // , color_rel_arr_(parlay::num_workers())
+    , color_rel_arr_(parlay::num_workers())
     , kmer_arr_(parlay::num_workers())
     , source_arr_(parlay::num_workers())
+    , count_map_(parlay::num_workers())
 {
     map_.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
@@ -458,7 +482,6 @@ typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t& Subgraphs_Scrat
 }
 
 
-/*
 template <uint16_t k, bool Colored_>
 typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t& Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr()
 {
@@ -466,7 +489,6 @@ typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t& Subgraphs_Scratc
     assert(color_rel_arr_.size() == parlay::num_workers());
     return color_rel_arr_[parlay::worker_id()].unwrap();
 }
-*/
 
 
 template <uint16_t k, bool Colored_>
@@ -484,6 +506,15 @@ typename Subgraphs_Scratch_Space<k, Colored_>::source_arr_t& Subgraphs_Scratch_S
     // assert(Colored_);
     assert(source_arr_.size() == parlay::num_workers());
     return source_arr_[parlay::worker_id()].unwrap();
+}
+
+
+template <uint16_t k, bool Colored_>
+auto Subgraphs_Scratch_Space<k, Colored_>::count_map() -> count_map_t&
+{
+    // assert(Colored_);
+    assert(count_map_.size() == parlay::num_workers());
+    return count_map_[parlay::worker_id()].unwrap();
 }
 
 

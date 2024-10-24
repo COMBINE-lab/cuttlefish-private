@@ -3,7 +3,6 @@
 #include "parlay/parallel.h"
 
 #include <cstddef>
-#include <limits>
 
 
 namespace cuttlefish
@@ -13,7 +12,9 @@ template <bool Colored_>
 Atlas<Colored_>::Atlas(uint16_t k, uint16_t l, const std::string& path, std::size_t chunk_cap, std::size_t chunk_cap_per_w):
       path_(path)
     , size_(0)
-    , chunk(k, l, chunk_cap)
+    , chunk_cap(chunk_cap)
+    , chunk(new chunk_t(k, l, chunk_cap))
+    , flush_buf(!Colored_ ? new chunk_t(k, l, chunk_cap) : nullptr)
 {
     chunk_w.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
@@ -21,7 +22,7 @@ Atlas<Colored_>::Atlas(uint16_t k, uint16_t l, const std::string& path, std::siz
 
     subgraph.reserve(graph_per_atlas());
     for(std::size_t i = 0; i < graph_per_atlas(); ++i)
-        subgraph.emplace_back(k, l, path + "_G_" + std::to_string(i), subgraph_chunk_cap_bytes / chunk.record_size());
+        subgraph.emplace_back(k, l, path + "_G_" + std::to_string(i), subgraph_chunk_cap_bytes / chunk->record_size());
 }
 
 
@@ -29,52 +30,47 @@ template <bool Colored_>
 Atlas<Colored_>::Atlas(Atlas&& rhs):
       path_(std::move(rhs.path_))
     , size_(rhs.size_)
+    , chunk_cap(rhs.chunk_cap)
     , chunk(std::move(rhs.chunk))
+    , flush_buf(std::move(rhs.flush_buf))
     , chunk_w(std::move(rhs.chunk_w))
     , subgraph(std::move(rhs.subgraph))
 {}
 
 
 template <bool Colored_>
-void Atlas<Colored_>::flush_chunk()
+void Atlas<Colored_>::flush_chunk(chunk_t& c)
 {
-    if(!chunk.empty())
+    if(!c.empty())
     {
         for(std::size_t g = 0; g < graph_per_atlas(); ++g)
             subgraph[g].fetch_end();
 
-        for(std::size_t i = 0; i < chunk.size(); ++i)
+        for(std::size_t i = 0; i < c.size(); ++i)
         {
-            const auto g = graph_ID(chunk.att_at(i).g_id());
-            subgraph[g].add(chunk.label_at(i), chunk.att_at(i));
+            const auto g = graph_ID(c.att_at(i).g_id());
+            subgraph[g].add(c.label_at(i), c.att_at(i));
         }
 
-        chunk.clear();
+        c.clear();
     }
 }
 
 
 template <>
-void Atlas<true>::flush_collated()
+void Atlas<true>::flush_collated(const source_id_t src_min, const source_id_t src_max)
 {
     std::size_t sz = 0; // Number of pending super k-mers in the worker-local buffers.
-    auto src_min = std::numeric_limits<source_id_t>::max();
-    auto src_max = std::numeric_limits<source_id_t>::min();
     std::for_each(chunk_w.cbegin(), chunk_w.cend(), [&](const auto& c)
     {
         const auto& c_w = c.unwrap();
         sz += c_w.size();
-        if(!c_w.empty())
-        {
-            src_min = std::min(src_min, c_w.front_att().source());
-            src_max = std::max(src_max, c_w.back_att().source());
-        }
     });
 
     if(CF_UNLIKELY(sz == 0))
         return;
 
-    chunk.resize_uninit(sz);
+    chunk->resize_uninit(sz);
     size_ += sz;
 
 
@@ -84,12 +80,12 @@ void Atlas<true>::flush_collated()
         std::for_each(chunk_w.begin(), chunk_w.end(), [&](auto& c)
         {
             auto& c_w = c.unwrap();
-            chunk.copy(off, c_w, 0, c_w.size());
+            chunk->copy(off, c_w, 0, c_w.size());
             off += c_w.size();
             c_w.clear();
         });
 
-        flush_chunk();
+        flush_chunk(*chunk);
         return;
     }
 
@@ -125,7 +121,7 @@ void Atlas<true>::flush_collated()
         source_id_t src = 0;
         for(std::size_t i = 0, j; i < c_w.size(); i = j)
         {
-            assert(c_w.att_at(i).source() >= src);  // Ensure super k-mers are source-sorted.
+            // assert(c_w.att_at(i).source() >= src);  // Ensure super k-mers are source-sorted.
             src = c_w.att_at(i).source();
 
             for(j = i + 1; j < c_w.size(); ++j)
@@ -134,7 +130,7 @@ void Atlas<true>::flush_collated()
 
             const auto stretch_sz = j - i;
             const auto src_rel = src - src_min;
-            chunk.copy(src_off[src_rel], c_w, i, stretch_sz);
+            chunk->copy(src_off[src_rel], c_w, i, stretch_sz);
 
             src_off[src_rel] += stretch_sz;
             src < src_max ? assert(src_off[src_rel] <= src_off[src_rel + 1]):
@@ -144,7 +140,7 @@ void Atlas<true>::flush_collated()
         c_w.clear();
     });
 
-    flush_chunk();
+    flush_chunk(*chunk);
 }
 
 
@@ -156,7 +152,7 @@ void Atlas<Colored_>::close()
         for(std::size_t w_id = 0; w_id < parlay::num_workers(); ++w_id)
             empty_w_local_chunk(w_id);
 
-        flush_chunk();
+        flush_chunk(*chunk);
     }
 
     parlay::parallel_for(0, graph_per_atlas(),
