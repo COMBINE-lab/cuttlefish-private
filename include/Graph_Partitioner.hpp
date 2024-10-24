@@ -91,7 +91,7 @@ private:
     const std::string subgraphs_path_pref;  // Path prefix for the subgraphs' super k-mer buckets.
 
     std::atomic_uint64_t bytes_consumed;    // Counts of input bytes consumed across all workers in one batch in the colored-case.
-    constexpr static uint64_t bytes_per_batch = 1024 * 1024 * 1024lu;    // 128MB per input batch, at least.
+    constexpr static uint64_t bytes_per_batch = 1024 * 1024 * 1024lu;   // 1GB per input batch, at least.
 
     const std::size_t reader_c; // Number of working doing input-reads.
 

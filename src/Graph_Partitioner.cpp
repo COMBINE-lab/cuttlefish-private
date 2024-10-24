@@ -310,8 +310,6 @@ bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_colored_chunks(source_id
     rabbit::int64 last_source = 0;  // Source ID of the last chunk processed.
     (void)last_source;
 
-    bool data_remain = true;
-    bool saw_last_source = false;
     // while there may still be things pushing into the queue 
     // or the queue still has things in it
     while(m_do_reading || !chunk_q.IsEmpty())
@@ -322,9 +320,6 @@ bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_colored_chunks(source_id
 
             bytes_consumed += process_chunk(chunk, source_id);
             last_source = source_id;
-            if (last_source == max_read_source_id) {
-                saw_last_source = true;
-            }
             if (last_source < min_source_id) { min_source_id = last_source; }
             if (last_source > max_source_id) { max_source_id = last_source; }
         }
