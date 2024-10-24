@@ -384,7 +384,7 @@ void Subgraph<k, Colored_>::collect_color_sets()
 {
 if constexpr(Colored_)
 {
-    fulgor::color_set_builder builder(25000);
+    fulgor::color_set_builder builder(G.max_source_id());
     fulgor::bit_vector_builder bvb;
 
     auto& color_rel = work_space.color_rel_arr();
@@ -409,13 +409,11 @@ if constexpr(Colored_)
             assert(color_rel[j].second >= color_rel[j - 1].second); // Ensure sortedness of source-IDs.
             src.push_back(color_rel[j].second);
         }
-        std::sort(src.begin(), src.end());
-
-        builder.process(src.data(), src.size(), bvb);
 
         const auto color_idx = color_bucket.size();
         if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), color_idx)))
         {
+            builder.process(src.data(), src.size(), bvb);
             auto& bit_vec_words = bvb.bits();
             //color_bucket.add(bit_vec_words.size());//compressed_output.size());//src.size());
             color_bucket.add(bit_vec_words.data(), bit_vec_words.size());
