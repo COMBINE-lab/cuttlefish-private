@@ -231,9 +231,10 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
                         chunk_count++;
 
                         if constexpr(!Colored_) {
-                            if (bytes_pushed >= (last_update + 500 * 1024 * 1024)) {
-                                last_update.store(bytes_pushed.load());
-                                //std::cerr << "\rPushed " << last_update.load() / (1024 * 1024) << "MB of parsed data onto chunk queue.";
+                            if (bytes_pushed >= (last_update + 512 * 1024 * 1024)) {
+                                const auto b = bytes_pushed.load();
+                                last_update.store(b);
+                                std::cerr << "\rPushed " << b / (1024 * 1024) << "MB of parsed data onto chunk queue.";
                             }
                         }
                         return true;
