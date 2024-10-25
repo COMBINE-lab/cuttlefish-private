@@ -92,6 +92,20 @@ std::size_t load_file(const std::string& file_path, char* const buf)
 }
 
 
+void load_file(const std::string& file_path, const std::size_t sz, char* const buf)
+{
+    std::ifstream is(file_path, std::ios::binary);
+    is.read(buf, sz);
+    is.close();
+
+    if(!is)
+    {
+        std::cerr << "Error reading " << sz << " bytes from file at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+}
+
+
 std::string remove_whitespaces(const char* s)
 {
     std::string str;

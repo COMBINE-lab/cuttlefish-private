@@ -91,11 +91,11 @@ public:
     // finishes.
     void serialize();
 
-    // Loads the bucket into the vector `v`.
-    void load(std::vector<T_>& v) const;
-
     // Loads the bucket into `b` and returns its size.
     std::size_t load(T_* b) const;
+
+    // Clears the bucket.
+    void clear();
 
     // Removes the bucket.
     void remove();
@@ -114,7 +114,7 @@ inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(const std::string& file_path, const st
     assert(file_path.empty() || max_buf_elems > 0);
 
     if(!file_path.empty())
-        file.open(file_path, std::ios::out | std::ios::binary);
+        file.open(file_path, std::ios::binary);
 
     if(!file)
     {
@@ -217,29 +217,25 @@ inline void Ext_Mem_Bucket<T_>::serialize()
 
 
 template <typename T_>
-inline void Ext_Mem_Bucket<T_>::load(std::vector<T_>& v) const
-{
-    const auto file_sz = file_size(file_path);
-    assert(file_sz % sizeof(T_) == 0);
-    assert(file_sz / sizeof(T_) + in_mem_size == size_);
-
-    v.resize(size_);
-    load_file(file_path, v.data());
-
-    assert(in_mem_size < max_buf_elems);
-    std::memcpy(reinterpret_cast<char*>(v.data()) + file_sz, reinterpret_cast<const char*>(buf), in_mem_size * sizeof(T_));
-}
-
-
-template <typename T_>
 inline std::size_t Ext_Mem_Bucket<T_>::load(T_* b) const
 {
-    const auto file_sz = load_file(file_path, reinterpret_cast<char*>(b));
+    const auto file_sz = (size_ - in_mem_size) * sizeof(T_);
+    assert(file_sz <= file_size(file_path));
+    load_file(file_path, file_sz, reinterpret_cast<char*>(b));
 
     assert(in_mem_size < max_buf_elems);
     std::memcpy(reinterpret_cast<char*>(b) + file_sz, reinterpret_cast<const char*>(buf), in_mem_size * sizeof(T_));
 
     return size_;
+}
+
+
+template <typename  T_>
+inline void Ext_Mem_Bucket<T_>::clear()
+{
+    size_ = 0;
+    in_mem_size = 0;
+    file.seekp(std::ios_base::beg);
 }
 
 

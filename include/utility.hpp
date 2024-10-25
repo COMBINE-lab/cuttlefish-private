@@ -47,6 +47,9 @@ std::size_t load_file(const char* file_path, char* buf);
 // Loads the binary file at path `file_path` and returns its size in bytes.
 std::size_t load_file(const std::string& file_path, char* buf);
 
+// Loads `sz` bytes from the binary file at path `file_path`.
+void load_file(const std::string& file_path, const std::size_t sz, char* buf);
+
 // Returns a string that is a copy of `s` but has all the whitespaces removed.
 std::string remove_whitespaces(const char* s);
 
