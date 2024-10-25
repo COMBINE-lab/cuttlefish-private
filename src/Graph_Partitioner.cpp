@@ -3,6 +3,7 @@
 #include "Subgraphs_Manager.hpp"
 #include "Minimizer_Iterator.hpp"
 #include "DNA_Utility.hpp"
+#include "Spin_Lock.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
 #include "RabbitFX/io/Reference.h"
@@ -10,6 +11,7 @@
 #include "RabbitFX/io/Globals.h"
 #include "parlay/parallel.h"
 
+#include <thread>
 #include <algorithm>
 #include <cassert>
 
@@ -43,69 +45,64 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
     double t_part = 0;
     double t_collate = 0;
 
-    parlay::par_do(
-        [&]()
-        {
-            read_chunks();
-        },
-        [&]()
-        {
-            assert(parlay::num_workers() >= (reader_c - 1));
-            const auto consumer_c = parlay::num_workers() - (reader_c - 1);
-            if constexpr(!Colored_)
-                parlay::parallel_for(0, consumer_c,
-                    [&](auto)
-                    {
-                        process_uncolored_chunks();
-                    }, 1);
-            else
+    std::thread reader([&](){ read_chunks(); });
+    const auto consumer_c = (parlay::num_workers() > (reader_c - 1) ? parlay::num_workers() - (reader_c - 1) : 1);
+
+    if constexpr(!Colored_)
+        parlay::parallel_for(0, consumer_c,
+            [&](auto)
             {
-                std::cerr << "\n";
+                process_uncolored_chunks();
+            }, 1);
+    else
+    {
+        std::cerr << "\n";
 
-                std::atomic_uint16_t finished_workers = 0;
-                uint64_t bytes_processed = 0;
-                while(!m_pushed_all_data) //finished_workers < parlay::num_workers() - 1)
-                {
-                    const auto t_0 = timer::now();
-                    bytes_consumed = 0;
+        uint64_t bytes_processed = 0;
+        while(!m_pushed_all_data)
+        {
+            const auto t_0 = timer::now();
+            bytes_consumed = 0;
 
-                    source_id_t min_source = std::numeric_limits<source_id_t>::max();
-                    source_id_t max_source = 0;
-                    std::mutex source_lock;
-                    auto last_cp_count = last_checkpoint.load();
-                    if (bytes_processed > last_checkpoint.load()) {
-                        last_checkpoint.compare_exchange_strong(last_cp_count, bytes_processed);
-                    }
-                    m_do_reading = true;
-                    parlay::parallel_for(0, consumer_c,
-                        [&](auto)
-                        {
-                            source_id_t smallest_src = std::numeric_limits<source_id_t>::max();
-                            source_id_t largest_src = 0;
-                            finished_workers += !process_colored_chunks(smallest_src, largest_src);
-                            source_lock.lock();
-                            min_source = std::min(smallest_src, min_source);
-                            max_source = std::max(largest_src, max_source);
-                            source_lock.unlock();
-
-                        }, 1);
-
-                    const auto t_1 = timer::now();
-                    t_part += timer::duration(t_1 - t_0);
-
-                    // Collate and flush all buckets.
-                    if(max_source > 0)
-                        subgraphs.collate_super_kmer_buffers(min_source, max_source);
-                    bytes_processed += bytes_consumed;
-                    const auto t_2 = timer::now();
-                    t_collate += timer::duration(t_2 - t_1);
-
-                    std::cerr << "\rProcessed " << (bytes_processed / (1024 * 1024)) << "MB of uncompressed input data. Source range [" << min_source << ", " << max_source << "], finished_workers = " << finished_workers << " / " << consumer_c;
-                }
-
-                std::cerr << "\n";
+            source_id_t min_source = std::numeric_limits<source_id_t>::max();
+            source_id_t max_source = 0;
+            Spin_Lock source_lock;
+            auto last_cp_count = last_checkpoint.load();
+            if (bytes_processed > last_checkpoint.load()) {
+                last_checkpoint.compare_exchange_strong(last_cp_count, bytes_processed);
             }
-        });
+
+            m_do_reading = true;
+            parlay::parallel_for(0, consumer_c,
+                [&](auto)
+                {
+                    source_id_t smallest_src = std::numeric_limits<source_id_t>::max();
+                    source_id_t largest_src = 0;
+                    process_colored_chunks(smallest_src, largest_src);
+                    source_lock.lock();
+                    min_source = std::min(smallest_src, min_source);
+                    max_source = std::max(largest_src, max_source);
+                    source_lock.unlock();
+
+                }, 1);
+
+            const auto t_1 = timer::now();
+            t_part += timer::duration(t_1 - t_0);
+
+            // Collate and flush all buckets.
+            if(max_source > 0)
+                subgraphs.collate_super_kmer_buffers(min_source, max_source);
+            bytes_processed += bytes_consumed;
+            const auto t_2 = timer::now();
+            t_collate += timer::duration(t_2 - t_1);
+
+            std::cerr << "\rProcessed " << (bytes_processed / (1024 * 1024)) << "MB of uncompressed input data. Source range [" << min_source << ", " << max_source << "]";
+        }
+
+        std::cerr << "\n";
+    }
+
+    reader.join();
 
 
     Worker_Stats stat;
@@ -139,7 +136,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::read_chunks()
     size_t n_files = seqs.size();
 
     // mutex to control obtaining the next file to read from the queue
-    std::mutex fp_mutex;
+    Spin_Lock fp_mutex;
     std::vector<std::thread> reader_threads;
 
     // TODO: make the number of readers dynamic and based on the workload between 
