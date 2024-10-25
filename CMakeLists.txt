@@ -56,7 +56,7 @@ endif()
 # Bundle the warning flags that we want to pass on to the compiler.
 # Reference: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
 set(WARNING_FLAGS -Wall -Wextra -Wpedantic)
-set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas -Wno-pragmas)
+set(SUPPRESS_WARNING_FLAGS -Wno-unknown-pragmas -Wno-pragmas -Wno-unused-function)
 
 # Warning flags to be suppressed with clang.
 set(CLANG_SUPPRESS_WARNING_FLAGS    -Wno-unknown-attributes

@@ -43,7 +43,7 @@ namespace fulgor {
             bvb_ints.clear();
 
             /* encode list_size */
-            constexpr uint64_t u64_limit = std::numeric_limits<uint64_t>::max() - 1;
+            // constexpr uint64_t u64_limit = std::numeric_limits<uint64_t>::max() - 1;
             util::write_delta(bvb_ints, list_size);
 
             if (list_size < m_sparse_set_threshold_size) {
@@ -136,7 +136,7 @@ namespace fulgor {
         uint32_t m_num_colors;
         uint32_t m_sparse_set_threshold_size;
         uint32_t m_very_dense_set_threshold_size;
-        uint64_t m_num_lists;
+        // uint64_t m_num_lists;
         uint64_t m_num_total_integers;
 
         //bit_vector_builder m_bvb;
@@ -157,10 +157,10 @@ namespace fulgor {
         forward_iterator() {}
 
         forward_iterator(bit_vector_iterator it, uint64_t num_colors)
-            : m_it(it)
-            , m_bitmap_begin(0)
-            , m_colors_begin(0)
-            , m_num_colors(num_colors) {
+            : m_bitmap_begin(0)
+            // , m_colors_begin(0)
+            , m_num_colors(num_colors)
+            , m_it(it) {
             m_sparse_set_threshold_size = 0.25 * m_num_colors;
             m_very_dense_set_threshold_size = 0.75 * m_num_colors;
             rewind();
@@ -281,7 +281,7 @@ namespace fulgor {
     private:
         //hybrid const* m_ptr;
         uint64_t m_bitmap_begin;
-        uint64_t m_colors_begin;
+        // uint64_t m_colors_begin;
         uint32_t m_num_colors;
         int m_type;
         uint32_t m_sparse_set_threshold_size;
