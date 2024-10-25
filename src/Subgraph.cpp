@@ -297,7 +297,9 @@ if constexpr(Colored_)
     // color_rel.clear();
     auto& kmer_arr = work_space.color_rel_vertex_arr();
     auto& source_arr = work_space.color_rel_source_arr();
+    auto& count_map = work_space.count_map();
     kmer_arr.clear(), source_arr.clear();
+    count_map.clear();
 
     typename Super_Kmer_Bucket<Colored_>::Iterator super_kmer_it(B);    // Iterator over the weak super k-mers inducing this graph.
     typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
@@ -328,6 +330,7 @@ if constexpr(Colored_)
                     // color_rel.emplace_back(v.canonical(), source);
                     kmer_arr.push_back(v.canonical()),
                     source_arr.push_back(source);
+                    count_map[v.canonical()]++;
 
                     st.set_latest_color(source);
                 }
@@ -354,10 +357,6 @@ void Subgraph<k, Colored_>::semi_sort()
     const auto& source_arr = work_space.color_rel_source_arr();
     auto& count_map = work_space.count_map();
     auto& color_rel = work_space.color_rel_arr();
-
-    count_map.clear();
-    for(const auto& key : kmer_arr)
-        count_map[key]++;
 
     uint32_t pref_sum = 0;
     for(auto& kmer_count : count_map)
