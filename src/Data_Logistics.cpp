@@ -1,6 +1,7 @@
 
 #include "Data_Logistics.hpp"
 #include "Build_Params.hpp"
+#include "File_Extensions.hpp"
 #include "utility.hpp"
 
 
@@ -70,6 +71,12 @@ const std::string Data_Logistics::lmtig_buckets_path() const
 const std::string Data_Logistics::compressed_diagonal_path() const
 {
     return params.output_prefix() + cuttlefish::file_ext::compressed_diagonal_ext;
+}
+
+
+const std::string Data_Logistics::color_rel_bucket_path() const
+{
+    return params.working_dir_path() + filename(params.output_prefix()) + cuttlefish::file_ext::color_rel_bucket_ext;
 }
 
 

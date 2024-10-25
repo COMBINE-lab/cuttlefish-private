@@ -33,6 +33,7 @@ namespace cuttlefish
         constexpr char vertex_p_inf_bucket_ext[] = ".P_v";
         constexpr char edge_p_inf_bucket_ext[] = ".P_e";
         constexpr char unitig_coord_bucket_ext[] = ".U";
+        constexpr char color_rel_bucket_ext[] = ".C_rel";
 
 
         // For k-mer index.

@@ -41,6 +41,7 @@ class Subgraphs_Manager
 private:
 
     const std::string path_pref;    // Path-prefix to the super k-mer buckets.
+    const std::string color_rel_path_pref;  // Path-prefix to color-relationship buckets.
     const uint16_t l;   // `l`-minimizer size to partition the graph.
 
     typedef Atlas<Colored_> atlas_t;

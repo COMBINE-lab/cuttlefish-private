@@ -14,6 +14,7 @@
 #include "Unitig_Scratch.hpp"
 #include "Maximal_Unitig_Scratch.hpp"
 #include "Discontinuity_Graph.hpp"
+#include "Ext_Mem_Bucket.hpp"
 #include "Color_Table.hpp"
 #include "Color_Repo.hpp"
 #include "dBG_Utilities.hpp"
@@ -23,6 +24,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <string>
 #include <vector>
 #include <tuple>
 #include <utility>
@@ -54,7 +56,8 @@ public:
     typedef std::pair<LMTig_Coord, uint64_t> in_process_t;  // Vertex's lm-tig coordinate and color-hash.
     typedef std::vector<in_process_t> in_process_arr_t;
 
-    // typedef std::vector<std::pair<Kmer<k>, source_id_t>> color_rel_arr_t;
+    typedef Ext_Mem_Bucket<std::pair<Kmer<k>, source_id_t>> color_rel_bucket_t;
+    typedef std::vector<color_rel_bucket_t> color_rel_bucket_arr_t;
     typedef std::vector<Kmer<k>> kmer_arr_t;
     typedef std::vector<source_id_t> source_arr_t;
     typedef Buffer<std::pair<Kmer<k>, source_id_t>> color_rel_arr_t;
@@ -62,18 +65,23 @@ public:
 
 
     // Constructs working space for workers, supporting capacity of at least
-    // `max_sz` vertices.
-    Subgraphs_Scratch_Space(std::size_t max_sz);
+    // `max_sz` vertices. For colored graphs, temporary color-relationship
+    // buckets are stored at path-prefix `color_rel_bucket_pref`.
+    Subgraphs_Scratch_Space(std::size_t max_sz, const std::string& color_rel_bucket_pref);
 
     // Returns the appropriate map for a worker.
     map_t& map();
 
-    // Returns the hashtable for color-sets.
-    Color_Table& color_map();
-
     // Returns the appropriate container of in-process vertices, their lm-tig
     // coordinates and color-hashes, for a worker.
     in_process_arr_t& in_process_arr();
+
+    // Returns the appropriate array of buckets for (vertex, source-ID)
+    // relationships for a worker.
+    color_rel_bucket_arr_t& color_rel_bucket_arr();
+
+    // Returns the hashtable for color-sets.
+    Color_Table& color_map();
 
     // Returns the appropriate container for keys in the (vertex, source-ID)
     // relationships for a worker.
@@ -104,6 +112,12 @@ private:
     // Collection of containers for in-process vertices: their lm-tig
     // coordinates and color-hashes, for different workers.
     std::vector<Padded<in_process_arr_t>> in_process_arr_;
+
+    static constexpr std::size_t color_rel_bucket_c = 32;   // Count of color-relationship buckets per worker.
+
+    // Collection of array of buckets for (vertex, source-ID) relationships, for
+    // different workers.
+    std::vector<Padded<color_rel_bucket_arr_t>> color_rel_bucket_arr_;
 
     // Collection of containers for (vertex, source-ID) relationships, for
     // different workers.

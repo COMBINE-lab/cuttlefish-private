@@ -54,6 +54,9 @@ public:
     // contraction by Cuttlefish.
     const std::string compressed_diagonal_path() const;
 
+    // Returns path prefix to the color-relationship buckets.
+    const std::string color_rel_bucket_path() const;
+
     // Returns path prefix to the buckets storing path-information of vertices.
     const std::string vertex_path_info_buckets_path() const;
 
