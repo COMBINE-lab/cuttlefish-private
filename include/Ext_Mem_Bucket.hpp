@@ -265,7 +265,7 @@ class Ext_Mem_Bucket_Concurrent
 {
 private:
 
-    static constexpr std::size_t in_memory_bytes = 4 * 1024;    // 4KB.
+    static constexpr std::size_t in_memory_bytes = 32 * 1024;   // 32KB.
 
     const std::string file_path;    // Path to the file storing the bucket.
     const std::size_t max_buf_bytes;    // Maximum size of the in-memory worker-local write-buffers in bytes.

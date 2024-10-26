@@ -129,7 +129,7 @@ void Unitig_Collator<k, Colored_>::map()
         if constexpr(Colored_)
         {
             v_c_map_sz = load_vertex_color_mapping(b, v_c_map);
-            std::sort(v_c_map.data(), v_c_map.data() + v_c_map_sz);
+            std::sort(v_c_map.data(), v_c_map.data() + v_c_map_sz); // TODO: replace.
         }
 
         const auto bucket_path = lmtig_buckets_path + "_" + std::to_string(b);
