@@ -224,7 +224,8 @@ inline std::size_t Ext_Mem_Bucket<T_>::load(T_* b) const
     load_file(file_path, file_sz, reinterpret_cast<char*>(b));
 
     assert(in_mem_size < max_buf_elems);
-    std::memcpy(reinterpret_cast<char*>(b) + file_sz, reinterpret_cast<const char*>(buf), in_mem_size * sizeof(T_));
+    if(in_mem_size > 0)
+        std::memcpy(reinterpret_cast<char*>(b) + file_sz, reinterpret_cast<const char*>(buf), in_mem_size * sizeof(T_));
 
     return size_;
 }
