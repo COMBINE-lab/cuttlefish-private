@@ -73,9 +73,17 @@ const std::string dirname(const std::string& file_path);
 // Moves the file present at path `from_path` to the path `to_path`.
 void move_file(const std::string& from_path, const std::string& to_path);
 
+// Returns the value corresponding to `metric` from the pseudo-filesystem
+// `/proc`. Returns `0` in case of errors encountered.
+std::size_t process_metric(const std::string& metric);
+
 // Returns the maximum memory ("high-water-mark") used by the running
 // process in bytes. Returns `0` in case of errors encountered.
 std::size_t process_peak_memory();
+
+// Returns the current memory ("resident-set-size") used by the running process
+// in bytes. Returns `0` in case of errors encountered.
+std::size_t process_cur_memory();
 
 // Force-frees the memory allocated to the container `container`.
 template <typename T_container_>
