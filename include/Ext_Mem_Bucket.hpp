@@ -31,7 +31,7 @@ class Ext_Mem_Bucket
 {
 public:
 
-    static constexpr std::size_t in_memory_bytes = 4lu * 1024; // 4KB.
+    static constexpr std::size_t in_memory_bytes = 16lu * 1024; // 16KB.
 
     const std::string file_path;    // Path to the file storing the bucket.
     const std::size_t max_buf_bytes;    // Maximum size of the in-memory write-buffer in bytes.

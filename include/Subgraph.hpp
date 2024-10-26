@@ -112,7 +112,7 @@ private:
     std::vector<Padded<in_process_arr_t>> in_process_arr_;
 
     static constexpr std::size_t color_rel_bucket_c_ = 32;  // Count of color-relationship buckets per worker.
-    static constexpr std::size_t color_rel_buf_sz = 16 * 1024;  // 16 KB.
+    static constexpr std::size_t color_rel_buf_sz = 1024 * 1024;    // 1 MB.
 
     // Collection of array of buckets for (vertex, source-ID) relationships, for
     // different workers.
