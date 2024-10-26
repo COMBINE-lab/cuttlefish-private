@@ -98,8 +98,6 @@ public:
 template <bool Colored_>
 class Super_Kmer_Bucket<Colored_>::Iterator
 {
-    friend class Super_Kmer_Bucket<Colored_>;
-
 private:
 
     const Super_Kmer_Bucket& B; // Bucket to iterate over.

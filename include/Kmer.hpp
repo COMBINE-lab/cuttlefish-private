@@ -9,6 +9,7 @@
 #include "utility.hpp"
 #include "kmc_api/kmc_file.h"
 #include "wyhash/wyhash.h"
+// #include "xxHash/xxhash.h"
 
 #include <cstdint>
 #include <cstddef>
