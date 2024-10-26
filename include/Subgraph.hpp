@@ -14,6 +14,7 @@
 #include "Unitig_Scratch.hpp"
 #include "Maximal_Unitig_Scratch.hpp"
 #include "Discontinuity_Graph.hpp"
+#include "Ext_Mem_Bucket.hpp"
 #include "Color_Table.hpp"
 #include "Color_Repo.hpp"
 #include "dBG_Utilities.hpp"
@@ -23,6 +24,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <string>
 #include <vector>
 #include <tuple>
 #include <utility>
@@ -54,38 +56,42 @@ public:
     typedef std::pair<LMTig_Coord, uint64_t> in_process_t;  // Vertex's lm-tig coordinate and color-hash.
     typedef std::vector<in_process_t> in_process_arr_t;
 
-    // typedef std::vector<std::pair<Kmer<k>, source_id_t>> color_rel_arr_t;
-    typedef std::vector<Kmer<k>> kmer_arr_t;
-    typedef std::vector<source_id_t> source_arr_t;
-    typedef Buffer<std::pair<Kmer<k>, source_id_t>> color_rel_arr_t;
+    typedef std::pair<Kmer<k>, source_id_t> color_rel_t;
+    typedef Ext_Mem_Bucket<color_rel_t> color_rel_bucket_t;
+    typedef std::vector<color_rel_bucket_t> color_rel_bucket_arr_t;
+    typedef Buffer<color_rel_t> color_rel_arr_t;
     typedef ankerl::unordered_dense::map<Kmer<k>, uint32_t, Kmer_Hasher<k>> count_map_t;
 
 
     // Constructs working space for workers, supporting capacity of at least
-    // `max_sz` vertices.
-    Subgraphs_Scratch_Space(std::size_t max_sz);
+    // `max_sz` vertices. For colored graphs, temporary color-relationship
+    // buckets are stored at path-prefix `color_rel_bucket_pref`.
+    Subgraphs_Scratch_Space(std::size_t max_sz, const std::string& color_rel_bucket_pref);
 
     // Returns the appropriate map for a worker.
     map_t& map();
-
-    // Returns the hashtable for color-sets.
-    Color_Table& color_map();
 
     // Returns the appropriate container of in-process vertices, their lm-tig
     // coordinates and color-hashes, for a worker.
     in_process_arr_t& in_process_arr();
 
-    // Returns the appropriate container for keys in the (vertex, source-ID)
-    // relationships for a worker.
-    kmer_arr_t& color_rel_vertex_arr();
+    // Returns the count of color-relationship buckets per worker.
+    static constexpr auto color_rel_bucket_c() { return color_rel_bucket_c_; }
 
-    // Returns the appropriate container for values in the (vertex, source-ID)
+    // Returns the appropriate array of buckets for (vertex, source-ID)
     // relationships for a worker.
-    source_arr_t& color_rel_source_arr();
+    color_rel_bucket_arr_t& color_rel_bucket_arr();
+
+    // Returns the hashtable for color-sets.
+    Color_Table& color_map();
 
     // Returns the appropriate container for (vertex, source-ID) relationships
     // for a worker.
     color_rel_arr_t& color_rel_arr();
+
+    // Returns the appropriate container for collated (vertex, source-ID)
+    // relationships for a worker.
+    color_rel_arr_t& color_rel_collate_arr();
 
     // Returns the appropriate count map of (vertex, source-ID) relationships
     // for a worker.
@@ -105,17 +111,20 @@ private:
     // coordinates and color-hashes, for different workers.
     std::vector<Padded<in_process_arr_t>> in_process_arr_;
 
+    static constexpr std::size_t color_rel_bucket_c_ = 32;  // Count of color-relationship buckets per worker.
+    static constexpr std::size_t color_rel_buf_sz = 1024 * 1024;    // 1 MB.
+
+    // Collection of array of buckets for (vertex, source-ID) relationships, for
+    // different workers.
+    std::vector<Padded<color_rel_bucket_arr_t>> color_rel_bucket_arr_;
+
     // Collection of containers for (vertex, source-ID) relationships, for
     // different workers.
     std::vector<Padded<color_rel_arr_t>> color_rel_arr_;
 
-    // Collection of containers for keys in the (vertex, source-ID)
-    // relationships, for different workers.
-    std::vector<Padded<kmer_arr_t>> kmer_arr_;
-
-    // Collection of containers for values in the (vertex, source-ID)
-    // relationships, for different workers.
-    std::vector<Padded<source_arr_t>> source_arr_;
+    // Collection of containers for collated (vertex, source-ID) relationships,
+    // for different workers.
+    std::vector<Padded<color_rel_arr_t>> color_rel_collate_arr_;
 
     // Collection of count map of (vertex, source-ID) relationships, for
     // different workers.
@@ -134,9 +143,8 @@ class Subgraph
 {
     typedef Walk_Termination termination_t;
     typedef typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t in_process_arr_t;
+    typedef typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_t color_rel_t;
     typedef typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t color_rel_arr_t;
-    typedef typename Subgraphs_Scratch_Space<k, Colored_>::kmer_arr_t kmer_arr_t;
-    typedef typename Subgraphs_Scratch_Space<k, Colored_>::source_arr_t source_arr_t;
 
 private:
 
@@ -198,13 +206,13 @@ private:
     termination_t walk_unitig(const Kmer<k>& v_hat, side_t s_v_hat, Unitig_Scratch<k>& unitig, Directed_Vertex<k>& exit_v);
 
     // Collects color-relationships of vertices with potentially new colors.
-    void collect_color_relations();
+    void collect_color_rels();
 
-    // Semi-sorts the color-relationship array of vertices with potentially new
-    // colors.
-    void semi_sort();
+    // Semi-sorts the color-relationship array `x` of size `sz` to the array
+    // `y`.
+    void semi_sort(const color_rel_t* x, color_rel_t* y, std::size_t sz);
 
-    // Collects the color-sets of vertices from the sorted color-relationship
+    // Collates the color-sets of vertices from the collected color-relationship
     // array.
     void collect_color_sets();
 

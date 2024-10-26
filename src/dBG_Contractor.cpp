@@ -1,5 +1,6 @@
 
 #include "dBG_Contractor.hpp"
+#include "Discontinuity_Graph.hpp"
 #include "Graph_Partitioner.hpp"
 #include "State_Config.hpp"
 #include "Subgraphs_Manager.hpp"
@@ -51,7 +52,9 @@ void dBG_Contractor<k>::construct()
     Discontinuity_Graph<k, Colored_> G(params, logistics);  // The discontinuity graph.
 
     const auto t_0 = timer::now();
+    decltype(timer::now()) t_part;
 
+{
     Subgraphs_Manager<k, Colored_> subgraphs(logistics, params.min_len(), G, op_buf);
 
     if(params.is_read_graph())
@@ -65,7 +68,7 @@ void dBG_Contractor<k>::construct()
 
     subgraphs.finalize();
 
-    const auto t_part = timer::now();
+    t_part = timer::now();
     std::cerr << "Sequence splitting into subgraphs completed. Time taken: " << timer::duration(t_part - t_0) << " seconds.\n";
 
     {
@@ -74,6 +77,7 @@ void dBG_Contractor<k>::construct()
         std::cerr << "Trivial maximal unitig count: " << subgraphs.trivial_mtig_count() << ".\n";
         std::cerr << "Trivial ICC count: " << subgraphs.icc_count() << ".\n";
     }
+}
 
     const auto t_subg = timer::now();
     std::cerr << "Subgraphs construction and contraction completed. Time taken: " << timer::duration(t_subg - t_part) << " seconds.\n";

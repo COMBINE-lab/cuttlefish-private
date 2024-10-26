@@ -45,6 +45,8 @@ private:
     std::unique_ptr<chunk_t> flush_buf; // Super k-mer chunk acting as buffer between the main chunk and the subgraphs.
     std::vector<Padded<chunk_t>> chunk_w;   // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
 
+    const std::size_t rec_size; // Size of a super k-mer record in bytes.
+
     Spin_Lock chunk_lock;   // Lock to the chunk.
     Spin_Lock flush_lock;   // Lock to the flush buffer.
 
@@ -97,7 +99,7 @@ public:
 
     // Returns the size of the atlas in bytes. It's not necessarily correct
     // before closing the bucket.
-    auto bytes() const { return size() * chunk->record_size(); }
+    auto bytes() const { return size() * rec_size; }
 
     // Adds a super k-mer to the atlas with label `seq` and length `len`. The
     // markers `l_disc` and `r_disc` denote whether the left and the right ends

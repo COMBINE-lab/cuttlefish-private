@@ -2,9 +2,11 @@
 #include "Subgraph.hpp"
 #include "Super_Kmer_Bucket.hpp"
 #include "globals.hpp"
+#include "utility.hpp"
 #include "parlay/parallel.h"
 #include "color_sets/hybrid.hpp"
 
+#include <algorithm>
 #include <cassert>
 
 
@@ -270,18 +272,13 @@ void Subgraph<k, Colored_>::extract_new_colors()
 {
     const auto t_0 = timer::now();
 
-    collect_color_relations();
+    collect_color_rels();
     const auto t_1 = timer::now();
     t_collect_rels += timer::duration(t_1 - t_0);
 
-    semi_sort();
-    const auto t_2 = timer::now();
-    t_sort += timer::duration(t_2 - t_1);
-
     collect_color_sets();
-    const auto t_3 = timer::now();
-    t_collect_sets += timer::duration(t_3 - t_2);
 
+    const auto t_3 = timer::now();
     attach_colors_to_vertices();
     const auto t_4 = timer::now();
     t_attach += timer::duration(t_4 - t_3);
@@ -289,17 +286,13 @@ void Subgraph<k, Colored_>::extract_new_colors()
 
 
 template <uint16_t k, bool Colored_>
-void Subgraph<k, Colored_>::collect_color_relations()
+void Subgraph<k, Colored_>::collect_color_rels()
 {
 if constexpr(Colored_)
 {
-    // auto& color_rel = work_space.color_rel_arr();
-    // color_rel.clear();
-    auto& kmer_arr = work_space.color_rel_vertex_arr();
-    auto& source_arr = work_space.color_rel_source_arr();
-    auto& count_map = work_space.count_map();
-    kmer_arr.clear(), source_arr.clear();
-    count_map.clear();
+    constexpr auto color_rel_bucket_c = Subgraphs_Scratch_Space<k, Colored_>::color_rel_bucket_c();
+    auto& color_rel_bucket_arr = work_space.color_rel_bucket_arr();
+    std::for_each(color_rel_bucket_arr.begin(), color_rel_bucket_arr.end(), [](auto& b){ b.clear(); });
 
     typename Super_Kmer_Bucket<Colored_>::Iterator super_kmer_it(B);    // Iterator over the weak super k-mers inducing this graph.
     typedef typename decltype(super_kmer_it)::label_unit_t label_unit_t;
@@ -327,10 +320,9 @@ if constexpr(Colored_)
             if(st.has_new_color())
                 if(!st.is_colored() || st.latest_color() != source)
                 {
-                    // color_rel.emplace_back(v.canonical(), source);
-                    kmer_arr.push_back(v.canonical()),
-                    source_arr.push_back(source);
-                    count_map[v.canonical()]++;
+                    static_assert(is_pow_2(color_rel_bucket_c));
+                    color_rel_bucket_arr[v.canonical().to_u64() & (color_rel_bucket_c - 1)].emplace(v.canonical(), source);
+                    color_rel_c++;
 
                     st.set_latest_color(source);
                 }
@@ -343,20 +335,19 @@ if constexpr(Colored_)
             kmer_idx++;
         }
     }
-
-    // color_rel_c += color_rel.size();
-    color_rel_c += kmer_arr.size();
 }
 }
 
 
 template <uint16_t k, bool Colored_>
-void Subgraph<k, Colored_>::semi_sort()
+void Subgraph<k, Colored_>::semi_sort(const color_rel_t* const x, color_rel_t* const y, const std::size_t sz)
 {
-    const auto& kmer_arr = work_space.color_rel_vertex_arr();
-    const auto& source_arr = work_space.color_rel_source_arr();
     auto& count_map = work_space.count_map();
-    auto& color_rel = work_space.color_rel_arr();
+    count_map.clear();
+
+    // TODO: skip `x`; add and use ext-mem-bucket iterator.
+    for(std::size_t i = 0; i < sz; ++i)
+        count_map[x[i].first]++;
 
     uint32_t pref_sum = 0;
     for(auto& kmer_count : count_map)
@@ -367,12 +358,11 @@ void Subgraph<k, Colored_>::semi_sort()
     }
 
 
-    color_rel.reserve_uninit(kmer_arr.size());
-    for(std::size_t i = 0; i < kmer_arr.size(); ++i)
+    for(std::size_t i = 0; i < sz; ++i)
     {
-        auto& off = count_map[kmer_arr[i]];
-        assert(off < kmer_arr.size());
-        color_rel[off] = {kmer_arr[i], source_arr[i]};
+        auto& off = count_map[x[i].first];
+        assert(off < sz);
+        y[off] = x[i];
         off++;
     }
 }
@@ -386,71 +376,54 @@ if constexpr(Colored_)
     fulgor::color_set_builder builder(G.max_source_id() + 1);
     fulgor::bit_vector_builder bvb;
 
+    auto& color_rel_bucket_arr = work_space.color_rel_bucket_arr();
     auto& color_rel = work_space.color_rel_arr();
+    auto& color_rel_collated = work_space.color_rel_collate_arr();
     auto& C = work_space.color_map();
     auto& color_bucket = work_space.color_repo().bucket();
     std::vector<source_id_t> src;   // Sources of the current vertex.
-    const auto color_rel_c = work_space.color_rel_vertex_arr().size();
 
-    for(std::size_t i = 0, j; i < color_rel_c; i = j)
+    for(std::size_t b = 0; b < color_rel_bucket_arr.size(); ++b)
     {
-        // const auto& v = kmer_arr[i];
-        const auto& v = color_rel[i].first;
-        src.clear();
-        // src.push_back(source_arr[i]);
-        src.push_back(color_rel[i].second);
+        const auto t_0 = timer::now();
+        auto& color_rel_bucket = color_rel_bucket_arr[b];
+        const auto color_rel_c = color_rel_bucket.size();
+        color_rel.reserve_uninit(color_rel_c);
+        color_rel_bucket.load(color_rel.data());
 
-        for(j = i + 1; j < color_rel_c; ++j)
+        color_rel_collated.reserve_uninit(color_rel_c);
+        semi_sort(color_rel.data(), color_rel_collated.data(), color_rel_c);
+
+        const auto t_1 = timer::now();
+        t_sort += timer::duration(t_1 - t_0);
+
+        for(std::size_t i = 0, j; i < color_rel_c; i = j)
         {
-            if(color_rel[j].first != v)
-                break;
+            const auto& v = color_rel_collated[i].first;
+            src.clear();
+            src.push_back(color_rel_collated[i].second);
 
-            assert(color_rel[j].second >= color_rel[j - 1].second); // Ensure sortedness of source-IDs.
-            src.push_back(color_rel[j].second);
+            for(j = i + 1; j < color_rel_c; ++j)
+            {
+                if(color_rel_collated[j].first != v)
+                    break;
+
+                assert(color_rel_collated[j].second >= color_rel_collated[j - 1].second);   // Ensure sortedness of source-IDs.
+                src.push_back(color_rel_collated[j].second);
+            }
+
+            const auto color_idx = color_bucket.size();
+            if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), color_idx)))
+            {
+                bvb.clear();
+                builder.process(src.data(), src.size(), bvb);
+                auto& bit_vec_words = bvb.bits();
+                color_bucket.add(bit_vec_words.data(), bit_vec_words.size());
+            }
         }
 
-        const auto color_idx = color_bucket.size();
-        if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), color_idx)))
-        {
-            bvb.clear();
-            builder.process(src.data(), src.size(), bvb);
-            auto& bit_vec_words = bvb.bits();
-            //color_bucket.add(bit_vec_words.size());//compressed_output.size());//src.size());
-            color_bucket.add(bit_vec_words.data(), bit_vec_words.size());
-            // validate the color encoding
-            /* 
-            auto bvit = fulgor::bit_vector_iterator(bit_vec_words.data(), bit_vec_words.size());
-            fulgor::forward_iterator fit(bvit, G.max_source_id() + 1);
-            std::vector<source_id_t> check;
-            check.reserve(src.size());
-            if (fit.size() != src.size()) {
-                std::cerr << "fit.num_colors = " << fit.num_colors() << ", but src.size = " << src.size() << "\n";
-                std::exit(1);
-            }
-            for (size_t l = 0; l < fit.size(); ++fit, ++l) {
-                check.push_back(fit.value());
-            }
-            if (check != src) {
-                std::stringstream ss;
-                ss << "pre-encoded colors != post-decoded colors\n";
-                ss << "fit.num_colors = " << fit.size() << ", but src.size = " << src.size() << "\n";
-                ss << "pre-encoded = [";
-                for (auto it = src.begin(); it != src.end(); ++it) {
-                    ss << *it;
-                    if (it + 1 != src.end()) { ss << ", "; }
-                }
-                ss << "]\n";
-                ss << "post-encoded = [";
-                for (auto it = check.begin(); it != check.end(); ++it) {
-                    ss << *it;
-                    if (it + 1 != check.end()) { ss << ", "; }
-                }
-                ss << "]\n";
-                std::cerr << ss.str();
-                std::exit(1);
-            }
-            */
-        }
+        const auto t_2 = timer::now();
+        t_collect_sets += timer::duration(t_2 - t_1);
     }
 }
 }
@@ -475,24 +448,44 @@ void Subgraph<k, Colored_>::attach_colors_to_vertices()
 
 
 template <uint16_t k, bool Colored_>
-Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t max_sz):
+Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t max_sz, const std::string& color_rel_bucket_pref):
       in_process_arr_(parlay::num_workers())
-    , color_rel_arr_(parlay::num_workers())
-    , kmer_arr_(parlay::num_workers())
-    , source_arr_(parlay::num_workers())
-    , count_map_(parlay::num_workers())
 {
     map_.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
         HT_Router<k, Colored_>::add_HT(map_, max_sz);
+
+    if constexpr(Colored_)
+    {
+        color_rel_bucket_arr_.resize(parlay::num_workers());
+        color_rel_arr_.resize(parlay::num_workers());
+        color_rel_collate_arr_.resize(parlay::num_workers());
+        count_map_.resize(parlay::num_workers());
+
+        static_assert(is_pow_2(color_rel_bucket_c_));
+        for(std::size_t w = 0; w < parlay::num_workers(); ++w)
+            for(std::size_t b = 0; b < color_rel_bucket_c_; ++b)
+                color_rel_bucket_arr_[w].unwrap().
+                    emplace_back(color_rel_bucket_t(color_rel_bucket_pref + ".w" + std::to_string(w) + "_b" + std::to_string(b),
+                                    color_rel_buf_sz / sizeof(color_rel_t)));
+    }
 }
 
 
 template <uint16_t k, bool Colored_>
-typename Subgraphs_Scratch_Space<k, Colored_>::map_t& Subgraphs_Scratch_Space<k, Colored_>::map()
+auto Subgraphs_Scratch_Space<k, Colored_>::map() -> map_t&
 {
     assert(map_.size() == parlay::num_workers());
     return map_[parlay::worker_id()].unwrap();
+}
+
+
+template <uint16_t k, bool Colored_>
+auto Subgraphs_Scratch_Space<k, Colored_>::color_rel_bucket_arr() -> color_rel_bucket_arr_t&
+{
+    // assert(Colored_);
+    assert(color_rel_bucket_arr_.size() == parlay::num_workers());
+    return color_rel_bucket_arr_[parlay::worker_id()].unwrap();
 }
 
 
@@ -505,7 +498,7 @@ Color_Table& Subgraphs_Scratch_Space<k, Colored_>::color_map()
 
 
 template <uint16_t k, bool Colored_>
-typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t& Subgraphs_Scratch_Space<k, Colored_>::in_process_arr()
+auto Subgraphs_Scratch_Space<k, Colored_>::in_process_arr() -> in_process_arr_t&
 {
     // assert(Colored_);
     assert(in_process_arr_.size() == parlay::num_workers());
@@ -514,7 +507,7 @@ typename Subgraphs_Scratch_Space<k, Colored_>::in_process_arr_t& Subgraphs_Scrat
 
 
 template <uint16_t k, bool Colored_>
-typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t& Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr()
+auto Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr() -> color_rel_arr_t&
 {
     // assert(Colored_);
     assert(color_rel_arr_.size() == parlay::num_workers());
@@ -523,20 +516,11 @@ typename Subgraphs_Scratch_Space<k, Colored_>::color_rel_arr_t& Subgraphs_Scratc
 
 
 template <uint16_t k, bool Colored_>
-typename Subgraphs_Scratch_Space<k, Colored_>::kmer_arr_t& Subgraphs_Scratch_Space<k, Colored_>::color_rel_vertex_arr()
+auto Subgraphs_Scratch_Space<k, Colored_>::color_rel_collate_arr() -> color_rel_arr_t&
 {
     // assert(Colored_);
-    assert(kmer_arr_.size() == parlay::num_workers());
-    return kmer_arr_[parlay::worker_id()].unwrap();
-}
-
-
-template <uint16_t k, bool Colored_>
-typename Subgraphs_Scratch_Space<k, Colored_>::source_arr_t& Subgraphs_Scratch_Space<k, Colored_>::color_rel_source_arr()
-{
-    // assert(Colored_);
-    assert(source_arr_.size() == parlay::num_workers());
-    return source_arr_[parlay::worker_id()].unwrap();
+    assert(color_rel_collate_arr_.size() == parlay::num_workers());
+    return color_rel_collate_arr_[parlay::worker_id()].unwrap();
 }
 
 

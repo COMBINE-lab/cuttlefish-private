@@ -1,6 +1,7 @@
 
 #include "utility.hpp"
 
+#include <cstddef>
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
@@ -92,6 +93,20 @@ std::size_t load_file(const std::string& file_path, char* const buf)
 }
 
 
+void load_file(const std::string& file_path, const std::size_t sz, char* const buf)
+{
+    std::ifstream is(file_path, std::ios::binary);
+    is.read(buf, sz);
+    is.close();
+
+    if(!is)
+    {
+        std::cerr << "Error reading " << sz << " bytes from file at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+}
+
+
 std::string remove_whitespaces(const char* s)
 {
     std::string str;
@@ -156,35 +171,46 @@ void move_file(const std::string& from_path, const std::string& to_path)
 }
 
 
-std::size_t process_peak_memory()
+std::size_t process_metric(const std::string& metric)
 {
-    constexpr const char* process_file = "/proc/self/status";
-    constexpr const char* peak_mem_field = "VmHWM:";
-    const std::size_t field_len = std::strlen(peak_mem_field);
+    const std::string process_file("/proc/self/status");
+    const std::size_t field_len = metric.length();
 
-    std::FILE* fp = std::fopen(process_file, "r");
-    if(fp == NULL)
+    std::ifstream is(process_file);
+    if(!is)
     {
         std::cerr << "Error opening the process information file.\n";
         return 0;
     }
 
     char line[1024];
-    std::size_t peak_mem = 0;
-    while(std::fgets(line, sizeof(line) - 1, fp))
-        if(std::strncmp(line, peak_mem_field, field_len) == 0)
+    std::size_t val = 0;
+    while(is.getline(line, sizeof(line) - 1), '\n')
+        if(std::strncmp(line, metric.data(), field_len) == 0)
         {
-            peak_mem = std::strtoul(line + field_len, NULL, 0);
+            val = std::strtoul(line + field_len, NULL, 0);
             break;
         }
 
-    
-    if(std::ferror(fp))
+    is.close();
+    if(!is)
     {
         std::cerr << "Error reading the process information file.\n";
         return 0;
     }
 
 
-    return peak_mem * 1024;
+    return val;
+}
+
+
+std::size_t process_peak_memory()
+{
+    return process_metric("VmHWM:") * 1024;
+}
+
+
+std::size_t process_cur_memory()
+{
+    return process_metric("VmRSS:") * 1024;
 }

@@ -25,6 +25,7 @@ namespace cuttlefish
 template <uint16_t k, bool Colored_>
 Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistics, const uint16_t l, Discontinuity_Graph<k, Colored_>& G, op_buf_list_t& op_buf):
       path_pref(logistics.subgraphs_path())
+    , color_rel_path_pref(logistics.color_rel_bucket_path())
     , l(l)
     // , HLL(atlas_count)
     , G_(G)
@@ -88,7 +89,7 @@ uint64_t Subgraphs_Manager<k, Colored_>::estimate_size_max() const
 template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::process()
 {
-    Subgraphs_Scratch_Space<k, Colored_> subgraphs_space(estimate_size_max() * 1.10);
+    Subgraphs_Scratch_Space<k, Colored_> subgraphs_space(estimate_size_max() * 1.10, color_rel_path_pref);
     force_free(HLL);
 
     if constexpr(Colored_)

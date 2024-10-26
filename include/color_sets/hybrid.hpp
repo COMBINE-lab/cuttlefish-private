@@ -4,6 +4,9 @@
 #include "bit_vector.hpp"
 #include "integer_codes.hpp"
 
+#include <cstdint>
+#include <limits>
+
 namespace fulgor {
     enum list_type { delta_gaps, bitmap, complement_delta_gaps, differential_list };
 //struct hybrid {
@@ -65,7 +68,7 @@ namespace fulgor {
             } else {
                 bool first = true;
                 uint32_t val = 0;
-                uint32_t prev_val = -1;
+                uint32_t prev_val = std::numeric_limits<uint32_t>::max();
                 uint32_t written = 0;
                 for (uint64_t i = 0; i != list_size; ++i) {
                     uint32_t x = colors[i];

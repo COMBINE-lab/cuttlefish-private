@@ -146,6 +146,7 @@ void Unitig_Collator<k, Colored_>::map()
             const auto p = M[idx].p();  // Path-ID of this unitig.
             const auto mapped_b_id = XXH3_64bits(&p, sizeof(p)) & (max_unitig_bucket_count - 1); // Hashed maximal unitig bucket.
             // TODO: use `wyhash`. Result: buckets mapped with wyhash (seed = 0) is unbalanced af. Unreliable.
+            // TODO: interesting af issue: if we use the same hash function here and in `kmer.to_u64()`, it results in disastrous balancing in this case.
 
             if constexpr(!Colored_)
                 max_unitig_bucket[mapped_b_id].unwrap().add(M[idx], unitig.data(), uni_len);
