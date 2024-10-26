@@ -1,5 +1,6 @@
 
 #include "Atlas.hpp"
+#include "utility.hpp"
 #include "parlay/parallel.h"
 
 #include <cstddef>
@@ -15,6 +16,7 @@ Atlas<Colored_>::Atlas(uint16_t k, uint16_t l, const std::string& path, std::siz
     , chunk_cap(chunk_cap)
     , chunk(new chunk_t(k, l, chunk_cap))
     , flush_buf(!Colored_ ? new chunk_t(k, l, chunk_cap) : nullptr)
+    , rec_size(chunk->record_size())
 {
     chunk_w.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
@@ -34,6 +36,7 @@ Atlas<Colored_>::Atlas(Atlas&& rhs):
     , chunk(std::move(rhs.chunk))
     , flush_buf(std::move(rhs.flush_buf))
     , chunk_w(std::move(rhs.chunk_w))
+    , rec_size(std::move(rhs.rec_size))
     , subgraph(std::move(rhs.subgraph))
 {}
 
@@ -154,6 +157,10 @@ void Atlas<Colored_>::close()
 
         flush_chunk(*chunk);
     }
+
+    chunk.reset(nullptr);
+    flush_buf.reset(nullptr);
+    force_free(chunk_w);
 
     parlay::parallel_for(0, graph_per_atlas(),
     [&](const auto g)
