@@ -165,6 +165,7 @@ namespace rabbit {
 
                 FastaChunk *readNextChunk();
                 FastaChunk *readNextChunkList();
+                static void release_chunk_list(FastaChunk* chunk_);
                 bool ReadNextChunk_(FastaChunk *chunk_, SeqInfos &seqInfos);
                 bool ReadNextFaChunk_(FastaChunk *chunk_, SeqInfos &seqInfos);
                 bool ReadNextFaChunk_(FastaDataChunk *dataChunk_, SeqInfos &seqInfos, bool &continue_read);

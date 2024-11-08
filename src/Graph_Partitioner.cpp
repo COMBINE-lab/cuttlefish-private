@@ -293,8 +293,10 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_uncolored_chunks()
             // assert(source_id >= last_source);
 
             bytes_consumed += process_chunk(chunk, source_id);
-            last_source = source_id;
+            if constexpr(!Is_FASTQ_)
+                rabbit::fa::FastaFileReader::release_chunk_list(chunk);
 
+            last_source = source_id;
             if (last_source >= max_read_source_id - 1) { 
                 m_do_reading = true; 
             } else {
@@ -324,6 +326,9 @@ bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_colored_chunks(source_id
             //assert(source_id >= last_source);
 
             bytes_consumed += process_chunk(chunk, source_id);
+            if constexpr(!Is_FASTQ_)
+                rabbit::fa::FastaFileReader::release_chunk_list(chunk);
+
             last_source = source_id;
             if (last_source < min_source_id) { min_source_id = last_source; }
             if (last_source > max_source_id) { max_source_id = last_source; }

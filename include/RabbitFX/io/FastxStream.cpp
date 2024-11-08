@@ -13,6 +13,7 @@ last modified by Zekun Yin 2020/5/18
 #include <string>
 #include <cassert>
 
+#include "FastxChunk.h"
 #include "Reference.h"
 #include "FastxStream.h"
 
@@ -67,8 +68,14 @@ namespace rabbit {
                 return dataPart;
             } else {
                 recordsPool->Release(part);
+                release_chunk_list(dataPart);
                 return NULL;
             }
+        }
+
+        void FastaFileReader::release_chunk_list(FastaChunk* const chunk_)
+        {
+            delete chunk_;
         }
 
         bool FastaFileReader::ReadNextChunk_(FastaChunk *dataChunk_, SeqInfos &seqInfos) {
