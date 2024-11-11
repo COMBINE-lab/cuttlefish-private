@@ -16,7 +16,7 @@ namespace cuttlefish
         constexpr char unipaths_ext[] = ".fa";
         constexpr char json_ext[] = ".json";
         constexpr char temp[] = ".cf_op";
-        
+
         // For reference dBGs only:
 
         constexpr char gfa1_ext[] = ".gfa1";
@@ -28,6 +28,7 @@ namespace cuttlefish
 
         constexpr char subgraph_ext[] = ".G";
         constexpr char edge_matrix_ext[] = ".E";
+        constexpr char edge_blk_ext[] = ".blk";
         constexpr char lmtig_bucket_ext[] = ".lmtig";
         constexpr char compressed_diagonal_ext[] = ".D";
         constexpr char vertex_p_inf_bucket_ext[] = ".P_v";

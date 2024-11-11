@@ -26,8 +26,6 @@ class Edge_Matrix
 {
 private:
 
-    static const std::string edge_block_ext;
-
     const std::size_t vertex_part_count_;   // Number of vertex-partitions in the graph; it needs to be a power of 2.
     const std::string path; // File-path prefix to the external-memory blocks of the matrix.
     std::vector<std::vector<Ext_Mem_Bucket_Concurrent<Discontinuity_Edge<k>>>> edge_matrix; // Blocked edge matrix.

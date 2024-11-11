@@ -1,5 +1,6 @@
 
 #include "Edge_Matrix.hpp"
+#include "File_Extensions.hpp"
 #include "globals.hpp"
 
 #include <cstddef>
@@ -8,8 +9,6 @@
 
 namespace cuttlefish
 {
-
-template <uint16_t k> const std::string Edge_Matrix<k>::edge_block_ext(".blk");
 
 template <uint16_t k>
 Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
@@ -44,7 +43,7 @@ Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
 template <uint16_t k>
 const std::string Edge_Matrix<k>::bucket_file_path(const std::size_t i, const std::size_t j) const
 {
-    return path +  "_" + std::to_string(i) + "-" + std::to_string(j) + edge_block_ext;
+    return path +  "_" + std::to_string(i) + "-" + std::to_string(j) + file_ext::edge_blk_ext;
 }
 
 
