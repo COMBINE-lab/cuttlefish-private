@@ -189,6 +189,10 @@ public:
 
     // Returns an iterator over the super k-mers in the chunk.
     Iterator iterator() const { return Iterator(*this); }
+
+    // Returns the resident set size of the space-dominant components of the
+    // chunk.
+    std::size_t RSS() const;
 };
 
 

@@ -212,7 +212,7 @@ namespace memory
 template <typename T_>
 std::size_t RSS(const std::vector<T_>& v)
 {
-    static_assert(std::is_pod_v<T_>);
+    static_assert(std::is_standard_layout_v<T_>);
     return sizeof(v) + v.capacity() * sizeof(T_);
 }
 
@@ -318,6 +318,9 @@ public:
 
     // Frees the buffer's memory.
     void free() { deallocate(buf_); buf_ = nullptr; cap_ = 0; }
+
+    // Returns the resident set size of the buffer.
+    std::size_t RSS() const { return sizeof(buf_) + sizeof(cap_) + capacity() * sizeof(T_); }
 };
 
 

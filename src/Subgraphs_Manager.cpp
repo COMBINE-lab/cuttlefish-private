@@ -320,6 +320,16 @@ uint64_t Subgraphs_Manager<k, Colored_>::icc_count() const
     return icc_count_;
 }
 
+
+template <uint16_t k, bool Colored_>
+std::size_t Subgraphs_Manager<k, Colored_>::RSS() const
+{
+    std::size_t atlas_bytes = 0;
+    std::for_each(atlas.cbegin(), atlas.cend(), [&](auto& a){ atlas_bytes += a.unwrap().RSS(); });
+
+    return atlas_bytes;
+}
+
 }
 
 

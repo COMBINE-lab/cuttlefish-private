@@ -123,6 +123,10 @@ public:
 
     // Returns the super k-mer bucket of the `g`'th subgraph in the atlas.
     auto& bucket(const std::size_t g) { return subgraph[g]; }
+
+    // Returns the resident set size of the space-dominant components of the
+    // atlas.
+    std::size_t RSS() const;
 };
 
 

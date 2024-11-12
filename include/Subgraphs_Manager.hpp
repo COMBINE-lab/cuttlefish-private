@@ -124,6 +124,10 @@ public:
 
     // Returns the subgraph ID for a minimizer with 64-bit hash value `h`.
     uint64_t graph_ID(uint64_t h) const { return h & (Atlas<Colored_>::graph_count() - 1); }
+
+    // Returns the resident set size of the space-dominant components of the
+    // subgraphs-manager.
+    std::size_t RSS() const;
 };
 
 

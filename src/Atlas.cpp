@@ -4,6 +4,7 @@
 #include "parlay/parallel.h"
 
 #include <cstddef>
+#include <algorithm>
 
 
 namespace cuttlefish
@@ -167,6 +168,19 @@ void Atlas<Colored_>::close()
     {
         subgraph[g].close();
     }, 1);
+}
+
+
+template <bool Colored_>
+std::size_t Atlas<Colored_>::RSS() const
+{
+    std::size_t c_w_bytes = 0;
+    std::for_each(chunk_w.cbegin(), chunk_w.cend(), [&](auto& c_w){ c_w_bytes += c_w.unwrap().RSS(); });
+
+    std::size_t subgraph_bytes = 0;
+    std::for_each(subgraph.cbegin(), subgraph.cend(), [&](auto& g){ subgraph_bytes += g.RSS(); });
+
+    return (chunk ? chunk->RSS() : 0) + (flush_buf ? flush_buf->RSS() : 0) + c_w_bytes + subgraph_bytes + memory::RSS(src_hist);
 }
 
 }

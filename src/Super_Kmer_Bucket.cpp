@@ -93,6 +93,13 @@ std::size_t Super_Kmer_Bucket<Colored_>::Iterator::read_chunk()
     return super_kmers_to_read;
 }
 
+
+template <bool Colored_>
+std::size_t Super_Kmer_Bucket<Colored_>::RSS() const
+{
+    return chunk.RSS() + memory::RSS(chunk_sz) + memory::RSS(cmp_bytes);
+}
+
 }
 
 

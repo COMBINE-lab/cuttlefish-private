@@ -73,6 +73,13 @@ void Super_Kmer_Chunk<Colored_>::fetch_end() const
     __builtin_prefetch(label_buf.data() + label_units(), 1);
 }
 
+
+template <bool Colored_>
+std::size_t Super_Kmer_Chunk<Colored_>::RSS() const
+{
+    return att_buf.RSS() + label_buf.RSS() + cmp_buf.RSS();
+}
+
 }
 
 
