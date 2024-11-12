@@ -74,6 +74,16 @@ bool Discontinuity_Graph<k, Colored_>::is_discontinuity(const char* const seq) c
     return graph_id(h_l) != graph_id(h_r);
 }
 
+
+template <uint16_t k, bool Colored_>
+std::size_t Discontinuity_Graph<k, Colored_>::RSS() const
+{
+    std::size_t v_c_map_bytes = 0;
+    std::for_each(vertex_color_map_.cbegin(), vertex_color_map_.cend(), [&](auto& v){ v_c_map_bytes += v.unwrap().RSS(); });
+
+    return E_.RSS() + lmtigs.RSS() + v_c_map_bytes;
+}
+
 }
 
 

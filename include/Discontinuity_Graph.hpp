@@ -122,6 +122,10 @@ public:
 
     // Returns `true` iff the k-mer at `seq` is a discontinuity vertex.
     bool is_discontinuity(const char* seq) const;
+
+    // Returns the resident set size of the space-dominant components of the
+    // graph.
+    std::size_t RSS() const;
 };
 
 

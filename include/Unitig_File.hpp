@@ -74,6 +74,10 @@ public:
 
     // Closes the stream.
     void close();
+
+    // Returns the resident set size of the space-dominant components of this
+    // writer.
+    std::size_t RSS() const;
 };
 
 
@@ -166,6 +170,10 @@ public:
 
     // Closes the unitig-writer streams.
     void close();
+
+    // Returns the resident set size of the space-dominant components of this
+    // distributor.
+    std::size_t RSS() const;
 };
 
 

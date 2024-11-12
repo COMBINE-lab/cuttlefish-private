@@ -205,6 +205,20 @@ constexpr uint64_t log_2(uint64_t x)
 }
 
 
+namespace memory
+{
+
+// Returns the resident set size of `v`.
+template <typename T_>
+std::size_t RSS(const std::vector<T_>& v)
+{
+    static_assert(std::is_pod_v<T_>);
+    return sizeof(v) + v.capacity() * sizeof(T_);
+}
+
+}
+
+
 // Wrapper class for a data-element of type `T_` to ensure that in a linear
 // collection of `T_`'s, each element is aligned to a cache-line boundary.
 template <typename T_>

@@ -1,7 +1,9 @@
 
 #include "Unitig_File.hpp"
+#include "utility.hpp"
 
 #include <cstdlib>
+#include <algorithm>
 
 
 namespace cuttlefish
@@ -28,6 +30,12 @@ void Unitig_File_Writer::close()
 
     output.close();
     output_len.close();
+}
+
+
+std::size_t Unitig_File_Writer::RSS() const
+{
+    return memory::RSS(buf) + memory::RSS(len);
 }
 
 
@@ -84,6 +92,16 @@ void Unitig_Write_Distributor::close()
     if(!mtig_writer.empty())
         for(auto& w : mtig_writer)
             w.unwrap().close();
+}
+
+
+std::size_t Unitig_Write_Distributor::RSS() const
+{
+    std::size_t writer_bytes = 0;
+    std::for_each(writer.cbegin(), writer.cend(), [&](const auto& v){ writer_bytes += v.unwrap().RSS(); });
+    std::for_each(mtig_writer.cbegin(), mtig_writer.cend(), [&](const auto& v){ writer_bytes += v.unwrap().RSS(); });
+
+    return writer_bytes;
 }
 
 }

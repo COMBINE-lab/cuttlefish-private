@@ -165,6 +165,19 @@ void Edge_Matrix<k>::remove_block(const std::size_t i, const std::size_t j)
     edge_matrix[i][j].remove();
 }
 
+
+template <uint16_t k>
+std::size_t Edge_Matrix<k>::RSS() const
+{
+    std::size_t bucket_bytes = 0;
+    std::for_each(edge_matrix.cbegin(), edge_matrix.cend(), [&](const auto& row)
+    {
+        std::for_each(row.cbegin(), row.cend(), [&](const auto& blk){ bucket_bytes += blk.RSS(); });
+    });
+
+    return bucket_bytes;
+}
+
 }
 
 

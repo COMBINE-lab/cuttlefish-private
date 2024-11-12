@@ -99,6 +99,10 @@ public:
 
     // Removes the bucket.
     void remove();
+
+    // Returns the resident set size of the space-dominant components of this
+    // bucket.
+    std::size_t RSS() const;
 };
 
 
@@ -258,6 +262,13 @@ inline void Ext_Mem_Bucket<T_>::remove()
 }
 
 
+template <typename T_>
+inline std::size_t Ext_Mem_Bucket<T_>::RSS() const
+{
+    return max_buf_elems * sizeof(T_);
+}
+
+
 
 // A concurrent external-memory bucket for elements of type `T_`.
 template <typename T_>
@@ -325,6 +336,10 @@ public:
 
     // Removes the bucket.
     void remove();
+
+    // Returns the resident set size of the space-dominant components of this
+    // bucket.
+    std::size_t RSS() const;
 };
 
 
@@ -489,6 +504,16 @@ inline void Ext_Mem_Bucket_Concurrent<T_>::remove()
 
 
     std::for_each(buf_w_local.begin(), buf_w_local.end(), [](auto& w_buf){ force_free(w_buf.unwrap()); });
+}
+
+
+template <typename T_>
+inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::RSS() const
+{
+    std::size_t buf_bytes = 0;
+    std::for_each(buf_w_local.cbegin(), buf_w_local.cend(), [&](const auto& b){ buf_bytes += b.unwrap().capacity() * sizeof(T_); });
+
+    return buf_bytes;
 }
 
 }
