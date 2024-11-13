@@ -16,9 +16,7 @@
 #include "globals.hpp"
 
 #include <cstdint>
-#include <cstddef>
 #include <vector>
-#include <string>
 
 
 namespace cuttlefish
@@ -49,9 +47,6 @@ private:
     const Build_Params params;  // Required parameters (wrapped inside).
     const Data_Logistics logistics; // Data logistics manager for the algorithm execution.
 
-    std::size_t n_disc_v;   // Number of discontinuity-vertices.
-
-    // TODO: consider using padding.
     P_v_t P_v;  // `P_v[j]` contains path-info for vertices in partition `j`.
     P_e_t P_e;  // `P_e[b]` contains path-info for edges induced by unitigs in bucket `b`.
 
@@ -65,6 +60,18 @@ private:
     // the constructor. `Colored_` determines whether to color the compacted
     // graph or not.
     template <bool Colored_> void construct();
+
+    // Opens the containers for path-info of vertices.
+    void open_p_v();
+
+    // Releases the containers of path-info of vertices.
+    void release_p_v();
+
+    // Opens the containers for path-info of edges.
+    void open_p_e();
+
+    // Releases the containers of path-info of edges.
+    void release_p_e();
 
 
 public:
