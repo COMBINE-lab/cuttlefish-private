@@ -211,6 +211,9 @@ inline void Ext_Mem_Bucket<T_>::serialize()
     if(in_mem_size != 0)
         flush();
 
+    deallocate(buf);
+    buf = nullptr;
+
     file.close();
     if(!file)
     {

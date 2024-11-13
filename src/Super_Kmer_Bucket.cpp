@@ -53,6 +53,8 @@ template <bool Colored_>
 void Super_Kmer_Bucket<Colored_>::remove()
 {
     chunk.free();
+    force_free(chunk_sz);
+    force_free(cmp_bytes);
 
     if(output.is_open())
         output.close();

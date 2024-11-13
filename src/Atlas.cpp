@@ -159,6 +159,10 @@ void Atlas<Colored_>::close()
         flush_chunk(*chunk);
     }
 
+    if(chunk) chunk->free();
+    if(flush_buf) flush_buf->free();
+    std::for_each(chunk_w.begin(), chunk_w.end(), [](auto& c_w){ c_w.unwrap().free(); });
+
     chunk.reset(nullptr);
     flush_buf.reset(nullptr);
     force_free(chunk_w);
