@@ -284,7 +284,7 @@ inline auto Super_Kmer_Chunk<Colored_>::serialize_compressed(std::ofstream& os) 
     const auto max_label_bytes = LZ4_compressBound(label_units() * sizeof(label_unit_t));
     assert(max_att_bytes > 0 && max_label_bytes > 0);
 
-    cmp_buf.reserve_uninit(2 * (max_att_bytes + max_label_bytes));
+    cmp_buf.reserve_uninit(max_att_bytes + max_label_bytes);
     auto* const sink = reinterpret_cast<char*>(cmp_buf.data());
 
     auto* const sink_att = sink;

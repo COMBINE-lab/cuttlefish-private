@@ -138,28 +138,16 @@ inline void Atlas<false>::empty_w_local_chunk(const std::size_t w_id)
         return;
 
     chunk_lock.lock();
-/*
-    assert(chunk.capacity() >= c_w.capacity());
-    const auto break_idx = std::min(c_w.size(), chunk.free_capacity());
-    chunk.append(c_w, 0, break_idx);
-    if(chunk.full())
-    {
-        flush_chunk();
 
-        if(break_idx < c_w.size())
-            assert(chunk.capacity() >= c_w.size() - break_idx),
-            chunk.append(c_w, break_idx, c_w.size());
-    }
-*/
-    chunk->append(c_w);
-    size_ += c_w.size();
-
-    const bool to_flush = (chunk->size() >= chunk_cap);
+    const bool to_flush = (chunk->size() + c_w.size() >= chunk_cap);
     if(to_flush)
     {
         flush_lock.lock();
         chunk.swap(flush_buf);
     }
+
+    chunk->append(c_w);
+    size_ += c_w.size();
 
     chunk_lock.unlock();
 

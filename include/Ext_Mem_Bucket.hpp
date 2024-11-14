@@ -366,7 +366,7 @@ inline Ext_Mem_Bucket_Concurrent<T_>::Ext_Mem_Bucket_Concurrent(const std::strin
     }
 
 
-    std::for_each(buf_w_local.begin(), buf_w_local.end(), [&](auto& v){ v.unwrap().reserve(max_buf_elems); });
+    // std::for_each(buf_w_local.begin(), buf_w_local.end(), [&](auto& v){ v.unwrap().reserve(max_buf_elems); });
 }
 
 
