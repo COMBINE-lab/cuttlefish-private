@@ -113,8 +113,8 @@ public:
     // Increments the potential phantom edge count.
     void inc_potential_phantom_edge() { phantom_edge_count_++; }
 
-    // Closes the lm-tig writer streams.
-    void close_lmtig_stream();
+    // Closes and releases the streams depositing to the graph.
+    void close();
 
     // Returns a tight upper bound of the maximum number of vertices in a
     // partition.

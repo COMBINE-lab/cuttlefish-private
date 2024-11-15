@@ -78,7 +78,7 @@ void dBG_Contractor<k>::construct()
         Discontinuity_Graph_Contractor<k, Colored_> contractor(gamma, P_v, logistics);
         EXECUTE("contract", contractor.contract)
 
-        gamma.close_lmtig_stream();
+        gamma.close();
     }
 
     const auto t_c = timer::now();

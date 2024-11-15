@@ -37,8 +37,9 @@ uint64_t Discontinuity_Graph<k, Colored_>::phantom_edge_upper_bound() const
 
 
 template <uint16_t k, bool Colored_>
-void Discontinuity_Graph<k, Colored_>::close_lmtig_stream()
+void Discontinuity_Graph<k, Colored_>::close()
 {
+    E_.close();
     lmtigs.close();
 }
 

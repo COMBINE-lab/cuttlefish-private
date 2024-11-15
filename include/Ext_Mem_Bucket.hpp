@@ -327,6 +327,12 @@ public:
     // the bucket.
     template <typename... Args> void emplace(Args&&... args);
 
+    // Serializes and closes the bucket. Elements should not be added anymore
+    // once this has been invoked. This method is required only if the entirety
+    // of the bucket needs to live in external-memory after the parent process
+    // finishes.
+    void close();
+
     // Loads the bucket into the vector `v`. It is safe only when the bucket is
     // not being updated, otherwise runs the risk of data races.
     // TODO: remove this method and support only raw containers, such that user modules are forced to avoid adversarial resizing.
@@ -366,7 +372,7 @@ inline Ext_Mem_Bucket_Concurrent<T_>::Ext_Mem_Bucket_Concurrent(const std::strin
     }
 
 
-    // std::for_each(buf_w_local.begin(), buf_w_local.end(), [&](auto& v){ v.unwrap().reserve(max_buf_elems); });
+    std::for_each(buf_w_local.begin(), buf_w_local.end(), [&](auto& v){ v.unwrap().reserve(max_buf_elems); });
 }
 
 
@@ -417,10 +423,45 @@ inline void Ext_Mem_Bucket_Concurrent<T_>::emplace(Args&&... args)
 
 
 template <typename T_>
+inline void Ext_Mem_Bucket_Concurrent<T_>::close()
+{
+    std::size_t in_mem = 0;
+    for(std::size_t w = 0; w < buf_w_local.size(); ++w)
+        in_mem += buf_w_local[w].unwrap().size();
+
+    auto& buf = buf_w_local[0].unwrap();
+    buf.reserve(in_mem);
+    for(std::size_t w = 1; w < buf_w_local.size(); ++w)
+    {
+        auto& b = buf_w_local[w].unwrap();
+        buf.insert(buf.end(), b.cbegin(), b.cend());
+
+        b.clear();
+        force_free(b);
+    }
+
+    file.write(reinterpret_cast<const char*>(buf.data()), buf.size() * sizeof(T_));
+    if(!file)
+    {
+        std::cerr << "Error writing to external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    flushed += buf.size();
+
+    buf.clear();
+    force_free(buf);
+}
+
+
+template <typename T_>
 inline void Ext_Mem_Bucket_Concurrent<T_>::flush()
 {
     auto& buf = buf_w_local[parlay::worker_id()].unwrap();
     assert(buf.size() <= max_buf_elems);
+
+    if(buf.empty())
+        return;
 
     lock_.lock();
 

@@ -57,6 +57,10 @@ public:
     // TODO: why not using refs here for the k-mers? Check.
     void add(Kmer<k> u, side_t s_u, Kmer<k> v, side_t s_v, weight_t w, uint16_t b, std::size_t b_idx, bool u_is_phi, bool v_is_phi);
 
+    // Serializes and closes the matrix. Edges should not be added anymore
+    // after this has been invoked.
+    void close();
+
     // Reads the edges from the `[j, j]`'th block into `buf`.
     void read_diagonal_block(std::size_t j, std::vector<Discontinuity_Edge<k>>& buf) const;
 

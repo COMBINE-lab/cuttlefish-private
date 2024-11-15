@@ -2,6 +2,7 @@
 #include "Edge_Matrix.hpp"
 #include "File_Extensions.hpp"
 #include "globals.hpp"
+#include "parlay/parallel.h"
 
 #include <cstddef>
 #include <algorithm>
@@ -44,6 +45,21 @@ template <uint16_t k>
 const std::string Edge_Matrix<k>::bucket_file_path(const std::size_t i, const std::size_t j) const
 {
     return path +  "_" + std::to_string(i) + "-" + std::to_string(j) + file_ext::edge_blk_ext;
+}
+
+
+template <uint16_t k>
+void Edge_Matrix<k>::close()
+{
+    parlay::parallel_for(1, edge_matrix.size(),
+    [&](const auto i)
+    {
+        parlay::parallel_for(i, edge_matrix.size(),
+        [&](const auto j)
+        {
+            edge_matrix[i][j].close();
+        }, 1);
+    }, 1);
 }
 
 
