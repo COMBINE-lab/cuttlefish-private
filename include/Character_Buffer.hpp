@@ -26,7 +26,7 @@ private:
 
     // The buffer is to have a maximum capacity of `CAPACITY` (it is non-
     // binding when a string with length  larger than that is added).
-    static constexpr std::size_t cap_ = 100 * 1024ULL;
+    static constexpr std::size_t cap_ = 128 * 1024ULL;
 
     std::string buf;    // The character buffer.
     T_sink_& sink;  // Reference to the sink to flush the buffer content to.

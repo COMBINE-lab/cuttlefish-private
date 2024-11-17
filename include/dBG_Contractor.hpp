@@ -52,7 +52,7 @@ private:
 
     Output_Sink<sink_t> output_sink;    // Sink for the output maximal unitigs.
 
-    // 100 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory per worker, at most, before flushes.
+    // 128 KB (soft limit) worth of maximal unitig records (FASTA) can be retained in memory per worker, at most, before flushes.
     op_buf_list_t op_buf;   // Worker-specific output buffers.
 
 
