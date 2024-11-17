@@ -42,20 +42,30 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 {
+    const bool large_src = true;    // Whether dealing with large individual source-files or not.   TODO: fix.
+
     double t_part = 0;
     double t_collate = 0;
 
-    std::thread reader([&](){ read_chunks(); });
+    // Number of consumers when partitioning is done in the producer-consumer model.
     const auto consumer_c = (parlay::num_workers() > (reader_c - 1) ? parlay::num_workers() - (reader_c - 1) : 1);
 
     if constexpr(!Colored_)
+    {
+        std::thread reader([&](){ read_chunks(); });
+
         parlay::parallel_for(0, consumer_c,
             [&](auto)
             {
                 process_uncolored_chunks();
             }, 1);
-    else
+
+        reader.join();
+    }
+    else if(large_src)
     {
+        std::thread reader([&](){ read_chunks(); });
+
         std::cerr << "\n";
 
         uint64_t bytes_processed = 0;
@@ -100,9 +110,8 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
         }
 
         std::cerr << "\n";
+        reader.join();
     }
-
-    reader.join();
 
 
     Worker_Stats stat;
