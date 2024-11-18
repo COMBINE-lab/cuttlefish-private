@@ -302,8 +302,6 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_uncolored_chunks()
             // assert(source_id >= last_source);
 
             bytes_consumed += process_chunk(chunk, source_id);
-            if constexpr(!Is_FASTQ_)
-                rabbit::fa::FastaFileReader::release_chunk_list(chunk);
 
             last_source = source_id;
             if (last_source >= max_read_source_id - 1) { 
@@ -335,8 +333,6 @@ bool Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_colored_chunks(source_id
             //assert(source_id >= last_source);
 
             bytes_consumed += process_chunk(chunk, source_id);
-            if constexpr(!Is_FASTQ_)
-                rabbit::fa::FastaFileReader::release_chunk_list(chunk);
 
             last_source = source_id;
             if (last_source < min_source_id) { min_source_id = last_source; }
@@ -382,6 +378,8 @@ uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_chunk(chunk_t* chunk
             ptr = ptr->next;
         }
         while(ptr != NULL);
+
+        rabbit::fa::FastaFileReader::release_chunk_list(chunk);
     }
 
     const auto t_1 = timer::now();
@@ -530,7 +528,7 @@ uint64_t Graph_Partitioner<k, Is_FASTQ_, Colored_>::process_chunk(chunk_t* chunk
     const auto t_2 = timer::now();
     w_stat.process_time += timer::duration(t_2 - t_1);
 
-    if constexpr(Is_FASTQ_)
+    if constexpr(Is_FASTQ_) // In case of FASTA, chunks have been released earlier during bytes-counting.
         chunk_pool.Release(chunk);
 
     w_stat.chunk_count++;
