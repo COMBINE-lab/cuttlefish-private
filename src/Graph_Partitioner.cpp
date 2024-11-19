@@ -11,6 +11,9 @@
 #include "RabbitFX/io/Globals.h"
 #include "parlay/parallel.h"
 
+#include <functional>
+#include <memory>
+#include <utility>
 #include <thread>
 #include <algorithm>
 #include <cassert>
@@ -42,14 +45,15 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
 template <uint16_t k, bool Is_FASTQ_, bool Colored_>
 void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 {
-    const bool large_src = true;    // Whether dealing with large individual source-files or not.   TODO: fix.
+    // const bool large_src = true;    // Whether dealing with large individual source-files or not.   TODO: fix.
 
     double t_part = 0;
     double t_collate = 0;
 
     // Number of consumers when partitioning is done in the producer-consumer model.
-    const auto consumer_c = (parlay::num_workers() > (reader_c - 1) ? parlay::num_workers() - (reader_c - 1) : 1);
+    // const auto consumer_c = (parlay::num_workers() > (reader_c - 1) ? parlay::num_workers() - (reader_c - 1) : 1);
 
+/*
     if constexpr(!Colored_)
     {
         std::thread reader([&](){ read_chunks(); });
@@ -112,6 +116,71 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
         std::cerr << "\n";
         reader.join();
     }
+    else
+*/
+    {
+        std::vector<std::pair<std::size_t, std::size_t>> sz_src;    // Size of the sources and their IDs.
+        sz_src.reserve(seqs.size());
+        for(std::size_t s = 0; s < seqs.size(); ++s)
+            sz_src.emplace_back(file_size(seqs[s]), s);
+
+        // Process sources in decreasing order of size.
+        std::sort(sz_src.begin(), sz_src.end(), std::greater<>());
+
+
+        std::size_t src_idx = 0;
+        Spin_Lock src_lock;
+        constexpr std::size_t log_step = 512 * 1024 * 1024; // 512 MB.
+        std::size_t log_checkp = log_step;
+        parlay::parallel_for(0, parlay::num_workers(),
+        [&](const auto w)
+        {
+            typedef typename RabbitFX_DS_type<Is_FASTQ_>::reader_t reader_t;
+            std::unique_ptr<reader_t> reader;
+
+            while(true)
+            {
+                src_lock.lock();
+
+                std::size_t src;    // Next source to partition.
+                const bool done = (src_idx == sz_src.size());
+                if(!done)
+                    src = sz_src[src_idx++].second;
+
+                if(bytes_consumed >= log_checkp)
+                {
+                    std::cerr << "\rPartitioned " << (bytes_consumed / (1024 * 1024)) << " MB of uncompressed data.";
+                    log_checkp = bytes_consumed + log_step;
+                }
+
+                src_lock.unlock();
+
+                if(done)
+                    break;
+
+                if(!reader)
+                    reader = std::make_unique<reader_t>(seqs[src], chunk_pool);
+                else
+                    reader->set_new_file(seqs[src]);
+
+                chunk_t* chunk;
+                while(true)
+                {
+                    if constexpr(Is_FASTQ_)
+                        chunk = reader->readNextChunk();
+                    else
+                        chunk = reader->readNextChunkList();
+
+                    if(chunk == NULL)
+                        break;
+
+                    bytes_consumed += process_chunk(chunk, src);
+                }
+            }
+        }, 1);
+    }
+
+    std::cerr << "\rPartitioned " << (bytes_consumed / (1024.0 * 1024.0)) << " MB of uncompressed data.\n";
 
 
     Worker_Stats stat;
