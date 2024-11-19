@@ -130,6 +130,7 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
 
         std::size_t src_idx = 0;
         Spin_Lock src_lock;
+        bytes_consumed = 0;
         constexpr std::size_t log_step = 512 * 1024 * 1024; // 512 MB.
         std::size_t log_checkp = log_step;
         parlay::parallel_for(0, parlay::num_workers(),
