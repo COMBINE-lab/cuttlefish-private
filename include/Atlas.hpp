@@ -41,6 +41,7 @@ private:
 
     typedef Super_Kmer_Chunk<Colored_> chunk_t;
     const std::size_t chunk_cap;    // Capacity of the super k-mer chunk of the bucket.
+    const std::size_t w_local_chunk_cap;    // Capacity of the worker-local super k-mer chunks.
     std::unique_ptr<chunk_t> chunk; // Super k-mer chunk of the bucket for the worker-local chunks to dump to.
     std::unique_ptr<chunk_t> flush_buf; // Super k-mer chunk acting as buffer between the main chunk and the subgraphs.
     std::vector<Padded<chunk_t>> chunk_w;   // `chunk_w[i]` is the specific super k-mer chunk for worker `i`.
@@ -118,6 +119,10 @@ public:
     // supposed to be in the range `[src_min, src_max]`.
     void flush_collated(source_id_t src_min, source_id_t src_max);
 
+    // Flushes the buffer of the `w`'th worker to the subgraphs in the atlas if
+    // it is overflown.
+    void flush_worker_if_req(std::size_t w);
+
     // Closes the atlas—no more content should be added afterwards.
     void close();
 
@@ -149,7 +154,7 @@ inline void Atlas<true>::add(const char* const seq, const std::size_t len, const
     auto& c_w = chunk_w[w_id].unwrap(); // Worker-specific chunk.
 
     c_w.add(seq, len, source, l_disc, r_disc, g_id);
-    // No flush until collation is invoked explicitly from outside.
+    // No flush until collation / flush is invoked explicitly from outside.
 }
 
 }

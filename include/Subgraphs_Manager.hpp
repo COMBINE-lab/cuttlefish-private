@@ -104,6 +104,10 @@ public:
     // be in the range `[src_min, src_max]`.
     void collate_super_kmer_buffers(source_id_t src_min, source_id_t src_max);
 
+    // Flushes the buffer of the `w`'th worker to the subgraphs in the atlas if
+    // it is overflown.
+    void flush_worker_if_req(std::size_t w);
+
     // Finalizes the subgraphs for iteration—no more content should be added
     // after this.
     void finalize();

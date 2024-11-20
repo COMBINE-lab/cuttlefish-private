@@ -369,8 +369,7 @@ inline void Super_Kmer_Chunk<true>::add(const char* const seq, const std::size_t
 {
     assert(len <= max_sup_kmer_len);
 
-    att_buf.reserve(size() + 1);
-    label_buf.reserve(label_units() + sup_kmer_word_c);
+    reserve(size() + 1);
 
     att_buf[size()] = Super_Kmer_Attributes<true>(len, source, l_disc, r_disc, g_id);
     add_encoded_label(seq, len);

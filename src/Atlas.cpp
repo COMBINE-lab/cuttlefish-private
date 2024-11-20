@@ -15,13 +15,15 @@ Atlas<Colored_>::Atlas(uint16_t k, uint16_t l, const std::string& path, std::siz
       path_(path)
     , size_(0)
     , chunk_cap(chunk_cap)
+    , w_local_chunk_cap(chunk_cap_per_w)
     , chunk(new chunk_t(k, l, chunk_cap))
-    , flush_buf(!Colored_ ? new chunk_t(k, l, chunk_cap) : nullptr)
+    // , flush_buf(!Colored_ ? new chunk_t(k, l, chunk_cap) : nullptr)
+    , flush_buf(new chunk_t(k, l, chunk_cap))   // TODO: fix depending on the partitioning scheme.
     , rec_size(chunk->record_size())
 {
     chunk_w.reserve(parlay::num_workers());
     for(std::size_t i = 0; i < parlay::num_workers(); ++i)
-        chunk_w.emplace_back(chunk_t(k, l, chunk_cap_per_w));
+        chunk_w.emplace_back(chunk_t(k, l, w_local_chunk_cap));
 
     subgraph.reserve(graph_per_atlas());
     for(std::size_t i = 0; i < graph_per_atlas(); ++i)
@@ -34,6 +36,7 @@ Atlas<Colored_>::Atlas(Atlas&& rhs):
       path_(std::move(rhs.path_))
     , size_(rhs.size_)
     , chunk_cap(rhs.chunk_cap)
+    , w_local_chunk_cap(rhs.w_local_chunk_cap)
     , chunk(std::move(rhs.chunk))
     , flush_buf(std::move(rhs.flush_buf))
     , chunk_w(std::move(rhs.chunk_w))
@@ -179,16 +182,22 @@ void Atlas<true>::flush_collated(const source_id_t src_min, const source_id_t sr
 }
 
 
+template <>
+void Atlas<true>::flush_worker_if_req(const std::size_t w)
+{
+    auto& c_w = chunk_w[w].unwrap();    // Worker-specific chunk.
+    if(c_w.size() >= w_local_chunk_cap)
+        empty_w_local_chunk(w);
+}
+
+
 template <bool Colored_>
 void Atlas<Colored_>::close()
 {
-    if constexpr(!Colored_)
-    {
-        for(std::size_t w_id = 0; w_id < parlay::num_workers(); ++w_id)
-            empty_w_local_chunk(w_id);
+    for(std::size_t w_id = 0; w_id < parlay::num_workers(); ++w_id)
+        empty_w_local_chunk(w_id);
 
-        flush_chunk(*chunk);
-    }
+    flush_chunk(*chunk);
 
     if(chunk) chunk->free();
     if(flush_buf) flush_buf->free();

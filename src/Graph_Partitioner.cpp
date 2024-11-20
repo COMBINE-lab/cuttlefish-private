@@ -175,13 +175,16 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
                     if(chunk == NULL)
                         break;
 
-                    bytes_consumed += process_chunk(chunk, src);
+                    bytes_consumed += process_chunk(chunk, src + 1);
                 }
+
+                if constexpr(Colored_)
+                    subgraphs.flush_worker_if_req(w);
             }
         }, 1);
     }
 
-    std::cerr << "\rPartitioned " << (bytes_consumed / (1024.0 * 1024.0)) << " MB of uncompressed data.\n";
+    std::cerr << "\rPartitioned " << (bytes_consumed / (1024 * 1024)) << " MB of uncompressed data.\n";
 
 
     Worker_Stats stat;

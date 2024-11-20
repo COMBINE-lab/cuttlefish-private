@@ -58,6 +58,20 @@ if constexpr(Colored_)
 
 
 template <uint16_t k, bool Colored_>
+void Subgraphs_Manager<k, Colored_>::flush_worker_if_req(const std::size_t w)
+{
+if constexpr(Colored_)
+{
+    std::for_each(atlas.begin(), atlas.end(),
+    [&](auto& a)
+    {
+        a.unwrap().flush_worker_if_req(w);
+    });
+}
+}
+
+
+template <uint16_t k, bool Colored_>
 void Subgraphs_Manager<k, Colored_>::finalize()
 {
     parlay::parallel_for(0, atlas.size(),
