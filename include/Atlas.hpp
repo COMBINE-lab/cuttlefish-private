@@ -131,37 +131,6 @@ public:
 
 
 template <>
-inline void Atlas<false>::empty_w_local_chunk(const std::size_t w_id)
-{
-    auto& c_w = chunk_w[w_id].unwrap();
-    if(CF_UNLIKELY(c_w.empty()))
-        return;
-
-    chunk_lock.lock();
-
-    const bool to_flush = (chunk->size() + c_w.size() >= chunk_cap);
-    if(to_flush)
-    {
-        flush_lock.lock();
-        chunk.swap(flush_buf);
-    }
-
-    chunk->append(c_w);
-    size_ += c_w.size();
-
-    chunk_lock.unlock();
-
-    c_w.clear();
-
-    if(to_flush)
-    {
-        flush_chunk(*flush_buf);
-        flush_lock.unlock();
-    }
-}
-
-
-template <>
 inline void Atlas<false>::add(const char* const seq, const std::size_t len, const bool l_disc, const bool r_disc, const uint16_t g_id)
 {
     const auto w_id = parlay::worker_id();

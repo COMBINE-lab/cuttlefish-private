@@ -43,6 +43,37 @@ Atlas<Colored_>::Atlas(Atlas&& rhs):
 
 
 template <bool Colored_>
+void Atlas<Colored_>::empty_w_local_chunk(const std::size_t w_id)
+{
+    auto& c_w = chunk_w[w_id].unwrap();
+    if(CF_UNLIKELY(c_w.empty()))
+        return;
+
+    chunk_lock.lock();
+
+    const bool to_flush = (chunk->size() + c_w.size() >= chunk_cap);
+    if(to_flush)
+    {
+        flush_lock.lock();
+        chunk.swap(flush_buf);
+    }
+
+    chunk->append(c_w);
+    size_ += c_w.size();
+
+    chunk_lock.unlock();
+
+    c_w.clear();
+
+    if(to_flush)
+    {
+        flush_chunk(*flush_buf);
+        flush_lock.unlock();
+    }
+}
+
+
+template <bool Colored_>
 void Atlas<Colored_>::flush_chunk(chunk_t& c)
 {
     if(!c.empty())
