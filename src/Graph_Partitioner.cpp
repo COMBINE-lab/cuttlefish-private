@@ -134,8 +134,9 @@ void Graph_Partitioner<k, Is_FASTQ_, Colored_>::partition()
         constexpr std::size_t log_step = 512 * 1024 * 1024; // 512 MB.
         std::size_t log_checkp = log_step;
         parlay::parallel_for(0, parlay::num_workers(),
-        [&](const auto w)
+        [&](auto)
         {
+            const auto w = parlay::worker_id();
             typedef typename RabbitFX_DS_type<Is_FASTQ_>::reader_t reader_t;
             std::unique_ptr<reader_t> reader;
 
