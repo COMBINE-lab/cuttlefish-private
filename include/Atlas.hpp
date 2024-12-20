@@ -35,7 +35,7 @@ private:
     static constexpr uint64_t graph_count_ = atlas_count_ * graph_per_atlas_;   // Number of subgraphs.
 
 
-    const std::string path_;    // Path to the external-memory bucket.
+    const std::string path_;    // Directory of the external-memory bucket.
 
     uint64_t size_; // Number of super k-mers in the atlas. It's not necessarily correct before closing it.
 

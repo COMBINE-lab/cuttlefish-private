@@ -14,6 +14,7 @@
 #include <limits>
 #include <vector>
 #include <utility>
+#include <filesystem>
 #include <iostream>
 #include <cstdlib>
 #include <algorithm>
@@ -24,7 +25,7 @@ namespace cuttlefish
 
 template <uint16_t k, bool Colored_>
 Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistics, const uint16_t l, Discontinuity_Graph<k, Colored_>& G, op_buf_list_t& op_buf):
-      path_pref(logistics.subgraphs_path())
+      path_pref(logistics.atlas_path())
     , color_rel_path_pref(logistics.color_rel_bucket_path())
     , l(l)
     // , HLL(atlas_count)
@@ -36,10 +37,17 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     const auto chunk_cap = chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
     const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
 
+    const auto atlas_path_pref = logistics.atlas_path();
+    std::filesystem::create_directories(atlas_path_pref);
+
     const auto atlas_c = Atlas<Colored_>::atlas_count();
     atlas.reserve(atlas_c);
     for(std::size_t a_id = 0; a_id < atlas_c; ++a_id)
-        atlas.emplace_back(atlas_t(k, l, path_pref + "_atlas_" + std::to_string(a_id), chunk_cap, chunk_cap_per_w));
+    {
+        const std::string atlas_dir = atlas_path_pref + "/" + std::to_string(a_id);
+        std::filesystem::create_directory(atlas_dir);
+        atlas.emplace_back(atlas_t(k, l, atlas_dir, chunk_cap, chunk_cap_per_w));
+    }
 }
 
 

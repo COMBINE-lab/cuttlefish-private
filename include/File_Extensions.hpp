@@ -26,15 +26,15 @@ namespace cuttlefish
 
         // For cuttlefish 3.
 
-        constexpr char subgraph_ext[] = ".G";
-        constexpr char edge_matrix_ext[] = ".E";
+        constexpr char atlas_ext[] = "_Atlas";
+        constexpr char edge_matrix_ext[] = "_E";
         constexpr char edge_blk_ext[] = ".blk";
-        constexpr char lmtig_bucket_ext[] = ".lmtig";
-        constexpr char compressed_diagonal_ext[] = ".D";
-        constexpr char vertex_p_inf_bucket_ext[] = ".P_v";
-        constexpr char edge_p_inf_bucket_ext[] = ".P_e";
-        constexpr char unitig_coord_bucket_ext[] = ".U";
-        constexpr char color_rel_bucket_ext[] = ".C_rel";
+        constexpr char lmtig_bucket_ext[] = "_lmtig";
+        constexpr char compressed_diagonal_ext[] = "_D";
+        constexpr char vertex_p_inf_bucket_ext[] = "_P_v";
+        constexpr char edge_p_inf_bucket_ext[] = "_P_e";
+        constexpr char unitig_coord_bucket_ext[] = "_U";
+        constexpr char color_rel_bucket_ext[] = "_C_rel";
 
 
         // For k-mer index.

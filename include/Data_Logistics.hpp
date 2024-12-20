@@ -41,26 +41,27 @@ public:
     // Returns the path to the final output file by Cuttlefish.
     const std::string output_file_path() const;
 
-    // Returns the path prefix to the subgraphs (i.e. super k-mer buckets).
-    const std::string subgraphs_path() const;
+    // Returns the directory to the atlases.
+    const std::string atlas_path() const;
 
-    // Returns path prefix to the edge-matrix produced by Cuttlefish.
+    // Returns the directory to the edge-matrix produced by Cuttlefish.
     const std::string edge_matrix_path() const;
 
-    // Returns path prefix to the buckets for lm-tigs produced by Cuttlefish.
+    // Returns the directory to the buckets for lm-tigs produced by Cuttlefish.
     const std::string lmtig_buckets_path() const;
 
-    // Returns path prefix to the edges introduced in diagonal blocks
+    // Returns the directory to the edges introduced in diagonal blocks
     // contraction by Cuttlefish.
     const std::string compressed_diagonal_path() const;
 
-    // Returns path prefix to the color-relationship buckets.
+    // Returns the directory to the color-relationship buckets.
     const std::string color_rel_bucket_path() const;
 
-    // Returns path prefix to the buckets storing path-information of vertices.
+    // Returns the directory of the buckets storing path-information of
+    // vertices.
     const std::string vertex_path_info_buckets_path() const;
 
-    // Returns path prefix to the buckets storing path-information of edges.
+    // Returns the directory of the buckets storing path-information of edges.
     const std::string edge_path_info_buckets_path() const;
 
     // Returns path prefix to the unitig-coordinate buckets produced in map-

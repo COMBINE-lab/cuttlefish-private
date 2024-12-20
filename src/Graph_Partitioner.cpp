@@ -32,7 +32,6 @@ Graph_Partitioner<k, Is_FASTQ_, Colored_>::Graph_Partitioner(Subgraphs_Manager<k
     , chunk_pool(chunk_pool_sz)
     , chunk_q(chunk_pool_sz)
     , parsed_chunk_w(parlay::num_workers())
-    , subgraphs_path_pref(logistics.subgraphs_path())
     , reader_c(parlay::num_workers() < 32 ? 2 : 4)
     , stat_w(parlay::num_workers())
 {

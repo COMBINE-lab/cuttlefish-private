@@ -27,7 +27,7 @@ Atlas<Colored_>::Atlas(uint16_t k, uint16_t l, const std::string& path, std::siz
 
     subgraph.reserve(graph_per_atlas());
     for(std::size_t i = 0; i < graph_per_atlas(); ++i)
-        subgraph.emplace_back(k, l, path + "_G_" + std::to_string(i), subgraph_chunk_cap_bytes / chunk->record_size());
+        subgraph.emplace_back(k, l, path_ + "/G_" + std::to_string(i), subgraph_chunk_cap_bytes / chunk->record_size());
 }
 
 

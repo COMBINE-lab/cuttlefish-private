@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <filesystem>
 
 
 namespace cuttlefish
@@ -464,10 +465,14 @@ Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t 
 
         static_assert(is_pow_2(color_rel_bucket_c_));
         for(std::size_t w = 0; w < parlay::num_workers(); ++w)
+        {
+            const auto color_rel_dir = color_rel_bucket_pref + "/" + std::to_string(w);
+            std::filesystem::create_directories(color_rel_dir);
             for(std::size_t b = 0; b < color_rel_bucket_c_; ++b)
                 color_rel_bucket_arr_[w].unwrap().
-                    emplace_back(color_rel_bucket_t(color_rel_bucket_pref + ".w" + std::to_string(w) + "_b" + std::to_string(b),
+                    emplace_back(color_rel_bucket_t(color_rel_dir + "/b_" + std::to_string(b),
                                     color_rel_buf_sz / sizeof(color_rel_t)));
+        }
     }
 }
 
