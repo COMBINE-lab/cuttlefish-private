@@ -210,7 +210,10 @@ private:
 
     // Semi-sorts the color-relationship array `x` of size `sz` to the array
     // `y`.
-    void semi_sort(const color_rel_t* x, color_rel_t* y, std::size_t sz);
+    void semi_sort_color_rels(const color_rel_t* x, color_rel_t* y, std::size_t sz);
+
+    // Sorts the color-set (list) `color`.
+    void sort_color_set(std::vector<source_id_t>& color);
 
     // Collates the color-sets of vertices from the collected color-relationship
     // array.

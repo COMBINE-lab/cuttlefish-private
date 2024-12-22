@@ -6,9 +6,9 @@
 #include "parlay/parallel.h"
 #include "color_sets/hybrid.hpp"
 
+#include <filesystem>
 #include <algorithm>
 #include <cassert>
-#include <filesystem>
 
 
 namespace cuttlefish
@@ -62,7 +62,7 @@ void Subgraph<k, Colored_>::construct()
 
         if constexpr(Colored_)
         {
-            assert(att.source() >= source);
+            // assert(att.source() >= source);
             source = att.source();
         }
 
@@ -341,7 +341,7 @@ if constexpr(Colored_)
 
 
 template <uint16_t k, bool Colored_>
-void Subgraph<k, Colored_>::semi_sort(const color_rel_t* const x, color_rel_t* const y, const std::size_t sz)
+void Subgraph<k, Colored_>::semi_sort_color_rels(const color_rel_t* const x, color_rel_t* const y, const std::size_t sz)
 {
     auto& count_map = work_space.count_map();
     count_map.clear();
@@ -370,6 +370,13 @@ void Subgraph<k, Colored_>::semi_sort(const color_rel_t* const x, color_rel_t* c
 
 
 template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::sort_color_set(std::vector<source_id_t>& color)
+{
+    std::sort(color.begin(), color.end());
+}
+
+
+template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::collect_color_sets()
 {
 if constexpr(Colored_)
@@ -393,7 +400,7 @@ if constexpr(Colored_)
         color_rel_bucket.load(color_rel.data());
 
         color_rel_collated.reserve_uninit(color_rel_c);
-        semi_sort(color_rel.data(), color_rel_collated.data(), color_rel_c);
+        semi_sort_color_rels(color_rel.data(), color_rel_collated.data(), color_rel_c);
 
         const auto t_1 = timer::now();
         t_sort += timer::duration(t_1 - t_0);
@@ -409,13 +416,15 @@ if constexpr(Colored_)
                 if(color_rel_collated[j].first != v)
                     break;
 
-                assert(color_rel_collated[j].second >= color_rel_collated[j - 1].second);   // Ensure sortedness of source-IDs.
+                // assert(color_rel_collated[j].second >= color_rel_collated[j - 1].second);   // Ensure sortedness of source-IDs, for compression.
                 src.push_back(color_rel_collated[j].second);
             }
 
             const auto color_idx = color_bucket.size();
             if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), color_idx)))
             {
+                sort_color_set(src);
+
                 bvb.clear();
                 builder.process(src.data(), src.size(), bvb);
                 auto& bit_vec_words = bvb.bits();
