@@ -62,6 +62,8 @@ public:
     typedef Buffer<color_rel_t> color_rel_arr_t;
     typedef ankerl::unordered_dense::map<Kmer<k>, uint32_t, Kmer_Hasher<k>> count_map_t;
 
+    typedef Buffer<uint64_t> bit_vector_t;
+
 
     // Constructs working space for workers, supporting capacity of at least
     // `max_sz` vertices. For colored graphs, temporary color-relationship
@@ -97,6 +99,9 @@ public:
     // for a worker.
     count_map_t& count_map();
 
+    // Returns the appropriate color bit-vector of a worker.
+    bit_vector_t& bv();
+
     // Returns the external-memory color repository.
     Color_Repo& color_repo();
 
@@ -129,6 +134,9 @@ private:
     // Collection of count map of (vertex, source-ID) relationships, for
     // different workers.
     std::vector<Padded<count_map_t>> count_map_;
+
+    // Collection of color bit-vectors of different workers.
+    std::vector<Padded<bit_vector_t>> bv_;
 
     // External-memory color repository.
     Color_Repo color_repo_;

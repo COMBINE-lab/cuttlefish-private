@@ -100,6 +100,14 @@ T_* allocate(const std::size_t size)
 }
 
 // Returns pointer to a memory-allocation for `size` elements of type `T_`,
+// initialized to `0`s.
+template <typename T_>
+T_* allocate_zeroed(const std::size_t size)
+{
+    return static_cast<T_*>(std::calloc(size, sizeof(T_)));
+}
+
+// Returns pointer to a memory-allocation for `size` elements of type `T_`,
 // whose alignment is specified is `alignment`.
 template <typename T_>
 T_* aligned_allocate(const std::size_t size, const std::size_t alignment = 8)
@@ -315,6 +323,9 @@ public:
     // Resizes the buffer to have capacity `cap`. No guarantees are made for
     // the existing elements.
     void resize_uninit(const std::size_t cap) { deallocate(buf_); buf_ = allocate<T_>(cap); cap_ = cap; }
+
+    // Resizes the buffer to have capacity `cap`, initialized with `0`.
+    void resize_init(const std::size_t cap) { deallocate(buf_); buf_ = allocate_zeroed<T_>(cap); cap_ = cap; }
 
     // Frees the buffer's memory.
     void free() { deallocate(buf_); buf_ = nullptr; cap_ = 0; }

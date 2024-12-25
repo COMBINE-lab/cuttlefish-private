@@ -33,7 +33,8 @@ Subgraphs_Manager<k, Colored_>::Subgraphs_Manager(const Data_Logistics& logistic
     , trivial_mtig_count_(0)
     , icc_count_(0)
     , op_buf(op_buf)
-    , color_path_pref(logistics.output_file_path()) {
+    , color_path_pref(logistics.output_file_path())
+{
     const auto chunk_cap = chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
     const auto chunk_cap_per_w = w_chunk_bytes / Super_Kmer_Chunk<Colored_>::record_size(k, l);
 
@@ -224,6 +225,9 @@ void Subgraphs_Manager<k, Colored_>::process()
     parlay::parallel_for(0, parlay::num_workers(),
     [&](auto)
     {
+        if constexpr(Colored_)
+            subgraphs_space.bv().resize_init(((G().max_source_id() + 1) + 63) / 64);
+
         while(true)
         {
             g_lock.lock();
