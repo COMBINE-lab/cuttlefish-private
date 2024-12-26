@@ -89,8 +89,6 @@ private:
 
     std::vector<Padded<std::vector<parsed_rec_t>>> parsed_chunk_w;  // Parsed record collection per worker.
 
-    const std::string subgraphs_path_pref;  // Path prefix for the subgraphs' super k-mer buckets.
-
     std::atomic_uint64_t bytes_consumed;    // Counts of input bytes consumed across all workers in one batch in the colored-case.
     constexpr static uint64_t bytes_per_batch = 1024 * 1024 * 1024lu;   // 1GB per input batch, at least.
 
@@ -131,9 +129,9 @@ private:
     // `false` if no data remain anymore in the queue after this processing.
     bool process_colored_chunks(source_id_t& min_source, source_id_t& max_source);
 
-    // Processes the chunk `chunk` with source-ID `source_id`. The parsed
-    // sequences are stored in `parsed_chunk`. Returns the count of bytes in
-    // chunk.
+    // Processes the chunk `chunk` with source-ID `source_id` and releases it
+    // to the chunk-pool. The parsed sequences are stored in `parsed_chunk`.
+    // Returns the count of bytes in chunk.
     uint64_t process_chunk(chunk_t* chunk, source_id_t source_id);
 
 public:

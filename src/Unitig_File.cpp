@@ -4,6 +4,7 @@
 
 #include <cstdlib>
 #include <algorithm>
+#include <filesystem>
 
 
 namespace cuttlefish
@@ -70,16 +71,17 @@ Unitig_Write_Distributor::Unitig_Write_Distributor(const std::string& path_pref,
 {
     assert(writer_count >= worker_count);
 
+    std::filesystem::create_directories(path_pref);
     writer.reserve(1 + writer_count);
     writer.emplace_back(std::string()); // Edge-partition 0 is symbolic, for edges that do not have any associated lm-tig (i.e. has weight > 1).
     for(std::size_t b = 1; b <= writer_count; ++b)
-        writer.emplace_back(path_pref + "_" + std::to_string(b));
+        writer.emplace_back(path_pref + "/" + std::to_string(b));
 
     if(trivial_mtigs)
     {
         mtig_writer.reserve(worker_count);
         for(std::size_t w = 0; w < worker_count; ++w)
-            mtig_writer.emplace_back(path_pref + "_" + std::to_string(writer.size() + w));
+            mtig_writer.emplace_back(path_pref + "/" + std::to_string(writer.size() + w));
     }
 }
 

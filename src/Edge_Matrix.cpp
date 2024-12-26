@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <algorithm>
+#include <filesystem>
 
 
 namespace cuttlefish
@@ -27,24 +28,19 @@ Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
 
     edge_matrix.resize(part_count + 1);
 
-    edge_matrix[0].emplace_back();
-    for(std::size_t j = 1; j <= part_count; ++j)
-        edge_matrix[0].emplace_back(bucket_file_path(0, j));
-
-    for(std::size_t i = 1; i <= part_count; ++i)
+    for(std::size_t i = 0; i <= part_count; ++i)
+    {
+        const auto row_dir = path + "/" + std::to_string(i);
+        std::filesystem::create_directories(row_dir);
         for(std::size_t j = 0; j <= part_count; ++j)
-            j < i ? edge_matrix[i].emplace_back() :
-                    edge_matrix[i].emplace_back(bucket_file_path(i, j));
+            if(j < i || (i == 0 && j == 0))
+                edge_matrix[i].emplace_back();
+            else
+                edge_matrix[i].emplace_back(row_dir + "/" + std::to_string(j));
+    }
 
     for(std::size_t i = 1; i <= part_count; ++i)
         col_to_read[i] = i + 1;
-}
-
-
-template <uint16_t k>
-const std::string Edge_Matrix<k>::bucket_file_path(const std::size_t i, const std::size_t j) const
-{
-    return path +  "_" + std::to_string(i) + "-" + std::to_string(j) + file_ext::edge_blk_ext;
 }
 
 

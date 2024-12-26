@@ -50,9 +50,9 @@ const std::string Data_Logistics::output_file_path() const
 }
 
 
-const std::string Data_Logistics::subgraphs_path() const
+const std::string Data_Logistics::atlas_path() const
 {
-    return params.working_dir_path() + filename(params.output_prefix()) + cuttlefish::file_ext::subgraph_ext;
+    return params.working_dir_path() + filename(params.output_prefix()) + cuttlefish::file_ext::atlas_ext;
 }
 
 

@@ -6,7 +6,9 @@
 #include "parlay/parallel.h"
 #include "color_sets/hybrid.hpp"
 
+#include <vector>
 #include <algorithm>
+#include <filesystem>
 #include <cassert>
 
 
@@ -61,7 +63,7 @@ void Subgraph<k, Colored_>::construct()
 
         if constexpr(Colored_)
         {
-            assert(att.source() >= source);
+            // assert(att.source() >= source);
             source = att.source();
         }
 
@@ -340,7 +342,7 @@ if constexpr(Colored_)
 
 
 template <uint16_t k, bool Colored_>
-void Subgraph<k, Colored_>::semi_sort(const color_rel_t* const x, color_rel_t* const y, const std::size_t sz)
+void Subgraph<k, Colored_>::semi_sort_color_rels(const color_rel_t* const x, color_rel_t* const y, const std::size_t sz)
 {
     auto& count_map = work_space.count_map();
     count_map.clear();
@@ -369,10 +371,33 @@ void Subgraph<k, Colored_>::semi_sort(const color_rel_t* const x, color_rel_t* c
 
 
 template <uint16_t k, bool Colored_>
+void Subgraph<k, Colored_>::sort_color_set(std::vector<source_id_t>& color)
+{
+    auto const wv = work_space.bv().data();
+    const auto word_c = work_space.bv().capacity();
+
+    for(std::size_t i = 0; i < color.size(); ++i)
+        assert(color[i] / 64 < word_c),
+        wv[color[i] / 64] |= (uint64_t(1) << (color[i] & 63));
+
+
+    color.clear();
+    for(std::size_t word_idx = 0; word_idx < word_c; ++word_idx)
+        while(wv[word_idx] != 0)
+        {
+            const auto bit_idx = __builtin_ctzll(wv[word_idx]);
+            color.push_back(word_idx * 64 + bit_idx);
+            wv[word_idx] &= (wv[word_idx] - 1);
+        }
+}
+
+
+template <uint16_t k, bool Colored_>
 void Subgraph<k, Colored_>::collect_color_sets()
 {
 if constexpr(Colored_)
 {
+    // TODO: the following two need not be subgraph-local, rather worker-local.
     fulgor::color_set_builder builder(G.max_source_id() + 1);
     fulgor::bit_vector_builder bvb;
 
@@ -381,6 +406,7 @@ if constexpr(Colored_)
     auto& color_rel_collated = work_space.color_rel_collate_arr();
     auto& C = work_space.color_map();
     auto& color_bucket = work_space.color_repo().bucket();
+
     std::vector<source_id_t> src;   // Sources of the current vertex.
 
     for(std::size_t b = 0; b < color_rel_bucket_arr.size(); ++b)
@@ -392,7 +418,7 @@ if constexpr(Colored_)
         color_rel_bucket.load(color_rel.data());
 
         color_rel_collated.reserve_uninit(color_rel_c);
-        semi_sort(color_rel.data(), color_rel_collated.data(), color_rel_c);
+        semi_sort_color_rels(color_rel.data(), color_rel_collated.data(), color_rel_c);
 
         const auto t_1 = timer::now();
         t_sort += timer::duration(t_1 - t_0);
@@ -408,13 +434,16 @@ if constexpr(Colored_)
                 if(color_rel_collated[j].first != v)
                     break;
 
-                assert(color_rel_collated[j].second >= color_rel_collated[j - 1].second);   // Ensure sortedness of source-IDs.
+                // assert(color_rel_collated[j].second >= color_rel_collated[j - 1].second);   // Ensure sortedness of source-IDs, for compression.
                 src.push_back(color_rel_collated[j].second);
             }
 
             const auto color_idx = color_bucket.size();
             if(C.update_if_in_process(M[v].color_hash(), Color_Coordinate(parlay::worker_id(), color_idx)))
             {
+                sort_color_set(src);
+                assert(std::is_sorted(src.cbegin(), src.cend()));
+
                 bvb.clear();
                 builder.process(src.data(), src.size(), bvb);
                 auto& bit_vec_words = bvb.bits();
@@ -464,10 +493,16 @@ Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t 
 
         static_assert(is_pow_2(color_rel_bucket_c_));
         for(std::size_t w = 0; w < parlay::num_workers(); ++w)
+        {
+            const auto color_rel_dir = color_rel_bucket_pref + "/" + std::to_string(w);
+            std::filesystem::create_directories(color_rel_dir);
             for(std::size_t b = 0; b < color_rel_bucket_c_; ++b)
                 color_rel_bucket_arr_[w].unwrap().
-                    emplace_back(color_rel_bucket_t(color_rel_bucket_pref + ".w" + std::to_string(w) + "_b" + std::to_string(b),
+                    emplace_back(color_rel_bucket_t(color_rel_dir + "/b_" + std::to_string(b),
                                     color_rel_buf_sz / sizeof(color_rel_t)));
+        }
+
+        bv_.resize(parlay::num_workers());
     }
 }
 
@@ -530,6 +565,15 @@ auto Subgraphs_Scratch_Space<k, Colored_>::count_map() -> count_map_t&
     // assert(Colored_);
     assert(count_map_.size() == parlay::num_workers());
     return count_map_[parlay::worker_id()].unwrap();
+}
+
+
+template <uint16_t k, bool Colored_>
+auto Subgraphs_Scratch_Space<k, Colored_>::bv() -> bit_vector_t&
+{
+    assert(Colored_);
+    assert(bv_.size() == parlay::num_workers());
+    return bv_[parlay::worker_id()].unwrap();
 }
 
 

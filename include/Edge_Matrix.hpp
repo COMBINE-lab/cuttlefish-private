@@ -33,11 +33,6 @@ private:
     mutable std::vector<std::size_t> col_to_read;   // `i`'th entry contains the column of the next block to read from row `i`.
 
 
-    // Returns the path to the file storing the `[i, j]`'th block in external
-    // memory.
-    const std::string bucket_file_path(std::size_t i, std::size_t j) const;
-
-
 public:
 
     // Constructs a blocked edge-matrix for `part_count` vertex-partitions. The

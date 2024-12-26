@@ -278,7 +278,7 @@ void Contracted_Graph_Expander<k, Colored_>::fill_path_info(const Buffer<Obj_Pat
 template <uint16_t k, bool Colored_>
 void Contracted_Graph_Expander<k, Colored_>::expand_diagonal_block(const std::size_t i)
 {
-    const std::string d_i_path(compressed_diagonal_path + "_" + std::to_string(i));
+    const std::string d_i_path(compressed_diagonal_path + "/" + std::to_string(i));
     const auto file_sz = file_size(d_i_path);
     const auto edge_c = file_sz / sizeof(Discontinuity_Edge<k>);
     D_i.reserve_uninit(edge_c);

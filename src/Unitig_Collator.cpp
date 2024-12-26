@@ -8,12 +8,13 @@
 #include "parlay/parallel.h"
 #include "xxHash/xxh3.h"
 
-#include <iostream>
 #include <vector>
 #include <string>
 #include <string_view>
 #include <cstdlib>
 #include <algorithm>
+#include <filesystem>
+#include <iostream>
 #include <cassert>
 
 
@@ -47,6 +48,8 @@ Unitig_Collator<k, Colored_>::Unitig_Collator(Discontinuity_Graph<k, Colored_>& 
 
     std::cerr << "Sum edge-bucket size: " << sum_bucket_sz << "\n";
     std::cerr << "Maximum edge-bucket size: " << max_bucket_sz << "\n";
+
+    std::filesystem::create_directories(unitig_coord_buckets_path);
 }
 
 
@@ -97,7 +100,7 @@ void Unitig_Collator<k, Colored_>::map()
 
     max_unitig_bucket.reserve(max_unitig_bucket_count);
     for(std::size_t i = 0; i < max_unitig_bucket_count; ++i)
-        max_unitig_bucket.emplace_back(unitig_coord_buckets_path + "_" + std::to_string(i));
+        max_unitig_bucket.emplace_back(unitig_coord_buckets_path + "/" + std::to_string(i));
 
     std::atomic_uint64_t edge_c = 0;    // Number of edges (i.e. unitigs) found.
 #ifndef NDEBUG
@@ -132,7 +135,7 @@ void Unitig_Collator<k, Colored_>::map()
             std::sort(v_c_map.data(), v_c_map.data() + v_c_map_sz); // TODO: replace.
         }
 
-        const auto bucket_path = lmtig_buckets_path + "_" + std::to_string(b);
+        const auto bucket_path = lmtig_buckets_path + "/" + std::to_string(b);
         assert(file_exists(bucket_path));
         Unitig_File_Reader unitig_reader(bucket_path);
         Buffer<char> unitig;    // Read-off unitig.
@@ -389,7 +392,7 @@ void Unitig_Collator<k, Colored_>::emit_trivial_mtigs()
         std::sort(v_c_map.data(), v_c_map.data() + v_c_map_sz);
 
         auto& output = op_buf[w].unwrap();  // Output buffer for the maximal unitigs.
-        Unitig_File_Reader unitig_reader(lmtig_buckets_path + "_" + std::to_string(P_e.size() + w));
+        Unitig_File_Reader unitig_reader(lmtig_buckets_path + "/" + std::to_string(P_e.size() + w));
         Buffer<char> unitig;    // Read-off unitig.
         uni_idx_t idx = 0;  // The unitig's sequential ID in the bucket.
         std::size_t uni_len;    // The unitig's length in bases.

@@ -23,8 +23,7 @@ Discontinuity_Graph<k, Colored_>::Discontinuity_Graph(const Build_Params& params
         vertex_color_map_.reserve(lmtigs.bucket_count());
         vertex_color_map_.emplace_back(std::string());
         for(std::size_t b = 1; b < lmtigs.bucket_count(); ++b)
-            vertex_color_map_.emplace_back(logistics.lmtig_buckets_path() + "_" + std::to_string(b) + ".col");
-
+            vertex_color_map_.emplace_back(logistics.lmtig_buckets_path() + "/" + std::to_string(b) + ".col");
     }
 }
 

@@ -8,6 +8,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <algorithm>
+#include <filesystem>
 
 
 namespace cuttlefish
@@ -271,7 +272,8 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract_diagonal_block(const 
     }
 
 
-    const auto d_j_path = compressed_diagonal_path + "_" + std::to_string(j);
+    std::filesystem::create_directories(compressed_diagonal_path);
+    const auto d_j_path = compressed_diagonal_path + "/" + std::to_string(j);
     std::ofstream output(d_j_path);
     output.write(reinterpret_cast<const char*>(D_j.data()), D_j.size() * sizeof(Discontinuity_Edge<k>));
     if(!output)
