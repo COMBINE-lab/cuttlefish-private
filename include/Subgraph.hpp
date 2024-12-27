@@ -64,6 +64,8 @@ public:
 
     typedef Buffer<uint64_t> bit_vector_t;
 
+    typedef ankerl::unordered_dense::set<Kmer<k>, Kmer_Hasher<k>> set_t;
+
 
     // Constructs working space for workers, supporting capacity of at least
     // `max_sz` vertices. For colored graphs, temporary color-relationship
@@ -102,6 +104,9 @@ public:
     // Returns the appropriate color bit-vector of a worker.
     bit_vector_t& bv();
 
+    // Returns the appropriate hashset for a worker.
+    set_t& set();
+
     // Returns the external-memory color repository.
     Color_Repo& color_repo();
 
@@ -137,6 +142,9 @@ private:
 
     // Collection of color bit-vectors of different workers.
     std::vector<Padded<bit_vector_t>> bv_;
+
+    // Hashset collection for different workers.
+    std::vector<Padded<set_t>> set_;    // Set collection for different workers.
 
     // External-memory color repository.
     Color_Repo color_repo_;
@@ -288,6 +296,10 @@ public:
     // Returns the number of vertices in the graph that either shift color or
     // is the first vertex in an lm-tig.
     uint64_t color_shift_count() const { return color_shift_c; }
+
+    // Returns the number of vertices in the graph for which color-sets were
+    // extracted (this may be larger than the count of unique colors).
+    std::size_t color_extraction_count() const { return work_space.set().size(); }
 
     // Returns the number of vertices in the graph attempting introduction of
     // new colors to the global color-table.

@@ -191,8 +191,10 @@ void Subgraph<k, Colored_>::contract()
 
     auto& C = work_space.color_map();   // Color-set map.
     auto& in_process = work_space.in_process_arr();
+    auto& S = work_space.set();
     if constexpr(Colored_)
-        in_process.clear();
+        in_process.clear(),
+        S.clear();
 
     for(auto p = M.begin(); p != M.end(); ++p)
     {
@@ -238,7 +240,7 @@ void Subgraph<k, Colored_>::contract()
                         {
                         case Color_Status::undiscovered:    // Mark this vertex's color as of interest to extract later, and keep the vertex as pending.
                         {
-                            M[V[i]].mark_new_color();
+                            S.insert(V[i]);
                             in_process.emplace_back(lmtig_coord, H[i]);
                             v_new_col_c++;
                             break;
@@ -246,7 +248,7 @@ void Subgraph<k, Colored_>::contract()
 
                         case Color_Status::in_process:  // Keep this vertex pending and revisit it once its color is available.
                             if(c.processing_worker() != w_id)   // The color is not new globally, but new to this worker.
-                                M[V[i]].mark_new_color(),
+                                S.insert(V[i]),
                                 v_new_col_c++;
 
                             in_process.emplace_back(lmtig_coord, H[i]);
@@ -304,6 +306,8 @@ if constexpr(Colored_)
     Super_Kmer_Attributes<Colored_> att;
     const label_unit_t* label;
 
+    auto& S = work_space.set();
+
     while(super_kmer_it.next(att, label))
     {
         const auto len = att.len();
@@ -318,8 +322,7 @@ if constexpr(Colored_)
         {
             assert(kmer_idx + k - 1 < len);
 
-            auto& st = M[v.canonical()];
-            if(st.has_new_color())
+            if(S.contains(v.canonical()))
             {
                 static_assert(is_pow_2(color_rel_bucket_c));
                 color_rel_bucket_arr[v.canonical().to_u64() & (color_rel_bucket_c - 1)].emplace(v.canonical(), source);
@@ -507,6 +510,7 @@ Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t 
         }
 
         bv_.resize(parlay::num_workers());
+        set_.resize(parlay::num_workers());
     }
 }
 
@@ -578,6 +582,15 @@ auto Subgraphs_Scratch_Space<k, Colored_>::bv() -> bit_vector_t&
     assert(Colored_);
     assert(bv_.size() == parlay::num_workers());
     return bv_[parlay::worker_id()].unwrap();
+}
+
+
+template <uint16_t k, bool Colored_>
+auto Subgraphs_Scratch_Space<k, Colored_>::set() -> set_t&
+{
+    // assert(Colored_);
+    assert(set_.size() == parlay::num_workers());
+    return set_[parlay::worker_id()].unwrap();
 }
 
 

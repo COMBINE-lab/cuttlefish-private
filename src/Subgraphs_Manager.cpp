@@ -134,6 +134,9 @@ void Subgraphs_Manager<k, Colored_>::process()
     std::vector<Padded<std::size_t>> cmp_bytes(parlay::num_workers(), 0);   // Total number of bytes in the compressed super k-mer buckets.
     std::vector<Padded<uint64_t>> mtig_count(parlay::num_workers(), 0); // Number of locally maximal unitigs produced per worker.
     std::vector<Padded<std::size_t>> color_shift(parlay::num_workers(), 0); // Number of color-shifting vertices per worker.
+    std::vector<Padded<std::size_t>> color_ext(parlay::num_workers(), 0);   // Number of color-set extractions performed per worker.
+    std::vector<Padded<std::size_t>> max_color_ext(parlay::num_workers(), 0);   // Largest number of color-set extractions performed in a graph per worker.
+    std::vector<Padded<std::size_t>> min_color_ext(parlay::num_workers(), 0);   // Smallest number of color-set extractions performed in a graph per worker.
     std::vector<Padded<uint64_t>> new_colored_vertex(parlay::num_workers(), 0); // Number of vertices attempting addition to the global color-table per worker.
     std::vector<Padded<uint64_t>> old_colored_vertex(parlay::num_workers(), 0); // Number of vertices with existing colors from the global color-table per worker.
     std::vector<Padded<uint64_t>> color_rel_sorted(parlay::num_workers(), 0);   // Number of color-relationships sorted in color-extraction per worker.
@@ -173,6 +176,9 @@ void Subgraphs_Manager<k, Colored_>::process()
         auto& min_sz = min_size[parlay::worker_id()].unwrap();
         auto& mtig_c = mtig_count[parlay::worker_id()].unwrap();
         auto& color_shift_c = color_shift[parlay::worker_id()].unwrap();
+        auto& color_ext_c = color_ext[parlay::worker_id()].unwrap();
+        auto& max_color_ext_c = max_color_ext[parlay::worker_id()].unwrap();
+        auto& min_color_ext_c = min_color_ext[parlay::worker_id()].unwrap();
         auto& v_new_col_c = new_colored_vertex[parlay::worker_id()].unwrap();
         auto& v_old_col_c = old_colored_vertex[parlay::worker_id()].unwrap();
         auto& color_rel_c = color_rel_sorted[parlay::worker_id()].unwrap();
@@ -188,6 +194,9 @@ void Subgraphs_Manager<k, Colored_>::process()
         b_cmp_bytes += b.compressed_bytes();
         mtig_c += sub_dBG.mtig_count();
         color_shift_c += sub_dBG.color_shift_count();
+        color_ext_c += sub_dBG.color_extraction_count();
+        max_color_ext_c = std::max(max_color_ext_c, sub_dBG.color_extraction_count());
+        min_color_ext_c = std::min(min_color_ext_c, sub_dBG.color_extraction_count());
         v_new_col_c += sub_dBG.new_colored_vertex();
         v_old_col_c += sub_dBG.old_colored_vertex();
         color_rel_c += sub_dBG.color_rel_sorted();
@@ -300,15 +309,23 @@ void Subgraphs_Manager<k, Colored_>::process()
                     std::for_each(color_shift.cbegin(), color_shift.cend(), [&](const auto& v){ c += v.unwrap(); });
                     return c; }();
         std::cerr << "Color-shifting vertex count: " << color_shift_c << ".\n";
-        std::cerr << "Number of vertices attempting new color-extraction: " <<
+        std::cerr << "Number of color-extractions: " <<
             [&](){  std::size_t c = 0;
-                    std::for_each(new_colored_vertex.cbegin(), new_colored_vertex.cend(), [&](const auto& v){ c += v.unwrap(); });
+                    std::for_each(color_ext.cbegin(), color_ext.cend(), [&](const auto& v){ c += v.unwrap(); });
                     return c; }() << ".\n";
         std::cerr << "Number of vertices with colors already available: " <<
             [&](){  std::size_t c = 0;
                     std::for_each(old_colored_vertex.cbegin(), old_colored_vertex.cend(), [&](const auto& v){ c += v.unwrap(); });
                     return c; }() << ".\n";
         std::cerr << "Number of vertices skipped from color-consideration: " << (sum_g_sz - color_shift_c) << ".\n";
+        std::cerr << "Maximum color-extractions done in a graph: " <<
+        [&](){  std::size_t max_sz = 0;
+                std::for_each(max_color_ext.cbegin(), max_color_ext.cend(), [&](const auto& v){ max_sz = std::max(max_sz, v.unwrap()); });
+                return max_sz; }() << ".\n";
+        std::cerr << "Minimum color-extractions done in a graph: " <<
+        [&](){  std::size_t min_sz = std::numeric_limits<std::size_t>::max();
+                std::for_each(min_color_ext.cbegin(), min_color_ext.cend(), [&](const auto& v){ min_sz = std::min(min_sz, v.unwrap()); });
+                return min_sz; }() << ".\n";
         std::cerr << "Number of (k-mer, source) pairs sorted: " <<
             [&](){  std::size_t c = 0;
                     std::for_each(color_rel_sorted.cbegin(), color_rel_sorted.cend(), [&](const auto& v){ c += v.unwrap(); });
