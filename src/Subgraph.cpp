@@ -320,14 +320,11 @@ if constexpr(Colored_)
 
             auto& st = M[v.canonical()];
             if(st.has_new_color())
-                if(!st.is_colored() || st.latest_color() != source)
-                {
-                    static_assert(is_pow_2(color_rel_bucket_c));
-                    color_rel_bucket_arr[v.canonical().to_u64() & (color_rel_bucket_c - 1)].emplace(v.canonical(), source);
-                    color_rel_c++;
-
-                    st.set_latest_color(source);
-                }
+            {
+                static_assert(is_pow_2(color_rel_bucket_c));
+                color_rel_bucket_arr[v.canonical().to_u64() & (color_rel_bucket_c - 1)].emplace(v.canonical(), source);
+                color_rel_c++;
+            }
 
             if(kmer_idx + k == len)
                 break;
@@ -435,6 +432,13 @@ if constexpr(Colored_)
                     break;
 
                 // assert(color_rel_collated[j].second >= color_rel_collated[j - 1].second);   // Ensure sortedness of source-IDs, for compression.
+
+                // This is required to deduplicate relations, if the latter color-set sort does not deduplicate them.
+                // This works because: super k-mers from some source going into the same subgraph bucket cluster
+                // together due to the partitioning policy (and its buffering scheme). Hence color-relations from
+                // those super k-mers cluster together in the relationship list. This list is semi-sorted with
+                // counting sort, which is stable, and hence the clusters are retained in the sorted output.
+                // if(color_rel_collated[j].second != color_rel_collated[j - 1].second)
                 src.push_back(color_rel_collated[j].second);
             }
 
