@@ -263,22 +263,22 @@ class Buffer
 {
 private:
 
-    T_* buf_;   // The raw buffer.
     std::size_t cap_;   // Capacity of the buffer.
+    T_* buf_;   // The raw buffer.
 
 
 public:
 
     // Constructs an empty buffer.
     Buffer():
-          buf_(nullptr)
-        , cap_(0)
+          cap_(0)
+        , buf_(nullptr)
     {}
 
     // Constructs a buffer with capacity `cap`.
     Buffer(const std::size_t cap):
-          buf_(allocate<T_>(cap))
-        , cap_(cap)
+          cap_(cap)
+        , buf_(allocate<T_>(cap))
     {}
 
     ~Buffer() { deallocate(buf_); }
@@ -287,10 +287,10 @@ public:
 
     Buffer& operator=(Buffer&& rhs)
     {
-        buf_ = rhs.buf_;
         cap_ = rhs.cap_;
-        rhs.buf_ = nullptr;
+        buf_ = rhs.buf_;
         rhs.cap_ = 0;
+        rhs.buf_ = nullptr;
 
         return *this;
     }
@@ -332,6 +332,25 @@ public:
 
     // Returns the resident set size of the buffer.
     std::size_t RSS() const { return sizeof(buf_) + sizeof(cap_) + capacity() * sizeof(T_); }
+
+    // Serializes the buffer to the `cereal` archive `archive`.
+    template <typename T_archive_>
+    void save(T_archive_& archive) const
+    {
+        archive(cap_);
+        for(std::size_t i = 0; i < cap_; ++i)
+            archive(buf_[i]);
+    }
+
+    // Deserializes the buffer from the `cereal` archive `archive`.
+    template <typename T_archive_>
+    void load(T_archive_& archive)
+    {
+        archive(cap_);
+        resize_uninit(cap_);
+        for(std::size_t i = 0; i < cap_; ++i)
+            archive(buf_[i]);
+    }
 };
 
 

@@ -396,6 +396,24 @@ else()
 endif()
 
 
+# Prepare the `cereal` library. It supports (de)serialization of data
+# structures.
+set(CEREAL_MIN_VERSION "1.3.2")
+message("Build system will fetch and install cereal")
+ExternalProject_Add(prj_cereal
+    DOWNLOAD_DIR        ${CMAKE_SOURCE_DIR}/external
+    DOWNLOAD_COMMAND    curl -k -L https://github.com/USCiLab/cereal/archive/refs/tags/v${CEREAL_MIN_VERSION}.tar.gz -o cereal-${CEREAL_MIN_VERSION}.tar.gz &&
+                        tar -xzf cereal-${CEREAL_MIN_VERSION}.tar.gz &&
+                        rm cereal-${CEREAL_MIN_VERSION}.tar.gz
+    SOURCE_DIR          ${CMAKE_SOURCE_DIR}/external/cereal-${CEREAL_MIN_VERSION}
+    BUILD_IN_SOURCE     TRUE
+    INSTALL_DIR         ${CMAKE_SOURCE_DIR}/external
+    CONFIGURE_COMMAND   ""
+    BUILD_COMMAND       ""
+    INSTALL_COMMAND     cp -rf include/cereal ${EXT_INCLUDE}
+)
+
+
 # The `Debug` configuration optimizes the program for debugging and enables full debug information.
 # The `Release` configuration enables most compiler optimizations for speed and defines `NDEBUG`
 # (No Debug) which will remove all traces of the standard library assert calls.

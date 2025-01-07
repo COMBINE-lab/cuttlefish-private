@@ -7,6 +7,7 @@
 #include "Spin_Lock.hpp"
 #include "utility.hpp"
 #include "globals.hpp"
+#include "cereal/types/string.hpp"
 #include "parlay/parallel.h"
 
 #include <cstddef>
@@ -101,6 +102,12 @@ public:
     // Returns the resident set size of the space-dominant components of this
     // bucket.
     std::size_t RSS() const;
+
+    // Serializes the bucket to the `cereal` archive `archive`.
+    template <typename T_archive_> void save(T_archive_& archive) const;
+
+    // Deserializes the bucket from the `cereal` archive `archive`.
+    template <typename T_archive_> void load(T_archive_& archive);
 };
 
 
@@ -262,6 +269,33 @@ template <typename T_>
 inline std::size_t Ext_Mem_Bucket<T_>::RSS() const
 {
     return max_buf_elems * sizeof(T_);
+}
+
+
+template <typename T_>
+template <typename T_archive_>
+inline void Ext_Mem_Bucket<T_>::save(T_archive_& archive) const
+{
+    archive(file_path, max_buf_bytes, max_buf_elems, buf, size_, in_mem_size);
+}
+
+
+template <typename T_>
+template <typename T_archive_>
+inline void Ext_Mem_Bucket<T_>::load(T_archive_& archive)
+{
+    archive(const_cast<std::string&>(file_path), const_cast<std::size_t&>(max_buf_bytes), const_cast<std::size_t&>(max_buf_elems),
+            buf, size_, in_mem_size);
+
+
+    assert(!file_path.empty() && max_buf_elems > 0);
+
+    file.open(file_path, std::ios::binary | std::ios::app);
+    if(!file)
+    {
+        std::cerr << "Error opening external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 
