@@ -37,7 +37,7 @@ public:
     const std::size_t max_buf_bytes;    // Maximum size of the in-memory write-buffer in bytes.
     const std::size_t max_buf_elems;    // Maximum size of the in-memory write-buffer in elements.
 
-    T_* buf;    // In-memory buffer of the bucket-elements.
+    Buffer<T_> buf; // In-memory buffer of the bucket-elements.
     std::size_t size_;  // Number of elements added to the bucket.
 
     std::size_t in_mem_size;    // Number of elements in the in-memory buffer.
@@ -60,8 +60,6 @@ public:
     {}
 
     Ext_Mem_Bucket(Ext_Mem_Bucket&& rhs);
-
-    ~Ext_Mem_Bucket() { deallocate(buf); }
 
     Ext_Mem_Bucket(const Ext_Mem_Bucket&) = delete;
     Ext_Mem_Bucket& operator=(const Ext_Mem_Bucket&) = delete;
@@ -111,7 +109,7 @@ inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(const std::string& file_path, const st
       file_path(file_path)
     , max_buf_bytes(buf_sz)
     , max_buf_elems(buf_sz / sizeof(T_))
-    , buf(allocate<T_>(max_buf_elems))
+    , buf(max_buf_elems)
     , size_(0)
     , in_mem_size(0)
 {
@@ -137,10 +135,7 @@ inline Ext_Mem_Bucket<T_>::Ext_Mem_Bucket(Ext_Mem_Bucket&& rhs):
     , size_(std::move(rhs.size_))
     , in_mem_size(std::move(rhs.in_mem_size))
     , file(std::move(rhs.file))
-{
-    // Moved objects are not really moved in C++.
-    rhs.buf = nullptr;
-}
+{}
 
 
 template <typename T_>
@@ -163,7 +158,7 @@ inline void Ext_Mem_Bucket<T_>::add(const T_* const buf, const std::size_t sz)
     while(rem_sz > 0)
     {
         const auto to_add = std::min(rem_sz, max_buf_elems - in_mem_size);
-        std::memcpy(reinterpret_cast<char*>(this->buf + in_mem_size), reinterpret_cast<const char*>(buf + added), to_add * sizeof(T_));
+        std::memcpy(reinterpret_cast<char*>(this->buf.data() + in_mem_size), reinterpret_cast<const char*>(buf + added), to_add * sizeof(T_));
         in_mem_size += to_add, added += to_add, rem_sz -= to_add;
 
         assert(in_mem_size <= max_buf_elems);
@@ -179,7 +174,7 @@ template <typename T_>
 template <typename... Args>
 inline void Ext_Mem_Bucket<T_>::emplace(Args&&... args)
 {
-    new(buf + in_mem_size) T_(args...);
+    new(buf.data() + in_mem_size) T_(args...);
     in_mem_size++;
     size_++;
 
@@ -194,7 +189,7 @@ inline void Ext_Mem_Bucket<T_>::flush()
 {
     assert(in_mem_size <= max_buf_elems);
 
-    file.write(reinterpret_cast<const char*>(buf), in_mem_size * sizeof(T_));
+    file.write(reinterpret_cast<const char*>(buf.data()), in_mem_size * sizeof(T_));
     if(!file)
     {
         std::cerr << "Error writing to external-memory bucket at " << file_path << ". Aborting.\n";
@@ -211,8 +206,7 @@ inline void Ext_Mem_Bucket<T_>::serialize()
     if(in_mem_size != 0)
         flush();
 
-    deallocate(buf);
-    buf = nullptr;
+    buf.free();
 
     file.close();
     if(!file)
@@ -232,7 +226,7 @@ inline std::size_t Ext_Mem_Bucket<T_>::load(T_* b) const
 
     assert(in_mem_size < max_buf_elems);
     if(in_mem_size > 0)
-        std::memcpy(reinterpret_cast<char*>(b) + file_sz, reinterpret_cast<const char*>(buf), in_mem_size * sizeof(T_));
+        std::memcpy(reinterpret_cast<char*>(b) + file_sz, reinterpret_cast<const char*>(buf.data()), in_mem_size * sizeof(T_));
 
     return size_;
 }
@@ -260,8 +254,7 @@ inline void Ext_Mem_Bucket<T_>::remove()
         }
     }
 
-    deallocate(buf);
-    buf = nullptr;
+    buf.free();
 }
 
 
