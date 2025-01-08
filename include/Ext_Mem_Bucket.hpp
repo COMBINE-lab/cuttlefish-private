@@ -7,6 +7,7 @@
 #include "Spin_Lock.hpp"
 #include "utility.hpp"
 #include "globals.hpp"
+#include "cereal/types/vector.hpp"
 #include "cereal/types/string.hpp"
 #include "parlay/parallel.h"
 
@@ -376,6 +377,12 @@ public:
     // Returns the resident set size of the space-dominant components of this
     // bucket.
     std::size_t RSS() const;
+
+    // Serializes the bucket to the `cereal` archive `archive`.
+    template <typename T_archive_> void save(T_archive_& archive) const;
+
+    // Deserializes the bucket from the `cereal` archive `archive`.
+    template <typename T_archive_> void load(T_archive_& archive);
 };
 
 
@@ -585,6 +592,31 @@ inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::RSS() const
     std::for_each(buf_w_local.cbegin(), buf_w_local.cend(), [&](const auto& b){ buf_bytes += b.unwrap().capacity() * sizeof(T_); });
 
     return buf_bytes;
+}
+
+
+template <typename T_>
+template <typename T_archive_>
+inline void Ext_Mem_Bucket_Concurrent<T_>::save(T_archive_& archive) const
+{
+    archive(file_path, max_buf_bytes, max_buf_elems, flushed, buf_w_local);
+}
+
+
+template <typename T_>
+template <typename T_archive_>
+inline void Ext_Mem_Bucket_Concurrent<T_>::load(T_archive_& archive)
+{
+    archive(const_cast<std::string&>(file_path), const_cast<std::size_t&>(max_buf_bytes), const_cast<std::size_t&>(max_buf_elems),
+            flushed, buf_w_local);
+
+    assert(!file_path.empty() && max_buf_bytes > 0);
+    file.open(file_path, std::ios::binary | std::ios::app);
+    if(!file)
+    {
+        std::cerr << "Error opening external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 }
