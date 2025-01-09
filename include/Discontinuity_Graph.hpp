@@ -46,7 +46,7 @@ private:
                                                 "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
     static const Kmer<k> phi_;  // ϕ k-mer connected to each chain-end in the discontinuity graph.
 
-    const Build_Params params;  // All input parameters (wrapped inside).
+    const uint16_t min_len; // Size of the l-minimizers.
 
     Edge_Matrix<k> E_;  // Edge-matrix of the discontinuity graph.
 
