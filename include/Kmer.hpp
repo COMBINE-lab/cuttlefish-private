@@ -219,6 +219,9 @@ public:
     // Implicitly converts the k-mer to a `std::string`.
     operator std::string() const;
 
+    // (De)serializes the k-mer from / to the `cereal` archive `archive`.
+    template <typename  T_archive_> void serialize(T_archive_& archive);
+
     // Returns a randomly generated k-mer.
     static Kmer<k> random_kmer();
 
@@ -764,6 +767,18 @@ inline Kmer<k>::operator std::string() const
     get_label(label);
 
     return label;
+}
+
+
+template <uint16_t k>
+template <typename T_archive_>
+inline void Kmer<k>::serialize(T_archive_& archive)
+{
+    if constexpr(k <= 32)
+        archive(kmer_data[0]);
+    else
+        for(std::size_t w_idx = 0; w_idx < NUM_INTS; ++w_idx)
+            archive(kmer_data[w_idx]);
 }
 
 

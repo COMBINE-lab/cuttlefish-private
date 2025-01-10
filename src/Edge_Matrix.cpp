@@ -45,6 +45,12 @@ Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
 
 
 template <uint16_t k>
+Edge_Matrix<k>::Edge_Matrix(const cereal::BinaryInputArchive&):
+      vertex_part_count_()
+{}
+
+
+template <uint16_t k>
 void Edge_Matrix<k>::close()
 {
     parlay::parallel_for(1, edge_matrix.size(),

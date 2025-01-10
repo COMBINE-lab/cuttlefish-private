@@ -29,6 +29,17 @@ Discontinuity_Graph<k, Colored_>::Discontinuity_Graph(const Build_Params& params
 
 
 template <uint16_t k, bool Colored_>
+Discontinuity_Graph<k, Colored_>::Discontinuity_Graph(cereal::BinaryInputArchive& archive):
+      min_len()
+    , E_(archive)
+    , lmtigs(archive)
+    , max_source_id_()
+{
+    archive(*this);
+}
+
+
+template <uint16_t k, bool Colored_>
 uint64_t Discontinuity_Graph<k, Colored_>::phantom_edge_upper_bound() const
 {
     return phantom_edge_count_;

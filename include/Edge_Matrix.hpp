@@ -7,6 +7,9 @@
 #include "Discontinuity_Edge.hpp"
 #include "Ext_Mem_Bucket.hpp"
 #include "utility.hpp"
+#include "cereal/types/vector.hpp"
+#include "cereal/types/string.hpp"
+#include "cereal/archives/binary.hpp"
 
 #include <cstdint>
 #include <cstddef>
@@ -38,6 +41,10 @@ public:
     // Constructs a blocked edge-matrix for `part_count` vertex-partitions. The
     // partition-count needs to be a power of 2.
     Edge_Matrix(std::size_t part_count, const std::string& path);
+
+    // Dummy constructor required for `cereal` deserialization to work for
+    // objects containing this matrix.
+    Edge_Matrix(const cereal::BinaryInputArchive&);
 
     // Returns the number of vertex-partitions in the graph.
     std::size_t vertex_part_count() const { return vertex_part_count_; }
@@ -98,6 +105,9 @@ public:
     // Returns the resident set size of the space-dominant components of this
     // matrix.
     std::size_t RSS() const;
+
+    // (De)serializes the matrix from / to the `cereal` archive `archive`.
+    template <typename T_archive_> void serialize(T_archive_& archive);
 };
 
 
@@ -121,6 +131,14 @@ inline void Edge_Matrix<k>::add(const Kmer<k> u, const side_t s_u, const Kmer<k>
         edge_matrix[p][q].emplace(u, s_u, v, s_v, w, b, b_idx, u_is_phi, v_is_phi, side_t::back);
     else    // p and q needs to be swapped along with the edge endpoints
         edge_matrix[q][p].emplace(v, s_v, u, s_u, w, b, b_idx, v_is_phi, u_is_phi, side_t::front);
+}
+
+
+template <uint16_t k>
+template <typename T_archive_>
+inline void Edge_Matrix<k>::serialize(T_archive_& archive)
+{
+    archive(type::mut_ref(vertex_part_count_), type::mut_ref(path), edge_matrix, row_to_read, col_to_read);
 }
 
 }

@@ -8,6 +8,9 @@
 #include "Maximal_Unitig_Scratch.hpp"
 #include "globals.hpp"
 #include "utility.hpp"
+#include "cereal/types/vector.hpp"
+#include "cereal/types/string.hpp"
+#include "cereal/archives/binary.hpp"
 
 #include <cstdint>
 #include <cstddef>
@@ -16,6 +19,7 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <ios>
 #include <fstream>
 #include <cstdlib>
 #include <cassert>
@@ -59,6 +63,10 @@ public:
     // Constructs a unitig-writer to the file at path `file_path`.
     Unitig_File_Writer(const std::string& file_path);
 
+    // Dummy constructor required for `cereal` deserialization to work for
+    // objects containing this writer.
+    Unitig_File_Writer();
+
     // Returns the total size of the added unitig content.
     auto size() const { return total_sz; }
 
@@ -78,6 +86,12 @@ public:
     // Returns the resident set size of the space-dominant components of this
     // writer.
     std::size_t RSS() const;
+
+    // Serializes the writer to the `cereal` archive `archive`.
+    template <typename T_archive_> void save(T_archive_& archive) const;
+
+    // Deserializes the writer from the `cereal` archive `archive`.
+    template <typename T_archive_> void load(T_archive_& archive);
 };
 
 
@@ -149,6 +163,10 @@ public:
     // written or not.
     Unitig_Write_Distributor(const std::string& path_pref, std::size_t writer_count, std::size_t worker_count, bool trivial_mtigs);
 
+    // Dummy constructor required for `cereal` deserialization to work for
+    // objects containing this distributor.
+    Unitig_Write_Distributor(const cereal::BinaryInputArchive&);
+
     // Adds the unitig content in the scratch `maximal_unitig` to the writer
     // for the `w_id`'th worker. Returns the pair `(b, idx)` such that `b` is
     // the ID of the bucket where the unitig is put in at the index `idx`.
@@ -174,6 +192,9 @@ public:
     // Returns the resident set size of the space-dominant components of this
     // distributor.
     std::size_t RSS() const;
+
+    // (De)serializes the distributor from / to the `cereal` archive `archive`.
+    template <typename T_archive_> void serialize(T_archive_& archive);
 };
 
 
@@ -236,6 +257,32 @@ inline void Unitig_File_Writer::flush_lengths()
     }
 
     len.clear();
+}
+
+
+template <typename T_archive_>
+inline void Unitig_File_Writer::save(T_archive_& archive) const
+{
+    archive(file_path, buf, total_sz, len, unitig_c);
+}
+
+
+template <typename T_archive_>
+inline void Unitig_File_Writer::load(T_archive_& archive)
+{
+    archive(type::mut_ref(file_path), buf, total_sz, len, unitig_c);
+
+    if(!file_path.empty())
+    {
+        output.open(file_path, std::ios::binary | std::ios::app);
+        output_len.open(length_file_path(), std::ios::binary | std::ios::app);
+
+        if(!output || !output_len)
+        {
+            std::cerr << "Error opening unitig-files at " << file_path << " and " << length_file_path() << ". Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+    }
 }
 
 
@@ -347,6 +394,13 @@ inline std::pair<std::size_t, std::size_t> Unitig_Write_Distributor::add_trivial
     w.add(u_f.cbegin(), u_f.cend(), u_b.cbegin() + k, u_b.cend());
 
     return {writer.size() + w_id, idx};
+}
+
+
+template <typename T_archive_>
+inline void Unitig_Write_Distributor::serialize(T_archive_& archive)
+{
+    archive(type::mut_ref(writer_count), writer, type::mut_ref(worker_count), type::mut_ref(writer_per_worker), next_writer, mtig_writer);
 }
 
 }
