@@ -366,5 +366,11 @@ namespace timer
 }
 
 
+namespace type
+{
+    template <typename T_> inline T_& mut_ref(const T_& v) { return const_cast<T_&>(v); }
+}
+
+
 
 #endif

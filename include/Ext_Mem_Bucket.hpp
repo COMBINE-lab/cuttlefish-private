@@ -285,7 +285,7 @@ template <typename T_>
 template <typename T_archive_>
 inline void Ext_Mem_Bucket<T_>::load(T_archive_& archive)
 {
-    archive(const_cast<std::string&>(file_path), const_cast<std::size_t&>(max_buf_bytes), const_cast<std::size_t&>(max_buf_elems),
+    archive(type::mut_ref(file_path), type::mut_ref(max_buf_bytes), type::mut_ref(max_buf_elems),
             buf, size_, in_mem_size);
 
 
@@ -607,7 +607,7 @@ template <typename T_>
 template <typename T_archive_>
 inline void Ext_Mem_Bucket_Concurrent<T_>::load(T_archive_& archive)
 {
-    archive(const_cast<std::string&>(file_path), const_cast<std::size_t&>(max_buf_bytes), const_cast<std::size_t&>(max_buf_elems),
+    archive(type::mut_ref(file_path), type::mut_ref(max_buf_bytes), type::mut_ref(max_buf_elems),
             flushed, buf_w_local);
 
     assert(!file_path.empty() && max_buf_bytes > 0);
