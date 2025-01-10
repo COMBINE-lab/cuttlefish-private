@@ -289,9 +289,11 @@ inline void Ext_Mem_Bucket<T_>::load(T_archive_& archive)
             buf, size_, in_mem_size);
 
 
-    assert(!file_path.empty() && max_buf_elems > 0);
+    assert(file_path.empty() || max_buf_elems > 0);
 
-    file.open(file_path, std::ios::binary | std::ios::app);
+    if(!file_path.empty())
+        file.open(file_path, std::ios::binary | std::ios::app);
+
     if(!file)
     {
         std::cerr << "Error opening external-memory bucket at " << file_path << ". Aborting.\n";
@@ -401,7 +403,7 @@ inline Ext_Mem_Bucket_Concurrent<T_>::Ext_Mem_Bucket_Concurrent(const std::strin
 
     if(!file)
     {
-        std::cerr << "Error opening external-memory bucket at " << file_path << ". Aborting.\n";
+        std::cerr << "Error opening concurrent external-memory bucket at " << file_path << ". Aborting.\n";
         std::exit(EXIT_FAILURE);
     }
 
@@ -610,11 +612,14 @@ inline void Ext_Mem_Bucket_Concurrent<T_>::load(T_archive_& archive)
     archive(type::mut_ref(file_path), type::mut_ref(max_buf_bytes), type::mut_ref(max_buf_elems),
             flushed, buf_w_local);
 
-    assert(!file_path.empty() && max_buf_bytes > 0);
-    file.open(file_path, std::ios::binary | std::ios::app);
+    assert(file_path.empty() || max_buf_elems > 0);
+
+    if(!file_path.empty())
+        file.open(file_path, std::ios::binary | std::ios::app);
+
     if(!file)
     {
-        std::cerr << "Error opening external-memory bucket at " << file_path << ". Aborting.\n";
+        std::cerr << "Error opening concurrent external-memory bucket at " << file_path << ". Aborting.\n";
         std::exit(EXIT_FAILURE);
     }
 }
