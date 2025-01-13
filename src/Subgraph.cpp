@@ -510,8 +510,9 @@ Subgraphs_Scratch_Space<k, Colored_>::Subgraphs_Scratch_Space(const std::size_t 
         }
 
         bv_.resize(parlay::num_workers());
-        set_.resize(parlay::num_workers());
     }
+
+    set_.resize(parlay::num_workers());
 }
 
 
