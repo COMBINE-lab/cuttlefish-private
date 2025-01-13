@@ -255,9 +255,7 @@ public:
 
     const T_& unwrap() const { return data_; }
 
-    template <typename T_archive_> void save(T_archive_& archive) const { archive(data_); }
-
-    template <typename T_archive_> void load(T_archive_& archive) { archive(data_); }
+    template <typename T_archive_> void serialize(T_archive_& archive) { archive(data_); }
 };
 
 
