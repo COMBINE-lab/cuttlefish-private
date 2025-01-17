@@ -40,6 +40,8 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract()
 
     // TODO: document the phases.
 
+    std::vector<Padded<Buffer<Discontinuity_Edge<k>>>> B(parlay::num_workers());    // Worker-local edge-read buffers.
+
     buf.reserve_uninit(G.E().max_block_size());
     Buffer<Discontinuity_Edge<k>> swap_buf; // Buffer to be used in every other iteration to hide edge-read latency.
     swap_buf.reserve_uninit(buf.capacity());
@@ -57,30 +59,17 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract()
         t_e = now();
         diag_comp_time += duration(t_e - t_s);
 
-        std::size_t batch = 0;  // Batch order of processing non-diagonal edges.    // TODO: read from different blocks parallely, instead of halting for read.
-        auto edge_c_curr = G.E().read_column_buffered(j, buf);  // Count of edges to process in the current batch.
-        std::size_t edge_c_next;    // Count of edges to process in the next batch.
-        while(true)
+        constexpr std::size_t buf_cap = 1 * 1024 * 1024 / sizeof(Discontinuity_Edge<k>);    // 1 MB read-capacity.
+        const auto process_non_diagonal_edges = [&](auto)
         {
-            if(edge_c_curr == 0)
-                break;
-
-            parlay::par_do(
-                [&]()
-                {
-                    t_s = now();
-                    auto& buf_next = ((batch & 1) == 0 ? swap_buf : buf);   // Buffer for the next batch.
-                    edge_c_next = G.E().read_column_buffered(j, buf_next);
-                    t_e = now();
-                    edge_read_time += duration(t_e - t_s);
-                }
-                ,
-                [&]()
-                {
-                    const auto& buf_cur = ((batch & 1) == 0 ? buf : swap_buf);  // Buffer for the current batch.
-                    const auto process_non_diagonal_edge = [&](const std::size_t idx)
+            auto& buf = B[parlay::worker_id()].unwrap();
+            buf.resize_uninit(buf_cap);
+            std::size_t read;
+            for(std::size_t i = 0; i < j; ++i)
+                while((read = G.E().read_block_buffered(i, j, buf, buf_cap)) > 0)
+                    for(std::size_t idx = 0; idx < read; ++idx)
                     {
-                        const auto& e = buf_cur[idx];
+                        const auto& e = buf[idx];
                         Other_End* p_z;
 
                         assert(G.E().partition(e.y()) == j);
@@ -89,7 +78,7 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract()
                         if(M.insert(e.y(), Other_End(e.x(), e.s_x(), e.s_y(), e.x_is_phi(), e.w(), false), p_z))
                         {
                             assert(M.find(e.y()));
-                            return;
+                            continue;
                         }
 
                         assert(M.find(e.y()));
@@ -108,19 +97,13 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract()
                             G.add_edge(e.x(), e.s_x(), z.v(), z.s_v(), e.w() + z.w(), e.x_is_phi(), z.is_phi());
 
                         z.process();
-                    };
+                    }
+        };
 
-                    t_s = now();
-                    parlay::parallel_for(0, edge_c_curr, process_non_diagonal_edge);
-                    t_e = now();
-                    edge_proc_time += duration(t_e - t_s);
-                }
-            );
-
-            batch++;
-            edge_c_curr = edge_c_next;
-        }
-
+        t_s = now();
+        parlay::parallel_for(0, parlay::num_workers(), process_non_diagonal_edges, 1);
+        t_e = now();
+        edge_proc_time += duration(t_e - t_s);
 
         t_s = now();
         const auto contract_diagonal_chain = [&](const std::size_t w_id)
@@ -198,7 +181,6 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract()
     std::cerr << "Found " << icc_count << " ICCs.\n";
     std::cerr << "Found " << phantom_count_ << " phantoms.\n";
     std::cerr << "Map clearing time: " << map_clr_time << ".\n";
-    std::cerr << "Edges reading time: " << edge_read_time << ".\n";
     std::cerr << "Non-diagonal edges contraction time: " << edge_proc_time << ".\n";
     std::cerr << "Diagonal-chain computation time: " << diag_comp_time << ".\n";
     std::cerr << "Diagonal-chain contraction time: " << diag_cont_time << ".\n";
@@ -210,10 +192,7 @@ template <uint16_t k, bool Colored_>
 void Discontinuity_Graph_Contractor<k, Colored_>::contract_diagonal_block(const std::size_t j)
 {
     D_j.clear();
-    const auto t_s = now();
-    const auto edge_c = G.E().read_diagonal_block(j, buf);
-    const auto t_e = now();
-    edge_read_time += duration(t_e - t_s);
+    const auto edge_c = G.E().read_diagonal_block(j, buf);  // TODO: buffer reads.
 
     for(std::size_t i = 0; i < edge_c; ++i)
     {

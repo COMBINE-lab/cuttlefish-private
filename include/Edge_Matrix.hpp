@@ -75,6 +75,10 @@ public:
     // NB: this does not read the blocks in the diagonal.
     std::size_t read_column_buffered(std::size_t j, Buffer<Discontinuity_Edge<k>>& buf) const;
 
+    // Reads a chunk of edges from the `(x, y)`'th block into `buf`, and returns
+    // the count of edges read. If it is `0`, then the block has been depleted.
+    std::size_t read_block_buffered(std::size_t x, std::size_t y, Buffer<Discontinuity_Edge<k>>& buf, std::size_t n) const;
+
     // Reads a chunk of edges from the row `i` into `buf`. Returns the count of
     // edges read. If `0` is returned, then the column has been depleted.
     // NB: this does not read the blocks in the diagonal.

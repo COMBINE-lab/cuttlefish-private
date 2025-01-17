@@ -69,9 +69,6 @@ private:
     // meta-vertex corresponds to a cycle.
     void form_meta_vertex(Kmer<k> v, std::size_t part, side_t s, weight_t w, bool is_cycle = false);
 
-    // Debug
-    double edge_read_time = 0;  // Time taken to read the edges.
-
     static constexpr auto now = std::chrono::high_resolution_clock::now;    // Current time-point in nanoseconds.
 
     // Returns the equivalent time-duration in seconds from `d` nanoseconds.
