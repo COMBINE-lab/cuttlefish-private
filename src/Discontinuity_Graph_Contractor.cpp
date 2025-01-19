@@ -43,6 +43,9 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract()
     // TODO: document the phases.
 
     std::vector<Padded<Buffer<Discontinuity_Edge<k>>>> B(parlay::num_workers());    // Worker-local edge-read buffers.
+    constexpr std::size_t buf_cap = 1 * 1024 * 1024 / sizeof(Discontinuity_Edge<k>);    // 1 MB read-capacity.
+    parlay::parallel_for(0, B.size(), [&](const auto w){ B[w].unwrap().resize_uninit(buf_cap); });
+
     for(auto j = G.E().vertex_part_count(); j >= 1; --j)
     {
         std::cerr << "\rPart: " << j;
@@ -65,9 +68,7 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract()
             {
                 const auto process_non_diagonal_edges = [&](auto)
                 {
-                    constexpr std::size_t buf_cap = 1 * 1024 * 1024 / sizeof(Discontinuity_Edge<k>);    // 1 MB read-capacity.
                     auto& buf = B[parlay::worker_id()].unwrap();
-                    buf.resize_uninit(buf_cap);
                     std::size_t read;
                     for(std::size_t i = 0; i < j; ++i)
                         while((read = G.E().read_block_buffered(i, j, buf, buf_cap)) > 0)
