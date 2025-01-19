@@ -18,8 +18,6 @@
 #include <cstddef>
 #include <vector>
 #include <string>
-#include <unordered_map>
-#include <utility>
 #include <algorithm>
 #include <cassert>
 
@@ -49,21 +47,8 @@ private:
     // TODO: remove `D_i` by adopting a more parallelization-amenable algorithm for diagonal contraction-expansion.
     Buffer<Discontinuity_Edge<k>> D_i;  // New edges introduced in contracted diagonal blocks.
 
-    Concurrent_Hash_Table<Kmer<k>, Path_Info<k>, Kmer_Hasher<k>> M; // `M[v]` is the path-info for vertex `v`.
+    Concurrent_Hash_Table<Kmer<k>, Path_Info<k>, Kmer_Hasher<k, 0>> M;  // `M[v]` is the path-info for vertex `v`.
 
-    // `P_v_ip1[w]` contains vertex path-info instances inferred by worker `w`
-    // for vertices at partition `i + 1` while processing partition `i`. This
-    // case is specialized to facilitate some non-trivial parallelization.
-    std::vector<Padded<std::vector<Obj_Path_Info_Pair<Kmer<k>, k>>>> P_v_ip1;
-
-
-    // Loads the available path-info of meta-vertices from partition `i` into
-    // the buffer `p_v_buf`, and returns the number of instances loaded.
-    std::size_t load_path_info(std::size_t i, Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf);
-
-    // Fills the hash table `M` with the available path-information at buffer
-    // `p_v_buf` of size `buf_sz`, and also from `P_v_ip1`.
-    void fill_path_info(const Buffer<Obj_Path_Info_Pair<Kmer<k>, k>>& p_v_buf, std::size_t buf_sz);
 
     // Expands the `[i, i]`'th (contracted) edge-block.
     void expand_diagonal_block(std::size_t i);
@@ -90,10 +75,6 @@ private:
     // local buffers.
     // template <typename T_s_, typename T_d_> static uint64_t collate_w_local_bufs(T_s_& source, std::size_t beg, size_t end, T_d_& dest);
 
-    // Debug
-    double p_v_load_time = 0;   // Time to load vertices' path-info.
-    double edge_read_time = 0;  // Time taken to read the edges.
-    double map_fill_time = 0;   // Time taken to fill the hash map with already inferred vertices' path-info for a partition.
 
     // TODO: replace w/ the general timer.
     static constexpr auto now = std::chrono::high_resolution_clock::now;    // Current time-point in nanoseconds.
