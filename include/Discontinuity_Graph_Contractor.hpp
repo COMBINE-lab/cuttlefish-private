@@ -41,8 +41,6 @@ private:
 
     const std::string compressed_diagonal_path; // Path-prefix to the edges introduced in contracting diagonal blocks.
 
-    Buffer<Discontinuity_Edge<k>> buf;  // Buffer to read-in edges from the edge-matrix.
-
     class Other_End;
     Concurrent_Hash_Table<Kmer<k>, Other_End, Kmer_Hasher<k>> M;    // `M[v]` is the associated vertex to `v` at a given time.
 
@@ -57,8 +55,9 @@ private:
     std::atomic_uint64_t icc_count; // Number of ICCs.
 
 
-    // Contracts the `[j, j]`'th edge-block.
-    void contract_diagonal_block(std::size_t j);
+    // Contracts the `[j, j]`'th edge-block. Buffer `buf` is used to read the
+    // edges.
+    void contract_diagonal_block(std::size_t j, Buffer<Discontinuity_Edge<k>>& buf);
 
     // Forms a meta-vertex in the contracted graph with the vertex `v` belonging
     // to the vertex-partition `part`. In the contracted graph, `v` has a `w_1`

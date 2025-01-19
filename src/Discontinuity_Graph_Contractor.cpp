@@ -43,10 +43,6 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract()
     // TODO: document the phases.
 
     std::vector<Padded<Buffer<Discontinuity_Edge<k>>>> B(parlay::num_workers());    // Worker-local edge-read buffers.
-
-    buf.reserve_uninit(G.E().max_block_size());
-    Buffer<Discontinuity_Edge<k>> swap_buf; // Buffer to be used in every other iteration to hide edge-read latency.
-    swap_buf.reserve_uninit(buf.capacity());
     for(auto j = G.E().vertex_part_count(); j >= 1; --j)
     {
         std::cerr << "\rPart: " << j;
@@ -60,7 +56,7 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract()
             [&]()
             {
                 const auto t_s = now();
-                contract_diagonal_block(j);
+                contract_diagonal_block(j, B[parlay::worker_id()].unwrap());
                 const auto t_e = now();
                 diag_comp_time += duration(t_e - t_s);
             }
@@ -216,7 +212,7 @@ void Discontinuity_Graph_Contractor<k, Colored_>::contract()
 
 
 template <uint16_t k, bool Colored_>
-void Discontinuity_Graph_Contractor<k, Colored_>::contract_diagonal_block(const std::size_t j)
+void Discontinuity_Graph_Contractor<k, Colored_>::contract_diagonal_block(const std::size_t j, Buffer<Discontinuity_Edge<k>>& buf)
 {
     D_j.clear();
     D.clear();
