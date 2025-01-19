@@ -11,6 +11,7 @@
 #include "Discontinuity_Graph.hpp"
 #include "Concurrent_Hash_Table.hpp"
 #include "utility.hpp"
+#include "unordered_dense/unordered_dense.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -48,6 +49,9 @@ private:
     // TODO: remove `D_j` by adopting a more parallelization-amenable algorithm for diagonal contraction-expansion.
     std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block. TODO: remove `D_j` by adding these edges to the diagonal block.
     std::vector<Padded<std::vector<Discontinuity_Edge<k>>>> D_c;    // `D_c[t]` contains the edges corresponding to compressed diagonal chains by worker `t`.
+    Buffer<Discontinuity_Edge<k>> D_c_flat; // Flattened `D_c`.
+
+    ankerl::unordered_dense::map<Kmer<k>, Other_End, Kmer_Hasher<k>> D; // `D[v]` is the associated vertex to `v` at a given time during diagonal compression.
 
     std::atomic_uint64_t phantom_count_;    // Number of phantom edges.
     std::atomic_uint64_t icc_count; // Number of ICCs.
