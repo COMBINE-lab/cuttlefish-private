@@ -385,6 +385,9 @@ public:
     // if the bucket is not being concurrently updated.
     std::size_t read_buffered(Buffer<T_>& buf, std::size_t n) const;
 
+    // Resets the read-status of each worker.
+    void reset_read();
+
     // Removes the bucket.
     void remove();
 
@@ -646,6 +649,15 @@ inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::read_buffered(Buffer<T_>& buf,
     }
 
     return 0;
+}
+
+
+template <typename T_>
+inline void Ext_Mem_Bucket_Concurrent<T_>::reset_read()
+{
+    parlay::parallel_for(0, read_is.size(), [&](const auto i){ if(read_is[i].unwrap().is_open()) read_is[i].unwrap().close(); });
+    read = 0;
+    read_bufs_pending = true;
 }
 
 

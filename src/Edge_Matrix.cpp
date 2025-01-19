@@ -132,6 +132,15 @@ std::size_t Edge_Matrix<k>::read_block_buffered(const std::size_t x, const std::
 
 
 template <uint16_t k>
+void Edge_Matrix<k>::reset_read()
+{
+    for(std::size_t i = 0; i < edge_matrix.size(); ++i)
+        for(std::size_t j = i; j < edge_matrix[i].size(); ++j)
+            edge_matrix[i][j].reset_read();
+}
+
+
+template <uint16_t k>
 std::size_t Edge_Matrix<k>::row_size(const std::size_t i) const
 {
     assert(i <= vertex_part_count_);

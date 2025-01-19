@@ -79,6 +79,9 @@ public:
     // the count of edges read. If it is `0`, then the block has been depleted.
     std::size_t read_block_buffered(std::size_t x, std::size_t y, Buffer<Discontinuity_Edge<k>>& buf, std::size_t n) const;
 
+    // Resets the read-status of each worker for the entire matrix.
+    void reset_read();
+
     // Reads a chunk of edges from the row `i` into `buf`. Returns the count of
     // edges read. If `0` is returned, then the column has been depleted.
     // NB: this does not read the blocks in the diagonal.
