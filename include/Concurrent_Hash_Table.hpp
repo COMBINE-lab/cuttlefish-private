@@ -106,7 +106,7 @@ public:
     // the key already exists in the table; and in that case, the existing value
     // associated to `key` is overwritten with `val`. Otherwise returns `true`
     // iff the insertion succeeds, i.e. free space was found for the insertion.
-    bool insert_overwrite(T_key_ key, T_val_ val);
+    bool insert_or_assign(T_key_ key, T_val_ val);
 
     // Searches for `key` in the table and returns the address of the value
     // associated to it iff it is found. Returns `nullptr` otherwise.
@@ -322,7 +322,7 @@ inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert(const T_key
 
 
 template <typename T_key_, typename T_val_, typename T_hasher_>
-inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_overwrite(const T_key_ key, const T_val_ val)
+inline bool Concurrent_Hash_Table<T_key_, T_val_, T_hasher_>::insert_or_assign(const T_key_ key, const T_val_ val)
 {
 #ifndef NDEBUG
     std::size_t tried_slots = 0;
