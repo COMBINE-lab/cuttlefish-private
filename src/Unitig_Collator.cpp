@@ -333,6 +333,7 @@ void Unitig_Collator<k, Colored_>::reduce()
             {
                 is_cycle ? m_tig.canonicalize_cycle(): m_tig.canonicalize();
                 output += FASTA_Record(0, std::string_view(m_tig.data(), m_tig.size()));
+                // TODO: this forms a parallel-scaling bottleneck due to the shared sink of the buffers.
             }
             else
             {
@@ -340,6 +341,7 @@ void Unitig_Collator<k, Colored_>::reduce()
                     m_tig.canonicalize();
 
                 output.template operator+=<true>(FASTA_Record(0, std::string_view(m_tig.data(), m_tig.size()), m_tig.color()));
+                // TODO: this forms a parallel-scaling bottleneck due to the shared sink of the buffers.
             }
 
             j = e;

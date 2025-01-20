@@ -20,6 +20,7 @@ namespace cuttlefish
 
 // Class to count incident edges' ((k + 1)-mers') frequencies of vertices
 // (k-mers).
+// TODO: why is there no specialization for references? No advantages due to alignment-requirement issues?
 class Edge_Frequency
 {
 private:
