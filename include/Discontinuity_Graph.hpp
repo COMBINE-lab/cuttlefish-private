@@ -14,6 +14,8 @@
 #include "globals.hpp"
 #include "parlay/parallel.h"
 #include "utility.hpp"
+#include "cereal/types/vector.hpp"
+#include "cereal/archives/binary.hpp"
 
 #include <cstdint>
 #include <cstddef>
@@ -46,7 +48,7 @@ private:
                                                 "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT";
     static const Kmer<k> phi_;  // ϕ k-mer connected to each chain-end in the discontinuity graph.
 
-    const Build_Params params;  // All input parameters (wrapped inside).
+    const uint16_t min_len; // Size of the l-minimizers.
 
     Edge_Matrix<k> E_;  // Edge-matrix of the discontinuity graph.
 
@@ -65,6 +67,9 @@ public:
     // parameters in `params`. `logistics` is the data logistics manager for
     // the algorithm execution.
     Discontinuity_Graph(const Build_Params& params, const Data_Logistics& logistics);
+
+    // Deserializes the discontinuity graph from the `cereal` archive `archive`.
+    Discontinuity_Graph(cereal::BinaryInputArchive& archive);
 
     // Returns the ϕ k-mer connected to each chain-end in the discontinuity
     // graph.
@@ -126,6 +131,9 @@ public:
     // Returns the resident set size of the space-dominant components of the
     // graph.
     std::size_t RSS() const;
+
+    // (De)serializes the graph from / to the `cereal` archive `archive`.
+    template <typename T_archive_> void serialize(T_archive_& archive);
 };
 
 
@@ -171,6 +179,16 @@ template <uint16_t k, bool Colored_>
 inline void Discontinuity_Graph<k, Colored_>::add_color(const uint16_t b, const uint32_t b_idx, const uint16_t off, const Color_Coordinate& c)
 {
     vertex_color_map_[b].unwrap().emplace(b_idx, off, c);
+}
+
+
+template <uint16_t k, bool Colored_>
+template <typename T_archive_>
+inline void Discontinuity_Graph<k, Colored_>::serialize(T_archive_& archive)
+{
+    uint64_t phantom_edge_c = phantom_edge_count_;
+    archive(type::mut_ref(min_len), E_, lmtigs, phantom_edge_c, type::mut_ref(max_source_id_), vertex_color_map_);
+    phantom_edge_count_ = phantom_edge_c;
 }
 
 }

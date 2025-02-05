@@ -12,7 +12,7 @@ namespace cuttlefish
 
 template <uint16_t k, bool Colored_>
 Discontinuity_Graph<k, Colored_>::Discontinuity_Graph(const Build_Params& params, const Data_Logistics& logistics):
-      params(params)
+      min_len(params.min_len())
     , E_(params.vertex_part_count(), logistics.edge_matrix_path())
     , lmtigs(logistics.lmtig_buckets_path(), params.lmtig_bucket_count(), parlay::num_workers(), Colored_)
     , phantom_edge_count_(0)
@@ -25,6 +25,17 @@ Discontinuity_Graph<k, Colored_>::Discontinuity_Graph(const Build_Params& params
         for(std::size_t b = 1; b < lmtigs.bucket_count(); ++b)
             vertex_color_map_.emplace_back(logistics.lmtig_buckets_path() + "/" + std::to_string(b) + ".col");
     }
+}
+
+
+template <uint16_t k, bool Colored_>
+Discontinuity_Graph<k, Colored_>::Discontinuity_Graph(cereal::BinaryInputArchive& archive):
+      min_len()
+    , E_(archive)
+    , lmtigs(archive)
+    , max_source_id_()
+{
+    archive(*this);
 }
 
 
@@ -65,8 +76,8 @@ bool Discontinuity_Graph<k, Colored_>::is_discontinuity(const char* const seq) c
     std::size_t idx_l, idx_r;
 
     typedef Minimizer_Iterator<const char*, k - 1, true> min_it_t;
-    min_it_t::minimizer(seq, params.min_len(), min_seed, min_l, h_l, idx_l);
-    min_it_t::minimizer(seq + 1, params.min_len(), min_seed, min_r, h_r, idx_r);
+    min_it_t::minimizer(seq, min_len, min_seed, min_l, h_l, idx_l);
+    min_it_t::minimizer(seq + 1, min_len, min_seed, min_r, h_r, idx_r);
 
     // const auto graph_id = [&](const auto h){ return h & (params.subgraph_count() - 1); };
     // TODO: update.

@@ -1,12 +1,12 @@
 
 #include "Edge_Matrix.hpp"
-#include "File_Extensions.hpp"
 #include "globals.hpp"
 #include "parlay/parallel.h"
 
 #include <cstddef>
-#include <algorithm>
 #include <filesystem>
+#include <algorithm>
+#include <cassert>
 
 
 namespace cuttlefish
@@ -42,6 +42,12 @@ Edge_Matrix<k>::Edge_Matrix(std::size_t part_count, const std::string& path):
     for(std::size_t i = 1; i <= part_count; ++i)
         col_to_read[i] = i + 1;
 }
+
+
+template <uint16_t k>
+Edge_Matrix<k>::Edge_Matrix(const cereal::BinaryInputArchive&):
+      vertex_part_count_()
+{}
 
 
 template <uint16_t k>
@@ -110,8 +116,27 @@ template <uint16_t k>
 std::size_t Edge_Matrix<k>::read_block(std::size_t i, std::size_t j, Buffer<Discontinuity_Edge<k>>& buf) const
 {
     assert(i <= vertex_part_count_ && j <= vertex_part_count_);
+    assert(i <= j); // Upper-diagonal matrix.
     buf.reserve_uninit(edge_matrix[i][j].size());
     return edge_matrix[i][j].load(buf.data());
+}
+
+
+template <uint16_t k>
+std::size_t Edge_Matrix<k>::read_block_buffered(const std::size_t x, const std::size_t y, Buffer<Discontinuity_Edge<k>>& buf, const std::size_t n) const
+{
+    assert(x <= vertex_part_count_ && y <= vertex_part_count_);
+    assert(x <= y); // Upper-diagonal matrix.
+    return edge_matrix[x][y].read_buffered(buf, n);
+}
+
+
+template <uint16_t k>
+void Edge_Matrix<k>::reset_read()
+{
+    for(std::size_t i = 0; i < edge_matrix.size(); ++i)
+        for(std::size_t j = i; j < edge_matrix[i].size(); ++j)
+            edge_matrix[i][j].reset_read();
 }
 
 

@@ -8,7 +8,6 @@
 #include "globals.hpp"
 
 #include <cstdint>
-#include <algorithm>
 #include <iostream>
 
 
@@ -105,6 +104,9 @@ public:
     // `(u, v)` orientation of the edge.
     side_t o() const { return side_t(bool(mask & unitig_o[1])); }
 
+    // (De)serializes the edge from / to the `cereal` archive `archive`.
+    template <typename T_archive_> void serialize(T_archive_& archive);
+
     // Pretty-prints the edge `e` to the stream `os`.
     friend std::ostream& operator<<(std::ostream& os, const Discontinuity_Edge<k>& e)
     {
@@ -129,6 +131,14 @@ inline Discontinuity_Edge<k>::Discontinuity_Edge(const Kmer<k>& u, const side_t 
 {
     // Necessary condition for the status-mask to work.
     static_assert(as_int(side_t::front) == 0 && as_int(side_t::back) == 1);
+}
+
+
+template <uint16_t k>
+template <typename  T_archive_>
+inline void Discontinuity_Edge<k>::serialize(T_archive_& archive)
+{
+    archive(u_, v_, weight, bucket_id, b_idx_, mask);
 }
 
 }

@@ -16,9 +16,21 @@ Unitig_File_Writer::Unitig_File_Writer(const std::string& file_path):
     , unitig_c(0)
 {
     if(!file_path.empty())
-        output.open(file_path, std::ios::out | std::ios::binary),
-        output_len.open(length_file_path(), std::ios::out | std::ios::binary);
+    {
+        output.open(file_path, std::ios::binary);
+        output_len.open(length_file_path(), std::ios::binary);
+
+        if(!output || !output_len)
+        {
+            std::cerr << "Error opening unitig-files at " << file_path << " and " << length_file_path() << ". Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+    }
 }
+
+
+Unitig_File_Writer::Unitig_File_Writer(): Unitig_File_Writer(std::string())
+{}
 
 
 void Unitig_File_Writer::close()
@@ -84,6 +96,13 @@ Unitig_Write_Distributor::Unitig_Write_Distributor(const std::string& path_pref,
             mtig_writer.emplace_back(path_pref + "/" + std::to_string(writer.size() + w));
     }
 }
+
+
+Unitig_Write_Distributor::Unitig_Write_Distributor(const cereal::BinaryInputArchive&):
+      writer_count()
+    , worker_count()
+    , writer_per_worker()
+{}
 
 
 void Unitig_Write_Distributor::close()

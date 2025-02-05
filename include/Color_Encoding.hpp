@@ -52,6 +52,9 @@ public:
 
     // Returns 40-bit packing of the color-coordinate.
     auto as_u40() const { assert(bit_pack < (pack_t(1) << 40)); return bit_pack; }
+
+    // (De)serializes the coordinate from / to the `cereal` archive `archive`.
+    template <typename T_archive_> void serialize(T_archive_& archive) { archive(bit_pack); }
 };
 
 
@@ -87,6 +90,9 @@ public:
     // Returns `true` iff this vertex precedes the associated vertex of `rhs`
     // in their bucket.
     bool operator<(const Vertex_Color_Mapping& rhs) const { return idx_ != rhs.idx_ ? (idx_ < rhs.idx_) : (off_ < rhs.off_); }
+
+    // (De)serializes the mapping from / to the `cereal` archive `archive`.
+    template <typename T_archive_> void serialize(T_archive_& archive) { archive(idx_, off_, c_); }
 };
 
 

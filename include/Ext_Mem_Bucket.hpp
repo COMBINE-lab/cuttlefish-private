@@ -7,6 +7,8 @@
 #include "Spin_Lock.hpp"
 #include "utility.hpp"
 #include "globals.hpp"
+#include "cereal/types/vector.hpp"
+#include "cereal/types/string.hpp"
 #include "parlay/parallel.h"
 
 #include <cstddef>
@@ -101,6 +103,12 @@ public:
     // Returns the resident set size of the space-dominant components of this
     // bucket.
     std::size_t RSS() const;
+
+    // Serializes the bucket to the `cereal` archive `archive`.
+    template <typename T_archive_> void save(T_archive_& archive) const;
+
+    // Deserializes the bucket from the `cereal` archive `archive`.
+    template <typename T_archive_> void load(T_archive_& archive);
 };
 
 
@@ -265,6 +273,35 @@ inline std::size_t Ext_Mem_Bucket<T_>::RSS() const
 }
 
 
+template <typename T_>
+template <typename T_archive_>
+inline void Ext_Mem_Bucket<T_>::save(T_archive_& archive) const
+{
+    archive(file_path, max_buf_bytes, max_buf_elems, buf, size_, in_mem_size);
+}
+
+
+template <typename T_>
+template <typename T_archive_>
+inline void Ext_Mem_Bucket<T_>::load(T_archive_& archive)
+{
+    archive(type::mut_ref(file_path), type::mut_ref(max_buf_bytes), type::mut_ref(max_buf_elems),
+            buf, size_, in_mem_size);
+
+
+    assert(file_path.empty() || max_buf_elems > 0);
+
+    if(!file_path.empty())
+        file.open(file_path, std::ios::binary | std::ios::app);
+
+    if(!file)
+    {
+        std::cerr << "Error opening external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
+}
+
+
 
 // A concurrent external-memory bucket for elements of type `T_`.
 template <typename T_>
@@ -283,7 +320,11 @@ private:
     std::vector<Padded<std::vector<T_>>> buf_w_local;   // In-memory worker-local buffers of the bucket-elements.
 
     std::ofstream file; // The bucket-file.
-    Spin_Lock lock_;    // Lock to the bucket-file.
+    mutable Spin_Lock lock_;    // Lock to shared resources.
+
+    mutable std::vector<Padded<std::ifstream>> read_is; // Worker-local read-input streams.
+    mutable std::size_t read;   // Number of elements read from the bucket off external-memory.
+    mutable bool read_bufs_pending; // Whether reading the content of the worker-local buffers is pending.
 
 
     // Flushes the in-memory buffer content of the invoking worker to external-
@@ -336,12 +377,29 @@ public:
     // bucket is not being updated, otherwise runs the risk of data races.
     std::size_t load(T_* b) const;
 
+    // Tries to read a chunk of size at least `n` into the buffer `buf`, and
+    // returns the number of elements read. `< n` elements are read when the
+    // external-file has `< n` elements remaining to be read, and `> n` elements
+    // may be read when this read depletes reading the bucket. Returns `0` iff
+    // the bucket has been read off completely. It does not have data races only
+    // if the bucket is not being concurrently updated.
+    std::size_t read_buffered(Buffer<T_>& buf, std::size_t n) const;
+
+    // Resets the read-status of each worker.
+    void reset_read();
+
     // Removes the bucket.
     void remove();
 
     // Returns the resident set size of the space-dominant components of this
     // bucket.
     std::size_t RSS() const;
+
+    // Serializes the bucket to the `cereal` archive `archive`.
+    template <typename T_archive_> void save(T_archive_& archive) const;
+
+    // Deserializes the bucket from the `cereal` archive `archive`.
+    template <typename T_archive_> void load(T_archive_& archive);
 };
 
 
@@ -352,6 +410,9 @@ inline Ext_Mem_Bucket_Concurrent<T_>::Ext_Mem_Bucket_Concurrent(const std::strin
     , max_buf_elems(max_buf_bytes / sizeof(T_))
     , flushed(0)
     , buf_w_local(parlay::num_workers())
+    , read_is(parlay::num_workers())
+    , read(0)
+    , read_bufs_pending(true)
 {
     assert(file_path.empty() || max_buf_elems > 0);
 
@@ -360,7 +421,7 @@ inline Ext_Mem_Bucket_Concurrent<T_>::Ext_Mem_Bucket_Concurrent(const std::strin
 
     if(!file)
     {
-        std::cerr << "Error opening external-memory bucket at " << file_path << ". Aborting.\n";
+        std::cerr << "Error opening concurrent external-memory bucket at " << file_path << ". Aborting.\n";
         std::exit(EXIT_FAILURE);
     }
 
@@ -377,6 +438,9 @@ inline Ext_Mem_Bucket_Concurrent<T_>::Ext_Mem_Bucket_Concurrent(Ext_Mem_Bucket_C
     , flushed(std::move(rhs.flushed))
     , buf_w_local(std::move(rhs.buf_w_local))
     , file(std::move(rhs.file))
+    , read_is(std::move(rhs.read_is))
+    , read(std::move(rhs.read))
+    , read_bufs_pending(std::move(rhs.read_bufs_pending))
 {}
 
 
@@ -527,6 +591,77 @@ inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::load(T_* b) const
 
 
 template <typename T_>
+inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::read_buffered(Buffer<T_>& buf, const std::size_t n) const
+{
+    assert(buf.capacity() >= n);
+
+    lock_.lock();
+    assert(read <= flushed);
+    const auto read_off = read; // Offset to read from the file.
+    const auto to_read = std::min(n, flushed - read);
+    read += to_read;
+    lock_.unlock();
+
+    assert(read_is.size() == parlay::num_workers());
+    auto& is = read_is[parlay::worker_id()].unwrap();
+    if(to_read > 0)
+    {
+        if(!is.is_open())
+            is.open(file_path, std::ios::binary);
+
+        is.seekg(read_off * sizeof(T_));
+        is.read(reinterpret_cast<char*>(buf.data()), to_read * sizeof(T_));
+        if(!is)
+        {
+            std::cerr << "Error reading from concurrent external-memory bucket at " << file_path << ". Aborting.\n";
+            std::exit(EXIT_FAILURE);
+        }
+
+        return to_read;
+    }
+
+    // Reading from the file has been depleted.
+    if(is.is_open())
+        is.close();
+
+    bool to_copy = false;
+    lock_.lock();
+
+    if(read_bufs_pending)
+        read_bufs_pending = false,
+        to_copy = true;
+
+    lock_.unlock();
+
+    if(to_copy) // Whether elements are pending in the worker-local buffers.
+    {
+        buf.reserve(size() - flushed);
+        auto cur_end = buf.data();
+        for(const auto& buf_w : buf_w_local)
+        {
+            const auto b = buf_w.unwrap();
+            if(CF_LIKELY(!b.empty()))   // Conditional to avoid UB on `nullptr` being passed to `memcpy`.
+                std::memcpy(reinterpret_cast<char*>(cur_end), reinterpret_cast<const char*>(b.data()), b.size() * sizeof(T_));
+            cur_end += b.size();
+        }
+
+        return cur_end - buf.data();
+    }
+
+    return 0;
+}
+
+
+template <typename T_>
+inline void Ext_Mem_Bucket_Concurrent<T_>::reset_read()
+{
+    parlay::parallel_for(0, read_is.size(), [&](const auto i){ if(read_is[i].unwrap().is_open()) read_is[i].unwrap().close(); });
+    read = 0;
+    read_bufs_pending = true;
+}
+
+
+template <typename T_>
 inline void Ext_Mem_Bucket_Concurrent<T_>::remove()
 {
     if(!file_path.empty())
@@ -551,6 +686,34 @@ inline std::size_t Ext_Mem_Bucket_Concurrent<T_>::RSS() const
     std::for_each(buf_w_local.cbegin(), buf_w_local.cend(), [&](const auto& b){ buf_bytes += b.unwrap().capacity() * sizeof(T_); });
 
     return buf_bytes;
+}
+
+
+template <typename T_>
+template <typename T_archive_>
+inline void Ext_Mem_Bucket_Concurrent<T_>::save(T_archive_& archive) const
+{
+    archive(file_path, max_buf_bytes, max_buf_elems, flushed, buf_w_local);
+}
+
+
+template <typename T_>
+template <typename T_archive_>
+inline void Ext_Mem_Bucket_Concurrent<T_>::load(T_archive_& archive)
+{
+    archive(type::mut_ref(file_path), type::mut_ref(max_buf_bytes), type::mut_ref(max_buf_elems),
+            flushed, buf_w_local);
+
+    assert(file_path.empty() || max_buf_elems > 0);
+
+    if(!file_path.empty())
+        file.open(file_path, std::ios::binary | std::ios::app);
+
+    if(!file)
+    {
+        std::cerr << "Error opening concurrent external-memory bucket at " << file_path << ". Aborting.\n";
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 }

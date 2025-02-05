@@ -11,6 +11,7 @@
 #include "Discontinuity_Graph.hpp"
 #include "Concurrent_Hash_Table.hpp"
 #include "utility.hpp"
+#include "unordered_dense/unordered_dense.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -40,21 +41,23 @@ private:
 
     const std::string compressed_diagonal_path; // Path-prefix to the edges introduced in contracting diagonal blocks.
 
-    Buffer<Discontinuity_Edge<k>> buf;  // Buffer to read-in edges from the edge-matrix.
-
     class Other_End;
     Concurrent_Hash_Table<Kmer<k>, Other_End, Kmer_Hasher<k>> M;    // `M[v]` is the associated vertex to `v` at a given time.
 
     // TODO: remove `D_j` by adopting a more parallelization-amenable algorithm for diagonal contraction-expansion.
     std::vector<Discontinuity_Edge<k>> D_j; // Edges introduced in contracting a diagonal block. TODO: remove `D_j` by adding these edges to the diagonal block.
     std::vector<Padded<std::vector<Discontinuity_Edge<k>>>> D_c;    // `D_c[t]` contains the edges corresponding to compressed diagonal chains by worker `t`.
+    Buffer<Discontinuity_Edge<k>> D_c_flat; // Flattened `D_c`.
+
+    ankerl::unordered_dense::map<Kmer<k>, Other_End, Kmer_Hasher<k>> D; // `D[v]` is the associated vertex to `v` at a given time during diagonal compression.
 
     std::atomic_uint64_t phantom_count_;    // Number of phantom edges.
     std::atomic_uint64_t icc_count; // Number of ICCs.
 
 
-    // Contracts the `[j, j]`'th edge-block.
-    void contract_diagonal_block(std::size_t j);
+    // Contracts the `[j, j]`'th edge-block. Buffer `buf` is used to read the
+    // edges.
+    void contract_diagonal_block(std::size_t j, Buffer<Discontinuity_Edge<k>>& buf);
 
     // Forms a meta-vertex in the contracted graph with the vertex `v` belonging
     // to the vertex-partition `part`. In the contracted graph, `v` has a `w_1`
@@ -68,9 +71,6 @@ private:
     // weighted edge incident to its side `s`. `is_cycle` denotes whether the
     // meta-vertex corresponds to a cycle.
     void form_meta_vertex(Kmer<k> v, std::size_t part, side_t s, weight_t w, bool is_cycle = false);
-
-    // Debug
-    double edge_read_time = 0;  // Time taken to read the edges.
 
     static constexpr auto now = std::chrono::high_resolution_clock::now;    // Current time-point in nanoseconds.
 

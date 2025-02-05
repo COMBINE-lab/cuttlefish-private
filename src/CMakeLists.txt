@@ -26,7 +26,7 @@ set(PROJECT_SRC
         State.cpp
         Kmer_Container.cpp
         Kmer_SPSC_Iterator.cpp
-        Kmer_Hash_Table.cpp
+        # Kmer_Hash_Table.cpp
         # CdBG.cpp
         # CdBG_Builder.cpp
         # CdBG_Writer.cpp
